@@ -159,11 +159,23 @@ export const processPortfolio = (
             totalDividendsReceived = preciseAdd(totalDividendsReceived, totalVal);
         }
 
+        // Tenta inferir o tipo de ativo se não vier no recibo, usando metadados ou padrão de ticker
+        let assetType = d.assetType;
+        if (!assetType) {
+            const meta = assetsMetadata[normalizedTicker];
+            if (meta && meta.type) {
+                assetType = meta.type;
+            } else {
+                assetType = (normalizedTicker.endsWith('11') || normalizedTicker.endsWith('11B')) ? AssetType.FII : AssetType.STOCK;
+            }
+        }
+
         return { 
             ...d, 
             ticker: normalizedTicker,
             quantityOwned: qty, 
-            totalReceived: totalVal 
+            totalReceived: totalVal,
+            assetType // Injeta o tipo corrigido
         };
     }).filter((r): r is any => !!r); 
 

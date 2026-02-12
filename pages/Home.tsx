@@ -48,6 +48,7 @@ interface MagicData {
     monthlyYieldEst: number;
     costToReach: number;
     dy12m: number;
+    isFII: boolean;
 }
 
 const formatBRL = (val: any, privacy = false) => {
@@ -197,23 +198,40 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const magicData = useMemo(() => {
       const data: MagicData[] = [];
       portfolio.forEach(p => {
-          if (p.dy_12m && p.dy_12m > 0 && p.currentPrice && p.currentPrice > 0) {
-              const annualYieldVal = p.currentPrice * (p.dy_12m / 100);
-              const monthlyYieldEst = annualYieldVal / 12;
+          if (p.currentPrice && p.currentPrice > 0) {
+              let monthlyYieldEst = 0;
+              let hasData = false;
+
+              // Estratégia de Cálculo
+              // Para FIIs, prioriza o último dividendo real (last_dividend) se disponível
+              // Para Ações ou se não tiver last_dividend, usa DY anualizado / 12
               
-              if (monthlyYieldEst > 0) {
+              if (p.assetType === AssetType.FII && p.last_dividend && p.last_dividend > 0) {
+                  monthlyYieldEst = p.last_dividend;
+                  hasData = true;
+              } else if (p.dy_12m && p.dy_12m > 0) {
+                  const annualYieldVal = p.currentPrice * (p.dy_12m / 100);
+                  monthlyYieldEst = annualYieldVal / 12;
+                  hasData = true;
+              }
+              
+              if (hasData && monthlyYieldEst > 0) {
                   const magicNumber = Math.ceil(p.currentPrice / monthlyYieldEst);
-                  const missing = Math.max(0, magicNumber - p.quantity);
-                  data.push({
-                      ticker: p.ticker,
-                      currentPrice: p.currentPrice,
-                      magicNumber,
-                      owned: p.quantity,
-                      progress: Math.min((p.quantity / magicNumber) * 100, 100),
-                      monthlyYieldEst,
-                      costToReach: missing * p.currentPrice,
-                      dy12m: p.dy_12m
-                  });
+                  // Limite de sanidade (evita infinitos se yield for muito baixo)
+                  if (magicNumber < 100000) {
+                      const missing = Math.max(0, magicNumber - p.quantity);
+                      data.push({
+                          ticker: p.ticker,
+                          currentPrice: p.currentPrice,
+                          magicNumber,
+                          owned: p.quantity,
+                          progress: Math.min((p.quantity / magicNumber) * 100, 100),
+                          monthlyYieldEst,
+                          costToReach: missing * p.currentPrice,
+                          dy12m: p.dy_12m || 0,
+                          isFII: p.assetType === AssetType.FII
+                      });
+                  }
               }
           }
       });
@@ -421,6 +439,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
   return (
     <div className="space-y-6 pb-8">
+      {/* ... Hero Section e Botões permanecem inalterados ... */}
       <div className="relative overflow-hidden bg-white dark:bg-zinc-900 rounded-[2.5rem] p-6 shadow-xl shadow-zinc-200/50 dark:shadow-black/50 border border-zinc-100 dark:border-zinc-800 anim-scale-in group">
           <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-emerald-500/10 to-sky-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none transition-opacity opacity-50 group-hover:opacity-100"></div>
 
@@ -531,9 +550,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       </div>
 
       <SwipeableModal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)}>
-        <div className="px-4 pb-20 pt-2 bg-[#F2F2F2] dark:bg-black min-h-full">
-            <div className="pt-2 mb-4">
-                <div className="flex items-center justify-between mb-3 px-1">
+        <div className="flex flex-col h-full bg-[#F2F2F2] dark:bg-black">
+            <div className="px-6 pt-4 pb-2 shrink-0">
+                <div className="flex items-center justify-between mb-3">
                     <div>
                         <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Agenda</h2>
                         <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Próximos Eventos</p>
@@ -551,14 +570,15 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         </button>
                     ))}
                 </div>
+                {filteredAgenda.totalConfirmed > 0 && agendaFilter !== 'DATACOM' && (
+                    <div className="mt-4 bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl p-4 text-white shadow-lg shadow-emerald-500/20 flex justify-between items-center">
+                        <p className="text-[10px] font-bold opacity-90 uppercase tracking-widest">Confirmado</p>
+                        <p className="text-2xl font-black tracking-tighter">{formatBRL(filteredAgenda.totalConfirmed, privacyMode)}</p>
+                    </div>
+                )}
             </div>
-            {filteredAgenda.totalConfirmed > 0 && agendaFilter !== 'DATACOM' && (
-                <div className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl p-4 text-white mb-6 shadow-lg shadow-emerald-500/20 flex justify-between items-center">
-                    <p className="text-[10px] font-bold opacity-90 uppercase tracking-widest">Confirmado</p>
-                    <p className="text-2xl font-black tracking-tighter">{formatBRL(filteredAgenda.totalConfirmed, privacyMode)}</p>
-                </div>
-            )}
-            <div className="space-y-4">
+            
+            <div className="flex-1 overflow-y-auto px-6 pb-20 space-y-4 pt-2">
                 {Object.keys(filteredAgenda.grouped).length === 0 && !radarData.loading ? (
                     <div className="text-center py-20 opacity-40">
                         <CalendarClock className="w-12 h-12 mx-auto mb-3 text-zinc-300" />
@@ -579,9 +599,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       </SwipeableModal>
 
       <SwipeableModal isOpen={showProventosModal} onClose={() => setShowProventosModal(false)}>
-         <div className="px-4 pb-20 pt-2 bg-[#F2F2F2] dark:bg-black min-h-full">
-             <div className="flex flex-col pt-2 pb-2">
-                 <div className="flex justify-between items-end mb-3 px-1">
+         <div className="flex flex-col h-full bg-[#F2F2F2] dark:bg-black">
+             <div className="px-6 pt-4 pb-2 shrink-0">
+                 <div className="flex justify-between items-end mb-3">
                      <div>
                         <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Total Recebido</p>
                         <h2 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter leading-none">
@@ -617,74 +637,78 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  </div>
              </div>
 
-             {chartData.length > 0 && (
-                 <div className="h-32 w-full mt-2 mb-4 bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                     <ProventosChart data={chartData} privacyMode={!!privacyMode} />
-                 </div>
-             )}
-             
-             <div className="space-y-4">
-                 {Object.keys(groupedProventos).length === 0 ? (
-                     <div className="text-center py-10 opacity-40">
-                         <p className="text-xs font-bold text-zinc-500">Sem proventos neste período</p>
+             <div className="flex-1 overflow-y-auto px-6 pb-20 pt-2">
+                 {chartData.length > 0 && (
+                     <div className="h-32 w-full mb-4 bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm shrink-0">
+                         <ProventosChart data={chartData} privacyMode={!!privacyMode} />
                      </div>
-                 ) : (
-                     Object.keys(groupedProventos).map(monthKey => (
-                         <div key={monthKey}>
-                             <div className="flex justify-between items-center mb-2 ml-1 sticky top-0 bg-[#F2F2F2] dark:bg-black py-2 z-10">
-                                 <h3 className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">{monthKey}</h3>
-                                 <span className="text-[9px] font-black text-zinc-500 bg-zinc-200 dark:bg-zinc-800 px-1.5 py-0.5 rounded">
-                                     {formatBRL(groupedProventos[monthKey].total, privacyMode)}
-                                 </span>
-                             </div>
-                             
-                             <div className="space-y-1.5">
-                                 {groupedProventos[monthKey].items.map((r, idx) => (
-                                     <div key={idx} className="flex items-center justify-between p-3 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                                         <div className="flex items-center gap-3">
-                                             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[9px] font-black ${r.assetType === AssetType.FII ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400' : 'bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400'}`}>
-                                                 {r.ticker.substring(0, 2)}
-                                             </div>
-                                             <div>
-                                                 <span className="block font-bold text-zinc-900 dark:text-white text-xs">{r.ticker}</span>
-                                                 <span className="text-[8px] text-zinc-400 font-bold uppercase">{r.type} • {new Date(r.paymentDate).getDate()}</span>
-                                             </div>
-                                         </div>
-                                         <span className="font-bold text-emerald-600 dark:text-emerald-400 text-xs">
-                                             {formatBRL(r.totalReceived, privacyMode)}
-                                         </span>
-                                     </div>
-                                 ))}
-                             </div>
-                         </div>
-                     ))
                  )}
+                 
+                 <div className="space-y-4">
+                     {Object.keys(groupedProventos).length === 0 ? (
+                         <div className="text-center py-10 opacity-40">
+                             <p className="text-xs font-bold text-zinc-500">Sem proventos neste período</p>
+                         </div>
+                     ) : (
+                         Object.keys(groupedProventos).map(monthKey => (
+                             <div key={monthKey}>
+                                 <div className="flex justify-between items-center mb-2 ml-1 sticky top-0 bg-[#F2F2F2] dark:bg-black py-2 z-10">
+                                     <h3 className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">{monthKey}</h3>
+                                     <span className="text-[9px] font-black text-zinc-500 bg-zinc-200 dark:bg-zinc-800 px-1.5 py-0.5 rounded">
+                                         {formatBRL(groupedProventos[monthKey].total, privacyMode)}
+                                     </span>
+                                 </div>
+                                 
+                                 <div className="space-y-1.5">
+                                     {groupedProventos[monthKey].items.map((r, idx) => (
+                                         <div key={idx} className="flex items-center justify-between p-3 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                                             <div className="flex items-center gap-3">
+                                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[9px] font-black ${r.assetType === AssetType.FII ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400' : 'bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400'}`}>
+                                                     {r.ticker.substring(0, 2)}
+                                                 </div>
+                                                 <div>
+                                                     <span className="block font-bold text-zinc-900 dark:text-white text-xs">{r.ticker}</span>
+                                                     <span className="text-[8px] text-zinc-400 font-bold uppercase">{r.type} • {new Date(r.paymentDate).getDate()}</span>
+                                                 </div>
+                                             </div>
+                                             <span className="font-bold text-emerald-600 dark:text-emerald-400 text-xs">
+                                                 {formatBRL(r.totalReceived, privacyMode)}
+                                             </span>
+                                         </div>
+                                     ))}
+                                 </div>
+                             </div>
+                         ))
+                     )}
+                 </div>
              </div>
          </div>
       </SwipeableModal>
 
       <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
-         <div className="px-4 pb-20 pt-2 bg-[#F2F2F2] dark:bg-black min-h-full">
-             <div className="flex items-center gap-3 mb-4 px-1 pt-2">
-                 <div className="w-10 h-10 bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center border border-zinc-200 dark:border-zinc-800 shadow-sm">
-                     <PieIcon className="w-5 h-5" />
+         <div className="flex flex-col h-full bg-[#F2F2F2] dark:bg-black">
+             <div className="px-6 pt-4 pb-2 shrink-0">
+                 <div className="flex items-center gap-3 mb-4">
+                     <div className="w-10 h-10 bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                         <PieIcon className="w-5 h-5" />
+                     </div>
+                     <div>
+                         <h2 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">Alocação</h2>
+                         <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Raio-X de Diversificação</p>
+                     </div>
                  </div>
-                 <div>
-                     <h2 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">Alocação</h2>
-                     <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Raio-X de Diversificação</p>
+
+                 <div className="bg-zinc-200/50 dark:bg-zinc-900 p-1 rounded-xl flex gap-1 mb-2">
+                     {['CLASS', 'SECTOR'].map(t => (
+                         <button key={t} onClick={() => { setAllocationTab(t as any); setActiveIndexClass(undefined); }} className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all duration-300 ${allocationTab === t ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>
+                            {t === 'CLASS' ? 'Por Classe' : 'Por Setor'}
+                         </button>
+                     ))}
                  </div>
              </div>
 
-             <div className="bg-zinc-200/50 dark:bg-zinc-900 p-1 rounded-xl flex gap-1 mb-4">
-                 {['CLASS', 'SECTOR'].map(t => (
-                     <button key={t} onClick={() => { setAllocationTab(t as any); setActiveIndexClass(undefined); }} className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all duration-300 ${allocationTab === t ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>
-                        {t === 'CLASS' ? 'Por Classe' : 'Por Setor'}
-                     </button>
-                 ))}
-             </div>
-
-             <div className="space-y-4">
-                 <div className="bg-white dark:bg-zinc-900 p-4 rounded-[2rem] shadow-sm relative overflow-visible border border-zinc-200 dark:border-zinc-800 h-64">
+             <div className="flex-1 overflow-y-auto px-6 pb-20 space-y-4">
+                 <div className="bg-white dark:bg-zinc-900 p-4 rounded-[2rem] shadow-sm relative overflow-visible border border-zinc-200 dark:border-zinc-800 h-64 shrink-0">
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                             <Pie 
@@ -745,42 +769,44 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       </SwipeableModal>
 
       <SwipeableModal isOpen={showMagicModal} onClose={() => setShowMagicModal(false)}>
-         <div className="px-4 pb-20 pt-2 bg-[#F2F2F2] dark:bg-black min-h-full">
-             <div className="flex items-center gap-3 mb-4 px-1 pt-2">
-                 <div className="w-10 h-10 bg-white dark:bg-zinc-800 text-purple-600 dark:text-purple-400 rounded-xl flex items-center justify-center border border-zinc-200 dark:border-zinc-800 shadow-sm">
-                     <Wand2 className="w-5 h-5" />
+         <div className="flex flex-col h-full bg-[#F2F2F2] dark:bg-black">
+             <div className="px-6 pt-4 pb-2 shrink-0">
+                 <div className="flex items-center gap-3 mb-4">
+                     <div className="w-10 h-10 bg-white dark:bg-zinc-800 text-purple-600 dark:text-purple-400 rounded-xl flex items-center justify-center border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                         <Wand2 className="w-5 h-5" />
+                     </div>
+                     <div>
+                         <h2 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">Número Mágico</h2>
+                         <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Dividendos infinitos</p>
+                     </div>
                  </div>
-                 <div>
-                     <h2 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">Número Mágico</h2>
-                     <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Dividendos infinitos</p>
-                 </div>
+
+                 {totalCostToReachAll > 0 && (
+                     <div className="bg-purple-600 dark:bg-purple-900/40 text-white p-5 rounded-[2rem] shadow-lg shadow-purple-600/20 mb-4 relative overflow-hidden">
+                         <div className="relative z-10">
+                             <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest mb-1">Custo Restante Total</p>
+                             <h3 className="text-3xl font-black tracking-tighter mb-2">{formatBRL(totalCostToReachAll, privacyMode)}</h3>
+                             <div className="flex items-center gap-2 text-xs font-medium opacity-90">
+                                 <CheckCircle2 className="w-3 h-3" />
+                                 <span>{magicReachedCount} de {portfolio.length} ativos atingiram a meta</span>
+                             </div>
+                         </div>
+                         <Sparkles className="w-24 h-24 absolute -right-6 -bottom-6 opacity-20 rotate-12" />
+                     </div>
+                 )}
              </div>
 
-             {magicData.length === 0 && (
-                 <div className="flex flex-col items-center justify-center py-16 opacity-50 text-center">
-                     <Wand2 className="w-16 h-16 text-zinc-300 mb-4" strokeWidth={1} />
-                     <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-1">Cálculo Indisponível</h3>
-                     <p className="text-[10px] text-zinc-500 max-w-[200px] leading-relaxed">
-                         Precisamos do Dividend Yield (DY) e cotação para calcular. Aguarde a atualização dos dados.
-                     </p>
-                 </div>
-             )}
-
-             {totalCostToReachAll > 0 && (
-                 <div className="bg-purple-600 dark:bg-purple-900/40 text-white p-5 rounded-[2rem] shadow-lg shadow-purple-600/20 mb-6 relative overflow-hidden">
-                     <div className="relative z-10">
-                         <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest mb-1">Custo Restante Total</p>
-                         <h3 className="text-3xl font-black tracking-tighter mb-2">{formatBRL(totalCostToReachAll, privacyMode)}</h3>
-                         <div className="flex items-center gap-2 text-xs font-medium opacity-90">
-                             <CheckCircle2 className="w-3 h-3" />
-                             <span>{magicReachedCount} de {portfolio.length} ativos atingiram a meta</span>
-                         </div>
+             <div className="flex-1 overflow-y-auto px-6 pb-20 pt-2 space-y-3">
+                 {magicData.length === 0 && (
+                     <div className="flex flex-col items-center justify-center py-16 opacity-50 text-center">
+                         <Wand2 className="w-16 h-16 text-zinc-300 mb-4" strokeWidth={1} />
+                         <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-1">Cálculo Indisponível</h3>
+                         <p className="text-[10px] text-zinc-500 max-w-[200px] leading-relaxed">
+                             Precisamos do Dividend Yield (DY) ou último rendimento e cotação para calcular. Aguarde a atualização dos dados.
+                         </p>
                      </div>
-                     <Sparkles className="w-24 h-24 absolute -right-6 -bottom-6 opacity-20 rotate-12" />
-                 </div>
-             )}
+                 )}
 
-             <div className="space-y-3">
                  {magicData.map((asset) => {
                      const isReached = asset.progress >= 100;
                      return (
@@ -807,8 +833,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
                              <div className="grid grid-cols-3 gap-2 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-2.5">
                                  <div className="text-center">
-                                     <p className="text-[8px] font-bold text-zinc-400 uppercase mb-0.5">DY (12m)</p>
-                                     <p className="text-[10px] font-black text-zinc-700 dark:text-zinc-300">{asset.dy12m.toFixed(1)}%</p>
+                                     <p className="text-[8px] font-bold text-zinc-400 uppercase mb-0.5">{asset.isFII ? 'Rend. Mensal' : 'DY (12m)'}</p>
+                                     <p className="text-[10px] font-black text-zinc-700 dark:text-zinc-300">
+                                         {asset.isFII ? formatBRL(asset.monthlyYieldEst, privacyMode) : `${asset.dy12m.toFixed(1)}%`}
+                                     </p>
                                  </div>
                                  <div className="text-center border-l border-zinc-200 dark:border-zinc-700">
                                      <p className="text-[8px] font-bold text-zinc-400 uppercase mb-0.5">Cotação</p>
@@ -827,77 +855,81 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       </SwipeableModal>
 
       <SwipeableModal isOpen={showGoalModal} onClose={() => setShowGoalModal(false)}>
-         <div className="px-4 pb-20 pt-2 bg-[#F2F2F2] dark:bg-black min-h-full">
-             <div className="flex items-center gap-3 mb-6 px-1 pt-2">
-                 <div className="w-10 h-10 bg-white dark:bg-zinc-800 text-amber-600 dark:text-amber-400 rounded-xl flex items-center justify-center border border-zinc-200 dark:border-zinc-800 shadow-sm">
-                     <Target className="w-5 h-5" />
+         <div className="flex flex-col h-full bg-[#F2F2F2] dark:bg-black">
+             <div className="px-6 pt-4 pb-2 shrink-0">
+                 <div className="flex items-center gap-3 mb-6">
+                     <div className="w-10 h-10 bg-white dark:bg-zinc-800 text-amber-600 dark:text-amber-400 rounded-xl flex items-center justify-center border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                         <Target className="w-5 h-5" />
+                     </div>
+                     <div>
+                         <h2 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">Objetivos</h2>
+                         <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Defina suas metas</p>
+                     </div>
                  </div>
-                 <div>
-                     <h2 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">Objetivos</h2>
-                     <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Defina suas metas</p>
+
+                 <div className="flex bg-zinc-200/50 dark:bg-zinc-800 p-1 rounded-xl mb-6">
+                     <button 
+                        onClick={() => setGoalTab('INCOME')}
+                        className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${goalTab === 'INCOME' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                     >
+                         <Banknote className="w-3.5 h-3.5" /> Renda Mensal
+                     </button>
+                     <button 
+                        onClick={() => setGoalTab('WEALTH')}
+                        className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${goalTab === 'WEALTH' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                     >
+                         <PiggyBank className="w-3.5 h-3.5" /> Patrimônio
+                     </button>
                  </div>
              </div>
 
-             <div className="flex bg-zinc-200/50 dark:bg-zinc-800 p-1 rounded-xl mb-6">
-                 <button 
-                    onClick={() => setGoalTab('INCOME')}
-                    className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${goalTab === 'INCOME' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
-                 >
-                     <Banknote className="w-3.5 h-3.5" /> Renda Mensal
-                 </button>
-                 <button 
-                    onClick={() => setGoalTab('WEALTH')}
-                    className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${goalTab === 'WEALTH' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
-                 >
-                     <PiggyBank className="w-3.5 h-3.5" /> Patrimônio
-                 </button>
-             </div>
+             <div className="flex-1 overflow-y-auto px-6 pb-20 pt-2">
+                 <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] shadow-sm border border-zinc-100 dark:border-zinc-800 text-center mb-6 relative overflow-hidden anim-scale-in">
+                     <div className="absolute top-0 left-0 w-full h-1.5 bg-zinc-100 dark:bg-zinc-800">
+                         <div 
+                            className={`h-full transition-all duration-1000 ease-out ${goalTab === 'INCOME' ? 'bg-gradient-to-r from-amber-400 to-orange-600' : 'bg-gradient-to-r from-blue-400 to-indigo-600'}`} 
+                            style={{ width: `${goalTab === 'INCOME' ? incomeProgress : patrimonyProgress}%` }}
+                         ></div>
+                     </div>
+                     
+                     <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mt-2 mb-1">
+                         {goalTab === 'INCOME' ? 'Média Mensal Atual' : 'Patrimônio Atual'}
+                     </p>
+                     <h3 className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter mb-4">
+                         {formatBRL(goalTab === 'INCOME' ? proventosAverage : balance, privacyMode)}
+                     </h3>
+                     
+                     <div className="bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 flex items-center justify-between">
+                         <span className="text-[10px] font-bold text-zinc-500 uppercase">Progresso</span>
+                         <span className={`text-sm font-black ${goalTab === 'INCOME' ? 'text-amber-600 dark:text-amber-400' : 'text-blue-600 dark:text-blue-400'}`}>
+                             {(goalTab === 'INCOME' ? incomeProgress : patrimonyProgress).toFixed(1)}%
+                         </span>
+                     </div>
+                 </div>
 
-             <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] shadow-sm border border-zinc-100 dark:border-zinc-800 text-center mb-6 relative overflow-hidden anim-scale-in">
-                 <div className="absolute top-0 left-0 w-full h-1.5 bg-zinc-100 dark:bg-zinc-800">
-                     <div 
-                        className={`h-full transition-all duration-1000 ease-out ${goalTab === 'INCOME' ? 'bg-gradient-to-r from-amber-400 to-orange-600' : 'bg-gradient-to-r from-blue-400 to-indigo-600'}`} 
-                        style={{ width: `${goalTab === 'INCOME' ? incomeProgress : patrimonyProgress}%` }}
-                     ></div>
+                 <div className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm anim-slide-up">
+                     <div className="flex items-center gap-3 mb-3">
+                         <Calculator className="w-4 h-4 text-zinc-400" />
+                         <label className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wide">
+                             Definir Meta de {goalTab === 'INCOME' ? 'Renda' : 'Patrimônio'}
+                         </label>
+                     </div>
+                     <div className={`flex items-center gap-2 border-b-2 border-zinc-100 dark:border-zinc-800 pb-2 transition-colors ${goalTab === 'INCOME' ? 'focus-within:border-amber-500' : 'focus-within:border-blue-500'}`}>
+                         <input 
+                            type="text" 
+                            value={formattedGoalValue} 
+                            onChange={handleGoalChange}
+                            className="w-full bg-transparent text-2xl font-black text-zinc-900 dark:text-white outline-none placeholder:text-zinc-300 text-center"
+                            placeholder="R$ 0,00"
+                            inputMode="numeric"
+                         />
+                     </div>
+                     <p className="text-[10px] text-zinc-400 mt-3 leading-relaxed text-center">
+                         {goalTab === 'INCOME' 
+                            ? 'Digite o valor que deseja receber mensalmente em proventos.' 
+                            : 'Digite o valor total que deseja acumular em patrimônio.'}
+                     </p>
                  </div>
-                 
-                 <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mt-2 mb-1">
-                     {goalTab === 'INCOME' ? 'Média Mensal Atual' : 'Patrimônio Atual'}
-                 </p>
-                 <h3 className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter mb-4">
-                     {formatBRL(goalTab === 'INCOME' ? proventosAverage : balance, privacyMode)}
-                 </h3>
-                 
-                 <div className="bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 flex items-center justify-between">
-                     <span className="text-[10px] font-bold text-zinc-500 uppercase">Progresso</span>
-                     <span className={`text-sm font-black ${goalTab === 'INCOME' ? 'text-amber-600 dark:text-amber-400' : 'text-blue-600 dark:text-blue-400'}`}>
-                         {(goalTab === 'INCOME' ? incomeProgress : patrimonyProgress).toFixed(1)}%
-                     </span>
-                 </div>
-             </div>
-
-             <div className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm anim-slide-up">
-                 <div className="flex items-center gap-3 mb-3">
-                     <Calculator className="w-4 h-4 text-zinc-400" />
-                     <label className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wide">
-                         Definir Meta de {goalTab === 'INCOME' ? 'Renda' : 'Patrimônio'}
-                     </label>
-                 </div>
-                 <div className={`flex items-center gap-2 border-b-2 border-zinc-100 dark:border-zinc-800 pb-2 transition-colors ${goalTab === 'INCOME' ? 'focus-within:border-amber-500' : 'focus-within:border-blue-500'}`}>
-                     <input 
-                        type="text" 
-                        value={formattedGoalValue} 
-                        onChange={handleGoalChange}
-                        className="w-full bg-transparent text-2xl font-black text-zinc-900 dark:text-white outline-none placeholder:text-zinc-300 text-center"
-                        placeholder="R$ 0,00"
-                        inputMode="numeric"
-                     />
-                 </div>
-                 <p className="text-[10px] text-zinc-400 mt-3 leading-relaxed text-center">
-                     {goalTab === 'INCOME' 
-                        ? 'Digite o valor que deseja receber mensalmente em proventos.' 
-                        : 'Digite o valor total que deseja acumular em patrimônio.'}
-                 </p>
              </div>
          </div>
       </SwipeableModal>
