@@ -59,6 +59,7 @@ const formatBRL = (val: any, privacy = false) => {
 
 const CHART_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#6366f1', '#f43f5e'];
 
+// Explicit type definition for Tooltip props to satisfy Recharts requirements
 const CustomBarTooltip = ({ active, payload, label, privacyMode }: any) => { 
     if (active && payload && payload.length) { 
         const data = payload[0]; 
@@ -87,7 +88,7 @@ const ProventosChart = ({ data, privacyMode }: { data: HistoryItem[], privacyMod
                 />
                 <RechartsTooltip 
                     cursor={{fill: 'transparent'}} 
-                    content={(props: any) => <CustomBarTooltip {...props} privacyMode={privacyMode} />} 
+                    content={<CustomBarTooltip privacyMode={privacyMode} />} 
                 />
                 <Bar dataKey="value" radius={[3, 3, 3, 3]}>
                     {data.map((entry, index) => (
