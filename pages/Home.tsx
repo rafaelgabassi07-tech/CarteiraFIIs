@@ -75,10 +75,11 @@ const CustomBarTooltip = ({ active, payload, label, privacyMode }: any) => {
 const ProventosChart = ({ data, privacyMode }: { data: HistoryItem[], privacyMode: boolean }) => (
     <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
+            {/* @ts-ignore */}
             <XAxis 
                 dataKey="name" 
-                axisLine={{ stroke: 'none' } as any} 
-                tickLine={{ stroke: 'none' } as any} 
+                axisLine={false} 
+                tickLine={false} 
                 tick={{ fontSize: 8, fill: '#a1a1aa', fontWeight: 700 }} 
                 dy={5} 
                 interval={0} 
@@ -562,7 +563,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         <div key={monthKey}>
                             <h3 className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-2 ml-1 sticky top-0 bg-[#F2F2F2] dark:bg-black py-2 z-10">{monthKey}</h3>
                             {filteredAgenda.grouped[monthKey].map(event => (
-                                <AgendaItem key={event.id} event={event} privacyMode={privacyMode} />
+                                <AgendaItem key={event.id} event={event} privacyMode={!!privacyMode} />
                             ))}
                         </div>
                     ))
