@@ -25,6 +25,9 @@ const formatPercent = (val: any) => {
     return `${num.toFixed(2)}%`;
 };
 
+// Helper para verificar se existe valor numérico válido (incluindo 0)
+const hasValue = (val: any) => val !== undefined && val !== null && !isNaN(val);
+
 // Componente de Item de Lista (Clean List Style)
 const AssetListItem: React.FC<{ asset: AssetPosition, privacyMode?: boolean, onClick: () => void }> = ({ asset, privacyMode, onClick }) => {
     const isPositive = (asset.dailyChange || 0) >= 0;
@@ -155,11 +158,11 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                         </div>
 
                         {/* Card de DY - Destaque */}
-                        {selectedAsset.dy_12m && (
+                        {hasValue(selectedAsset.dy_12m) && (
                             <div className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white p-6 rounded-[2rem] shadow-xl shadow-emerald-500/20 mb-6 flex justify-between items-center relative overflow-hidden">
                                 <div className="relative z-10">
                                     <p className="text-xs font-bold opacity-80 uppercase tracking-widest mb-1">Dividend Yield (12m)</p>
-                                    <p className="text-4xl font-black tracking-tighter">{selectedAsset.dy_12m.toFixed(2)}%</p>
+                                    <p className="text-4xl font-black tracking-tighter">{(selectedAsset.dy_12m || 0).toFixed(2)}%</p>
                                 </div>
                                 <TrendingUp className="w-12 h-12 opacity-30 relative z-10" />
                                 <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
@@ -171,37 +174,37 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                             <Info className="w-3 h-3" /> Fundamentos
                         </h3>
                         <div className="grid grid-cols-2 gap-3 mb-8">
-                            {selectedAsset.p_vp && (
+                            {hasValue(selectedAsset.p_vp) && (
                                 <div className="p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm relative overflow-hidden">
                                     <div className="flex items-center gap-2 mb-1">
                                         <Activity className="w-3 h-3 text-zinc-400" />
                                         <p className="text-[9px] font-bold text-zinc-400 uppercase">P/VP</p>
                                     </div>
-                                    <p className={`text-2xl font-black ${(selectedAsset.p_vp > 1.1) ? 'text-amber-500' : (selectedAsset.p_vp < 0.9) ? 'text-emerald-500' : 'text-zinc-900 dark:text-white'}`}>
-                                        {selectedAsset.p_vp.toFixed(2)}
+                                    <p className={`text-2xl font-black ${(selectedAsset.p_vp || 0) > 1.1 ? 'text-amber-500' : (selectedAsset.p_vp || 0) < 0.9 ? 'text-emerald-500' : 'text-zinc-900 dark:text-white'}`}>
+                                        {(selectedAsset.p_vp || 0).toFixed(2)}
                                     </p>
-                                    {(selectedAsset.p_vp < 0.95 && selectedAsset.p_vp > 0) && <span className="text-[8px] font-bold text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-full absolute top-4 right-4">Desconto</span>}
+                                    {((selectedAsset.p_vp || 0) < 0.95 && (selectedAsset.p_vp || 0) > 0) && <span className="text-[8px] font-bold text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-full absolute top-4 right-4">Desconto</span>}
                                 </div>
                             )}
                             
-                            {selectedAsset.p_l && (
+                            {hasValue(selectedAsset.p_l) && (
                                 <div className="p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
                                     <div className="flex items-center gap-2 mb-1">
                                         <DollarSign className="w-3 h-3 text-zinc-400" />
                                         <p className="text-[9px] font-bold text-zinc-400 uppercase">P/L</p>
                                     </div>
-                                    <p className="text-2xl font-black text-zinc-900 dark:text-white">{selectedAsset.p_l.toFixed(1)}</p>
+                                    <p className="text-2xl font-black text-zinc-900 dark:text-white">{(selectedAsset.p_l || 0).toFixed(1)}</p>
                                 </div>
                             )}
 
-                            {selectedAsset.vacancy !== undefined && selectedAsset.vacancy !== null && (
+                            {hasValue(selectedAsset.vacancy) && (
                                 <div className="p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
                                     <div className="flex items-center gap-2 mb-1">
                                         <Percent className="w-3 h-3 text-zinc-400" />
                                         <p className="text-[9px] font-bold text-zinc-400 uppercase">Vacância</p>
                                     </div>
-                                    <p className={`text-2xl font-black ${selectedAsset.vacancy > 10 ? 'text-rose-500' : 'text-zinc-900 dark:text-white'}`}>
-                                        {selectedAsset.vacancy.toFixed(1)}%
+                                    <p className={`text-2xl font-black ${(selectedAsset.vacancy || 0) > 10 ? 'text-rose-500' : 'text-zinc-900 dark:text-white'}`}>
+                                        {(selectedAsset.vacancy || 0).toFixed(1)}%
                                     </p>
                                 </div>
                             )}

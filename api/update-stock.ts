@@ -28,7 +28,7 @@ const client = axios.create({
         'Pragma': 'no-cache',
         'Upgrade-Insecure-Requests': '1'
     },
-    timeout: 8000, 
+    timeout: 10000, 
     maxRedirects: 5
 });
 
@@ -45,11 +45,10 @@ function parseValue(valueStr: any): number | null {
     if (typeof valueStr === 'number') return valueStr;
     
     let str = String(valueStr).trim();
-    // Proteção Crítica: Ignora valores percentuais (Yield)
-    if (str.includes('%')) return null;
-    if (!str || str === '-' || str === '--' || str === 'N/A') return null;
+    if (!str || str === '-' || str === '--' || str === 'N/A' || str === 'n/a') return null;
 
-    str = str.replace(/^R\$\s?/, '').trim();
+    // Remove % e R$
+    str = str.replace('%', '').replace(/^R\$\s?/, '').trim();
 
     let multiplier = 1;
     const lastChar = str.slice(-1).toUpperCase();
@@ -340,7 +339,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             
             if (existing && existing.updated_at) {
                 const age = Date.now() - new Date(existing.updated_at).getTime();
-                const cacheTime = existing.dy_12m === 0 ? 3600000 : 10800000;
+                // Cache menor se não tiver dados críticos
+                const cacheTime = (!existing.dy_12m || existing.dy_12m === 0) ? 600000 : 10800000;
                 
                 if (age < cacheTime) {
                      const { data: divs } = await supabase
