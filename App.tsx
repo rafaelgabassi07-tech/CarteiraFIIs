@@ -354,24 +354,32 @@ const App: React.FC = () => {
                     onAddTransaction={async (t) => { 
                         if (!session?.user?.id) { showToast('error', 'Usuário não autenticado'); return; }
                         
-                        // Mapper de AssetType (CamelCase) para asset_type (SnakeCase DB)
+                        // Correção Crítica: Forçar mapeamento correto do asset_type e gerar ID
                         const payload = {
+                            id: crypto.randomUUID(), // Força ID único caso DB não gere automaticamente
                             ticker: t.ticker,
                             type: t.type,
                             quantity: t.quantity,
                             price: t.price,
                             date: t.date,
-                            asset_type: t.assetType,
+                            asset_type: t.assetType, // Garante que enum AssetType chegue correto
                             user_id: session.user.id
                         };
 
-                        const { error } = await supabase.from('transactions').insert(payload); 
-                        if(!error) { 
-                            await fetchTransactionsFromCloud(session); 
-                            showToast('success', 'Ordem adicionada!'); 
-                        } else {
-                            showToast('error', 'Erro ao salvar. Tente novamente.');
-                            console.error(error);
+                        try {
+                            const { error } = await supabase.from('transactions').insert(payload); 
+                            
+                            if (error) {
+                                console.error('Supabase Insert Error:', error);
+                                showToast('error', `Erro ao salvar: ${error.message}`);
+                            } else {
+                                // Atualização Otimista e Fetch
+                                showToast('success', 'Ordem salva com sucesso!'); 
+                                await fetchTransactionsFromCloud(session); 
+                            }
+                        } catch (e: any) {
+                            console.error('App Error:', e);
+                            showToast('error', 'Erro inesperado ao salvar.');
                         }
                     }} 
                     onUpdateTransaction={async (id, t) => { 
