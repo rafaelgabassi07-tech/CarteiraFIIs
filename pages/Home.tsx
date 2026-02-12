@@ -64,7 +64,7 @@ const CustomBarTooltip = ({ active, payload, label, privacyMode }: any) => {
         const data = payload[0]; 
         return (
             <div className="bg-zinc-900/90 dark:bg-zinc-800/90 backdrop-blur-md p-2 rounded-xl shadow-xl border border-white/10 text-center min-w-[60px]">
-                <p className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">{label} {data.payload.year}</p>
+                <p className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">{String(label)} {data.payload.year}</p>
                 <p className="text-[10px] font-black text-white">{formatBRL(data.value, privacyMode)}</p>
             </div>
         ); 
@@ -198,27 +198,15 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const magicData = useMemo(() => {
       const data: MagicData[] = [];
       portfolio.forEach(p => {
-          if (p.currentPrice && p.currentPrice > 0) {
-              let monthlyYieldEst = 0;
-              let hasData = false;
-
-              // Estratégia de Cálculo
-              // Para FIIs, prioriza o último dividendo real (last_dividend) se disponível
-              // Para Ações ou se não tiver last_dividend, usa DY anualizado / 12
+          // Lógica REVERTIDA: Usa estritamente DY 12M para todos (FII e Ações)
+          if (p.currentPrice && p.currentPrice > 0 && p.dy_12m && p.dy_12m > 0) {
+              const annualYieldVal = p.currentPrice * (p.dy_12m / 100);
+              const monthlyYieldEst = annualYieldVal / 12;
               
-              if (p.assetType === AssetType.FII && p.last_dividend && p.last_dividend > 0) {
-                  monthlyYieldEst = p.last_dividend;
-                  hasData = true;
-              } else if (p.dy_12m && p.dy_12m > 0) {
-                  const annualYieldVal = p.currentPrice * (p.dy_12m / 100);
-                  monthlyYieldEst = annualYieldVal / 12;
-                  hasData = true;
-              }
-              
-              if (hasData && monthlyYieldEst > 0) {
+              if (monthlyYieldEst > 0) {
                   const magicNumber = Math.ceil(p.currentPrice / monthlyYieldEst);
-                  // Limite de sanidade (evita infinitos se yield for muito baixo)
-                  if (magicNumber < 100000) {
+                  // Sanity check para evitar números irreais
+                  if (magicNumber < 200000) {
                       const missing = Math.max(0, magicNumber - p.quantity);
                       data.push({
                           ticker: p.ticker,
@@ -228,7 +216,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                           progress: Math.min((p.quantity / magicNumber) * 100, 100),
                           monthlyYieldEst,
                           costToReach: missing * p.currentPrice,
-                          dy12m: p.dy_12m || 0,
+                          dy12m: p.dy_12m,
                           isFII: p.assetType === AssetType.FII
                       });
                   }
@@ -802,7 +790,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                          <Wand2 className="w-16 h-16 text-zinc-300 mb-4" strokeWidth={1} />
                          <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-1">Cálculo Indisponível</h3>
                          <p className="text-[10px] text-zinc-500 max-w-[200px] leading-relaxed">
-                             Precisamos do Dividend Yield (DY) ou último rendimento e cotação para calcular. Aguarde a atualização dos dados.
+                             Precisamos do Dividend Yield (DY) e cotação para calcular. Aguarde a atualização dos dados.
                          </p>
                      </div>
                  )}
@@ -833,9 +821,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
                              <div className="grid grid-cols-3 gap-2 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-2.5">
                                  <div className="text-center">
-                                     <p className="text-[8px] font-bold text-zinc-400 uppercase mb-0.5">{asset.isFII ? 'Rend. Mensal' : 'DY (12m)'}</p>
+                                     <p className="text-[8px] font-bold text-zinc-400 uppercase mb-0.5">DY (12m)</p>
                                      <p className="text-[10px] font-black text-zinc-700 dark:text-zinc-300">
-                                         {asset.isFII ? formatBRL(asset.monthlyYieldEst, privacyMode) : `${asset.dy12m.toFixed(1)}%`}
+                                         {asset.dy12m.toFixed(2)}%
                                      </p>
                                  </div>
                                  <div className="text-center border-l border-zinc-200 dark:border-zinc-700">

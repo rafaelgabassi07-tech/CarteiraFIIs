@@ -65,7 +65,7 @@ export const Header: React.FC<HeaderProps> = ({
         ) : (
             <div className="flex flex-col">
                 <h1 className="text-xl font-black tracking-tight text-zinc-900 dark:text-white flex items-center gap-2">
-                    {title}
+                    <span>{title}</span>
                     <HeaderCloudStatus status={cloudStatus} />
                 </h1>
             </div>
