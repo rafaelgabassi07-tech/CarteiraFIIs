@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
-import { CircleDollarSign, CalendarClock, TrendingUp, TrendingDown, Wallet, PieChart as PieIcon, ArrowUpRight, ArrowDownRight, Layers, Filter, Calendar, Wand2, Target, Sparkles, CheckCircle2, ChevronRight, Calculator } from 'lucide-react';
+import { CircleDollarSign, CalendarClock, TrendingUp, TrendingDown, Wallet, PieChart as PieIcon, ArrowUpRight, ArrowDownRight, Layers, Filter, Calendar, Wand2, Target, Sparkles, CheckCircle2, ChevronRight, Calculator, PiggyBank, Coins, Banknote } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis } from 'recharts';
 import { fetchFutureAnnouncements } from '../services/dataService';
@@ -46,6 +46,8 @@ interface MagicData {
     owned: number;
     progress: number;
     monthlyYieldEst: number;
+    costToReach: number;
+    dy12m: number;
 }
 
 const formatBRL = (val: any, privacy = false) => {
@@ -120,13 +122,23 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [showMagicModal, setShowMagicModal] = useState(false);
   const [showGoalModal, setShowGoalModal] = useState(false);
   
-  // Inicialização segura do objetivo mensal
+  // Estado das Metas (Renda e Patrimônio)
+  const [goalTab, setGoalTab] = useState<'INCOME' | 'WEALTH'>('INCOME');
+  
   const [monthlyGoal, setMonthlyGoal] = useState<number>(() => {
       try {
           const saved = localStorage.getItem('investfiis_monthly_goal');
           const parsed = saved ? parseFloat(saved) : 1000;
           return isNaN(parsed) || parsed <= 0 ? 1000 : parsed;
       } catch { return 1000; }
+  });
+
+  const [patrimonyGoal, setPatrimonyGoal] = useState<number>(() => {
+      try {
+          const saved = localStorage.getItem('investfiis_patrimony_goal');
+          const parsed = saved ? parseFloat(saved) : 100000; // Default 100k
+          return isNaN(parsed) || parsed <= 0 ? 100000 : parsed;
+      } catch { return 100000; }
   });
   
   // Filtros de Proventos
@@ -139,12 +151,17 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [allocationTab, setAllocationTab] = useState<'CLASS' | 'SECTOR'>('CLASS');
   const [activeIndexClass, setActiveIndexClass] = useState<number | undefined>(undefined);
 
-  // Salvar Meta
-  const handleSaveGoal = (val: string) => {
+  // Salvar Metas
+  const handleSaveGoal = (val: string, type: 'INCOME' | 'WEALTH') => {
       const num = parseFloat(val);
       if (!isNaN(num) && num >= 0) {
-          setMonthlyGoal(num);
-          localStorage.setItem('investfiis_monthly_goal', String(num));
+          if (type === 'INCOME') {
+              setMonthlyGoal(num);
+              localStorage.setItem('investfiis_monthly_goal', String(num));
+          } else {
+              setPatrimonyGoal(num);
+              localStorage.setItem('investfiis_patrimony_goal', String(num));
+          }
       }
   };
 
@@ -159,13 +176,16 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
               
               if (monthlyYieldEst > 0) {
                   const magicNumber = Math.ceil(p.currentPrice / monthlyYieldEst);
+                  const missing = Math.max(0, magicNumber - p.quantity);
                   data.push({
                       ticker: p.ticker,
                       currentPrice: p.currentPrice,
                       magicNumber,
                       owned: p.quantity,
                       progress: Math.min((p.quantity / magicNumber) * 100, 100),
-                      monthlyYieldEst
+                      monthlyYieldEst,
+                      costToReach: missing * p.currentPrice,
+                      dy12m: p.dy_12m
                   });
               }
           }
@@ -175,6 +195,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   }, [portfolio]);
 
   const magicReachedCount = magicData.filter(m => m.progress >= 100).length;
+  const totalCostToReachAll = magicData.reduce((acc, curr) => acc + curr.costToReach, 0);
 
   // --- DADOS DO RADAR (AGENDA) ---
   const [radarData, setRadarData] = useState<{
@@ -366,10 +387,13 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const totalReturn = (totalAppreciation + salesGain) + totalDividendsReceived;
   const totalReturnPercent = invested > 0 ? (totalReturn / invested) * 100 : 0;
   
-  // Proteção contra NaN no progresso da meta
+  // Cálculos de Progresso
   const safeAverage = proventosAverage || 0;
-  const safeGoal = monthlyGoal || 1; 
-  const goalProgress = Math.min((safeAverage / safeGoal) * 100, 100);
+  const safeIncomeGoal = monthlyGoal || 1; 
+  const incomeProgress = Math.min((safeAverage / safeIncomeGoal) * 100, 100);
+
+  const safePatrimonyGoal = patrimonyGoal || 1;
+  const patrimonyProgress = Math.min((balance / safePatrimonyGoal) * 100, 100);
 
   return (
     <div className="space-y-6 pb-8">
@@ -485,11 +509,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
               <div className="absolute top-2 right-2 opacity-5 dark:opacity-10 text-amber-500"><Target className="w-16 h-16" /></div>
               <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0"><Target className="w-5 h-5" /></div>
               <div className="text-left relative z-10 w-full">
-                  <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Meta Mensal</span>
+                  <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Meta Principal</span>
                   <div className="w-full bg-zinc-100 dark:bg-zinc-800 h-1.5 rounded-full overflow-hidden mb-1">
-                      <div className="h-full bg-amber-500 rounded-full transition-all duration-500" style={{ width: `${goalProgress}%` }}></div>
+                      <div className="h-full bg-amber-500 rounded-full transition-all duration-500" style={{ width: `${goalTab === 'INCOME' ? incomeProgress : patrimonyProgress}%` }}></div>
                   </div>
-                  <span className="text-[10px] font-black text-zinc-900 dark:text-white float-right">{goalProgress.toFixed(0)}%</span>
+                  <span className="text-[10px] font-black text-zinc-900 dark:text-white float-right">{(goalTab === 'INCOME' ? incomeProgress : patrimonyProgress).toFixed(0)}%</span>
               </div>
           </button>
       </div>
@@ -733,7 +757,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
          </div>
       </SwipeableModal>
 
-      {/* 6. Modal do Nº Mágico */}
+      {/* 6. Modal do Nº Mágico (RENOVADO) */}
       <SwipeableModal isOpen={showMagicModal} onClose={() => setShowMagicModal(false)}>
          <div className="px-4 pb-20 pt-2 bg-[#F2F2F2] dark:bg-black min-h-full">
              <div className="flex items-center gap-3 mb-4 px-1 pt-2">
@@ -742,47 +766,65 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  </div>
                  <div>
                      <h2 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">Número Mágico</h2>
-                     <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Bola de Neve</p>
+                     <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Dividendos infinitos</p>
                  </div>
              </div>
 
-             <div className="bg-purple-50 dark:bg-purple-900/10 p-4 rounded-2xl border border-purple-100 dark:border-purple-900/30 mb-6">
-                 <p className="text-[10px] text-zinc-600 dark:text-zinc-400 leading-relaxed font-medium">
-                     O <span className="font-bold text-purple-600 dark:text-purple-400">Número Mágico</span> é a quantidade de cotas necessárias para que os dividendos mensais comprem 1 nova cota automaticamente.
-                 </p>
-             </div>
+             {/* Header Resumo */}
+             {totalCostToReachAll > 0 && (
+                 <div className="bg-purple-600 dark:bg-purple-900/40 text-white p-5 rounded-[2rem] shadow-lg shadow-purple-600/20 mb-6 relative overflow-hidden">
+                     <div className="relative z-10">
+                         <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest mb-1">Custo Restante Total</p>
+                         <h3 className="text-3xl font-black tracking-tighter mb-2">{formatBRL(totalCostToReachAll, privacyMode)}</h3>
+                         <div className="flex items-center gap-2 text-xs font-medium opacity-90">
+                             <CheckCircle2 className="w-3 h-3" />
+                             <span>{magicReachedCount} de {portfolio.length} ativos atingiram a meta</span>
+                         </div>
+                     </div>
+                     <Sparkles className="w-24 h-24 absolute -right-6 -bottom-6 opacity-20 rotate-12" />
+                 </div>
+             )}
 
              <div className="space-y-3">
                  {magicData.map((asset) => {
                      const isReached = asset.progress >= 100;
                      return (
-                         <div key={asset.ticker} className={`p-4 rounded-2xl border shadow-sm transition-all relative overflow-hidden ${isReached ? 'bg-gradient-to-r from-purple-600 to-indigo-600 border-transparent text-white' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800'}`}>
-                             {isReached && <div className="absolute -right-4 -top-4 w-20 h-20 bg-white/10 rounded-full blur-xl"></div>}
+                         <div key={asset.ticker} className={`p-4 rounded-3xl border shadow-sm transition-all relative overflow-hidden ${isReached ? 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800'}`}>
+                             {/* Barra de Progresso no Fundo do Card */}
+                             {!isReached && (
+                                 <div className="absolute bottom-0 left-0 h-1 bg-purple-500 transition-all duration-1000" style={{ width: `${asset.progress}%` }}></div>
+                             )}
                              
-                             <div className="flex justify-between items-start mb-2 relative z-10">
-                                 <div className="flex items-center gap-2">
-                                     <span className={`text-sm font-black ${isReached ? 'text-white' : 'text-zinc-900 dark:text-white'}`}>{asset.ticker}</span>
-                                     {isReached && <CheckCircle2 className="w-4 h-4 text-white/80" />}
+                             <div className="flex justify-between items-start mb-3">
+                                 <div className="flex items-center gap-3">
+                                     <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-xs font-black ${isReached ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400'}`}>
+                                         {isReached ? <CheckCircle2 className="w-5 h-5" /> : asset.ticker.substring(0, 2)}
+                                     </div>
+                                     <div>
+                                         <h4 className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">{asset.ticker}</h4>
+                                         <p className="text-[10px] font-bold text-zinc-400 uppercase">{isReached ? 'Meta Atingida!' : `Faltam ${Math.max(0, asset.magicNumber - asset.owned)} cotas`}</p>
+                                     </div>
                                  </div>
-                                 <span className={`text-[10px] font-bold uppercase ${isReached ? 'text-white/80' : 'text-zinc-400'}`}>
-                                     Faltam {Math.max(0, asset.magicNumber - asset.owned)} cotas
-                                 </span>
+                                 <div className="text-right">
+                                     <span className="block text-xs font-black text-zinc-900 dark:text-white">{formatBRL(asset.costToReach, privacyMode)}</span>
+                                     <span className="text-[9px] font-bold text-zinc-400">para o objetivo</span>
+                                 </div>
                              </div>
 
-                             <div className="w-full bg-black/10 dark:bg-white/10 h-2 rounded-full overflow-hidden mb-2 relative z-10">
-                                 <div 
-                                     className={`h-full rounded-full transition-all duration-500 ${isReached ? 'bg-white' : 'bg-purple-500'}`} 
-                                     style={{ width: `${Math.min(asset.progress, 100)}%` }}
-                                 ></div>
-                             </div>
-
-                             <div className="flex justify-between items-center text-[10px] font-medium relative z-10">
-                                 <span className={isReached ? 'text-white/80' : 'text-zinc-500'}>
-                                     Atual: {asset.owned} cotas
-                                 </span>
-                                 <span className={isReached ? 'text-white' : 'text-zinc-900 dark:text-white font-bold'}>
-                                     Meta: {asset.magicNumber}
-                                 </span>
+                             {/* Grid de Detalhes */}
+                             <div className="grid grid-cols-3 gap-2 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-2.5">
+                                 <div className="text-center">
+                                     <p className="text-[8px] font-bold text-zinc-400 uppercase mb-0.5">DY (12m)</p>
+                                     <p className="text-[10px] font-black text-zinc-700 dark:text-zinc-300">{asset.dy12m.toFixed(1)}%</p>
+                                 </div>
+                                 <div className="text-center border-l border-zinc-200 dark:border-zinc-700">
+                                     <p className="text-[8px] font-bold text-zinc-400 uppercase mb-0.5">Cotação</p>
+                                     <p className="text-[10px] font-black text-zinc-700 dark:text-zinc-300">{formatBRL(asset.currentPrice, privacyMode)}</p>
+                                 </div>
+                                 <div className="text-center border-l border-zinc-200 dark:border-zinc-700">
+                                     <p className="text-[8px] font-bold text-zinc-400 uppercase mb-0.5">Nº Mágico</p>
+                                     <p className="text-[10px] font-black text-purple-600 dark:text-purple-400">{asset.magicNumber}</p>
+                                 </div>
                              </div>
                          </div>
                      );
@@ -791,7 +833,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
          </div>
       </SwipeableModal>
 
-      {/* 7. Modal de Objetivo */}
+      {/* 7. Modal de Objetivo (DUAL MODE) */}
       <SwipeableModal isOpen={showGoalModal} onClose={() => setShowGoalModal(false)}>
          <div className="px-4 pb-20 pt-2 bg-[#F2F2F2] dark:bg-black min-h-full">
              <div className="flex items-center gap-3 mb-6 px-1 pt-2">
@@ -799,42 +841,72 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                      <Target className="w-5 h-5" />
                  </div>
                  <div>
-                     <h2 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">Objetivo de Renda</h2>
-                     <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Liberdade Financeira</p>
+                     <h2 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">Objetivos</h2>
+                     <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Defina suas metas</p>
                  </div>
              </div>
 
-             <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] shadow-sm border border-zinc-100 dark:border-zinc-800 text-center mb-6 relative overflow-hidden">
+             {/* Tab Switcher */}
+             <div className="flex bg-zinc-200/50 dark:bg-zinc-800 p-1 rounded-xl mb-6">
+                 <button 
+                    onClick={() => setGoalTab('INCOME')}
+                    className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${goalTab === 'INCOME' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                 >
+                     <Banknote className="w-3.5 h-3.5" /> Renda Mensal
+                 </button>
+                 <button 
+                    onClick={() => setGoalTab('WEALTH')}
+                    className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${goalTab === 'WEALTH' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                 >
+                     <PiggyBank className="w-3.5 h-3.5" /> Patrimônio
+                 </button>
+             </div>
+
+             {/* Conteúdo Dinâmico Baseado na Aba */}
+             <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] shadow-sm border border-zinc-100 dark:border-zinc-800 text-center mb-6 relative overflow-hidden anim-scale-in">
                  <div className="absolute top-0 left-0 w-full h-1.5 bg-zinc-100 dark:bg-zinc-800">
-                     <div className="h-full bg-gradient-to-r from-amber-400 to-orange-600 transition-all duration-1000 ease-out" style={{ width: `${goalProgress}%` }}></div>
+                     <div 
+                        className={`h-full transition-all duration-1000 ease-out ${goalTab === 'INCOME' ? 'bg-gradient-to-r from-amber-400 to-orange-600' : 'bg-gradient-to-r from-blue-400 to-indigo-600'}`} 
+                        style={{ width: `${goalTab === 'INCOME' ? incomeProgress : patrimonyProgress}%` }}
+                     ></div>
                  </div>
                  
-                 <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mt-2 mb-1">Média Mensal Atual</p>
-                 <h3 className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter mb-4">{formatBRL(proventosAverage, privacyMode)}</h3>
+                 <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mt-2 mb-1">
+                     {goalTab === 'INCOME' ? 'Média Mensal Atual' : 'Patrimônio Atual'}
+                 </p>
+                 <h3 className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter mb-4">
+                     {formatBRL(goalTab === 'INCOME' ? proventosAverage : balance, privacyMode)}
+                 </h3>
                  
                  <div className="bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 flex items-center justify-between">
                      <span className="text-[10px] font-bold text-zinc-500 uppercase">Progresso</span>
-                     <span className="text-sm font-black text-amber-600 dark:text-amber-400">{goalProgress.toFixed(1)}%</span>
+                     <span className={`text-sm font-black ${goalTab === 'INCOME' ? 'text-amber-600 dark:text-amber-400' : 'text-blue-600 dark:text-blue-400'}`}>
+                         {(goalTab === 'INCOME' ? incomeProgress : patrimonyProgress).toFixed(1)}%
+                     </span>
                  </div>
              </div>
 
-             <div className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+             <div className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm anim-slide-up">
                  <div className="flex items-center gap-3 mb-3">
                      <Calculator className="w-4 h-4 text-zinc-400" />
-                     <label className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wide">Definir Meta Mensal</label>
+                     <label className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wide">
+                         Definir Meta de {goalTab === 'INCOME' ? 'Renda' : 'Patrimônio'}
+                     </label>
                  </div>
-                 <div className="flex items-center gap-2 border-b-2 border-zinc-100 dark:border-zinc-800 pb-2 focus-within:border-amber-500 transition-colors">
+                 <div className={`flex items-center gap-2 border-b-2 border-zinc-100 dark:border-zinc-800 pb-2 transition-colors ${goalTab === 'INCOME' ? 'focus-within:border-amber-500' : 'focus-within:border-blue-500'}`}>
                      <span className="text-lg font-bold text-zinc-400">R$</span>
                      <input 
                         type="number" 
-                        value={monthlyGoal} 
-                        onChange={(e) => handleSaveGoal(e.target.value)}
+                        value={goalTab === 'INCOME' ? monthlyGoal : patrimonyGoal} 
+                        onChange={(e) => handleSaveGoal(e.target.value, goalTab)}
                         className="w-full bg-transparent text-2xl font-black text-zinc-900 dark:text-white outline-none placeholder:text-zinc-300"
                         placeholder="0,00"
                      />
                  </div>
                  <p className="text-[10px] text-zinc-400 mt-3 leading-relaxed">
-                     Defina quanto você deseja receber mensalmente em dividendos. O progresso será calculado com base na média dos últimos 12 meses.
+                     {goalTab === 'INCOME' 
+                        ? 'Defina quanto você deseja receber mensalmente em dividendos. O progresso usa a média dos últimos 12 meses.' 
+                        : 'Defina o valor total que você deseja acumular em ativos. O progresso considera a cotação atual.'}
                  </p>
              </div>
          </div>
