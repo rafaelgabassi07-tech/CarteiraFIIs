@@ -73,7 +73,7 @@ const CustomBarTooltip = ({ active, payload, label, privacyMode }: any) => {
     return null; 
 };
 
-// Isolated Chart Component with Robust Fixes
+// Isolated Chart Component with Robust Fixes - Removed React.FC to fix TS issues
 const ProventosChart = ({ data, privacyMode }: { data: HistoryItem[], privacyMode: boolean }) => {
     return (
         <ResponsiveContainer width="100%" height="100%">
@@ -100,7 +100,8 @@ const ProventosChart = ({ data, privacyMode }: { data: HistoryItem[], privacyMod
     );
 };
 
-const AgendaItem: React.FC<{ event: RadarEvent, privacyMode: boolean }> = ({ event, privacyMode }) => {
+// Removed React.FC to fix TS issues
+const AgendaItem = ({ event, privacyMode }: { event: RadarEvent, privacyMode: boolean }) => {
     const isDatacom = event.eventType === 'DATACOM';
     
     let day = '--';
