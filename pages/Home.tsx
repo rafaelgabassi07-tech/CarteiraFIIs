@@ -71,30 +71,32 @@ const CustomBarTooltip = ({ active, payload, label, privacyMode }: any) => {
     return null; 
 };
 
-// Bypass strict type checking for XAxis props by casting the component itself
-const XAxisAny = XAxis as any;
-
 // Isolated Chart Component with Robust TS Fix
-const ProventosChart = ({ data, privacyMode }: { data: HistoryItem[], privacyMode: boolean }) => (
-    <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
-            <XAxisAny 
-                dataKey="name" 
-                axisLine={false}
-                tickLine={false}
-                tick={{ fontSize: 8, fill: '#a1a1aa', fontWeight: 700 }} 
-                dy={5} 
-                interval={0} 
-            />
-            <RechartsTooltip cursor={{fill: 'transparent'}} content={<CustomBarTooltip privacyMode={privacyMode} />} />
-            <Bar dataKey="value" radius={[3, 3, 3, 3]}>
-                {data.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={'#10b981'} />
-                ))}
-            </Bar>
-        </BarChart>
-    </ResponsiveContainer>
-);
+const ProventosChart = ({ data, privacyMode }: { data: HistoryItem[], privacyMode: boolean }) => {
+    // Force ANY type to bypass strict Recharts prop validation issues
+    const axisOptions: any = {
+        dataKey: "name",
+        axisLine: false,
+        tickLine: false,
+        tick: { fontSize: 8, fill: '#a1a1aa', fontWeight: 700 },
+        dy: 5,
+        interval: 0
+    };
+
+    return (
+        <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
+                <XAxis {...axisOptions} />
+                <RechartsTooltip cursor={{fill: 'transparent'}} content={<CustomBarTooltip privacyMode={privacyMode} />} />
+                <Bar dataKey="value" radius={[3, 3, 3, 3]}>
+                    {data.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={'#10b981'} />
+                    ))}
+                </Bar>
+            </BarChart>
+        </ResponsiveContainer>
+    );
+};
 
 const AgendaItem: React.FC<{ event: RadarEvent, privacyMode: boolean }> = ({ event, privacyMode }) => {
     const isDatacom = event.eventType === 'DATACOM';
