@@ -18,7 +18,7 @@ import { supabase, SUPABASE_URL } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 import { useScrollDirection } from './hooks/useScrollDirection';
 
-const APP_VERSION = '9.0.0'; // Major bump para o redesign
+const APP_VERSION = '9.0.1'; // Patch para restaurar funcionalidades
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -30,7 +30,7 @@ const STORAGE_KEYS = {
   PUSH_ENABLED: 'investfiis_push_enabled',
   NOTIF_HISTORY: 'investfiis_notification_history_v3',
   METADATA: 'investfiis_metadata_v2',
-  LAST_AUTO_SYNC: 'investfiis_last_auto_sync' // Novo: Controle de refresh automático
+  LAST_AUTO_SYNC: 'investfiis_last_auto_sync'
 };
 
 const MemoizedHome = React.memo(Home);
@@ -154,7 +154,6 @@ const App: React.FC = () => {
     const tickers = Array.from(new Set(txsToUse.map(t => t.ticker.toUpperCase())));
     if (tickers.length === 0) return;
     
-    // Background refresh visual indication only if manual force
     if (force && !initialLoad) setIsRefreshing(true); 
     if (initialLoad) setLoadingProgress(50);
     
@@ -167,7 +166,6 @@ const App: React.FC = () => {
       if (initialLoad) setLoadingProgress(70); 
       
       const startDate = txsToUse.reduce((min, t) => t.date < min ? t.date : min, txsToUse[0].date);
-      // Fetch unificado: Se force=true, o endpoint vai varrer o scraper.
       let data = await fetchUnifiedMarketData(tickers, startDate, force);
 
       if (data.dividends.length > 0) {
@@ -184,14 +182,12 @@ const App: React.FC = () => {
          setMarketIndicators({ ipca: data.indicators.ipca_cumulative || 4.62, startDate: data.indicators.start_date_used });
       }
       
-      // Update success timestamp
       if (force) localStorage.setItem(STORAGE_KEYS.LAST_AUTO_SYNC, Date.now().toString());
       if (initialLoad) setLoadingProgress(100); 
 
     } catch (e) { console.error(e); } finally { setIsRefreshing(false); }
   }, [dividends, assetsMetadata]);
 
-  // Função dedicada para atualização pontual de ativo
   const refreshSingleAsset = useCallback(async (ticker: string) => {
       try {
           const { dividends: newDivs, metadata: newMeta } = await fetchUnifiedMarketData([ticker], undefined, true);
@@ -216,12 +212,10 @@ const App: React.FC = () => {
         setTimeout(() => setCloudStatus('hidden'), 3000);
         
         if (cloudTxs.length > 0) {
-            // LÓGICA DE AUTO-REFRESH (AUTOMATIZAÇÃO)
             const lastSyncStr = localStorage.getItem(STORAGE_KEYS.LAST_AUTO_SYNC);
             const lastSync = lastSyncStr ? parseInt(lastSyncStr) : 0;
             const now = Date.now();
-            // Se passou mais de 1 hora desde a última sync completa, força atualização.
-            const shouldForce = (now - lastSync) > 1000 * 60 * 60 * 1; 
+            const shouldForce = (now - lastSync) > 1000 * 60 * 60 * 1; // 1 hora
             
             await syncMarketData(shouldForce, cloudTxs, initialLoad);
         } else {
@@ -234,7 +228,6 @@ const App: React.FC = () => {
     }
   }, [syncMarketData, showToast]);
 
-  // Inicialização
   useEffect(() => {
     const initApp = async () => {
         const startTime = Date.now();
@@ -266,14 +259,6 @@ const App: React.FC = () => {
     });
     return () => subscription.unsubscribe();
   }, []); 
-
-  // Manual Refresh Handler (Agora é apenas suporte, não obrigatório)
-  const handleManualRefresh = async () => {
-      if (transactions.length === 0) return;
-      showToast('info', 'Forçando atualização completa...');
-      await syncMarketData(true, transactions, false);
-      showToast('success', 'Dados atualizados!');
-  };
 
   const handleLogout = useCallback(async () => {
     setSession(null); setTransactions([]); setDividends([]);
