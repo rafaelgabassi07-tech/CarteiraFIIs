@@ -71,11 +71,31 @@ const CustomBarTooltip = ({ active, payload, label, privacyMode }: any) => {
     return null; 
 };
 
-// Item da Agenda - Compacto
+// Isolated Chart Component to fix type errors with explicit prop typing
+const ProventosChart = ({ data, privacyMode }: { data: HistoryItem[], privacyMode: boolean }) => (
+    <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
+            <XAxis 
+                dataKey="name" 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{ fontSize: 8, fill: '#a1a1aa', fontWeight: 700 }} 
+                dy={5} 
+                interval={0} 
+            />
+            <RechartsTooltip cursor={{fill: 'transparent'}} content={<CustomBarTooltip privacyMode={privacyMode} />} />
+            <Bar dataKey="value" radius={[3, 3, 3, 3]}>
+                {data.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={'#10b981'} />
+                ))}
+            </Bar>
+        </BarChart>
+    </ResponsiveContainer>
+);
+
 const AgendaItem: React.FC<{ event: RadarEvent, privacyMode: boolean }> = ({ event, privacyMode }) => {
     const isDatacom = event.eventType === 'DATACOM';
     
-    // Tratamento de data seguro
     let day = '--';
     let weekDay = '---';
     try {
@@ -85,7 +105,7 @@ const AgendaItem: React.FC<{ event: RadarEvent, privacyMode: boolean }> = ({ eve
             weekDay = dateObj.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
         }
     } catch (e) {
-        // Fallback silencioso
+        // Fallback
     }
 
     return (
@@ -136,24 +156,21 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [patrimonyGoal, setPatrimonyGoal] = useState<number>(() => {
       try {
           const saved = localStorage.getItem('investfiis_patrimony_goal');
-          const parsed = saved ? parseFloat(saved) : 100000; // Default 100k
+          const parsed = saved ? parseFloat(saved) : 100000; 
           return isNaN(parsed) || parsed <= 0 ? 100000 : parsed;
       } catch { return 100000; }
   });
   
-  // Filtros de Proventos
   const [proventosYear, setProventosYear] = useState<string>('ALL');
   const [proventosType, setProventosType] = useState<'ALL' | 'FII' | 'STOCK'>('ALL');
 
-  // Filtros de Agenda
   const [agendaFilter, setAgendaFilter] = useState<'ALL' | 'PAYMENT' | 'DATACOM'>('ALL');
 
   const [allocationTab, setAllocationTab] = useState<'CLASS' | 'SECTOR'>('CLASS');
   const [activeIndexClass, setActiveIndexClass] = useState<number | undefined>(undefined);
 
-  // Manipulador de Input Monetário (Estilo ATM)
   const handleGoalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const rawValue = e.target.value.replace(/\D/g, ''); // Remove tudo que não é dígito
+      const rawValue = e.target.value.replace(/\D/g, ''); 
       const numericValue = rawValue ? parseInt(rawValue, 10) / 100 : 0;
       
       if (goalTab === 'INCOME') {
@@ -165,18 +182,15 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       }
   };
 
-  // Valor formatado para o input (Visual)
   const formattedGoalValue = useMemo(() => {
       const val = goalTab === 'INCOME' ? monthlyGoal : patrimonyGoal;
       return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   }, [goalTab, monthlyGoal, patrimonyGoal]);
 
-  // --- DADOS DO NÚMERO MÁGICO ---
   const magicData = useMemo(() => {
       const data: MagicData[] = [];
       portfolio.forEach(p => {
           if (p.dy_12m && p.dy_12m > 0 && p.currentPrice && p.currentPrice > 0) {
-              // Estima dividendo mensal médio baseado no DY anual
               const annualYieldVal = p.currentPrice * (p.dy_12m / 100);
               const monthlyYieldEst = annualYieldVal / 12;
               
@@ -196,14 +210,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
               }
           }
       });
-      // Ordena: Primeiro os atingidos (100%), depois os mais próximos
       return data.sort((a,b) => b.progress - a.progress);
   }, [portfolio]);
 
   const magicReachedCount = magicData.filter(m => m.progress >= 100).length;
   const totalCostToReachAll = magicData.reduce((acc, curr) => acc + curr.costToReach, 0);
 
-  // --- DADOS DO RADAR (AGENDA) ---
   const [radarData, setRadarData] = useState<{
       events: RadarEvent[];
       loading: boolean;
@@ -228,7 +240,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   }
               };
 
-              // Validador de data estrito (YYYY-MM-DD)
               const isValidDate = (d: string) => /^\d{4}-\d{2}-\d{2}$/.test(d);
 
               dividendReceipts.forEach(r => {
@@ -237,7 +248,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
               });
 
               predictions.forEach(p => {
-                  // Filtra datas "A Definir" ou inválidas vindas da API/Serviço
                   if (p.paymentDate && isValidDate(p.paymentDate)) {
                       addEvent(p.ticker, p.paymentDate, p.projectedTotal, p.rate, p.type, 'PAYMENT');
                   }
@@ -257,7 +267,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       return () => { isActive = false; };
   }, [portfolio, dividendReceipts]);
 
-  // --- DADOS FILTRADOS DA AGENDA ---
   const filteredAgenda = useMemo(() => {
       let events = radarData.events;
       if (agendaFilter !== 'ALL') {
@@ -278,14 +287,13 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
               if (!grouped[keyCap]) grouped[keyCap] = [];
               grouped[keyCap].push(ev);
           } catch {
-              // Ignora datas que falham na formatação
+              // Ignora
           }
       });
 
       return { grouped, totalConfirmed, count: events.length };
   }, [radarData.events, agendaFilter]);
 
-  // --- DADOS DE ALOCAÇÃO ---
   const { typeData, classChartData, sectorChartData } = useMemo(() => {
       let fiisTotal = 0; let stocksTotal = 0;
       const enriched = (portfolio || []).map(p => {
@@ -309,13 +317,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       return { typeData: { total }, classChartData, sectorChartData };
   }, [portfolio]);
 
-  // --- DADOS DE PROVENTOS (FILTRADOS) ---
   const { chartData, groupedProventos, proventosTotal, proventosAverage, availableYears } = useMemo(() => {
       const filteredReceipts = dividendReceipts.filter(r => {
-          // Filtra datas inválidas (ex: 'A Definir' ou null)
           if (!r.paymentDate || !/^\d{4}-\d{2}-\d{2}$/.test(r.paymentDate)) return false;
           
-          // Lógica de Filtro de Ativo Robusta
           let isTypeMatch = true;
           if (proventosType === 'FII') {
               isTypeMatch = r.assetType === AssetType.FII || (r.ticker && (r.ticker.endsWith('11') || r.ticker.endsWith('11B')));
@@ -354,14 +359,13 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
               grouped[keyCap].items.push(r);
               grouped[keyCap].total += r.totalReceived;
           } catch {
-              // Silently skip invalid dates
+              // Skip
           }
       });
 
       const todayStr = new Date().toISOString().split('T')[0];
       const monthlySum: Record<string, number> = {};
       
-      // Usa filteredReceipts (apenas com filtro de tipo) para o gráfico histórico
       filteredReceipts.forEach(r => {
           if (r.paymentDate && r.paymentDate <= todayStr) {
               const key = r.paymentDate.substring(0, 7); 
@@ -401,7 +405,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const totalReturn = (totalAppreciation + salesGain) + totalDividendsReceived;
   const totalReturnPercent = invested > 0 ? (totalReturn / invested) * 100 : 0;
   
-  // Cálculos de Progresso
   const safeAverage = proventosAverage || 0;
   const safeIncomeGoal = monthlyGoal || 1; 
   const incomeProgress = Math.min((safeAverage / safeIncomeGoal) * 100, 100);
@@ -411,7 +414,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
   return (
     <div className="space-y-6 pb-8">
-      {/* 1. Card Principal (Patrimônio Detalhado) */}
       <div className="relative overflow-hidden bg-white dark:bg-zinc-900 rounded-[2.5rem] p-6 shadow-xl shadow-zinc-200/50 dark:shadow-black/50 border border-zinc-100 dark:border-zinc-800 anim-scale-in group">
           <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-emerald-500/10 to-sky-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none transition-opacity opacity-50 group-hover:opacity-100"></div>
 
@@ -459,15 +461,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           </div>
       </div>
 
-      {/* 2. Grid de Ações Rápidas (Agora com Nº Mágico e Objetivo) */}
       <div className="grid grid-cols-2 gap-4 anim-slide-up">
-          
-          {/* Agenda Card - Vertical */}
           <button onClick={() => setShowAgendaModal(true)} className="bg-indigo-600 dark:bg-indigo-600 text-white rounded-[2rem] p-6 shadow-lg shadow-indigo-600/20 relative overflow-hidden group press-effect h-44 flex flex-col justify-between">
               <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform duration-500"><CalendarClock className="w-24 h-24" /></div>
-              
               <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm z-10"><CalendarClock className="w-5 h-5" /></div>
-              
               <div className="relative z-10 text-left">
                   <div className="flex items-baseline gap-1 mb-1">
                       <span className="text-3xl font-black tracking-tighter">{radarData.events.length}</span>
@@ -478,7 +475,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           </button>
 
           <div className="flex flex-col gap-4 h-44">
-              {/* Proventos - Horizontal Small */}
               <button onClick={() => setShowProventosModal(true)} className="flex-1 bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm press-effect relative overflow-hidden group flex flex-col justify-center">
                   <div className="absolute right-3 top-3 opacity-5 dark:opacity-10"><CircleDollarSign className="w-12 h-12 text-emerald-500" /></div>
                   <div className="flex items-center gap-3 relative z-10">
@@ -490,7 +486,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   </div>
               </button>
 
-              {/* Alocação - Horizontal Small */}
               <button onClick={() => setShowAllocationModal(true)} className="flex-1 bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm press-effect relative overflow-hidden group flex flex-col justify-center">
                   <div className="absolute right-3 top-3 opacity-5 dark:opacity-10"><PieIcon className="w-12 h-12 text-blue-500" /></div>
                   <div className="flex items-center gap-3 relative z-10">
@@ -503,9 +498,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
               </button>
           </div>
 
-          {/* NOVOS CARDS: Nº Mágico & Objetivo */}
-          
-          {/* Nº Mágico */}
           <button onClick={() => setShowMagicModal(true)} className="bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm press-effect relative overflow-hidden group h-32 flex flex-col justify-between">
               <div className="absolute top-2 right-2 opacity-5 dark:opacity-10 text-purple-500"><Wand2 className="w-16 h-16" /></div>
               <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0"><Sparkles className="w-5 h-5" /></div>
@@ -518,7 +510,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
               </div>
           </button>
 
-          {/* Objetivo */}
           <button onClick={() => setShowGoalModal(true)} className="bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm press-effect relative overflow-hidden group h-32 flex flex-col justify-between">
               <div className="absolute top-2 right-2 opacity-5 dark:opacity-10 text-amber-500"><Target className="w-16 h-16" /></div>
               <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0"><Target className="w-5 h-5" /></div>
@@ -532,7 +523,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           </button>
       </div>
 
-      {/* 3. Modal da Agenda */}
       <SwipeableModal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)}>
         <div className="px-4 pb-20 pt-2 bg-[#F2F2F2] dark:bg-black min-h-full">
             <div className="pt-2 mb-4">
@@ -543,8 +533,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                     {radarData.loading && <div className="text-[9px] font-bold text-zinc-400 animate-pulse uppercase tracking-widest">Atualizando...</div>}
                 </div>
-
-                {/* Filtros de Aba Compactos */}
                 <div className="flex bg-zinc-200/50 dark:bg-zinc-800 p-1 rounded-xl">
                     {[{id:'ALL', label:'Todos'}, {id:'PAYMENT', label:'Pagamentos'}, {id:'DATACOM', label:'Data Com'}].map((tab) => (
                         <button 
@@ -557,15 +545,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     ))}
                 </div>
             </div>
-
-            {/* Totalizador Filtrado Compacto */}
             {filteredAgenda.totalConfirmed > 0 && agendaFilter !== 'DATACOM' && (
                 <div className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl p-4 text-white mb-6 shadow-lg shadow-emerald-500/20 flex justify-between items-center">
                     <p className="text-[10px] font-bold opacity-90 uppercase tracking-widest">Confirmado</p>
                     <p className="text-2xl font-black tracking-tighter">{formatBRL(filteredAgenda.totalConfirmed, privacyMode)}</p>
                 </div>
             )}
-
             <div className="space-y-4">
                 {Object.keys(filteredAgenda.grouped).length === 0 && !radarData.loading ? (
                     <div className="text-center py-20 opacity-40">
@@ -586,11 +571,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </div>
       </SwipeableModal>
 
-      {/* 4. Modal de Proventos */}
       <SwipeableModal isOpen={showProventosModal} onClose={() => setShowProventosModal(false)}>
          <div className="px-4 pb-20 pt-2 bg-[#F2F2F2] dark:bg-black min-h-full">
-             
-             {/* Header com Totais Compacto */}
              <div className="flex flex-col pt-2 pb-2">
                  <div className="flex justify-between items-end mb-3 px-1">
                      <div>
@@ -606,8 +588,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         </p>
                      </div>
                  </div>
-
-                 {/* Filtros Compactos */}
                  <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
                      <div className="flex bg-zinc-200/50 dark:bg-zinc-800 p-0.5 rounded-lg shrink-0">
                         {['ALL', 'FII', 'STOCK'].map(t => (
@@ -616,7 +596,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                             </button>
                         ))}
                      </div>
-                     
                      <div className="relative shrink-0">
                         <select 
                             value={proventosYear} 
@@ -631,25 +610,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  </div>
              </div>
 
-             {/* Gráfico Compacto (Altura reduzida) */}
              {chartData.length > 0 && (
                  <div className="h-32 w-full mt-2 mb-4 bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                     <ResponsiveContainer width="100%" height="100%">
-                         <BarChart data={chartData} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
-                             {/* FIX: Ensure axisLine and tickLine are explicitly boolean false to avoid union type issues */}
-                             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 8, fill: '#a1a1aa', fontWeight: 700 }} dy={5} interval={0} />
-                             <RechartsTooltip cursor={{fill: 'transparent'}} content={<CustomBarTooltip privacyMode={privacyMode} />} />
-                             <Bar dataKey="value" radius={[3, 3, 3, 3]}>
-                                 {chartData.map((entry, index) => (
-                                     <Cell key={`cell-${index}`} fill={'#10b981'} />
-                                 ))}
-                             </Bar>
-                         </BarChart>
-                     </ResponsiveContainer>
+                     <ProventosChart data={chartData} privacyMode={privacyMode} />
                  </div>
              )}
              
-             {/* Lista Agrupada Compacta */}
              <div className="space-y-4">
                  {Object.keys(groupedProventos).length === 0 ? (
                      <div className="text-center py-10 opacity-40">
@@ -690,7 +656,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
          </div>
       </SwipeableModal>
 
-      {/* 5. Modal de Alocação */}
       <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
          <div className="px-4 pb-20 pt-2 bg-[#F2F2F2] dark:bg-black min-h-full">
              <div className="flex items-center gap-3 mb-4 px-1 pt-2">
@@ -772,7 +737,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
          </div>
       </SwipeableModal>
 
-      {/* 6. Modal do Nº Mágico (RENOVADO) */}
       <SwipeableModal isOpen={showMagicModal} onClose={() => setShowMagicModal(false)}>
          <div className="px-4 pb-20 pt-2 bg-[#F2F2F2] dark:bg-black min-h-full">
              <div className="flex items-center gap-3 mb-4 px-1 pt-2">
@@ -785,7 +749,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  </div>
              </div>
 
-             {/* Estado Vazio para Magic Number */}
              {magicData.length === 0 && (
                  <div className="flex flex-col items-center justify-center py-16 opacity-50 text-center">
                      <Wand2 className="w-16 h-16 text-zinc-300 mb-4" strokeWidth={1} />
@@ -796,7 +759,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  </div>
              )}
 
-             {/* Header Resumo */}
              {totalCostToReachAll > 0 && (
                  <div className="bg-purple-600 dark:bg-purple-900/40 text-white p-5 rounded-[2rem] shadow-lg shadow-purple-600/20 mb-6 relative overflow-hidden">
                      <div className="relative z-10">
@@ -816,7 +778,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                      const isReached = asset.progress >= 100;
                      return (
                          <div key={asset.ticker} className={`p-4 rounded-3xl border shadow-sm transition-all relative overflow-hidden ${isReached ? 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800'}`}>
-                             {/* Barra de Progresso no Fundo do Card */}
                              {!isReached && (
                                  <div className="absolute bottom-0 left-0 h-1 bg-purple-500 transition-all duration-1000" style={{ width: `${asset.progress}%` }}></div>
                              )}
@@ -837,7 +798,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                  </div>
                              </div>
 
-                             {/* Grid de Detalhes */}
                              <div className="grid grid-cols-3 gap-2 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-2.5">
                                  <div className="text-center">
                                      <p className="text-[8px] font-bold text-zinc-400 uppercase mb-0.5">DY (12m)</p>
@@ -859,7 +819,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
          </div>
       </SwipeableModal>
 
-      {/* 7. Modal de Objetivo (DUAL MODE) */}
       <SwipeableModal isOpen={showGoalModal} onClose={() => setShowGoalModal(false)}>
          <div className="px-4 pb-20 pt-2 bg-[#F2F2F2] dark:bg-black min-h-full">
              <div className="flex items-center gap-3 mb-6 px-1 pt-2">
@@ -872,7 +831,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  </div>
              </div>
 
-             {/* Tab Switcher */}
              <div className="flex bg-zinc-200/50 dark:bg-zinc-800 p-1 rounded-xl mb-6">
                  <button 
                     onClick={() => setGoalTab('INCOME')}
@@ -888,7 +846,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  </button>
              </div>
 
-             {/* Conteúdo Dinâmico Baseado na Aba */}
              <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] shadow-sm border border-zinc-100 dark:border-zinc-800 text-center mb-6 relative overflow-hidden anim-scale-in">
                  <div className="absolute top-0 left-0 w-full h-1.5 bg-zinc-100 dark:bg-zinc-800">
                      <div 
@@ -920,7 +877,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                      </label>
                  </div>
                  <div className={`flex items-center gap-2 border-b-2 border-zinc-100 dark:border-zinc-800 pb-2 transition-colors ${goalTab === 'INCOME' ? 'focus-within:border-amber-500' : 'focus-within:border-blue-500'}`}>
-                     {/* Input controlado com formatação de moeda */}
                      <input 
                         type="text" 
                         value={formattedGoalValue} 
