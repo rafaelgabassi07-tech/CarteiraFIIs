@@ -54,17 +54,17 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   return (
     <header 
-      className={`fixed top-0 left-0 right-0 z-40 px-6 pt-safe h-20 flex flex-col justify-center transition-transform duration-500 ease-in-out-expo bg-[#F2F2F2]/90 dark:bg-black/90 backdrop-blur-md`}
+      className={`fixed top-0 left-0 right-0 z-40 px-6 pt-safe pb-2 min-h-[60px] flex flex-col justify-end transition-transform duration-500 ease-in-out-expo bg-[#F2F2F2]/95 dark:bg-black/95 backdrop-blur-md border-b border-zinc-200/50 dark:border-zinc-800/50`}
       style={{ transform: isVisible ? 'translateY(0)' : 'translateY(-100%)' }}
     >
-      <div className="flex items-center justify-between w-full">
+      <div className="flex items-center justify-between w-full h-10">
         {showBack ? (
-            <button onClick={onBack} className="w-10 h-10 -ml-2 flex items-center justify-center rounded-full text-zinc-900 dark:text-white press-effect">
+            <button onClick={onBack} className="w-8 h-8 -ml-1 flex items-center justify-center rounded-full text-zinc-900 dark:text-white press-effect">
                 <ChevronLeft className="w-6 h-6" strokeWidth={2.5} />
             </button>
         ) : (
-            <div className="flex flex-col">
-                <h1 className="text-xl font-black tracking-tight text-zinc-900 dark:text-white flex items-center gap-2">
+            <div className="flex flex-col justify-center">
+                <h1 className="text-lg font-black tracking-tight text-zinc-900 dark:text-white flex items-center gap-2">
                     <span>{title}</span>
                     <HeaderCloudStatus status={cloudStatus} />
                 </h1>
@@ -73,21 +73,25 @@ export const Header: React.FC<HeaderProps> = ({
 
         <div className="flex items-center gap-1">
           {updateAvailable && (
-            <button onClick={onUpdateClick} className="w-10 h-10 flex items-center justify-center rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 press-effect shadow-lg shadow-zinc-900/10">
-              <Download className="w-4 h-4 animate-bounce" strokeWidth={2.5} />
+            <button onClick={onUpdateClick} className="w-8 h-8 flex items-center justify-center rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 press-effect shadow-lg shadow-zinc-900/10">
+              <Download className="w-3.5 h-3.5 animate-bounce" strokeWidth={2.5} />
             </button>
           )}
           
-          <button onClick={onNotificationClick} className="relative w-10 h-10 flex items-center justify-center rounded-full text-zinc-900 dark:text-white press-effect hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 transition-colors">
-            <Bell className="w-5 h-5" strokeWidth={2} />
-            {notificationCount > 0 && 
-              <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-[#F2F2F2] dark:border-black"></span>
-            }
-          </button>
+          {onNotificationClick && (
+            <button onClick={onNotificationClick} className="relative w-8 h-8 flex items-center justify-center rounded-full text-zinc-900 dark:text-white press-effect hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 transition-colors">
+                <Bell className="w-5 h-5" strokeWidth={2} />
+                {notificationCount > 0 && 
+                <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-[#F2F2F2] dark:border-black"></span>
+                }
+            </button>
+          )}
           
-          <button onClick={onSettingsClick} className="w-10 h-10 flex items-center justify-center rounded-full text-zinc-900 dark:text-white press-effect hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 transition-colors">
-            <Settings className="w-5 h-5" strokeWidth={2} />
-          </button>
+          {onSettingsClick && (
+            <button onClick={onSettingsClick} className="w-8 h-8 flex items-center justify-center rounded-full text-zinc-900 dark:text-white press-effect hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 transition-colors">
+                <Settings className="w-5 h-5" strokeWidth={2} />
+            </button>
+          )}
         </div>
       </div>
     </header>

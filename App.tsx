@@ -308,6 +308,9 @@ const App: React.FC = () => {
 
   const isHeaderVisible = showSettings || scrollDirection === 'up' || isTop;
 
+  // Lógica de visibilidade dos botões do header
+  const showHeaderActions = currentTab === 'home';
+
   if (!isReady) return <SplashScreen finishLoading={false} realProgress={loadingProgress} />;
   if (!session) return <> <SplashScreen finishLoading={true} realProgress={100} /> <InstallPromptModal isOpen={showInstallModal} onInstall={() => installPrompt?.prompt()} onDismiss={() => setShowInstallModal(false)} /> <Login /> </>;
 
@@ -326,14 +329,16 @@ const App: React.FC = () => {
       <>
         <Header 
             title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Carteira' : currentTab === 'transactions' ? 'Extrato' : 'Notícias'} 
-            showBack={showSettings} onBack={() => setShowSettings(false)} onSettingsClick={() => setShowSettings(true)} 
+            showBack={showSettings} onBack={() => setShowSettings(false)} 
+            onSettingsClick={showHeaderActions ? () => setShowSettings(true) : undefined} 
             updateAvailable={isUpdateAvailable} onUpdateClick={() => setShowChangelog(true)} 
-            onNotificationClick={() => setShowNotifications(true)} notificationCount={notifications.filter(n=>!n.read).length} 
+            onNotificationClick={showHeaderActions ? () => setShowNotifications(true) : undefined} 
+            notificationCount={notifications.filter(n=>!n.read).length} 
             cloudStatus={cloudStatus} 
             isVisible={isHeaderVisible}
         />
         
-        <main className="max-w-xl mx-auto pt-24 pb-32 min-h-screen px-6">
+        <main className="max-w-xl mx-auto pt-20 pb-32 min-h-screen px-6">
           {showSettings ? (
             <div className="pt-2">
               <MemoizedSettings onLogout={handleLogout} user={session.user} transactions={transactions} onImportTransactions={setTransactions} dividends={dividends} onImportDividends={setDividends} onResetApp={() => { localStorage.clear(); window.location.reload(); }} theme={theme} onSetTheme={setTheme} accentColor={accentColor} onSetAccentColor={setAccentColor} privacyMode={privacyMode} onSetPrivacyMode={setPrivacyMode} appVersion={APP_VERSION} updateAvailable={isUpdateAvailable} onCheckUpdates={checkForUpdates} onShowChangelog={() => setShowChangelog(true)} pushEnabled={pushEnabled} onRequestPushPermission={() => setPushEnabled(!pushEnabled)} onSyncAll={() => fetchTransactionsFromCloud(session, true)} onForceUpdate={() => window.location.reload()} currentVersionDate={currentVersionDate} services={services} onCheckConnection={checkConnection} isCheckingConnection={isCheckingServices} />

@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { TrendingUp, TrendingDown, Plus, Hash, Trash2, Save, X, ArrowRightLeft, Building2, CandlestickChart, Filter, Check, Calendar, CheckSquare, Search, ChevronDown, RefreshCw, Wallet, DollarSign, ArrowUpRight, ArrowDownLeft, Pencil, Coins, Sparkles } from 'lucide-react';
+import { TrendingUp, TrendingDown, Plus, Hash, Trash2, Save, X, ArrowRightLeft, Building2, CandlestickChart, Filter, Check, Calendar, CheckSquare, Search, ChevronDown, RefreshCw, Wallet, DollarSign, ArrowUpRight, ArrowDownLeft, Pencil, Coins, Sparkles, Tag } from 'lucide-react';
 import { SwipeableModal, ConfirmationModal } from '../components/Layout';
 import { Transaction, AssetType } from '../types';
 
@@ -157,7 +157,7 @@ const TransactionRow = React.memo(({ index, data }: any) => {
   
   if (item.type === 'header') {
       return (
-          <div className="sticky top-[158px] z-10 py-3 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-xl -mx-4 px-4 border-b border-zinc-100 dark:border-zinc-800/50 mb-1 mt-2 shadow-sm">
+          <div className="sticky top-[138px] z-10 py-3 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-xl -mx-4 px-4 border-b border-zinc-100 dark:border-zinc-800/50 mb-1 mt-2 shadow-sm">
               <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 flex justify-between items-center">
                   {formatMonthHeader(item.monthKey)}
                   <span className={`text-[9px] px-2 py-0.5 rounded-md font-bold ${item.monthlyNet >= 0 ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'}`}>
@@ -363,7 +363,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     return (
         <div className="anim-fade-in min-h-screen pb-32">
             {/* Header Sticky com Filtros */}
-            <div className="sticky top-20 z-20 bg-primary-light dark:bg-primary-dark transition-all -mx-4 px-4 pt-2 pb-3 border-b border-zinc-200 dark:border-zinc-800 shadow-sm">
+            <div className="sticky top-14 z-20 bg-primary-light dark:bg-primary-dark transition-all -mx-4 px-4 pt-2 pb-3 border-b border-zinc-200 dark:border-zinc-800 shadow-sm">
                 
                 <div className="flex items-center justify-between mb-3">
                     <h2 className="text-sm font-black text-zinc-900 dark:text-white tracking-tight flex items-center gap-2">
@@ -438,43 +438,53 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                 )}
             </div>
 
-            {/* Modal de Edição INTELIGENTE */}
+            {/* Modal de Edição REFORMULADO (Design Inteligente) */}
             <SwipeableModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
-                <div className="flex flex-col h-full bg-[#F2F2F2] dark:bg-black relative">
+                <div className="flex flex-col h-full bg-[#F2F2F2] dark:bg-black relative px-6 pt-4 pb-20">
                     
-                    {/* Header Colorido Dinâmico */}
-                    <div className={`pt-6 pb-8 px-6 rounded-b-[2.5rem] transition-all duration-500 ${type === 'BUY' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' : 'bg-rose-600 text-white shadow-lg shadow-rose-600/20'} mb-6`}>
-                        <div className="flex justify-between items-center mb-6">
-                            <div>
-                                <h2 className="text-2xl font-black tracking-tight">{editingId ? 'Editar Ordem' : 'Nova Ordem'}</h2>
-                                <p className="text-xs font-medium opacity-80 uppercase tracking-widest">{type === 'BUY' ? 'Entrada de Ativo' : 'Saída de Ativo'}</p>
+                    {/* Header Limpo */}
+                    <div className="flex justify-between items-center mb-6">
+                        <div className="flex items-center gap-2">
+                            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shadow-sm ${editingId ? 'bg-zinc-100 dark:bg-zinc-800' : 'bg-black dark:bg-white text-white dark:text-black'}`}>
+                                {editingId ? <Pencil className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
                             </div>
-                            {editingId && (
-                                <button onClick={() => onRequestDeleteConfirmation(editingId)} className="p-3 bg-white/10 rounded-2xl hover:bg-white/20 transition-colors backdrop-blur-sm">
-                                    <Trash2 className="w-5 h-5 text-white" />
-                                </button>
-                            )}
+                            <div>
+                                <h2 className="text-xl font-black tracking-tight text-zinc-900 dark:text-white">{editingId ? 'Editar Ordem' : 'Nova Ordem'}</h2>
+                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Preencha os detalhes</p>
+                            </div>
                         </div>
+                        {editingId && (
+                            <button onClick={() => onRequestDeleteConfirmation(editingId)} className="p-2.5 bg-rose-50 dark:bg-rose-900/10 text-rose-500 rounded-xl hover:bg-rose-100 dark:hover:bg-rose-900/20 transition-colors">
+                                <Trash2 className="w-5 h-5" />
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="space-y-6">
                         
-                        <div className="flex bg-black/20 p-1.5 rounded-2xl backdrop-blur-md">
-                            <button onClick={() => setType('BUY')} className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${type === 'BUY' ? 'bg-white text-emerald-600 shadow-md transform scale-[1.02]' : 'text-white/60 hover:text-white'}`}>
+                        {/* 1. Tipo de Operação (Segmented Control) */}
+                        <div className="bg-zinc-200/50 dark:bg-zinc-800/50 p-1 rounded-2xl flex relative overflow-hidden">
+                            <div 
+                                className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-xl shadow-sm transition-all duration-300 ease-out-mola ${type === 'BUY' ? 'bg-emerald-500 translate-x-1' : 'bg-rose-500 translate-x-[100%] translate-x-[calc(100%+4px)]'}`}
+                            ></div>
+                            
+                            <button onClick={() => setType('BUY')} className={`flex-1 py-3 text-xs font-black uppercase tracking-widest relative z-10 transition-colors ${type === 'BUY' ? 'text-white' : 'text-zinc-500 dark:text-zinc-400'}`}>
                                 Compra
                             </button>
-                            <button onClick={() => setType('SELL')} className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${type === 'SELL' ? 'bg-white text-rose-600 shadow-md transform scale-[1.02]' : 'text-white/60 hover:text-white'}`}>
+                            <button onClick={() => setType('SELL')} className={`flex-1 py-3 text-xs font-black uppercase tracking-widest relative z-10 transition-colors ${type === 'SELL' ? 'text-white' : 'text-zinc-500 dark:text-zinc-400'}`}>
                                 Venda
                             </button>
                         </div>
-                    </div>
 
-                    <div className="px-6 space-y-6 pb-20">
-                        {/* Input Ticker Inteligente */}
-                        <div className="bg-white dark:bg-zinc-900 p-5 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm relative overflow-hidden group focus-within:border-zinc-300 dark:focus-within:border-zinc-600 transition-colors">
-                            <div className="flex justify-between items-start mb-2">
-                                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Código do Ativo</label>
-                                {/* Tag de Tipo Auto-Detectado */}
-                                <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wide transition-all ${assetType === AssetType.FII ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400' : 'bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400'}`}>
+                        {/* 2. Ticker Input (Hero) com Inteligência Visual */}
+                        <div className={`bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border-2 transition-all shadow-sm group focus-within:shadow-md relative overflow-hidden ${type === 'BUY' ? 'focus-within:border-emerald-500/30 border-zinc-100 dark:border-zinc-800' : 'focus-within:border-rose-500/30 border-zinc-100 dark:border-zinc-800'}`}>
+                            <div className="flex justify-between items-center mb-2">
+                                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Ativo</label>
+                                
+                                {/* Tag Inteligente */}
+                                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-all duration-500 ${ticker.length > 2 ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'} ${assetType === AssetType.FII ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400' : 'bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400'}`}>
                                     {assetType === AssetType.FII ? <Building2 className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
-                                    {assetType === AssetType.FII ? 'Fundo Imobiliário' : 'Ação'}
+                                    <span className="text-[9px] font-black uppercase">{assetType === AssetType.FII ? 'Fundo Imobiliário' : 'Ação'}</span>
                                 </div>
                             </div>
                             
@@ -482,70 +492,72 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                                 type="text" 
                                 value={ticker} 
                                 onChange={e => handleTickerChange(e.target.value)}
-                                placeholder="EX: HGLG11" 
+                                placeholder="CÓDIGO" 
                                 className="w-full bg-transparent text-4xl font-black text-zinc-900 dark:text-white outline-none placeholder:text-zinc-200 dark:placeholder:text-zinc-800 uppercase tracking-tight"
                                 autoFocus={!editingId}
                             />
                             
-                            {/* Efeito Visual de Detecção */}
-                            {ticker.length > 0 && (
-                                <div className="absolute right-4 bottom-4">
-                                    <Sparkles className={`w-6 h-6 transition-all duration-500 ${assetType === AssetType.FII ? 'text-indigo-400' : 'text-sky-400'} opacity-20`} />
-                                </div>
+                            {/* Ícone de Busca Decorativo */}
+                            {!ticker && (
+                                <Search className="absolute right-6 bottom-6 w-6 h-6 text-zinc-200 dark:text-zinc-700 pointer-events-none" />
                             )}
                         </div>
 
-                        {/* Grid Quantidade e Preço */}
+                        {/* 3. Grid de Detalhes */}
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-white dark:bg-zinc-900 p-5 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                                <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block mb-2">Quantidade</label>
-                                <input 
-                                    type="text" 
-                                    value={quantity} 
-                                    onChange={e => setQuantity(e.target.value.replace(/[^0-9,.]/g, ''))} // Apenas números
-                                    placeholder="0"
-                                    inputMode="decimal" 
-                                    className="w-full bg-transparent text-2xl font-bold text-zinc-900 dark:text-white outline-none placeholder:text-zinc-200 dark:placeholder:text-zinc-800" 
-                                />
+                            {/* Quantidade */}
+                            <div className="bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                                <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Quantidade</label>
+                                <div className="flex items-center gap-2">
+                                    <Hash className="w-4 h-4 text-zinc-300" />
+                                    <input 
+                                        type="text" 
+                                        value={quantity} 
+                                        onChange={e => setQuantity(e.target.value.replace(/[^0-9,.]/g, ''))} 
+                                        placeholder="0"
+                                        inputMode="decimal" 
+                                        className="w-full bg-transparent text-xl font-bold text-zinc-900 dark:text-white outline-none placeholder:text-zinc-200 dark:placeholder:text-zinc-800" 
+                                    />
+                                </div>
                             </div>
-                            <div className="bg-white dark:bg-zinc-900 p-5 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                                <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block mb-2">Preço Unitário</label>
+
+                            {/* Preço */}
+                            <div className="bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                                <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Preço Unitário</label>
                                 <div className="flex items-center gap-1">
-                                    <span className="text-zinc-400 font-bold text-lg">R$</span>
+                                    <span className="text-zinc-300 font-bold text-sm">R$</span>
                                     <input 
                                         type="text" 
                                         value={price} 
                                         onChange={e => setPrice(e.target.value.replace(/[^0-9,.]/g, ''))} 
                                         placeholder="0,00"
                                         inputMode="decimal"
-                                        className="w-full bg-transparent text-2xl font-bold text-zinc-900 dark:text-white outline-none placeholder:text-zinc-200 dark:placeholder:text-zinc-800" 
+                                        className="w-full bg-transparent text-xl font-bold text-zinc-900 dark:text-white outline-none placeholder:text-zinc-200 dark:placeholder:text-zinc-800" 
                                     />
                                 </div>
                             </div>
                         </div>
 
-                        {/* Data e Total */}
-                        <div className="flex items-stretch gap-4">
-                            <div className="flex-1 bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-2xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-400">
-                                    <Calendar className="w-5 h-5" />
-                                </div>
-                                <div className="flex-1">
-                                    <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block">Data</label>
-                                    <input 
-                                        type="date" 
-                                        value={date} 
-                                        onChange={e => setDate(e.target.value)} 
-                                        className="w-full bg-transparent text-sm font-bold text-zinc-900 dark:text-white outline-none pt-0.5" 
-                                    />
-                                </div>
+                        {/* Data */}
+                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-2xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-400 shrink-0">
+                                <Calendar className="w-5 h-5" />
+                            </div>
+                            <div className="flex-1">
+                                <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block">Data da Operação</label>
+                                <input 
+                                    type="date" 
+                                    value={date} 
+                                    onChange={e => setDate(e.target.value)} 
+                                    className="w-full bg-transparent text-sm font-bold text-zinc-900 dark:text-white outline-none pt-0.5" 
+                                />
                             </div>
                         </div>
 
                         {/* Resumo Final */}
-                        <div className="bg-zinc-100 dark:bg-zinc-900/50 p-4 rounded-[2rem] flex justify-between items-center">
-                            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-2">Total Estimado</span>
-                            <span className={`text-2xl font-black tracking-tight px-2 ${type === 'BUY' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                        <div className={`p-5 rounded-[2rem] flex justify-between items-center transition-colors ${type === 'BUY' ? 'bg-emerald-50 dark:bg-emerald-900/10' : 'bg-rose-50 dark:bg-rose-900/10'}`}>
+                            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Total Estimado</span>
+                            <span className={`text-2xl font-black tracking-tight ${type === 'BUY' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                                 {formatBRL(estimatedTotal)}
                             </span>
                         </div>
@@ -555,7 +567,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                             disabled={isSaving || !ticker || !quantity || !price} 
                             className={`w-full py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl press-effect disabled:opacity-50 disabled:cursor-not-allowed text-white transition-all transform hover:scale-[1.01] active:scale-[0.99] ${type === 'BUY' ? 'bg-emerald-600 shadow-emerald-600/20' : 'bg-rose-600 shadow-rose-600/20'}`}
                         >
-                            {isSaving ? 'Salvando...' : editingId ? 'Atualizar Ordem' : 'Confirmar Lançamento'}
+                            {isSaving ? 'Salvando...' : editingId ? 'Atualizar Ordem' : 'Confirmar'}
                         </button>
                     </div>
                 </div>
