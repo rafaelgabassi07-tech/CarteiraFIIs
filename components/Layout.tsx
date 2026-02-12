@@ -133,17 +133,44 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange, i
   );
 };
 
-// ... Modals (Instalação, Notificações, Confirmação) mantidos com ajustes visuais mínimos ...
-// Simplifiquei o código para caber na resposta, mantendo a lógica core dos modais anteriores mas com classes 'glass-card'
-
 interface SwipeableModalProps { isOpen: boolean; onClose: () => void; children: React.ReactNode; }
 
 export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose, children }) => {
   const { isMounted, isVisible } = useAnimatedVisibility(isOpen, 400);
   const [dragOffset, setDragOffset] = useState(0);
   const startY = useRef<number>(0);
+  const isDragging = useRef(false);
 
   if (!isMounted) return null;
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+      startY.current = e.touches[0].clientY;
+      isDragging.current = true;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+      if (!isDragging.current) return;
+      
+      const diff = e.touches[0].clientY - startY.current;
+      
+      // Impede o refresh da página enquanto arrasta o modal
+      if (e.cancelable && diff > 0) {
+          e.preventDefault();
+      }
+
+      if (diff > 0) {
+          setDragOffset(diff);
+      }
+  };
+
+  const handleTouchEnd = () => {
+      isDragging.current = false;
+      if (dragOffset > 100) {
+          onClose();
+      }
+      // Sempre reseta o offset se não fechou, ou deixa a animação de saída lidar se fechou
+      setDragOffset(0);
+  };
 
   return createPortal(
     <div className={`fixed inset-0 z-[9999] flex flex-col justify-end ${isVisible ? 'pointer-events-auto' : 'pointer-events-none'}`}>
@@ -157,21 +184,20 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
         className="bg-[#F2F2F2] dark:bg-[#000000] rounded-t-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[94vh] relative"
         style={{
             transform: isVisible ? `translateY(${dragOffset}px)` : 'translateY(100%)',
-            transition: dragOffset === 0 ? 'transform 500ms cubic-bezier(0.32, 0.72, 0, 1)' : 'none',
-        }}
-        onTouchStart={(e) => { startY.current = e.touches[0].clientY; }}
-        onTouchMove={(e) => {
-            const diff = e.touches[0].clientY - startY.current;
-            if (diff > 0) setDragOffset(diff);
-        }}
-        onTouchEnd={() => {
-            if (dragOffset > 150) onClose();
-            setDragOffset(0);
+            transition: isDragging.current ? 'none' : 'transform 500ms cubic-bezier(0.32, 0.72, 0, 1)',
         }}
       >
-        <div className="w-full flex justify-center pt-4 pb-2 bg-[#F2F2F2] dark:bg-[#000000] z-10 shrink-0 cursor-grab active:cursor-grabbing">
+        {/* Área de "Pega" (Handle) - Eventos de toque MOVIDOS para cá */}
+        <div 
+            className="w-full flex justify-center pt-4 pb-2 bg-[#F2F2F2] dark:bg-[#000000] z-10 shrink-0 cursor-grab active:cursor-grabbing touch-none"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+        >
             <div className="w-12 h-1.5 bg-zinc-300 dark:bg-zinc-800 rounded-full"></div>
         </div>
+        
+        {/* Conteúdo Livre para rolagem */}
         <div className="flex-1 overflow-y-auto overscroll-contain px-1 pb-10">
             {children}
         </div>
@@ -180,8 +206,6 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
   );
 };
 
-// ... Exports dos outros modais (UpdateReport, Install, Confirmation, Changelog, Notifications) ...
-// Mantendo a estrutura mas limpando o visual:
 export const InstallPromptModal: React.FC<any> = ({ isOpen, onInstall, onDismiss }) => {
     const { isMounted, isVisible } = useAnimatedVisibility(isOpen, 400);
     if (!isMounted) return null;
