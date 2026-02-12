@@ -72,9 +72,19 @@ const CustomBarTooltip = ({ active, payload, label, privacyMode }: any) => {
 // Item da Agenda - Compacto
 const AgendaItem: React.FC<{ event: RadarEvent, privacyMode: boolean }> = ({ event, privacyMode }) => {
     const isDatacom = event.eventType === 'DATACOM';
-    const dateObj = new Date(event.date + 'T12:00:00');
-    const day = dateObj.getDate();
-    const weekDay = dateObj.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
+    
+    // Tratamento de data seguro
+    let day = '--';
+    let weekDay = '---';
+    try {
+        const dateObj = new Date(event.date + 'T12:00:00');
+        if (!isNaN(dateObj.getTime())) {
+            day = String(dateObj.getDate());
+            weekDay = dateObj.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
+        }
+    } catch (e) {
+        // Fallback silencioso
+    }
 
     return (
         <div className="flex items-center justify-between p-2.5 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 mb-1.5 shadow-sm">
@@ -101,7 +111,7 @@ const AgendaItem: React.FC<{ event: RadarEvent, privacyMode: boolean }> = ({ eve
     );
 };
 
-const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, salesGain = 0, totalDividendsReceived = 0, invested, balance, totalAppreciation, privacyMode = false }) => {
+const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, salesGain = 0, totalDividendsReceived = 0, invested, balance, totalAppreciation, transactions, privacyMode = false, onViewAsset }) => {
   const [showAgendaModal, setShowAgendaModal] = useState(false);
   const [showProventosModal, setShowProventosModal] = useState(false);
   const [showAllocationModal, setShowAllocationModal] = useState(false);
@@ -109,10 +119,13 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   // Novos Estados
   const [showMagicModal, setShowMagicModal] = useState(false);
   const [showGoalModal, setShowGoalModal] = useState(false);
+  
+  // Inicialização segura do objetivo mensal
   const [monthlyGoal, setMonthlyGoal] = useState<number>(() => {
       try {
           const saved = localStorage.getItem('investfiis_monthly_goal');
-          return saved ? parseFloat(saved) : 1000;
+          const parsed = saved ? parseFloat(saved) : 1000;
+          return isNaN(parsed) || parsed <= 0 ? 1000 : parsed;
       } catch { return 1000; }
   });
   
@@ -129,7 +142,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   // Salvar Meta
   const handleSaveGoal = (val: string) => {
       const num = parseFloat(val);
-      if (!isNaN(num)) {
+      if (!isNaN(num) && num >= 0) {
           setMonthlyGoal(num);
           localStorage.setItem('investfiis_monthly_goal', String(num));
       }
@@ -188,14 +201,22 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   }
               };
 
+              // Validador de data estrito (YYYY-MM-DD)
+              const isValidDate = (d: string) => /^\d{4}-\d{2}-\d{2}$/.test(d);
+
               dividendReceipts.forEach(r => {
-                  if (r.paymentDate) addEvent(r.ticker, r.paymentDate, r.totalReceived, r.rate, r.type, 'PAYMENT');
-                  if (r.dateCom) addEvent(r.ticker, r.dateCom, 0, r.rate, r.type, 'DATACOM');
+                  if (r.paymentDate && isValidDate(r.paymentDate)) addEvent(r.ticker, r.paymentDate, r.totalReceived, r.rate, r.type, 'PAYMENT');
+                  if (r.dateCom && isValidDate(r.dateCom)) addEvent(r.ticker, r.dateCom, 0, r.rate, r.type, 'DATACOM');
               });
 
               predictions.forEach(p => {
-                  if (p.paymentDate) addEvent(p.ticker, p.paymentDate, p.projectedTotal, p.rate, p.type, 'PAYMENT');
-                  if (p.dateCom) addEvent(p.ticker, p.dateCom, 0, p.rate, p.type, 'DATACOM');
+                  // Filtra datas "A Definir" ou inválidas vindas da API/Serviço
+                  if (p.paymentDate && isValidDate(p.paymentDate)) {
+                      addEvent(p.ticker, p.paymentDate, p.projectedTotal, p.rate, p.type, 'PAYMENT');
+                  }
+                  if (p.dateCom && isValidDate(p.dateCom)) {
+                      addEvent(p.ticker, p.dateCom, 0, p.rate, p.type, 'DATACOM');
+                  }
               });
 
               atomEvents.sort((a, b) => a.date.localeCompare(b.date));
@@ -220,11 +241,15 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       
       const grouped: Record<string, RadarEvent[]> = {};
       events.forEach(ev => {
-          const d = new Date(ev.date + 'T12:00:00');
-          const monthKey = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-          const keyCap = monthKey.charAt(0).toUpperCase() + monthKey.slice(1);
-          if (!grouped[keyCap]) grouped[keyCap] = [];
-          grouped[keyCap].push(ev);
+          try {
+              const d = new Date(ev.date + 'T12:00:00');
+              const monthKey = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+              const keyCap = monthKey.charAt(0).toUpperCase() + monthKey.slice(1);
+              if (!grouped[keyCap]) grouped[keyCap] = [];
+              grouped[keyCap].push(ev);
+          } catch {
+              // Ignora datas que falham na formatação
+          }
       });
 
       return { grouped, totalConfirmed, count: events.length };
@@ -318,7 +343,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
   const totalReturn = (totalAppreciation + salesGain) + totalDividendsReceived;
   const totalReturnPercent = invested > 0 ? (totalReturn / invested) * 100 : 0;
-  const goalProgress = Math.min((proventosAverage / monthlyGoal) * 100, 100);
+  
+  // Proteção contra NaN no progresso da meta
+  const safeAverage = proventosAverage || 0;
+  const safeGoal = monthlyGoal || 1; 
+  const goalProgress = Math.min((safeAverage / safeGoal) * 100, 100);
 
   return (
     <div className="space-y-6 pb-8">
