@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, TrendingUp, ChevronRight, Wallet, Info } from 'lucide-react';
+import { Search, TrendingUp, ChevronRight, Wallet, Info, DollarSign, Activity, Percent } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 
 interface PortfolioProps {
@@ -20,6 +20,11 @@ const formatBRL = (val: any, privacy = false) => {
   return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 };
 
+const formatPercent = (val: any) => {
+    const num = typeof val === 'number' ? val : 0;
+    return `${num.toFixed(2)}%`;
+};
+
 // Componente de Item de Lista (Clean List Style)
 const AssetListItem: React.FC<{ asset: AssetPosition, privacyMode?: boolean, onClick: () => void }> = ({ asset, privacyMode, onClick }) => {
     const isPositive = (asset.dailyChange || 0) >= 0;
@@ -28,7 +33,7 @@ const AssetListItem: React.FC<{ asset: AssetPosition, privacyMode?: boolean, onC
     return (
         <button onClick={onClick} className="w-full flex items-center justify-between py-4 border-b border-zinc-100 dark:border-zinc-800 last:border-0 group active:bg-zinc-50 dark:active:bg-zinc-900/50 transition-colors px-2">
             <div className="flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xs font-black transition-colors ${asset.assetType === AssetType.FII ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400'}`}>
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xs font-black transition-colors shadow-sm ${asset.assetType === AssetType.FII ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' : 'bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400'}`}>
                     {asset.ticker.substring(0, 2)}
                 </div>
                 <div className="text-left">
@@ -151,7 +156,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
 
                         {/* Card de DY - Destaque */}
                         {selectedAsset.dy_12m && (
-                            <div className="bg-emerald-500 text-white p-6 rounded-[2rem] shadow-lg shadow-emerald-500/20 mb-6 flex justify-between items-center relative overflow-hidden">
+                            <div className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white p-6 rounded-[2rem] shadow-xl shadow-emerald-500/20 mb-6 flex justify-between items-center relative overflow-hidden">
                                 <div className="relative z-10">
                                     <p className="text-xs font-bold opacity-80 uppercase tracking-widest mb-1">Dividend Yield (12m)</p>
                                     <p className="text-4xl font-black tracking-tighter">{selectedAsset.dy_12m.toFixed(2)}%</p>
@@ -167,42 +172,55 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                         </h3>
                         <div className="grid grid-cols-2 gap-3 mb-8">
                             {selectedAsset.p_vp && (
-                                <div className="p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800">
-                                    <p className="text-[9px] font-bold text-zinc-400 uppercase">P/VP</p>
-                                    <p className={`text-lg font-black ${(selectedAsset.p_vp > 1.1) ? 'text-amber-500' : (selectedAsset.p_vp < 0.9) ? 'text-emerald-500' : 'text-zinc-900 dark:text-white'}`}>
+                                <div className="p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm relative overflow-hidden">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <Activity className="w-3 h-3 text-zinc-400" />
+                                        <p className="text-[9px] font-bold text-zinc-400 uppercase">P/VP</p>
+                                    </div>
+                                    <p className={`text-2xl font-black ${(selectedAsset.p_vp > 1.1) ? 'text-amber-500' : (selectedAsset.p_vp < 0.9) ? 'text-emerald-500' : 'text-zinc-900 dark:text-white'}`}>
                                         {selectedAsset.p_vp.toFixed(2)}
                                     </p>
+                                    {(selectedAsset.p_vp < 0.95 && selectedAsset.p_vp > 0) && <span className="text-[8px] font-bold text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-full absolute top-4 right-4">Desconto</span>}
                                 </div>
                             )}
                             
                             {selectedAsset.p_l && (
-                                <div className="p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800">
-                                    <p className="text-[9px] font-bold text-zinc-400 uppercase">P/L</p>
-                                    <p className="text-lg font-black text-zinc-900 dark:text-white">{selectedAsset.p_l.toFixed(1)}</p>
+                                <div className="p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <DollarSign className="w-3 h-3 text-zinc-400" />
+                                        <p className="text-[9px] font-bold text-zinc-400 uppercase">P/L</p>
+                                    </div>
+                                    <p className="text-2xl font-black text-zinc-900 dark:text-white">{selectedAsset.p_l.toFixed(1)}</p>
                                 </div>
                             )}
 
                             {selectedAsset.vacancy !== undefined && selectedAsset.vacancy !== null && (
-                                <div className="p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800">
-                                    <p className="text-[9px] font-bold text-zinc-400 uppercase">Vacância</p>
-                                    <p className={`text-lg font-black ${selectedAsset.vacancy > 10 ? 'text-rose-500' : 'text-zinc-900 dark:text-white'}`}>
+                                <div className="p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <Percent className="w-3 h-3 text-zinc-400" />
+                                        <p className="text-[9px] font-bold text-zinc-400 uppercase">Vacância</p>
+                                    </div>
+                                    <p className={`text-2xl font-black ${selectedAsset.vacancy > 10 ? 'text-rose-500' : 'text-zinc-900 dark:text-white'}`}>
                                         {selectedAsset.vacancy.toFixed(1)}%
                                     </p>
                                 </div>
                             )}
 
                             {selectedAsset.liquidity && (
-                                <div className="p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800">
-                                    <p className="text-[9px] font-bold text-zinc-400 uppercase">Liquidez Diária</p>
-                                    <p className="text-sm font-black text-zinc-900 dark:text-white truncate">
+                                <div className="p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <TrendingUp className="w-3 h-3 text-zinc-400" />
+                                        <p className="text-[9px] font-bold text-zinc-400 uppercase">Liquidez</p>
+                                    </div>
+                                    <p className="text-lg font-black text-zinc-900 dark:text-white truncate">
                                         {typeof selectedAsset.liquidity === 'number' ? `R$ ${(selectedAsset.liquidity / 1000).toFixed(0)}k` : selectedAsset.liquidity}
                                     </p>
                                 </div>
                             )}
 
                             {selectedAsset.assets_value && (
-                                <div className="p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 col-span-2">
-                                    <p className="text-[9px] font-bold text-zinc-400 uppercase">Patrimônio Líquido</p>
+                                <div className="p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm col-span-2">
+                                    <p className="text-[9px] font-bold text-zinc-400 uppercase mb-1">Patrimônio Líquido</p>
                                     <p className="text-lg font-black text-zinc-900 dark:text-white">{selectedAsset.assets_value}</p>
                                 </div>
                             )}

@@ -18,7 +18,7 @@ import { supabase, SUPABASE_URL } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 import { useScrollDirection } from './hooks/useScrollDirection';
 
-const APP_VERSION = '9.0.1'; // Patch para restaurar funcionalidades
+const APP_VERSION = '9.1.0'; // Polimento e Fixes
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -67,14 +67,13 @@ const App: React.FC = () => {
 
   // Prefs
   const [theme, setTheme] = useState<ThemeType>(() => (localStorage.getItem(STORAGE_KEYS.THEME) as ThemeType) || 'system');
-  const [accentColor, setAccentColor] = useState(() => localStorage.getItem(STORAGE_KEYS.ACCENT) || '#10b981'); // Emerald default
+  const [accentColor, setAccentColor] = useState(() => localStorage.getItem(STORAGE_KEYS.ACCENT) || '#10b981'); 
   const [privacyMode, setPrivacyMode] = useState(() => localStorage.getItem(STORAGE_KEYS.PRIVACY) === 'true');
   const [pushEnabled, setPushEnabled] = useState(() => localStorage.getItem(STORAGE_KEYS.PUSH_ENABLED) === 'true');
   
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void; } | null>(null);
-  const [lastUpdateReport, setLastUpdateReport] = useState<UpdateReportData>({ results: [], inflationRate: 0, totalDividendsFound: 0 });
   
   // Dados
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -150,6 +149,35 @@ const App: React.FC = () => {
     setTimeout(() => { setToast({ type, text }); toastTimeoutRef.current = window.setTimeout(() => setToast(null), 3500); }, 50);
   }, []);
 
+  const checkConnection = useCallback(async () => {
+      setIsCheckingServices(true);
+      const newServices = [...servicesRef.current];
+      
+      const checkUrl = async (url: string) => {
+          const start = Date.now();
+          try {
+              await fetch(url, { method: 'HEAD', mode: 'no-cors' }); // no-cors para evitar bloqueio, apenas ping
+              return Date.now() - start;
+          } catch {
+              return null;
+          }
+      };
+
+      // 1. Supabase (DB)
+      const dbPing = await checkUrl(SUPABASE_URL || '');
+      newServices[0] = { ...newServices[0], status: dbPing ? 'operational' : 'error', latency: dbPing };
+
+      // 2. Brapi (Market)
+      const marketPing = await checkUrl('https://brapi.dev');
+      newServices[1] = { ...newServices[1], status: marketPing ? 'operational' : 'degraded', latency: marketPing };
+
+      // 3. CDN (Local)
+      newServices[2] = { ...newServices[2], status: 'operational', latency: 10 };
+
+      setServices(newServices);
+      setIsCheckingServices(false);
+  }, []);
+
   const syncMarketData = useCallback(async (force = false, txsToUse: Transaction[], initialLoad = false) => {
     const tickers = Array.from(new Set(txsToUse.map(t => t.ticker.toUpperCase())));
     if (tickers.length === 0) return;
@@ -215,7 +243,7 @@ const App: React.FC = () => {
             const lastSyncStr = localStorage.getItem(STORAGE_KEYS.LAST_AUTO_SYNC);
             const lastSync = lastSyncStr ? parseInt(lastSyncStr) : 0;
             const now = Date.now();
-            const shouldForce = (now - lastSync) > 1000 * 60 * 60 * 1; // 1 hora
+            const shouldForce = (now - lastSync) > 1000 * 60 * 60 * 1; 
             
             await syncMarketData(shouldForce, cloudTxs, initialLoad);
         } else {
@@ -300,7 +328,7 @@ const App: React.FC = () => {
         <main className="max-w-xl mx-auto pt-28 pb-32 min-h-screen px-6">
           {showSettings ? (
             <div className="pt-2">
-              <MemoizedSettings onLogout={handleLogout} user={session.user} transactions={transactions} onImportTransactions={setTransactions} dividends={dividends} onImportDividends={setDividends} onResetApp={() => { localStorage.clear(); window.location.reload(); }} theme={theme} onSetTheme={setTheme} accentColor={accentColor} onSetAccentColor={setAccentColor} privacyMode={privacyMode} onSetPrivacyMode={setPrivacyMode} appVersion={APP_VERSION} updateAvailable={isUpdateAvailable} onCheckUpdates={checkForUpdates} onShowChangelog={() => setShowChangelog(true)} pushEnabled={pushEnabled} onRequestPushPermission={() => setPushEnabled(!pushEnabled)} onSyncAll={() => fetchTransactionsFromCloud(session, true)} onForceUpdate={() => window.location.reload()} currentVersionDate={currentVersionDate} services={services} onCheckConnection={async () => {}} isCheckingConnection={isCheckingServices} />
+              <MemoizedSettings onLogout={handleLogout} user={session.user} transactions={transactions} onImportTransactions={setTransactions} dividends={dividends} onImportDividends={setDividends} onResetApp={() => { localStorage.clear(); window.location.reload(); }} theme={theme} onSetTheme={setTheme} accentColor={accentColor} onSetAccentColor={setAccentColor} privacyMode={privacyMode} onSetPrivacyMode={setPrivacyMode} appVersion={APP_VERSION} updateAvailable={isUpdateAvailable} onCheckUpdates={checkForUpdates} onShowChangelog={() => setShowChangelog(true)} pushEnabled={pushEnabled} onRequestPushPermission={() => setPushEnabled(!pushEnabled)} onSyncAll={() => fetchTransactionsFromCloud(session, true)} onForceUpdate={() => window.location.reload()} currentVersionDate={currentVersionDate} services={services} onCheckConnection={checkConnection} isCheckingConnection={isCheckingServices} />
             </div>
           ) : (
             <div key={currentTab} className="anim-page-enter">

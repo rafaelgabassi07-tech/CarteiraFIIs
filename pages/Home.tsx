@@ -1,5 +1,5 @@
 
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
 import { CircleDollarSign, CalendarClock, TrendingUp, TrendingDown, ArrowRight, Wallet, PieChart as PieIcon, Layers, Target, LayoutGrid, ListFilter, X, ChevronRight } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
@@ -50,9 +50,9 @@ const CustomBarTooltip = ({ active, payload, label, privacyMode }: any) => {
     if (active && payload && payload.length) { 
         const data = payload[0]; 
         return (
-            <div className="bg-white dark:bg-zinc-800 p-2 rounded-xl shadow-lg border border-zinc-100 dark:border-zinc-700 text-center">
-                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">{label} {data.payload.year}</p>
-                <p className="text-xs font-black text-emerald-600 dark:text-emerald-400">{formatBRL(data.value, privacyMode)}</p>
+            <div className="bg-zinc-900/90 dark:bg-zinc-800/90 backdrop-blur-md p-3 rounded-2xl shadow-xl border border-white/10 text-center min-w-[80px]">
+                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">{label} {data.payload.year}</p>
+                <p className="text-xs font-black text-white">{formatBRL(data.value, privacyMode)}</p>
             </div>
         ); 
     } 
@@ -67,16 +67,16 @@ const AgendaItem: React.FC<{ event: RadarEvent, privacyMode: boolean }> = ({ eve
     const weekDay = dateObj.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
 
     return (
-        <div className="flex items-center justify-between p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 mb-2">
+        <div className="flex items-center justify-between p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 mb-2 shadow-sm">
             <div className="flex items-center gap-4">
-                <div className="flex flex-col items-center justify-center w-10 h-10 bg-zinc-50 dark:bg-zinc-800 rounded-xl">
+                <div className={`flex flex-col items-center justify-center w-12 h-12 rounded-2xl ${isDatacom ? 'bg-zinc-100 dark:bg-zinc-800' : 'bg-emerald-50 dark:bg-emerald-900/20'}`}>
                     <span className="text-[9px] font-bold text-zinc-400 uppercase">{weekDay}</span>
-                    <span className="text-sm font-black text-zinc-900 dark:text-white leading-none">{day}</span>
+                    <span className={`text-lg font-black leading-none ${isDatacom ? 'text-zinc-900 dark:text-white' : 'text-emerald-600 dark:text-emerald-400'}`}>{day}</span>
                 </div>
                 <div>
-                    <h4 className="font-bold text-zinc-900 dark:text-white text-sm">{event.ticker}</h4>
-                    <p className="text-[10px] text-zinc-500 font-medium">
-                        {isDatacom ? 'Data de Corte (Data Com)' : `Pagamento de ${event.type}`}
+                    <h4 className="font-bold text-zinc-900 dark:text-white text-base">{event.ticker}</h4>
+                    <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">
+                        {isDatacom ? 'Data Com' : `Pagamento ${event.type}`}
                     </p>
                 </div>
             </div>
@@ -85,7 +85,7 @@ const AgendaItem: React.FC<{ event: RadarEvent, privacyMode: boolean }> = ({ eve
                     <span className="block text-emerald-600 dark:text-emerald-400 font-black text-sm">
                         {formatBRL(event.amount, privacyMode)}
                     </span>
-                    <span className="text-[9px] font-bold bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 rounded-md">
+                    <span className="text-[9px] font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded-full">
                         Confirmado
                     </span>
                 </div>
@@ -221,7 +221,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       <div className="relative overflow-hidden bg-white dark:bg-zinc-900 rounded-[2.5rem] p-8 shadow-sm border border-zinc-100 dark:border-zinc-800/50 anim-scale-in">
           <div className="relative z-10 flex flex-col items-center text-center">
               <span className="text-xs font-bold text-zinc-400 uppercase tracking-[0.2em] mb-3">Patrimônio Total</span>
-              <h2 className="text-5xl font-black text-zinc-900 dark:text-white tracking-tighter mb-4">
+              <h2 className="text-5xl font-black text-zinc-900 dark:text-white tracking-tighter mb-4 bg-clip-text text-transparent bg-gradient-to-b from-zinc-900 to-zinc-600 dark:from-white dark:to-zinc-400">
                   {formatBRL(balance, privacyMode)}
               </h2>
               
@@ -284,7 +284,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
 
             {radarData.events.length > 0 && (
-                <div className="bg-emerald-500 rounded-3xl p-6 text-white mb-8 shadow-xl shadow-emerald-500/20">
+                <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-[2rem] p-6 text-white mb-8 shadow-xl shadow-emerald-500/20">
                     <p className="text-xs font-bold opacity-80 uppercase tracking-widest mb-1">Total Confirmado</p>
                     <p className="text-4xl font-black tracking-tighter">{formatBRL(radarData.totalConfirmed, privacyMode)}</p>
                 </div>
@@ -341,9 +341,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-4">Últimos Lançamentos</h3>
                  <div className="space-y-2">
                      {dividendReceipts.slice().reverse().slice(0, 10).map((r, idx) => (
-                         <div key={idx} className="flex items-center justify-between p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
+                         <div key={idx} className="flex items-center justify-between p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800/50 shadow-sm">
                              <div className="flex items-center gap-4">
-                                 <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-black text-zinc-500">
+                                 <div className="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-black text-zinc-500">
                                      {r.ticker.substring(0, 2)}
                                  </div>
                                  <div>
@@ -417,7 +417,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
                  <div className="space-y-3">
                      {(allocationTab === 'CLASS' ? classChartData : sectorChartData).map((item, index) => (
-                         <div key={index} className="flex items-center justify-between p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                         <div key={index} className="flex items-center justify-between p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
                              <div className="flex items-center gap-3">
                                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
                                  <span className="text-sm font-bold text-zinc-700 dark:text-zinc-200">{item.name}</span>
