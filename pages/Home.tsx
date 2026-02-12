@@ -151,19 +151,25 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [allocationTab, setAllocationTab] = useState<'CLASS' | 'SECTOR'>('CLASS');
   const [activeIndexClass, setActiveIndexClass] = useState<number | undefined>(undefined);
 
-  // Salvar Metas
-  const handleSaveGoal = (val: string, type: 'INCOME' | 'WEALTH') => {
-      const num = parseFloat(val);
-      if (!isNaN(num) && num >= 0) {
-          if (type === 'INCOME') {
-              setMonthlyGoal(num);
-              localStorage.setItem('investfiis_monthly_goal', String(num));
-          } else {
-              setPatrimonyGoal(num);
-              localStorage.setItem('investfiis_patrimony_goal', String(num));
-          }
+  // Manipulador de Input Monetário (Estilo ATM)
+  const handleGoalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const rawValue = e.target.value.replace(/\D/g, ''); // Remove tudo que não é dígito
+      const numericValue = rawValue ? parseInt(rawValue, 10) / 100 : 0;
+      
+      if (goalTab === 'INCOME') {
+          setMonthlyGoal(numericValue);
+          localStorage.setItem('investfiis_monthly_goal', String(numericValue));
+      } else {
+          setPatrimonyGoal(numericValue);
+          localStorage.setItem('investfiis_patrimony_goal', String(numericValue));
       }
   };
+
+  // Valor formatado para o input (Visual)
+  const formattedGoalValue = useMemo(() => {
+      const val = goalTab === 'INCOME' ? monthlyGoal : patrimonyGoal;
+      return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  }, [goalTab, monthlyGoal, patrimonyGoal]);
 
   // --- DADOS DO NÚMERO MÁGICO ---
   const magicData = useMemo(() => {
@@ -770,6 +776,17 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  </div>
              </div>
 
+             {/* Estado Vazio para Magic Number */}
+             {magicData.length === 0 && (
+                 <div className="flex flex-col items-center justify-center py-16 opacity-50 text-center">
+                     <Wand2 className="w-16 h-16 text-zinc-300 mb-4" strokeWidth={1} />
+                     <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-1">Cálculo Indisponível</h3>
+                     <p className="text-[10px] text-zinc-500 max-w-[200px] leading-relaxed">
+                         Precisamos do Dividend Yield (DY) e cotação para calcular. Aguarde a atualização dos dados.
+                     </p>
+                 </div>
+             )}
+
              {/* Header Resumo */}
              {totalCostToReachAll > 0 && (
                  <div className="bg-purple-600 dark:bg-purple-900/40 text-white p-5 rounded-[2rem] shadow-lg shadow-purple-600/20 mb-6 relative overflow-hidden">
@@ -894,19 +911,20 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                      </label>
                  </div>
                  <div className={`flex items-center gap-2 border-b-2 border-zinc-100 dark:border-zinc-800 pb-2 transition-colors ${goalTab === 'INCOME' ? 'focus-within:border-amber-500' : 'focus-within:border-blue-500'}`}>
-                     <span className="text-lg font-bold text-zinc-400">R$</span>
+                     {/* Input controlado com formatação de moeda */}
                      <input 
-                        type="number" 
-                        value={goalTab === 'INCOME' ? monthlyGoal : patrimonyGoal} 
-                        onChange={(e) => handleSaveGoal(e.target.value, goalTab)}
-                        className="w-full bg-transparent text-2xl font-black text-zinc-900 dark:text-white outline-none placeholder:text-zinc-300"
-                        placeholder="0,00"
+                        type="text" 
+                        value={formattedGoalValue} 
+                        onChange={handleGoalChange}
+                        className="w-full bg-transparent text-2xl font-black text-zinc-900 dark:text-white outline-none placeholder:text-zinc-300 text-center"
+                        placeholder="R$ 0,00"
+                        inputMode="numeric"
                      />
                  </div>
-                 <p className="text-[10px] text-zinc-400 mt-3 leading-relaxed">
+                 <p className="text-[10px] text-zinc-400 mt-3 leading-relaxed text-center">
                      {goalTab === 'INCOME' 
-                        ? 'Defina quanto você deseja receber mensalmente em dividendos. O progresso usa a média dos últimos 12 meses.' 
-                        : 'Defina o valor total que você deseja acumular em ativos. O progresso considera a cotação atual.'}
+                        ? 'Digite o valor que deseja receber mensalmente em proventos.' 
+                        : 'Digite o valor total que deseja acumular em patrimônio.'}
                  </p>
              </div>
          </div>
