@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
-import { CircleDollarSign, CalendarClock, TrendingUp, TrendingDown, Wallet, PieChart as PieIcon, ArrowUpRight, ArrowDownRight, Layers } from 'lucide-react';
+import { CircleDollarSign, CalendarClock, TrendingUp, TrendingDown, Wallet, PieChart as PieIcon, ArrowUpRight, ArrowDownRight, Layers, Filter, Calendar } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis } from 'recharts';
 import { fetchFutureAnnouncements } from '../services/dataService';
@@ -98,16 +98,22 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [showAgendaModal, setShowAgendaModal] = useState(false);
   const [showProventosModal, setShowProventosModal] = useState(false);
   const [showAllocationModal, setShowAllocationModal] = useState(false);
+  
+  // Filtros de Proventos
+  const [proventosYear, setProventosYear] = useState<string>('ALL');
+  const [proventosType, setProventosType] = useState<'ALL' | 'FII' | 'STOCK'>('ALL');
+
+  // Filtros de Agenda
+  const [agendaFilter, setAgendaFilter] = useState<'ALL' | 'PAYMENT' | 'DATACOM'>('ALL');
+
   const [allocationTab, setAllocationTab] = useState<'CLASS' | 'SECTOR'>('CLASS');
   const [activeIndexClass, setActiveIndexClass] = useState<number | undefined>(undefined);
 
   // --- DADOS DO RADAR (AGENDA) ---
   const [radarData, setRadarData] = useState<{
       events: RadarEvent[];
-      totalConfirmed: number;
       loading: boolean;
-      grouped: Record<string, RadarEvent[]>;
-  }>({ events: [], totalConfirmed: 0, loading: true, grouped: {} });
+  }>({ events: [], loading: true });
 
   useEffect(() => {
       let isActive = true;
@@ -128,6 +134,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   }
               };
 
+              // Mescla recibos confirmados e previsões
               dividendReceipts.forEach(r => {
                   if (r.paymentDate) addEvent(r.ticker, r.paymentDate, r.totalReceived, r.rate, r.type, 'PAYMENT');
                   if (r.dateCom) addEvent(r.ticker, r.dateCom, 0, r.rate, r.type, 'DATACOM');
@@ -139,18 +146,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
               });
 
               atomEvents.sort((a, b) => a.date.localeCompare(b.date));
-              const totalConfirmed = atomEvents.reduce((acc, e) => e.eventType === 'PAYMENT' ? acc + e.amount : acc, 0);
-
-              const grouped: Record<string, RadarEvent[]> = {};
-              atomEvents.forEach(ev => {
-                  const d = new Date(ev.date + 'T12:00:00');
-                  const monthKey = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-                  const keyCap = monthKey.charAt(0).toUpperCase() + monthKey.slice(1);
-                  if (!grouped[keyCap]) grouped[keyCap] = [];
-                  grouped[keyCap].push(ev);
-              });
-
-              setRadarData({ events: atomEvents, totalConfirmed, loading: false, grouped });
+              
+              setRadarData({ events: atomEvents, loading: false });
           } catch (e) {
               console.error(e);
               if (isActive) setRadarData(prev => ({ ...prev, loading: false }));
@@ -159,6 +156,27 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       runRadar();
       return () => { isActive = false; };
   }, [portfolio, dividendReceipts]);
+
+  // --- DADOS FILTRADOS DA AGENDA ---
+  const filteredAgenda = useMemo(() => {
+      let events = radarData.events;
+      if (agendaFilter !== 'ALL') {
+          events = events.filter(e => e.eventType === agendaFilter);
+      }
+      
+      const totalConfirmed = events.reduce((acc, e) => e.eventType === 'PAYMENT' ? acc + e.amount : acc, 0);
+      
+      const grouped: Record<string, RadarEvent[]> = {};
+      events.forEach(ev => {
+          const d = new Date(ev.date + 'T12:00:00');
+          const monthKey = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+          const keyCap = monthKey.charAt(0).toUpperCase() + monthKey.slice(1);
+          if (!grouped[keyCap]) grouped[keyCap] = [];
+          grouped[keyCap].push(ev);
+      });
+
+      return { grouped, totalConfirmed, count: events.length };
+  }, [radarData.events, agendaFilter]);
 
   // --- DADOS DE ALOCAÇÃO ---
   const { typeData, classChartData, sectorChartData } = useMemo(() => {
@@ -184,12 +202,48 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       return { typeData: { total }, classChartData, sectorChartData };
   }, [portfolio]);
 
-  // --- DADOS DE HISTÓRICO DE PROVENTOS ---
-  const { chartData } = useMemo(() => {
-      const monthlySum: Record<string, number> = {};
-      const todayStr = new Date().toISOString().split('T')[0];
+  // --- DADOS DE PROVENTOS (FILTRADOS) ---
+  const { chartData, groupedProventos, proventosTotal, proventosAverage, availableYears } = useMemo(() => {
+      const filteredReceipts = dividendReceipts.filter(r => {
+          const matchesType = proventosType === 'ALL' || 
+              (proventosType === 'FII' && r.assetType === AssetType.FII) ||
+              (proventosType === 'STOCK' && r.assetType === AssetType.STOCK);
+          return matchesType;
+      });
 
-      (dividendReceipts || []).forEach(r => {
+      // Anos disponíveis para filtro
+      const yearsSet = new Set(filteredReceipts.map(r => r.paymentDate.substring(0, 4)));
+      const years = Array.from(yearsSet).sort().reverse();
+
+      // Filtragem por Ano para a LISTA e TOTAL, mas o gráfico mostra histórico
+      const displayReceipts = filteredReceipts.filter(r => {
+          return proventosYear === 'ALL' || r.paymentDate.startsWith(proventosYear);
+      });
+
+      const total = displayReceipts.reduce((acc, r) => acc + r.totalReceived, 0);
+      
+      // Cálculo de Média Mensal (baseado no intervalo de meses com recebimento)
+      let average = 0;
+      if (displayReceipts.length > 0) {
+          const months = new Set(displayReceipts.map(r => r.paymentDate.substring(0, 7))).size;
+          average = total / (months || 1);
+      }
+
+      // Agrupamento por Mês para Lista
+      const grouped: Record<string, { items: DividendReceipt[], total: number }> = {};
+      displayReceipts.sort((a,b) => b.paymentDate.localeCompare(a.paymentDate)).forEach(r => {
+          const d = new Date(r.paymentDate + 'T12:00:00');
+          const key = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+          const keyCap = key.charAt(0).toUpperCase() + key.slice(1);
+          if (!grouped[keyCap]) grouped[keyCap] = { items: [], total: 0 };
+          grouped[keyCap].items.push(r);
+          grouped[keyCap].total += r.totalReceived;
+      });
+
+      // Dados para o Gráfico (Sempre últimos 12 meses do filtro de tipo, independente do ano selecionado na lista para contexto)
+      const todayStr = new Date().toISOString().split('T')[0];
+      const monthlySum: Record<string, number> = {};
+      filteredReceipts.forEach(r => {
           if (r.paymentDate && r.paymentDate <= todayStr) {
               const key = r.paymentDate.substring(0, 7); 
               monthlySum[key] = (monthlySum[key] || 0) + r.totalReceived;
@@ -207,8 +261,14 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           };
       });
 
-      return { chartData: fullHistory.slice(-12) };
-  }, [dividendReceipts]);
+      return { 
+          chartData: fullHistory.slice(-12), // Últimos 12 meses
+          groupedProventos: grouped,
+          proventosTotal: total,
+          proventosAverage: average,
+          availableYears: years
+      };
+  }, [dividendReceipts, proventosType, proventosYear]);
 
   const totalReturn = (totalAppreciation + salesGain) + totalDividendsReceived;
   const totalReturnPercent = invested > 0 ? (totalReturn / invested) * 100 : 0;
@@ -268,7 +328,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           </div>
       </div>
 
-      {/* 2. Grid de Ações Rápidas (Cards Simplificados e Bonitos) */}
+      {/* 2. Grid de Ações Rápidas */}
       <div className="grid grid-cols-2 gap-4 anim-slide-up">
           
           {/* Agenda Card - Vertical */}
@@ -313,35 +373,51 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           </div>
       </div>
 
-      {/* 3. Modal da Agenda (Automática) */}
+      {/* 3. Modal da Agenda */}
       <SwipeableModal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)}>
         <div className="px-6 pb-20 pt-2 bg-[#F2F2F2] dark:bg-black min-h-full">
-            <div className="flex items-center justify-between mb-8 pt-4">
-                <div>
-                    <h2 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter">Agenda</h2>
-                    <p className="text-sm text-zinc-500 font-bold">Próximos Pagamentos</p>
+            <div className="pt-4 mb-6">
+                <div className="flex items-center justify-between mb-4">
+                    <div>
+                        <h2 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter">Agenda</h2>
+                        <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Próximos Eventos</p>
+                    </div>
+                    {radarData.loading && <div className="text-xs font-bold text-zinc-400 animate-pulse uppercase tracking-widest">Atualizando...</div>}
                 </div>
-                {radarData.loading && <div className="text-xs font-bold text-zinc-400 animate-pulse uppercase tracking-widest">Atualizando...</div>}
+
+                {/* Filtros de Aba */}
+                <div className="flex bg-zinc-200/50 dark:bg-zinc-800 p-1 rounded-xl">
+                    {[{id:'ALL', label:'Todos'}, {id:'PAYMENT', label:'Pagamentos'}, {id:'DATACOM', label:'Data Com'}].map((tab) => (
+                        <button 
+                            key={tab.id}
+                            onClick={() => setAgendaFilter(tab.id as any)}
+                            className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${agendaFilter === tab.id ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
             </div>
 
-            {radarData.events.length > 0 && (
+            {/* Totalizador Filtrado */}
+            {filteredAgenda.totalConfirmed > 0 && agendaFilter !== 'DATACOM' && (
                 <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-[2rem] p-6 text-white mb-8 shadow-xl shadow-emerald-500/20">
                     <p className="text-xs font-bold opacity-80 uppercase tracking-widest mb-1">Total Confirmado</p>
-                    <p className="text-4xl font-black tracking-tighter">{formatBRL(radarData.totalConfirmed, privacyMode)}</p>
+                    <p className="text-4xl font-black tracking-tighter">{formatBRL(filteredAgenda.totalConfirmed, privacyMode)}</p>
                 </div>
             )}
 
             <div className="space-y-6">
-                {Object.keys(radarData.grouped).length === 0 && !radarData.loading ? (
+                {Object.keys(filteredAgenda.grouped).length === 0 && !radarData.loading ? (
                     <div className="text-center py-20 opacity-40">
                         <CalendarClock className="w-16 h-16 mx-auto mb-4 text-zinc-300" />
-                        <p className="text-sm font-bold text-zinc-500">Nenhum evento previsto</p>
+                        <p className="text-sm font-bold text-zinc-500">Nenhum evento encontrado</p>
                     </div>
                 ) : (
-                    Object.keys(radarData.grouped).map(monthKey => (
+                    Object.keys(filteredAgenda.grouped).map(monthKey => (
                         <div key={monthKey}>
                             <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-3 ml-2 sticky top-0 bg-[#F2F2F2] dark:bg-black py-2 z-10">{monthKey}</h3>
-                            {radarData.grouped[monthKey].map(event => (
+                            {filteredAgenda.grouped[monthKey].map(event => (
                                 <AgendaItem key={event.id} event={event} privacyMode={privacyMode} />
                             ))}
                         </div>
@@ -354,18 +430,53 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       {/* 4. Modal de Proventos */}
       <SwipeableModal isOpen={showProventosModal} onClose={() => setShowProventosModal(false)}>
          <div className="px-6 pb-20 pt-2 bg-[#F2F2F2] dark:bg-black min-h-full">
+             
+             {/* Header com Totais */}
              <div className="flex flex-col pt-6 pb-4">
-                 <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-2">Total Acumulado</p>
-                 <h2 className="text-5xl font-black text-zinc-900 dark:text-white tracking-tighter">
-                     {formatBRL(totalDividendsReceived, privacyMode)}
-                 </h2>
+                 <div className="flex justify-between items-end mb-4">
+                     <div>
+                        <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-2">Total Recebido</p>
+                        <h2 className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter">
+                            {formatBRL(proventosTotal, privacyMode)}
+                        </h2>
+                     </div>
+                     <div className="text-right">
+                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Média Mensal</p>
+                        <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                            {formatBRL(proventosAverage, privacyMode)}
+                        </p>
+                     </div>
+                 </div>
+
+                 {/* Filtros */}
+                 <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+                     <div className="flex bg-zinc-200/50 dark:bg-zinc-800 p-1 rounded-xl shrink-0">
+                        {['ALL', 'FII', 'STOCK'].map(t => (
+                            <button key={t} onClick={() => setProventosType(t as any)} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${proventosType === t ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}>
+                                {t === 'ALL' ? 'Todos' : t === 'FII' ? 'FIIs' : 'Ações'}
+                            </button>
+                        ))}
+                     </div>
+                     
+                     <div className="relative shrink-0">
+                        <select 
+                            value={proventosYear} 
+                            onChange={(e) => setProventosYear(e.target.value)}
+                            className="appearance-none bg-zinc-200/50 dark:bg-zinc-800 text-zinc-900 dark:text-white pl-4 pr-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest outline-none border-none"
+                        >
+                            <option value="ALL">Todo Período</option>
+                            {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+                        </select>
+                        <Calendar className="w-3 h-3 absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
+                     </div>
+                 </div>
              </div>
 
-             {/* Gráfico Restaurado */}
+             {/* Gráfico (Mostra histórico recente independente do ano selecionado na lista, mas respeita tipo) */}
              {chartData.length > 0 && (
-                 <div className="h-48 w-full mt-4 mb-8">
+                 <div className="h-40 w-full mt-2 mb-6 bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
                      <ResponsiveContainer width="100%" height="100%">
-                         <BarChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                         <BarChart data={chartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
                              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#a1a1aa', fontWeight: 700 }} dy={10} interval={0} />
                              <RechartsTooltip cursor={{fill: 'transparent'}} content={<CustomBarTooltip privacyMode={privacyMode} />} />
                              <Bar dataKey="value" radius={[4, 4, 4, 4]}>
@@ -378,26 +489,43 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                  </div>
              )}
              
-             <div className="mt-6">
-                 <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-4">Últimos Lançamentos</h3>
-                 <div className="space-y-2">
-                     {dividendReceipts.slice().reverse().slice(0, 10).map((r, idx) => (
-                         <div key={idx} className="flex items-center justify-between p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800/50 shadow-sm">
-                             <div className="flex items-center gap-4">
-                                 <div className="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-black text-zinc-500">
-                                     {r.ticker.substring(0, 2)}
-                                 </div>
-                                 <div>
-                                     <span className="block font-bold text-zinc-900 dark:text-white text-sm">{r.ticker}</span>
-                                     <span className="text-[10px] text-zinc-400 font-bold uppercase">{r.type} • {new Date(r.paymentDate).toLocaleDateString('pt-BR')}</span>
-                                 </div>
+             {/* Lista Agrupada */}
+             <div className="space-y-6">
+                 {Object.keys(groupedProventos).length === 0 ? (
+                     <div className="text-center py-10 opacity-40">
+                         <p className="text-xs font-bold text-zinc-500">Sem proventos neste período</p>
+                     </div>
+                 ) : (
+                     Object.keys(groupedProventos).map(monthKey => (
+                         <div key={monthKey}>
+                             <div className="flex justify-between items-center mb-3 ml-2 sticky top-0 bg-[#F2F2F2] dark:bg-black py-2 z-10">
+                                 <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">{monthKey}</h3>
+                                 <span className="text-[10px] font-black text-zinc-500 bg-zinc-200 dark:bg-zinc-800 px-2 py-0.5 rounded-md">
+                                     {formatBRL(groupedProventos[monthKey].total, privacyMode)}
+                                 </span>
                              </div>
-                             <span className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">
-                                 {formatBRL(r.totalReceived, privacyMode)}
-                             </span>
+                             
+                             <div className="space-y-2">
+                                 {groupedProventos[monthKey].items.map((r, idx) => (
+                                     <div key={idx} className="flex items-center justify-between p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                                         <div className="flex items-center gap-4">
+                                             <div className={`w-10 h-10 rounded-full flex items-center justify-center text-[10px] font-black ${r.assetType === AssetType.FII ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400' : 'bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400'}`}>
+                                                 {r.ticker.substring(0, 2)}
+                                             </div>
+                                             <div>
+                                                 <span className="block font-bold text-zinc-900 dark:text-white text-sm">{r.ticker}</span>
+                                                 <span className="text-[10px] text-zinc-400 font-bold uppercase">{r.type} • {new Date(r.paymentDate).getDate()}</span>
+                                             </div>
+                                         </div>
+                                         <span className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">
+                                             {formatBRL(r.totalReceived, privacyMode)}
+                                         </span>
+                                     </div>
+                                 ))}
+                             </div>
                          </div>
-                     ))}
-                 </div>
+                     ))
+                 )}
              </div>
          </div>
       </SwipeableModal>
