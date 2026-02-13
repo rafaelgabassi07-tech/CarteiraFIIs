@@ -1,35 +1,28 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
-import { CircleDollarSign, CalendarClock, TrendingUp, TrendingDown, Wallet, PieChart as PieIcon, ArrowUpRight, ArrowDownRight, Layers, Filter, Calendar, Wand2, Target, Sparkles, CheckCircle2, ChevronRight, Calculator, PiggyBank, Coins, Banknote, AlertCircle } from 'lucide-react';
-import { SwipeableModal } from '../components/Layout';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis } from 'recharts';
-import { fetchFutureAnnouncements } from '../services/dataService';
 
-// --- INTERFACES & TYPES ---
+import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { AssetPosition, DividendReceipt, AssetType, Transaction, PortfolioInsight } from '../types';
+import { CircleDollarSign, PieChart as PieIcon, CalendarDays, Banknote, Wallet, Calendar, CalendarClock, Coins, ChevronDown, ChevronUp, Target, Gem, TrendingUp, ArrowUpRight, Activity, X, Filter, TrendingDown, Lightbulb, AlertTriangle, ShieldCheck, ShieldAlert, Flame, History, BarChart2, Layers, Landmark, Bot, Sparkles, Zap, MessageCircle, ScanEye, Radio, Radar, Loader2, Signal, CheckCircle2, Check, LayoutGrid, ListFilter, Trophy, ArrowRight, Megaphone, Clock, Building2, Briefcase, Cloud, RefreshCw, BrainCircuit, Wand2 } from 'lucide-react';
+import { SwipeableModal } from '../components/Layout';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, Sector, ComposedChart, Line, CartesianGrid, Area } from 'recharts';
+import { analyzePortfolio } from '../services/analysisService';
+import { fetchFutureAnnouncements, FutureDividendPrediction } from '../services/dataService';
+import { formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface HomeProps {
   portfolio: AssetPosition[];
   dividendReceipts: DividendReceipt[];
   salesGain: number;
   totalDividendsReceived: number;
+  isAiLoading?: boolean;
   inflationRate?: number;
   invested: number;
   balance: number;
   totalAppreciation: number;
   transactions?: Transaction[];
-  // Relaxed type to any to prevent strict checking issues with upstream data
-  privacyMode?: any; 
+  privacyMode?: boolean;
   onViewAsset?: (ticker: string) => void;
-}
-
-interface RadarEvent {
-    id: string;
-    ticker: string;
-    type: string;
-    eventType: 'PAYMENT' | 'DATACOM';
-    date: string;
-    amount: number;
-    rate?: number;
 }
 
 interface HistoryItem {
@@ -40,304 +33,274 @@ interface HistoryItem {
     monthIndex: number;
 }
 
-interface MagicData {
+interface RadarEvent {
+    id: string;
     ticker: string;
-    currentPrice: number;
-    magicNumber: number;
-    owned: number;
-    progress: number;
-    monthlyYieldEst: number;
-    costToReach: number;
-    dy12m: number;
-    isFII: boolean;
+    type: string;
+    eventType: 'PAYMENT' | 'DATACOM';
+    status: 'CONFIRMED';
+    date: string;
+    amount: number;
+    rate: number;
 }
 
-// --- HELPERS ---
-
-const formatBRL = (val: any, hide: boolean): string => {
-  if (hide) return 'R$ ••••••';
+const formatBRL = (val: any, privacy = false) => {
+  if (privacy) return 'R$ ••••••';
   const num = typeof val === 'number' ? val : 0;
   return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 };
 
-const CHART_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#6366f1', '#f43f5e'];
+const formatPercent = (val: any, privacy = false) => {
+  if (privacy) return '•••%';
+  const num = typeof val === 'number' ? val : 0;
+  return `${num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+};
 
-// --- SUB-COMPONENTS ---
+const formatDateShort = (dateStr: string) => {
+    if (!dateStr || typeof dateStr !== 'string' || dateStr.length < 10) return '-';
+    const [year, month, day] = dateStr.split('-');
+    return `${day}/${month}`;
+};
 
-interface CustomTooltipProps {
-    active?: boolean;
-    payload?: any[];
-    label?: string;
-    hideValues: boolean;
-}
-
-const CustomBarTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, hideValues }) => { 
-    if (active && payload && payload.length) { 
-        const data = payload[0]; 
-        return (
-            <div className="bg-zinc-900/90 dark:bg-zinc-800/90 backdrop-blur-md p-2 rounded-xl shadow-xl border border-white/10 text-center min-w-[60px]">
-                <p className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">{String(label)} {data.payload.year}</p>
-                <p className="text-[10px] font-black text-white">{formatBRL(data.value, hideValues)}</p>
-            </div>
-        ); 
-    } 
-    return null; 
-}
-
-interface ProventosChartProps {
-    data: HistoryItem[];
-    hideValues: boolean;
-}
-
-const ProventosChart: React.FC<ProventosChartProps> = ({ data, hideValues }) => {
-    return (
-        <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
-                <XAxis 
-                    dataKey="name" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fontSize: 8, fill: '#a1a1aa', fontWeight: 700 }} 
-                    dy={5} 
-                    interval={0} 
-                />
-                <RechartsTooltip 
-                    cursor={{fill: 'transparent'}} 
-                    content={<CustomBarTooltip hideValues={hideValues} />} 
-                />
-                <Bar dataKey="value" radius={[3, 3, 3, 3]}>
-                    {data.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={'#10b981'} />
-                    ))}
-                </Bar>
-            </BarChart>
-        </ResponsiveContainer>
-    );
-}
-
-interface AgendaItemProps {
-    event: RadarEvent;
-    hideValues: boolean;
-}
-
-const AgendaItem: React.FC<AgendaItemProps> = ({ event, hideValues }) => {
+const AgendaItem: React.FC<{ event: RadarEvent, isLast: boolean, privacyMode: boolean }> = ({ event, isLast, privacyMode }) => {
     const isDatacom = event.eventType === 'DATACOM';
-    
-    let day = '--';
-    let weekDay = '---';
-    try {
-        const dateObj = new Date(event.date + 'T12:00:00');
-        if (!isNaN(dateObj.getTime())) {
-            day = String(dateObj.getDate());
-            weekDay = dateObj.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
-        }
-    } catch (e) {
-        // Fallback
-    }
-
-    const isPendingDate = event.date.startsWith('19') || event.date === '9999-99-99' || event.date === 'A Definir';
+    const statusColor = 'bg-emerald-500';
+    const typeLabel = event.type || (isDatacom ? 'DATACOM' : 'PROVENTO');
 
     return (
-        <div className={`flex items-center justify-between p-3 rounded-2xl border mb-1.5 shadow-sm transition-all ${isDatacom ? 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800'}`}>
-            <div className="flex items-center gap-3">
-                <div className={`flex flex-col items-center justify-center w-10 h-10 rounded-xl ${isDatacom ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-500' : isPendingDate ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'}`}>
-                    <span className="text-[8px] font-bold uppercase leading-none opacity-80">{isPendingDate ? '??' : weekDay}</span>
-                    <span className="text-sm font-black leading-tight">{isPendingDate ? '--' : day}</span>
-                </div>
-                <div>
-                    <h4 className="font-bold text-zinc-900 dark:text-white text-sm">{event.ticker}</h4>
-                    <div className="flex items-center gap-1.5">
-                        <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${isDatacom ? 'bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400' : 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'}`}>
-                            {isDatacom ? 'Data Com' : event.type}
+        <div className="flex gap-4 relative group">
+            <div className="flex flex-col items-center min-w-[40px]">
+                <span className="text-[10px] font-bold text-zinc-400 uppercase">{new Date(event.date).toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')}</span>
+                <span className="text-lg font-black text-zinc-900 dark:text-white leading-none">{event.date.split('-')[2]}</span>
+                {!isLast && <div className="w-px h-full bg-zinc-200 dark:bg-zinc-800 my-2"></div>}
+            </div>
+
+            <div className="flex-1 pb-6">
+                <div className="p-4 rounded-2xl border transition-all bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800">
+                    <div className="flex justify-between items-start mb-2">
+                        <div className="flex items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full ${statusColor}`}></div>
+                            <span className="text-sm font-black text-zinc-900 dark:text-white">{event.ticker}</span>
+                            <span className="text-[9px] font-bold bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-500 uppercase">{typeLabel}</span>
+                        </div>
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-500">
+                            Confirmado
                         </span>
-                        {isPendingDate && !isDatacom && <span className="text-[8px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400 px-1 rounded">A Definir</span>}
+                    </div>
+
+                    <div className="flex justify-between items-end">
+                        <div>
+                            {isDatacom ? (
+                                <p className="text-xs font-medium text-zinc-500">Data de Corte (Data Com)</p>
+                            ) : (
+                                <p className="text-[10px] text-zinc-400">
+                                    Pagamento em {formatDateShort(event.date)}
+                                </p>
+                            )}
+                        </div>
+                        {!isDatacom && (
+                            <div className="text-right">
+                                <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">
+                                    {formatBRL(event.amount, privacyMode)}
+                                </span>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
-            {!isDatacom && (
-                <div className="text-right">
-                    <span className="block text-emerald-600 dark:text-emerald-400 font-black text-xs">
-                        {formatBRL(event.amount, hideValues)}
-                    </span>
-                    <span className="text-[9px] text-zinc-400">Total Previsto</span>
-                </div>
-            )}
         </div>
     );
-}
+};
 
-// --- MAIN COMPONENT ---
+const CHART_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#6366f1', '#f43f5e'];
 
-function HomeComponent({ portfolio, dividendReceipts, salesGain = 0, totalDividendsReceived = 0, invested, balance, totalAppreciation, transactions, privacyMode, onViewAsset }: HomeProps) {
+const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, salesGain = 0, totalDividendsReceived = 0, inflationRate, invested, balance, totalAppreciation, transactions = [], privacyMode = false, onViewAsset }) => {
   const [showAgendaModal, setShowAgendaModal] = useState(false);
   const [showProventosModal, setShowProventosModal] = useState(false);
   const [showAllocationModal, setShowAllocationModal] = useState(false);
   
-  // Robust boolean conversion for privacyMode
-  const isPrivacyEnabled = privacyMode === true || String(privacyMode) === 'true';
+  const [selectedProventosMonth, setSelectedProventosMonth] = useState<string | null>(null);
+  const [proventosYearFilter, setProventosYearFilter] = useState<string>('12M'); 
   
-  const [showMagicModal, setShowMagicModal] = useState(false);
-  const [showGoalModal, setShowGoalModal] = useState(false);
-  const [goalTab, setGoalTab] = useState<'INCOME' | 'WEALTH'>('INCOME');
-  
-  const [monthlyGoal, setMonthlyGoal] = useState<number>(() => {
-      try {
-          const saved = localStorage.getItem('investfiis_monthly_goal');
-          const parsed = saved ? parseFloat(saved) : 1000;
-          return isNaN(parsed) || parsed <= 0 ? 1000 : parsed;
-      } catch { return 1000; }
-  });
-
-  const [patrimonyGoal, setPatrimonyGoal] = useState<number>(() => {
-      try {
-          const saved = localStorage.getItem('investfiis_patrimony_goal');
-          const parsed = saved ? parseFloat(saved) : 100000; 
-          return isNaN(parsed) || parsed <= 0 ? 100000 : parsed;
-      } catch { return 100000; }
-  });
-  
-  const [proventosYear, setProventosYear] = useState<string>('ALL');
-  const [proventosType, setProventosType] = useState<'ALL' | 'FII' | 'STOCK'>('ALL');
-  const [agendaFilter, setAgendaFilter] = useState<'ALL' | 'PAYMENT' | 'DATACOM'>('ALL');
-  const [allocationTab, setAllocationTab] = useState<'CLASS' | 'SECTOR'>('CLASS');
+  const [allocationTab, setAllocationTab] = useState<'CLASS' | 'ASSET' | 'SECTOR'>('CLASS');
   const [activeIndexClass, setActiveIndexClass] = useState<number | undefined>(undefined);
-
-  const handleGoalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const rawValue = e.target.value.replace(/\D/g, ''); 
-      const numericValue = rawValue ? parseInt(rawValue, 10) / 100 : 0;
-      
-      if (goalTab === 'INCOME') {
-          setMonthlyGoal(numericValue);
-          localStorage.setItem('investfiis_monthly_goal', String(numericValue));
-      } else {
-          setPatrimonyGoal(numericValue);
-          localStorage.setItem('investfiis_patrimony_goal', String(numericValue));
-      }
-  };
-
-  const formattedGoalValue = useMemo(() => {
-      const val = goalTab === 'INCOME' ? monthlyGoal : patrimonyGoal;
-      return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  }, [goalTab, monthlyGoal, patrimonyGoal]);
-
-  const magicData = useMemo(() => {
-      const data: MagicData[] = [];
-      portfolio.forEach(p => {
-          if (p.currentPrice && p.currentPrice > 0 && p.dy_12m && p.dy_12m > 0) {
-              const annualYieldVal = p.currentPrice * (p.dy_12m / 100);
-              const monthlyYieldEst = annualYieldVal / 12;
-              
-              if (monthlyYieldEst > 0) {
-                  const magicNumber = Math.ceil(p.currentPrice / monthlyYieldEst);
-                  if (magicNumber < 200000) {
-                      const missing = Math.max(0, magicNumber - p.quantity);
-                      data.push({
-                          ticker: p.ticker,
-                          currentPrice: p.currentPrice,
-                          magicNumber,
-                          owned: p.quantity,
-                          progress: Math.min((p.quantity / magicNumber) * 100, 100),
-                          monthlyYieldEst,
-                          costToReach: missing * p.currentPrice,
-                          dy12m: p.dy_12m,
-                          isFII: p.assetType === AssetType.FII
-                      });
-                  }
-              }
-          }
-      });
-      return data.sort((a,b) => b.progress - a.progress);
-  }, [portfolio]);
-
-  const magicReachedCount = magicData.filter(m => m.progress >= 100).length;
-  const totalCostToReachAll = magicData.reduce((acc, curr) => acc + curr.costToReach, 0);
-
+  
   const [radarData, setRadarData] = useState<{
       events: RadarEvent[];
+      summary: { count: number; total: number; confirmed: number };
+      grouped: Record<string, RadarEvent[]>;
       loading: boolean;
-  }>({ events: [], loading: true });
+      scanStatus: string; 
+  }>(() => {
+      try {
+          const saved = localStorage.getItem('investfiis_radar_cache_v4'); 
+          if (saved) {
+              const parsed = JSON.parse(saved);
+              const age = Date.now() - (parsed.timestamp || 0);
+              if (age < 4 * 3600 * 1000) {
+                  return { ...parsed.data, loading: false, scanStatus: '' };
+              }
+          }
+      } catch {}
+      return { events: [], summary: { count: 0, total: 0, confirmed: 0 }, grouped: {}, loading: true, scanStatus: '' };
+  });
+
+  const [triggerRadar, setTriggerRadar] = useState(false);
 
   useEffect(() => {
       let isActive = true;
-      const runRadar = async () => {
+      const loadRadar = async () => {
+          if (triggerRadar || radarData.events.length === 0) {
+              setRadarData(prev => ({ ...prev, loading: true, scanStatus: 'Buscando dados...' }));
+          }
+          
           try {
-              const predictions = await fetchFutureAnnouncements(portfolio);
+              // Busca dados "oficiais" do robô (que consulta o Supabase)
+              // O robô já filtra por data >= ontem, então traz eventos futuros/recentes.
+              const futureAnnouncements = await fetchFutureAnnouncements(portfolio);
               if (!isActive) return;
 
               const todayStr = new Date().toISOString().split('T')[0];
               const atomEvents: RadarEvent[] = [];
-              const seenKeys = new Set<string>();
+              const seenKeys = new Set<string>(); // Chave única para deduplicação rígida
 
-              const addEvent = (ticker: string, date: string, amount: number, rate: number, type: string, evtType: 'PAYMENT' | 'DATACOM') => {
-                  const key = `${ticker}-${evtType}-${date}-${rate.toFixed(4)}`;
-                  if (!seenKeys.has(key)) {
-                      const isFuture = date >= todayStr || date.startsWith('9999') || date === 'A Definir';
-                      if (isFuture) {
-                          atomEvents.push({ id: key, ticker, type, eventType: evtType, date, amount, rate: rate }); 
+              // Função auxiliar para gerar chave única do evento
+              const getEventKey = (ticker: string, date: string, rate: number, evtType: string) => {
+                  return `${ticker}-${evtType}-${date}-${rate.toFixed(4)}`;
+              };
+
+              // 1. Processa dados retornados pelo Robô (Prioritários para Agenda)
+              futureAnnouncements.forEach(p => {
+                  if (p.paymentDate && p.paymentDate >= todayStr) {
+                      const key = getEventKey(p.ticker, p.paymentDate, p.rate, 'PAYMENT');
+                      if (!seenKeys.has(key)) {
+                          atomEvents.push({
+                              id: `robot-pay-${key}`,
+                              ticker: p.ticker,
+                              type: p.type,
+                              eventType: 'PAYMENT',
+                              status: 'CONFIRMED',
+                              date: p.paymentDate,
+                              amount: p.projectedTotal,
+                              rate: p.rate
+                          });
                           seenKeys.add(key);
                       }
                   }
-              };
 
-              const isValidDate = (d: string) => /^\d{4}-\d{2}-\d{2}$/.test(d);
-
-              dividendReceipts.forEach(r => {
-                  if (r.paymentDate && isValidDate(r.paymentDate) && r.paymentDate >= todayStr) {
-                      addEvent(r.ticker, r.paymentDate, r.totalReceived, r.rate, r.type, 'PAYMENT');
-                  }
-                  if (r.dateCom && isValidDate(r.dateCom) && r.dateCom >= todayStr) {
-                      addEvent(r.ticker, r.dateCom, 0, r.rate, r.type, 'DATACOM');
+                  if (p.dateCom && p.dateCom >= todayStr) {
+                      const key = getEventKey(p.ticker, p.dateCom, p.rate, 'DATACOM');
+                      if (!seenKeys.has(key)) {
+                          atomEvents.push({
+                              id: `robot-com-${key}`,
+                              ticker: p.ticker,
+                              type: p.type,
+                              eventType: 'DATACOM',
+                              status: 'CONFIRMED',
+                              date: p.dateCom,
+                              amount: 0,
+                              rate: p.rate
+                          });
+                          seenKeys.add(key);
+                      }
                   }
               });
 
-              predictions.forEach(p => {
-                  const payDate = (p.paymentDate && p.paymentDate !== 'A Definir') ? p.paymentDate : '9999-99-99';
-                  addEvent(p.ticker, payDate, p.projectedTotal, p.rate, p.type, 'PAYMENT');
-                  
-                  if (p.dateCom && p.dateCom !== 'Já ocorreu') {
-                      addEvent(p.ticker, p.dateCom, 0, p.rate, p.type, 'DATACOM');
+              // 2. Processa dividendReceipts locais (Histórico/Cache Local)
+              // Serve como fallback caso o robô falhe ou o App.tsx tenha dados mais frescos de cache
+              dividendReceipts.forEach(r => {
+                  if (r.paymentDate && r.paymentDate >= todayStr) {
+                      const key = getEventKey(r.ticker, r.paymentDate, r.rate, 'PAYMENT');
+                      if (!seenKeys.has(key)) {
+                          atomEvents.push({
+                              id: `local-pay-${key}`,
+                              ticker: r.ticker,
+                              type: r.type,
+                              eventType: 'PAYMENT',
+                              status: 'CONFIRMED',
+                              date: r.paymentDate,
+                              amount: r.totalReceived,
+                              rate: r.rate
+                          });
+                          seenKeys.add(key);
+                      }
+                  }
+                  if (r.dateCom && r.dateCom >= todayStr) {
+                      const key = getEventKey(r.ticker, r.dateCom, r.rate, 'DATACOM');
+                      if (!seenKeys.has(key)) {
+                          atomEvents.push({
+                              id: `local-com-${key}`,
+                              ticker: r.ticker,
+                              type: r.type,
+                              eventType: 'DATACOM',
+                              status: 'CONFIRMED',
+                              date: r.dateCom,
+                              amount: 0, 
+                              rate: r.rate
+                          });
+                          seenKeys.add(key);
+                      }
                   }
               });
 
               atomEvents.sort((a, b) => a.date.localeCompare(b.date));
-              setRadarData({ events: atomEvents, loading: false });
+
+              let sumConfirmed = 0;
+              atomEvents.forEach(e => {
+                  if (e.eventType === 'PAYMENT' && e.status === 'CONFIRMED') {
+                      sumConfirmed += (e.amount || 0);
+                  }
+              });
+
+              const grouped: Record<string, RadarEvent[]> = {};
+              
+              atomEvents.forEach((ev) => {
+                  const date = new Date(ev.date + 'T00:00:00');
+                  const key = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+                  const keyCap = key.charAt(0).toUpperCase() + key.slice(1);
+                  
+                  if (!grouped[keyCap]) grouped[keyCap] = [];
+                  grouped[keyCap].push(ev);
+              });
+
+              const newData = {
+                  events: atomEvents,
+                  summary: { 
+                      count: atomEvents.length, 
+                      total: sumConfirmed,
+                      confirmed: sumConfirmed
+                  },
+                  grouped,
+                  loading: false,
+                  scanStatus: ''
+              };
+
+              setRadarData(newData);
+              
+              localStorage.setItem('investfiis_radar_cache_v4', JSON.stringify({
+                  timestamp: Date.now(),
+                  data: newData
+              }));
+
           } catch (e) {
               console.error(e);
-              if (isActive) setRadarData(prev => ({ ...prev, loading: false }));
+              if (isActive) setRadarData(prev => ({ ...prev, loading: false, scanStatus: 'Erro na busca' }));
           }
       };
-      runRadar();
-      return () => { isActive = false; };
-  }, [portfolio, dividendReceipts]);
 
-  const filteredAgenda = useMemo(() => {
-      let events = radarData.events;
-      if (agendaFilter !== 'ALL') {
-          events = events.filter(e => e.eventType === agendaFilter);
+      if (radarData.events.length === 0 || triggerRadar) {
+          loadRadar();
       }
       
-      const totalConfirmed = events.reduce((acc, e) => e.eventType === 'PAYMENT' ? acc + e.amount : acc, 0);
-      
-      const grouped: Record<string, RadarEvent[]> = {};
-      events.forEach(ev => {
-          try {
-              let keyCap = 'A Definir';
-              if (ev.date !== '9999-99-99' && ev.date !== 'A Definir' && /^\d{4}-\d{2}-\d{2}$/.test(ev.date)) {
-                  const d = new Date(ev.date + 'T12:00:00');
-                  if (!isNaN(d.getTime())) {
-                      const monthKey = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-                      keyCap = monthKey.charAt(0).toUpperCase() + monthKey.slice(1);
-                  }
-              }
-              if (!grouped[keyCap]) grouped[keyCap] = [];
-              grouped[keyCap].push(ev);
-          } catch {}
-      });
+      return () => { isActive = false; };
+  }, [portfolio, dividendReceipts, triggerRadar]);
 
-      return { grouped, totalConfirmed, count: events.length };
-  }, [radarData.events, agendaFilter]);
+  const handleRefreshAgenda = useCallback(() => {
+      setTriggerRadar(true);
+      setTimeout(() => setTriggerRadar(false), 500); // Reset trigger
+  }, []);
 
-  const { typeData, classChartData, sectorChartData } = useMemo(() => {
+  const { typeData, classChartData, assetsChartData, sectorChartData, topConcentration } = useMemo(() => {
       let fiisTotal = 0; let stocksTotal = 0;
       const enriched = (portfolio || []).map(p => {
           const val = (p.currentPrice || p.averagePrice) * p.quantity;
@@ -345,428 +308,549 @@ function HomeComponent({ portfolio, dividendReceipts, salesGain = 0, totalDivide
           return { ...p, totalValue: val };
       });
       const total = fiisTotal + stocksTotal || 1;
-      
-      const classChartData = [
-          { name: 'FIIs', value: fiisTotal, color: '#6366f1', percent: (fiisTotal / total) * 100 }, 
-          { name: 'Ações', value: stocksTotal, color: '#0ea5e9', percent: (stocksTotal / total) * 100 }
-      ].filter(d => d.value > 0);
-      
+      const assetsChartData = enriched.sort((a,b) => b.totalValue - a.totalValue).map((a, idx) => ({ name: a.ticker, value: a.totalValue, percent: (a.totalValue / total) * 100, color: CHART_COLORS[idx % CHART_COLORS.length] }));
+      const classChartData = [{ name: 'FIIs', value: fiisTotal, color: '#6366f1', percent: (fiisTotal / total) * 100 }, { name: 'Ações', value: stocksTotal, color: '#0ea5e9', percent: (stocksTotal / total) * 100 }].filter(d => d.value > 0);
       const sectorMap: Record<string, number> = {};
       enriched.forEach(p => { const s = p.segment || 'Outros'; sectorMap[s] = (sectorMap[s] || 0) + p.totalValue; });
-      const sectorChartData = Object.entries(sectorMap)
-          .map(([name, value], i) => ({ name, value, percent: (value / total) * 100, color: CHART_COLORS[i % CHART_COLORS.length] }))
-          .sort((a,b) => b.value - a.value);
-      
-      return { typeData: { total }, classChartData, sectorChartData };
+      const sectorChartData = Object.entries(sectorMap).map(([name, value], i) => ({ name, value, percent: (value / total) * 100, color: CHART_COLORS[i % CHART_COLORS.length] })).sort((a,b) => b.value - a.value);
+      const topConcentration = assetsChartData.slice(0, 3).reduce((acc, curr) => acc + curr.percent, 0);
+      return { typeData: { fiis: { percent: (fiisTotal/total)*100 }, stocks: { percent: (stocksTotal/total)*100 }, total }, classChartData, assetsChartData, sectorChartData, topConcentration };
   }, [portfolio]);
 
-  const { chartData, groupedProventos, proventosTotal, proventosAverage, availableYears } = useMemo(() => {
-      const todayStr = new Date().toISOString().split('T')[0];
-      const filteredReceipts = dividendReceipts.filter(r => {
-          if (!r.paymentDate || !/^\d{4}-\d{2}-\d{2}$/.test(r.paymentDate)) return false;
-          if (r.paymentDate > todayStr) return false;
-          
-          let isTypeMatch = true;
-          if (proventosType === 'FII') {
-              isTypeMatch = r.assetType === AssetType.FII || (r.ticker && (r.ticker.endsWith('11') || r.ticker.endsWith('11B')));
-          } else if (proventosType === 'STOCK') {
-              isTypeMatch = r.assetType === AssetType.STOCK || (r.ticker && !r.ticker.endsWith('11') && !r.ticker.endsWith('11B'));
-          }
-          return isTypeMatch;
-      });
-
-      const yearsSet = new Set(filteredReceipts.map(r => r.paymentDate.substring(0, 4)));
-      const years = Array.from(yearsSet).sort().reverse();
-
-      const displayReceipts = filteredReceipts.filter(r => {
-          return proventosYear === 'ALL' || r.paymentDate.startsWith(proventosYear);
-      });
-
-      const total = displayReceipts.reduce((acc, r) => acc + r.totalReceived, 0);
+  const { received, fullHistoryData, availableYears, displayedChartData, displayedReceipts, stats, splitData, last6MonthsData } = useMemo(() => {
+      let receivedTotal = 0;
+      const receiptsMap: Record<string, DividendReceipt[]> = {};
+      const monthlySum: Record<string, number> = {};
       
-      let average = 0;
-      if (displayReceipts.length > 0) {
-          const months = new Set(displayReceipts.map(r => r.paymentDate.substring(0, 7))).size;
-          average = total / (months || 1);
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      (dividendReceipts || []).forEach(r => {
+          if (r.paymentDate && r.paymentDate <= todayStr) {
+              receivedTotal += r.totalReceived;
+              const key = r.paymentDate.substring(0, 7); 
+              
+              monthlySum[key] = (monthlySum[key] || 0) + r.totalReceived;
+              if (!receiptsMap[key]) receiptsMap[key] = [];
+              receiptsMap[key].push(r);
+          }
+      });
+
+      const sortedKeys = Object.keys(monthlySum).sort();
+      const fullHistory: HistoryItem[] = sortedKeys.map(date => {
+          const d = new Date(date + '-02'); 
+          return {
+              fullDate: date,
+              name: d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', ''),
+              value: monthlySum[date],
+              year: d.getFullYear(),
+              monthIndex: d.getMonth()
+          };
+      });
+
+      const last6Months = fullHistory.slice(-6);
+      const last6MonthsData = [...last6Months];
+      while(last6MonthsData.length < 6) {
+          last6MonthsData.unshift({ fullDate: '', name: '', value: 0, year: 0, monthIndex: 0 });
+      }
+      const maxIn6 = Math.max(...last6MonthsData.map(d => d.value), 1);
+      const normalized6 = last6MonthsData.map(d => ({ ...d, height: (d.value / maxIn6) * 100 }));
+
+      const years = Array.from(new Set(fullHistory.map(h => h.year))).sort((a,b) => b - a);
+
+      let chartData: HistoryItem[] = [];
+      if (proventosYearFilter === '12M') {
+          chartData = fullHistory.slice(-12);
+      } else {
+          const targetYear = parseInt(proventosYearFilter);
+          if (!isNaN(targetYear)) {
+              for (let m = 0; m < 12; m++) {
+                  const key = `${targetYear}-${String(m+1).padStart(2, '0')}`;
+                  const existing = fullHistory.find(h => h.fullDate === key);
+                  if (existing) {
+                      chartData.push(existing);
+                  } else {
+                      const d = new Date(targetYear, m, 2);
+                      chartData.push({
+                          fullDate: key,
+                          name: d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', ''),
+                          value: 0,
+                          year: targetYear,
+                          monthIndex: m
+                      });
+                  }
+              }
+          }
       }
 
-      const grouped: Record<string, { items: DividendReceipt[], total: number }> = {};
-      
-      displayReceipts.sort((a,b) => b.paymentDate.localeCompare(a.paymentDate)).forEach(r => {
-          try {
-              const d = new Date(r.paymentDate + 'T12:00:00');
-              if (isNaN(d.getTime())) return;
-              const key = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-              const keyCap = key.charAt(0).toUpperCase() + key.slice(1);
-              if (!grouped[keyCap]) grouped[keyCap] = { items: [], total: 0 };
-              grouped[keyCap].items.push(r);
-              grouped[keyCap].total += r.totalReceived;
-          } catch {}
-      });
+      const periodTotal = chartData.reduce((acc: number, curr: HistoryItem) => acc + curr.value, 0);
+      const activeMonths = chartData.filter(d => d.value > 0).length;
+      const periodAvg = activeMonths > 0 ? periodTotal / activeMonths : 0;
+      const periodMax = Math.max(...chartData.map(d => d.value), 0);
 
-      const monthlySum: Record<string, number> = {};
-      filteredReceipts.forEach(r => {
-          const key = r.paymentDate.substring(0, 7); 
-          monthlySum[key] = (monthlySum[key] || 0) + r.totalReceived;
-      });
+      let listReceipts: DividendReceipt[] = [];
+      if (selectedProventosMonth) {
+          listReceipts = receiptsMap[selectedProventosMonth] || [];
+      } else {
+          const visibleMonths = new Set(chartData.map(c => c.fullDate));
+          Object.keys(receiptsMap).forEach(key => {
+              if (visibleMonths.has(key)) {
+                  listReceipts.push(...receiptsMap[key]);
+              }
+          });
+      }
+      listReceipts.sort((a,b) => (b.paymentDate || '').localeCompare(a.paymentDate || ''));
 
-      const fullHistory: HistoryItem[] = Object.keys(monthlySum).sort().map(date => {
-          const [year, month] = date.split('-').map(Number);
-          const d = new Date(year, month - 1, 2, 12, 0, 0);
-          let monthName = '---';
-          try {
-              if (!isNaN(d.getTime())) monthName = d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
-          } catch {}
-          return { fullDate: date, name: monthName, value: monthlySum[date], year: year, monthIndex: month - 1 };
+      let splitFII = 0;
+      let splitStock = 0;
+      listReceipts.forEach(r => {
+          if (r.assetType === AssetType.FII) splitFII += r.totalReceived;
+          else splitStock += r.totalReceived;
       });
+      const splitTotal = splitFII + splitStock || 1;
 
-      return { chartData: fullHistory.slice(-12), groupedProventos: grouped, proventosTotal: total, proventosAverage: average, availableYears: years };
-  }, [dividendReceipts, proventosType, proventosYear]);
+      return { 
+          received: receivedTotal, 
+          fullHistoryData: fullHistory, 
+          availableYears: years,
+          displayedChartData: chartData,
+          displayedReceipts: listReceipts,
+          stats: { periodTotal, periodAvg, periodMax },
+          splitData: { fii: splitFII, stock: splitStock, fiiPct: (splitFII/splitTotal)*100, stockPct: (splitStock/splitTotal)*100 },
+          last6MonthsData: normalized6
+      };
+  }, [dividendReceipts, proventosYearFilter, selectedProventosMonth]);
+
+  const cardBaseClass = "bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 transition-all press-effect relative overflow-hidden group shadow-2xl shadow-black/5 dark:shadow-black/20";
+  const hoverBorderClass = "hover:border-zinc-300 dark:hover:border-zinc-700";
+  const modalHeaderIconClass = "w-12 h-12 rounded-2xl flex items-center justify-center border shadow-sm";
+  
+  const handleBarClick = useCallback((data: any) => { 
+      if (data && data.activePayload && data.activePayload.length > 0) { 
+          const item = data.activePayload[0].payload; 
+          if (item && item.fullDate) {
+              setSelectedProventosMonth(prev => prev === item.fullDate ? null : item.fullDate); 
+          }
+      } 
+  }, []);
+  
+  const CustomBarTooltip = ({ active, payload, label }: any) => { if (active && payload && payload.length) { const data = payload[0]; return (<div className="bg-white dark:bg-zinc-800 p-3 rounded-xl shadow-xl border border-zinc-100 dark:border-zinc-700 text-center"><p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">{label} {data.payload.year}</p><p className="text-sm font-black text-emerald-600 dark:text-emerald-400">{formatBRL(data.value, privacyMode)}</p></div>); } return null; };
+  
+  const CustomPieTooltip = ({ active, payload }: any) => { if (active && payload && payload.length) { const data = payload[0]; return (<div className="bg-white dark:bg-zinc-800 p-3 rounded-xl shadow-xl border border-zinc-100 dark:border-zinc-700"><p className="text-xs font-bold text-zinc-900 dark:text-white mb-1">{data.name}</p><p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{formatBRL(data.value, privacyMode)} ({data.payload.percent.toFixed(1)}%)</p></div>); } return null; };
 
   const totalReturn = (totalAppreciation + salesGain) + totalDividendsReceived;
   const totalReturnPercent = invested > 0 ? (totalReturn / invested) * 100 : 0;
-  
-  const safeAverage = proventosAverage || 0;
-  const safeIncomeGoal = monthlyGoal || 1; 
-  const incomeProgress = Math.min((safeAverage / safeIncomeGoal) * 100, 100);
-
-  const safePatrimonyGoal = patrimonyGoal || 1;
-  const patrimonyProgress = Math.min((balance / safePatrimonyGoal) * 100, 100);
 
   return (
-    <div className="space-y-6 pb-8">
-      <div className="relative overflow-hidden bg-white dark:bg-zinc-900 rounded-[2.5rem] p-6 shadow-xl shadow-zinc-200/50 dark:shadow-black/50 border border-zinc-100 dark:border-zinc-800 anim-scale-in group">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-emerald-500/10 to-sky-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none transition-opacity opacity-50 group-hover:opacity-100"></div>
+    <div className="space-y-4 pb-8">
+      <div className="anim-stagger-item" style={{ animationDelay: '0ms' }}>
+        <div className="w-full bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 p-6 relative overflow-hidden group shadow-2xl shadow-zinc-200/50 dark:shadow-black/50">
+            <div className="absolute top-[-50%] right-[-10%] w-64 h-64 bg-emerald-500/10 dark:bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="absolute bottom-[-20%] left-[-20%] w-48 h-48 bg-indigo-500/5 dark:bg-indigo-500/5 rounded-full blur-3xl pointer-events-none"></div>
 
-          <div className="relative z-10 flex flex-col items-center text-center mb-6">
-              <span className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-2 flex items-center gap-1.5">
-                  <Wallet className="w-3 h-3" /> Patrimônio Líquido
-              </span>
-              <h2 className="text-4xl sm:text-5xl font-black text-zinc-900 dark:text-white tracking-tighter bg-clip-text text-transparent bg-gradient-to-b from-zinc-900 to-zinc-600 dark:from-white dark:to-zinc-400">
-                  {formatBRL(balance, isPrivacyEnabled)}
-              </h2>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 relative z-10">
-              <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800">
-                  <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-1 flex items-center gap-1">
-                      <Layers className="w-2.5 h-2.5" /> Investido
-                  </p>
-                  <p className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(invested, isPrivacyEnabled)}</p>
-              </div>
-              
-              <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800">
-                  <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-1 flex items-center gap-1">
-                      <TrendingUp className="w-2.5 h-2.5" /> Retorno Total
-                  </p>
-                  <div className={`flex items-baseline gap-1 ${totalReturn >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                      <span className="text-sm font-black">{totalReturnPercent > 0 ? '+' : ''}{totalReturnPercent.toFixed(2)}%</span>
-                  </div>
-              </div>
-
-              <div className="col-span-2 bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 flex justify-between items-center px-5 transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800">
-                   <div className="text-left">
-                        <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-0.5">Valorização</p>
-                        <p className={`text-xs font-black ${totalAppreciation >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                            {totalAppreciation > 0 ? '+' : ''}{formatBRL(totalAppreciation, isPrivacyEnabled)}
+            <div className="relative z-10 flex flex-col h-full">
+                <div className="flex justify-between items-start mb-6">
+                    <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 mb-1 flex items-center gap-2">
+                            <Wallet className="w-3 h-3" /> Patrimônio Total
                         </p>
-                   </div>
-                   <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-700 mx-2"></div>
-                   <div className="text-right">
-                        <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-0.5">Proventos</p>
-                        <p className="text-xs font-black text-indigo-600 dark:text-indigo-400">
-                            {formatBRL(totalDividendsReceived, isPrivacyEnabled)}
-                        </p>
-                   </div>
-              </div>
-          </div>
+                        <h2 className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter tabular-nums leading-none">
+                            {formatBRL(balance, privacyMode)}
+                        </h2>
+                    </div>
+                    
+                    <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border backdrop-blur-sm ${totalReturn >= 0 ? 'bg-emerald-50/80 border-emerald-100 text-emerald-700 dark:bg-emerald-900/20 dark:border-emerald-900/30 dark:text-emerald-400' : 'bg-rose-50/80 border-rose-100 text-rose-700 dark:bg-rose-900/20 dark:border-rose-900/30 dark:text-rose-400'}`}>
+                        {totalReturn >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                        <div className="flex flex-col items-end leading-none">
+                            <span className="text-[10px] font-black">{totalReturnPercent.toFixed(2)}%</span>
+                            <span className="text-[7px] font-bold opacity-70 uppercase">Retorno Real</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="h-px w-full bg-gradient-to-r from-transparent via-zinc-200 dark:via-zinc-800 to-transparent mb-5 opacity-50"></div>
+
+                <div className="grid grid-cols-3 gap-2">
+                    <div className="flex flex-col gap-1 p-2 rounded-xl transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1">
+                            <Coins className="w-3 h-3" /> Custo
+                        </span>
+                        <span className="text-xs font-black text-zinc-900 dark:text-white truncate">
+                            {formatBRL(invested, privacyMode)}
+                        </span>
+                    </div>
+
+                    <div className="flex flex-col gap-1 p-2 rounded-xl transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50 border-l border-zinc-100 dark:border-zinc-800 pl-4">
+                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1">
+                            <TrendingUp className="w-3 h-3" /> Resultado
+                        </span>
+                        <span className={`text-xs font-black truncate ${totalAppreciation + salesGain >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}`}>
+                            {totalAppreciation + salesGain > 0 ? '+' : ''}{formatBRL(totalAppreciation + salesGain, privacyMode)}
+                        </span>
+                    </div>
+
+                    <div className="flex flex-col gap-1 p-2 rounded-xl transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50 border-l border-zinc-100 dark:border-zinc-800 pl-4">
+                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1">
+                            <Banknote className="w-3 h-3" /> Proventos
+                        </span>
+                        <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 truncate">
+                            +{formatBRL(totalDividendsReceived, privacyMode)}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 anim-slide-up">
-          <button onClick={() => setShowAgendaModal(true)} className="bg-indigo-600 dark:bg-indigo-600 text-white rounded-[2rem] p-6 shadow-lg shadow-indigo-600/20 relative overflow-hidden group press-effect h-44 flex flex-col justify-between">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform duration-500"><CalendarClock className="w-24 h-24" /></div>
-              <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm z-10"><CalendarClock className="w-5 h-5" /></div>
-              <div className="relative z-10 text-left">
-                  <div className="flex items-baseline gap-1 mb-1">
-                      <span className="text-3xl font-black tracking-tighter">{radarData.events.length}</span>
-                      <span className="text-xs font-bold opacity-60 uppercase">Agenda</span>
-                  </div>
-                  <p className="text-[10px] font-medium opacity-80 leading-tight">Datacoms e pagamentos futuros.</p>
-              </div>
-          </button>
+      <div className="anim-stagger-item" style={{ animationDelay: '100ms' }}>
+        <button onClick={() => setShowAgendaModal(true)} className={`w-full text-left p-5 flex justify-between items-center ${cardBaseClass} ${hoverBorderClass}`}>
+            <div className="flex items-center gap-4 relative z-10">
+                <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/30 shadow-sm">
+                    <CalendarClock className="w-6 h-6" strokeWidth={1.5} />
+                </div>
+                <div>
+                    <h3 className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">Agenda de Proventos</h3>
+                    <div className="flex items-center gap-2 mt-0.5">
+                        {radarData.loading ? (
+                            <span className="text-[10px] font-bold text-zinc-400 animate-pulse">{radarData.scanStatus || 'Atualizando...'}</span>
+                        ) : (
+                            <>
+                                <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
+                                    {radarData.summary.count > 0 ? `${radarData.summary.count} Eventos` : 'Sem eventos próximos'}
+                                </span>
+                                {radarData.summary.total > 0 && (
+                                    <>
+                                        <div className="w-1 h-1 rounded-full bg-zinc-300 dark:bg-zinc-700"></div>
+                                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                                            {formatBRL(radarData.summary.total, privacyMode)}
+                                        </span>
+                                    </>
+                                )}
+                            </>
+                        )}
+                    </div>
+                </div>
+            </div>
+            <div className="flex items-center gap-3 relative z-10">
+                <div className="bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 p-2 rounded-xl border border-zinc-200 dark:border-zinc-700 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/20 group-hover:text-indigo-500 transition-colors">
+                    <ArrowRight className="w-4 h-4" />
+                </div>
+            </div>
+        </button>
+      </div>
+      
+      <div className="anim-stagger-item" style={{ animationDelay: '200ms' }}>
+        <button onClick={() => setShowProventosModal(true)} className={`w-full text-left p-5 flex justify-between items-center ${cardBaseClass} ${hoverBorderClass}`}>
+            <div className="flex items-center gap-4 relative z-10 w-full justify-between">
+                <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center border border-emerald-200 dark:border-emerald-900/30 shadow-sm">
+                        <CircleDollarSign className="w-6 h-6" strokeWidth={1.5} />
+                    </div>
+                    <div>
+                        <h3 className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">Renda Passiva</h3>
+                        <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
+                                Total: {formatBRL(received, privacyMode)}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div className="flex items-end gap-1 h-8 opacity-70">
+                    {last6MonthsData.map((d, i) => (
+                        <div 
+                            key={i} 
+                            className="w-1.5 rounded-t-sm bg-emerald-300 dark:bg-emerald-800"
+                            style={{ height: `${Math.max(d.height, 10)}%` }}
+                        ></div>
+                    ))}
+                </div>
+            </div>
+        </button>
+      </div>
 
-          <div className="flex flex-col gap-4 h-44">
-              <button onClick={() => setShowProventosModal(true)} className="flex-1 bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm press-effect relative overflow-hidden group flex flex-col justify-center">
-                  <div className="absolute right-3 top-3 opacity-5 dark:opacity-10"><CircleDollarSign className="w-12 h-12 text-emerald-500" /></div>
-                  <div className="flex items-center gap-3 relative z-10">
-                      <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0"><CircleDollarSign className="w-5 h-5" /></div>
-                      <div className="text-left">
-                          <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Recebidos</span>
-                          <span className="text-sm font-black text-zinc-900 dark:text-white truncate block">{formatBRL(totalDividendsReceived, isPrivacyEnabled)}</span>
-                      </div>
-                  </div>
-              </button>
-
-              <button onClick={() => setShowAllocationModal(true)} className="flex-1 bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm press-effect relative overflow-hidden group flex flex-col justify-center">
-                  <div className="absolute right-3 top-3 opacity-5 dark:opacity-10"><PieIcon className="w-12 h-12 text-blue-500" /></div>
-                  <div className="flex items-center gap-3 relative z-10">
-                      <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0"><PieIcon className="w-5 h-5" /></div>
-                      <div className="text-left">
-                          <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Carteira</span>
-                          <span className="text-sm font-black text-zinc-900 dark:text-white truncate block">{classChartData.length} Classes</span>
-                      </div>
-                  </div>
-              </button>
-          </div>
-
-          <button onClick={() => setShowMagicModal(true)} className="bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm press-effect relative overflow-hidden group h-32 flex flex-col justify-between">
-              <div className="absolute top-2 right-2 opacity-5 dark:opacity-10 text-purple-500"><Wand2 className="w-16 h-16" /></div>
-              <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0"><Sparkles className="w-5 h-5" /></div>
-              <div className="text-left relative z-10">
-                  <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Nº Mágico</span>
-                  <div className="flex items-baseline gap-1.5">
-                      <span className="text-2xl font-black text-zinc-900 dark:text-white">{magicReachedCount}</span>
-                      <span className="text-[9px] font-bold text-zinc-500">atingidos</span>
-                  </div>
-              </div>
-          </button>
-
-          <button onClick={() => setShowGoalModal(true)} className="bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm press-effect relative overflow-hidden group h-32 flex flex-col justify-between">
-              <div className="absolute top-2 right-2 opacity-5 dark:opacity-10 text-amber-500"><Target className="w-16 h-16" /></div>
-              <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0"><Target className="w-5 h-5" /></div>
-              <div className="text-left relative z-10 w-full">
-                  <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Meta Principal</span>
-                  <div className="w-full bg-zinc-100 dark:bg-zinc-800 h-1.5 rounded-full overflow-hidden mb-1">
-                      <div className="h-full bg-amber-500 rounded-full transition-all duration-500" style={{ width: `${goalTab === 'INCOME' ? incomeProgress : patrimonyProgress}%` }}></div>
-                  </div>
-                  <span className="text-[10px] font-black text-zinc-900 dark:text-white float-right">{(goalTab === 'INCOME' ? incomeProgress : patrimonyProgress).toFixed(0)}%</span>
-              </div>
-          </button>
+      <div className="anim-stagger-item" style={{ animationDelay: '300ms' }}>
+        <button onClick={() => setShowAllocationModal(true)} className={`w-full text-left p-5 ${cardBaseClass} ${hoverBorderClass}`}>
+            <div className="flex justify-between items-end mb-5 relative z-10">
+                <div className="flex items-center gap-4"><div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center border border-blue-200 dark:border-blue-900/30"><PieIcon className="w-6 h-6" /></div><div><h3 className="text-lg font-black text-zinc-900 dark:text-white tracking-tight">Alocação</h3><p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Diversificação da Carteira</p></div></div>
+                <div className="text-right"><div className="bg-zinc-100 dark:bg-zinc-800 p-2 rounded-xl"><ArrowUpRight className="w-4 h-4 text-zinc-400" /></div></div>
+            </div>
+            <div className="relative z-10"><div className="flex h-3 w-full rounded-full overflow-hidden bg-zinc-100 dark:bg-zinc-800 mb-3 shadow-inner"><div style={{ width: `${typeData.fiis.percent}%` }} className="h-full bg-indigo-500 transition-all duration-1000 ease-out"></div><div style={{ width: `${typeData.stocks.percent}%` }} className="h-full bg-sky-500 transition-all duration-1000 ease-out"></div></div><div className="flex justify-between text-[10px] font-black uppercase tracking-widest"><div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-indigo-500"></div><span className="text-indigo-600 dark:text-indigo-400">FIIs {Math.round(typeData.fiis.percent)}%</span></div><div className="flex items-center gap-1.5"><span className="text-sky-600 dark:text-sky-400">Ações {Math.round(typeData.stocks.percent)}%</span><div className="w-2 h-2 rounded-full bg-sky-500"></div></div></div></div>
+        </button>
       </div>
 
       <SwipeableModal isOpen={showAgendaModal} onClose={() => setShowAgendaModal(false)}>
-        <div className="flex flex-col h-full bg-[#F2F2F2] dark:bg-black">
-            <div className="px-6 pt-4 pb-2 shrink-0">
-                <div className="flex items-center justify-between mb-3">
-                    <div>
-                        <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Agenda</h2>
-                        <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Próximos Eventos</p>
-                    </div>
-                    {radarData.loading && <div className="text-[9px] font-bold text-zinc-400 animate-pulse uppercase tracking-widest">Atualizando...</div>}
+        <div className="px-6 pb-20 pt-2 bg-zinc-50 dark:bg-zinc-950 min-h-full">
+            <div className="flex justify-between items-center mb-6 pt-4">
+                <div>
+                    <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Agenda</h2>
+                    <p className="text-xs text-zinc-500 font-medium">Próximos eventos confirmados</p>
                 </div>
-                <div className="flex bg-zinc-200/50 dark:bg-zinc-800 p-1 rounded-xl">
-                    {[{id:'ALL', label:'Todos'}, {id:'PAYMENT', label:'Pagamentos'}, {id:'DATACOM', label:'Data Com'}].map((tab) => (
-                        <button 
-                            key={tab.id}
-                            onClick={() => setAgendaFilter(tab.id as any)}
-                            className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${agendaFilter === tab.id ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
-                        >
-                            {tab.label}
-                        </button>
-                    ))}
-                </div>
-                {filteredAgenda.totalConfirmed > 0 && agendaFilter !== 'DATACOM' && (
-                    <div className="mt-4 bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl p-4 text-white shadow-lg shadow-emerald-500/20 flex justify-between items-center">
-                        <div>
-                            <p className="text-[10px] font-bold opacity-90 uppercase tracking-widest">Confirmado</p>
-                            <p className="text-[9px] font-medium opacity-70">A receber no futuro</p>
-                        </div>
-                        <p className="text-2xl font-black tracking-tighter">{formatBRL(filteredAgenda.totalConfirmed, isPrivacyEnabled)}</p>
-                    </div>
-                )}
+                <button onClick={handleRefreshAgenda} disabled={radarData.loading} className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-500 flex items-center justify-center hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors press-effect border border-zinc-200 dark:border-zinc-700">
+                    <RefreshCw className={`w-4 h-4 ${radarData.loading ? 'animate-spin' : ''}`} />
+                </button>
             </div>
-            
-            <div className="flex-1 overflow-y-auto px-6 pb-20 space-y-4 pt-2">
-                {Object.keys(filteredAgenda.grouped).length === 0 && !radarData.loading ? (
-                    <div className="text-center py-20 opacity-40">
-                        <CalendarClock className="w-12 h-12 mx-auto mb-3 text-zinc-300" />
-                        <p className="text-xs font-bold text-zinc-500">Nenhum evento futuro encontrado</p>
+
+            <div className="grid grid-cols-2 gap-3 mb-8 anim-scale-in">
+                <div className="bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/30 col-span-2">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-1">Confirmado</p>
+                    <p className="text-xl font-black text-emerald-700 dark:text-emerald-300">
+                        {formatBRL(radarData.summary.confirmed, privacyMode)}
+                    </p>
+                </div>
+            </div>
+
+            <div className="space-y-8 pb-24">
+                {radarData.loading && radarData.events.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 opacity-50">
+                        <Loader2 className="w-8 h-8 animate-spin text-zinc-400 mb-3" />
+                        <p className="text-xs text-zinc-500 font-bold">Atualizando agenda...</p>
                     </div>
                 ) : (
-                    Object.keys(filteredAgenda.grouped).map(monthKey => (
-                        <div key={monthKey}>
-                            <h3 className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-2 ml-1 sticky top-0 bg-[#F2F2F2] dark:bg-black py-2 z-10">{monthKey}</h3>
-                            {filteredAgenda.grouped[monthKey].map(event => (
-                                <AgendaItem key={event.id} event={event} hideValues={isPrivacyEnabled} />
-                            ))}
+                    Object.keys(radarData.grouped).length > 0 ? (
+                        Object.keys(radarData.grouped).map((groupKey, groupIndex) => { 
+                            const events = radarData.grouped[groupKey]; 
+                            return (
+                                <div key={groupKey} className="anim-slide-up" style={{ animationDelay: `${groupIndex * 100}ms` }}>
+                                    <h3 className="text-lg font-black text-zinc-900 dark:text-white mb-4 sticky top-0 bg-zinc-50 dark:bg-zinc-950 py-2 z-10">
+                                        {groupKey}
+                                    </h3>
+                                    <div className="space-y-0">
+                                        {events.map((e, i) => (
+                                            <AgendaItem 
+                                                key={e.id} 
+                                                event={e} 
+                                                isLast={i === events.length - 1} 
+                                                privacyMode={privacyMode || false} 
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            ); 
+                        })
+                    ) : (
+                        <div className="flex flex-col items-center justify-center py-10 opacity-50">
+                            <Calendar className="w-12 h-12 text-zinc-300 mb-3" strokeWidth={1} />
+                            <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">Agenda vazia</p>
                         </div>
-                    ))
+                    )
                 )}
             </div>
         </div>
       </SwipeableModal>
 
-      <SwipeableModal isOpen={showProventosModal} onClose={() => setShowProventosModal(false)}>
-         <div className="flex flex-col h-full bg-[#F2F2F2] dark:bg-black">
-             <div className="px-6 pt-4 pb-2 shrink-0">
-                 <div className="flex justify-between items-end mb-3">
+      <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
+         <div className="px-6 pb-20 pt-2 bg-zinc-50 dark:bg-zinc-950 min-h-full">
+             <div className="flex items-center gap-4 mb-6 px-2 anim-slide-up pt-2">
+                 <div className={`${modalHeaderIconClass} bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 border-zinc-200 dark:border-zinc-700`}><PieIcon className="w-6 h-6" /></div>
+                 <div>
+                     <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Alocação</h2>
+                     <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Raio-X de Diversificação</p>
+                 </div>
+             </div>
+
+             <div className="flex gap-3 mb-6 anim-slide-up">
+                 <div className="flex-1 bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center gap-3">
+                     <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 flex items-center justify-center"><Layers className="w-5 h-5" /></div>
                      <div>
-                        <div className="flex items-center gap-1.5 mb-0.5">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                            <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Já Recebido</p>
-                        </div>
-                        <h2 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter leading-none">
-                            {formatBRL(proventosTotal, isPrivacyEnabled)}
-                        </h2>
-                     </div>
-                     <div className="text-right">
-                        <p className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Média Mensal</p>
-                        <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">
-                            {formatBRL(proventosAverage, isPrivacyEnabled)}
-                        </p>
+                        <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Setores</p>
+                        <p className="text-xl font-black text-zinc-900 dark:text-white leading-none">{sectorChartData.length}</p>
                      </div>
                  </div>
-                 <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-                     <div className="flex bg-zinc-200/50 dark:bg-zinc-800 p-0.5 rounded-lg shrink-0">
-                        {['ALL', 'FII', 'STOCK'].map(t => (
-                            <button key={t} onClick={() => setProventosType(t as any)} className={`px-3 py-1.5 rounded-md text-[9px] font-black uppercase tracking-widest transition-all ${proventosType === t ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}>
-                                {t === 'ALL' ? 'Todos' : t === 'FII' ? 'FIIs' : 'Ações'}
-                            </button>
-                        ))}
-                     </div>
-                     <div className="relative shrink-0">
-                        <select 
-                            value={proventosYear} 
-                            onChange={(e) => setProventosYear(e.target.value)}
-                            className="appearance-none bg-zinc-200/50 dark:bg-zinc-800 text-zinc-900 dark:text-white pl-3 pr-6 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest outline-none border-none h-full"
-                        >
-                            <option value="ALL">Total</option>
-                            {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
-                        </select>
-                        <Calendar className="w-2.5 h-2.5 absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
+                 <div className={`flex-1 bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center gap-3 ${topConcentration > 50 ? 'border-amber-200 dark:border-amber-900/50' : ''}`}>
+                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${topConcentration > 50 ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400'}`}><Target className="w-5 h-5" /></div>
+                     <div>
+                        <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Risco Top 3</p>
+                        <p className={`text-xl font-black leading-none ${topConcentration > 50 ? 'text-amber-500' : 'text-emerald-500'}`}>{topConcentration.toFixed(0)}%</p>
                      </div>
                  </div>
              </div>
 
-             <div className="flex-1 overflow-y-auto px-6 pb-20 pt-2">
-                 {chartData.length > 0 && (
-                     <div className="h-32 w-full mb-4 bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm shrink-0">
-                         <ProventosChart data={chartData} hideValues={isPrivacyEnabled} />
-                     </div>
-                 )}
-                 
-                 <div className="space-y-4">
-                     {Object.keys(groupedProventos).length === 0 ? (
-                         <div className="text-center py-10 opacity-40">
-                             <p className="text-xs font-bold text-zinc-500">Sem proventos confirmados</p>
+             <div className="bg-zinc-200/50 dark:bg-zinc-900 p-1 rounded-2xl flex gap-1 mb-6 anim-slide-up shrink-0">
+                 {['CLASS', 'SECTOR', 'ASSET'].map(t => (
+                     <button key={t} onClick={() => setAllocationTab(t as any)} className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${allocationTab === t ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>
+                        {t === 'CLASS' ? <span className="flex items-center justify-center gap-2"><LayoutGrid className="w-3 h-3" /> Classe</span> : t === 'SECTOR' ? <span className="flex items-center justify-center gap-2"><Layers className="w-3 h-3" /> Setor</span> : <span className="flex items-center justify-center gap-2"><ListFilter className="w-3 h-3" /> Ativo</span>}
+                     </button>
+                 ))}
+             </div>
+
+             <div className="anim-slide-up px-1 pb-10">
+                 {(allocationTab === 'CLASS' || allocationTab === 'SECTOR') ? (
+                     <div className="space-y-6">
+                         <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] shadow-sm relative overflow-visible border border-zinc-200 dark:border-zinc-800 h-72">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie 
+                                        data={allocationTab === 'CLASS' ? classChartData : sectorChartData} 
+                                        innerRadius={70} 
+                                        outerRadius={95} 
+                                        paddingAngle={4} 
+                                        cornerRadius={6} 
+                                        dataKey="value" 
+                                        stroke="none" 
+                                        isAnimationActive={true} 
+                                        animationDuration={800} 
+                                        onMouseEnter={(_, index) => setActiveIndexClass(index)} 
+                                        onMouseLeave={() => setActiveIndexClass(undefined)}
+                                    >
+                                        {(allocationTab === 'CLASS' ? classChartData : sectorChartData).map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color} stroke={activeIndexClass === index ? 'rgba(255,255,255,0.2)' : 'none'} strokeWidth={2} />
+                                        ))}
+                                    </Pie>
+                                    <RechartsTooltip content={<CustomPieTooltip />} />
+                                </PieChart>
+                            </ResponsiveContainer>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none anim-fade-in select-none">
+                                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">{activeIndexClass !== undefined ? (allocationTab === 'CLASS' ? classChartData : sectorChartData)[activeIndexClass].name : 'Total'}</span>
+                                <span className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter">{activeIndexClass !== undefined ? formatPercent((allocationTab === 'CLASS' ? classChartData : sectorChartData)[activeIndexClass].percent, privacyMode) : formatBRL(typeData.total, privacyMode)}</span>
+                            </div>
                          </div>
-                     ) : (
-                         Object.keys(groupedProventos).map(monthKey => (
-                             <div key={monthKey}>
-                                 <div className="flex justify-between items-center mb-2 ml-1 sticky top-0 bg-[#F2F2F2] dark:bg-black py-2 z-10">
-                                     <h3 className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">{monthKey}</h3>
-                                     <span className="text-[9px] font-black text-zinc-500 bg-zinc-200 dark:bg-zinc-800 px-1.5 py-0.5 rounded">
-                                         {formatBRL(groupedProventos[monthKey].total, isPrivacyEnabled)}
-                                     </span>
+
+                         <div className="space-y-3">
+                             {(allocationTab === 'CLASS' ? classChartData : sectorChartData).map((item, index) => (
+                                 <div key={index} className="group relative bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-4 flex items-center justify-between overflow-hidden shadow-sm">
+                                     <div className="absolute bottom-0 left-0 h-1 bg-zinc-50 dark:bg-zinc-950 w-full">
+                                         <div className="h-full rounded-r-full transition-all duration-1000 ease-out" style={{ width: `${item.percent}%`, backgroundColor: item.color }}></div>
+                                     </div>
+                                     <div className="flex items-center gap-3 relative z-10">
+                                         <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
+                                         <span className="text-sm font-bold text-zinc-700 dark:text-zinc-200">{item.name}</span>
+                                     </div>
+                                     <div className="text-right relative z-10">
+                                         <span className="block text-sm font-black text-zinc-900 dark:text-white">{formatBRL(item.value, privacyMode)}</span>
+                                         <span className="text-[10px] font-bold text-zinc-400">{item.percent.toFixed(1)}%</span>
+                                     </div>
                                  </div>
-                                 
-                                 <div className="space-y-1.5">
-                                     {groupedProventos[monthKey].items.map((r, idx) => (
-                                         <div key={idx} className="flex items-center justify-between p-3 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                                             <div className="flex items-center gap-3">
-                                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[9px] font-black ${r.assetType === AssetType.FII ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400' : 'bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400'}`}>
-                                                     {r.ticker.substring(0, 2)}
-                                                 </div>
-                                                 <div>
-                                                     <span className="block font-bold text-zinc-900 dark:text-white text-xs">{r.ticker}</span>
-                                                     <span className="text-[8px] text-zinc-400 font-bold uppercase">{r.type} • {new Date(r.paymentDate).getDate()}</span>
-                                                 </div>
-                                             </div>
-                                             <span className="font-bold text-emerald-600 dark:text-emerald-400 text-xs">
-                                                 {formatBRL(r.totalReceived, isPrivacyEnabled)}
-                                             </span>
-                                         </div>
-                                     ))}
-                                 </div>
-                             </div>
-                         ))
-                     )}
-                 </div>
+                             ))}
+                         </div>
+                     </div>
+                 ) : (
+                    <div className="space-y-2">
+                        {assetsChartData.map((asset, index) => (
+                            <div key={index} className="bg-white dark:bg-zinc-900 p-3.5 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex items-center gap-4 relative overflow-hidden shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors">
+                                <div className="absolute bottom-0 left-0 h-0.5 bg-zinc-100 dark:bg-zinc-950 w-full">
+                                    <div className="h-full rounded-r-full opacity-80" style={{ width: `${asset.percent}%`, backgroundColor: asset.color }}></div>
+                                </div>
+                                
+                                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-[10px] font-black shrink-0 border border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+                                    {asset.name.substring(0,2)}
+                                </div>
+                                
+                                <div className="flex-1 flex justify-between items-center relative z-10">
+                                    <div>
+                                        <span className="block text-xs font-bold text-zinc-900 dark:text-white">{asset.name}</span>
+                                        <span className="text-[9px] font-medium text-zinc-400">{formatPercent(asset.percent, privacyMode)} da carteira</span>
+                                    </div>
+                                    <span className="text-xs font-black text-zinc-900 dark:text-white bg-zinc-50 dark:bg-zinc-800 px-2 py-1 rounded-lg">
+                                        {formatBRL(asset.value, privacyMode)}
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                 )}
              </div>
          </div>
       </SwipeableModal>
 
-      <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
-         <div className="flex flex-col h-full bg-[#F2F2F2] dark:bg-black">
-             <div className="px-6 pt-4 pb-2 shrink-0">
-                 <div className="flex items-center gap-3 mb-4">
-                     <div className="w-10 h-10 bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center border border-zinc-200 dark:border-zinc-800 shadow-sm">
-                         <PieIcon className="w-5 h-5" />
-                     </div>
-                     <div>
-                         <h2 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">Alocação</h2>
-                         <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Raio-X de Diversificação</p>
+      <SwipeableModal isOpen={showProventosModal} onClose={() => { setShowProventosModal(false); setSelectedProventosMonth(null); }}>
+         <div className="px-6 pb-20 pt-2 bg-zinc-50 dark:bg-zinc-950 min-h-full">
+             
+             <div className="flex flex-col pt-6 pb-2 px-2 anim-slide-up">
+                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 mb-2">Total em Proventos</p>
+                 <div className="flex items-baseline justify-between">
+                     <h2 className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter">
+                         {selectedProventosMonth ? formatBRL(displayedChartData.find(d => d.fullDate === selectedProventosMonth)?.value || 0, privacyMode) : formatBRL(stats.periodTotal, privacyMode)}
+                     </h2>
+                     <div className="flex gap-1 overflow-x-auto no-scrollbar">
+                         {availableYears.map((year: number) => (
+                             <button 
+                                 key={year}
+                                 onClick={() => { setProventosYearFilter(String(year)); setSelectedProventosMonth(null); }}
+                                 className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-colors ${proventosYearFilter === String(year) ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                             >
+                                 {year}
+                             </button>
+                         ))}
+                         <button 
+                             onClick={() => { setProventosYearFilter('12M'); setSelectedProventosMonth(null); }}
+                             className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-colors ${proventosYearFilter === '12M' ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                         >
+                             12M
+                         </button>
                      </div>
                  </div>
-                 <div className="bg-zinc-200/50 dark:bg-zinc-900 p-1 rounded-xl flex gap-1 mb-2">
-                     {['CLASS', 'SECTOR'].map(t => (
-                         <button key={t} onClick={() => { setAllocationTab(t as any); setActiveIndexClass(undefined); }} className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all duration-300 ${allocationTab === t ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>
-                            {t === 'CLASS' ? 'Por Classe' : 'Por Setor'}
-                         </button>
-                     ))}
+                 <div className="flex gap-4 mt-2 text-[10px] font-medium text-zinc-500">
+                     <span>FIIs: {Math.round(splitData.fiiPct)}%</span>
+                     <span>Ações: {Math.round(splitData.stockPct)}%</span>
+                     <span>Média: {formatBRL(stats.periodAvg, privacyMode)}</span>
                  </div>
              </div>
-             <div className="flex-1 overflow-y-auto px-6 pb-20 space-y-4">
-                 <div className="bg-white dark:bg-zinc-900 p-4 rounded-[2rem] shadow-sm relative overflow-visible border border-zinc-200 dark:border-zinc-800 h-64 shrink-0">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                            <Pie 
-                                data={allocationTab === 'CLASS' ? classChartData : sectorChartData} 
-                                innerRadius={60} 
-                                outerRadius={80} 
-                                paddingAngle={4} 
-                                cornerRadius={6} 
-                                dataKey="value" 
-                                stroke="none" 
-                                onClick={(_, index) => setActiveIndexClass(prev => prev === index ? undefined : index)}
-                            >
-                                {(allocationTab === 'CLASS' ? classChartData : sectorChartData).map((entry, index) => (
-                                    <Cell 
-                                        key={`cell-${index}`} 
-                                        fill={entry.color} 
-                                        stroke={activeIndexClass === index ? 'rgba(255,255,255,0.5)' : 'none'} 
-                                        strokeWidth={activeIndexClass === index ? 3 : 0} 
-                                        className="transition-all duration-300 cursor-pointer"
-                                        style={{ filter: activeIndexClass !== undefined && activeIndexClass !== index ? 'opacity(0.3)' : 'opacity(1)' }}
-                                    />
-                                ))}
-                            </Pie>
-                        </PieChart>
-                    </ResponsiveContainer>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none">
-                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1 max-w-[120px] text-center truncate px-2">
-                            {activeIndexClass !== undefined ? (allocationTab === 'CLASS' ? classChartData : sectorChartData)[activeIndexClass].name : 'Total'}
-                        </span>
-                        <span className="text-xl font-black text-zinc-900 dark:text-white tracking-tighter">
-                            {activeIndexClass !== undefined 
-                                ? `${(allocationTab === 'CLASS' ? classChartData : sectorChartData)[activeIndexClass].percent.toFixed(1)}%` 
-                                : formatBRL(typeData.total, isPrivacyEnabled)}
-                        </span>
-                    </div>
-                 </div>
-                 <div className="space-y-2">
-                     {(allocationTab === 'CLASS' ? classChartData : sectorChartData).map((item, index) => (
-                         <div 
-                            key={index} 
-                            className={`flex items-center justify-between p-3 rounded-2xl border transition-all duration-300 ${activeIndexClass === index ? 'bg-zinc-100 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-600 scale-[1.02] shadow-md' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 shadow-sm opacity-90'}`}
-                            onClick={() => setActiveIndexClass(prev => prev === index ? undefined : index)}
-                         >
-                             <div className="flex items-center gap-3">
-                                 <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }}></div>
-                                 <span className="text-xs font-bold text-zinc-700 dark:text-zinc-200">{item.name}</span>
-                             </div>
-                             <div className="text-right">
-                                 <span className="block text-xs font-black text-zinc-900 dark:text-white">{formatBRL(item.value, isPrivacyEnabled)}</span>
-                                 <span className="text-[9px] font-bold text-zinc-400">{item.percent.toFixed(1)}%</span>
-                             </div>
-                         </div>
-                     ))}
-                 </div>
+
+             <div className="h-48 w-full mt-6 mb-8 anim-slide-up" style={{ animationDelay: '100ms' }}>
+                 <ResponsiveContainer width="100%" height="100%">
+                     <BarChart data={displayedChartData} onClick={handleBarClick} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                         <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#a1a1aa', fontWeight: 700 }} dy={10} interval={0} />
+                         <RechartsTooltip cursor={{fill: 'transparent'}} content={<CustomBarTooltip />} />
+                         <Bar dataKey="value" radius={[4, 4, 4, 4]}>
+                             {displayedChartData.map((entry: HistoryItem, index: number) => (
+                                 <Cell 
+                                     key={`cell-${index}`} 
+                                     fill={entry.fullDate === selectedProventosMonth ? '#10b981' : '#e4e4e7'} 
+                                     className="transition-all duration-300 hover:opacity-80 dark:fill-zinc-800 dark:hover:fill-emerald-600 cursor-pointer" 
+                                 />
+                             ))}
+                         </Bar>
+                     </BarChart>
+                 </ResponsiveContainer>
+                 {selectedProventosMonth && (
+                     <button onClick={() => setSelectedProventosMonth(null)} className="absolute top-0 right-0 p-2 text-zinc-400 hover:text-zinc-900 transition-colors">
+                         <X className="w-4 h-4" />
+                     </button>
+                 )}
+             </div>
+
+             <div className="space-y-4 pb-10 anim-slide-up" style={{ animationDelay: '200ms' }}>
+                 <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 px-2 mb-2">
+                     {selectedProventosMonth 
+                         ? `Extrato de ${new Date(selectedProventosMonth + '-02').toLocaleDateString('pt-BR', { month: 'long' })}` 
+                         : 'Todos os Lançamentos'}
+                 </h3>
+
+                 {displayedReceipts.length > 0 ? (
+                     <div className="bg-white dark:bg-zinc-900 rounded-[2rem] p-2 shadow-sm border border-zinc-100 dark:border-zinc-800">
+                         {displayedReceipts.map((r: DividendReceipt, idx: number) => {
+                             return (
+                                 <div key={idx} className="flex items-center justify-between p-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 rounded-xl transition-colors border-b border-zinc-50 dark:border-zinc-800/50 last:border-0">
+                                     <div className="flex items-center gap-3">
+                                         <div className="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-black text-zinc-500 dark:text-zinc-400">
+                                             {r.ticker.substring(0, 2)}
+                                         </div>
+                                         <div>
+                                             <div className="flex items-center gap-2">
+                                                 <span className="font-bold text-sm text-zinc-900 dark:text-white">{r.ticker}</span>
+                                             </div>
+                                             <p className="text-[10px] font-medium text-zinc-400">
+                                                 {new Date(r.paymentDate).toLocaleDateString('pt-BR')} • {r.type}
+                                             </p>
+                                         </div>
+                                     </div>
+                                     <div className="text-right">
+                                         <p className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">{formatBRL(r.totalReceived, privacyMode)}</p>
+                                     </div>
+                                 </div>
+                             );
+                         })}
+                     </div>
+                 ) : (
+                     <div className="text-center py-10 opacity-50">
+                         <p className="text-xs font-bold text-zinc-500">Nenhum provento neste período.</p>
+                     </div>
+                 )}
              </div>
          </div>
       </SwipeableModal>
     </div>
   );
-}
+};
 
 export const Home = React.memo(HomeComponent);

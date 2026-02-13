@@ -1,11 +1,13 @@
-import React, { useMemo, useState, useRef } from 'react';
+
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { TrendingUp, Plus, Hash, Trash2, X, ArrowRightLeft, Building2, Filter, Check, Calendar, CheckSquare, Search, ChevronDown, Wallet, ArrowUpRight, ArrowDownLeft, Pencil } from 'lucide-react';
+import { TrendingUp, TrendingDown, Plus, Hash, Trash2, Save, X, ArrowRightLeft, Building2, CandlestickChart, Filter, Check, Calendar, CheckSquare, Search, ChevronDown, RefreshCw, Wallet, DollarSign, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import { SwipeableModal, ConfirmationModal } from '../components/Layout';
 import { Transaction, AssetType } from '../types';
+import { supabase } from '../services/supabase';
 
-const formatBRL = (val: number, hide: boolean) => {
-  if (hide) return '••••••';
+const formatBRL = (val: number, privacy = false) => {
+  if (privacy) return '••••••';
   return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 };
 
@@ -19,7 +21,7 @@ const formatMonthHeader = (monthKey: string) => {
     }
 };
 
-const TransactionsSummary = ({ transactions, hideValues }: { transactions: Transaction[], hideValues: boolean }) => {
+const TransactionsSummary = ({ transactions, privacyMode }: { transactions: Transaction[], privacyMode: boolean }) => {
     const { totalInvested, totalSold, netFlow, count } = useMemo(() => {
         let invested = 0;
         let sold = 0;
@@ -45,7 +47,7 @@ const TransactionsSummary = ({ transactions, hideValues }: { transactions: Trans
                     </div>
                     <div className="flex items-baseline gap-2">
                         <h2 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tight">
-                            {formatBRL(Math.abs(netFlow), hideValues)}
+                            {formatBRL(Math.abs(netFlow), privacyMode)}
                         </h2>
                         <span className={`text-xs font-black px-1.5 py-0.5 rounded-md ${netFlow >= 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'}`}>
                             {netFlow >= 0 ? 'INVESTIDO' : 'RETIRADO'}
@@ -63,7 +65,7 @@ const TransactionsSummary = ({ transactions, hideValues }: { transactions: Trans
                         </div>
                         <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide">Compras</span>
                     </div>
-                    <p className="text-sm font-black text-zinc-900 dark:text-white truncate">{formatBRL(totalInvested, hideValues)}</p>
+                    <p className="text-sm font-black text-zinc-900 dark:text-white truncate">{formatBRL(totalInvested, privacyMode)}</p>
                 </div>
                 
                 <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex flex-col">
@@ -73,14 +75,14 @@ const TransactionsSummary = ({ transactions, hideValues }: { transactions: Trans
                         </div>
                         <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide">Vendas</span>
                     </div>
-                    <p className="text-sm font-black text-zinc-900 dark:text-white truncate">{formatBRL(totalSold, hideValues)}</p>
+                    <p className="text-sm font-black text-zinc-900 dark:text-white truncate">{formatBRL(totalSold, privacyMode)}</p>
                 </div>
             </div>
         </div>
     );
 };
 
-// Componente Customizado para Filtro de Ano
+// Componente Customizado para Filtro de Ano (Chip Style) - Usando Portal para evitar clipping overflow
 const YearFilterChip = ({ years, selectedYear, onChange }: { years: string[], selectedYear: string, onChange: (y: string) => void }) => {
     const [isOpen, setIsOpen] = useState(false);
     const buttonRef = useRef<HTMLButtonElement>(null);
@@ -89,7 +91,11 @@ const YearFilterChip = ({ years, selectedYear, onChange }: { years: string[], se
     const handleToggle = () => {
         if (!isOpen && buttonRef.current) {
             const rect = buttonRef.current.getBoundingClientRect();
-            setCoords({ top: rect.bottom + 6, left: rect.left });
+            // Calcula posição para o portal
+            setCoords({ 
+                top: rect.bottom + 6, 
+                left: rect.left 
+            });
         }
         setIsOpen(!isOpen);
     };
@@ -108,6 +114,7 @@ const YearFilterChip = ({ years, selectedYear, onChange }: { years: string[], se
 
             {isOpen && createPortal(
                 <>
+                    {/* Backdrop transparente para fechar ao clicar fora */}
                     <div className="fixed inset-0 z-[9998]" onClick={() => setIsOpen(false)}></div>
                     <div 
                         className="fixed w-32 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-xl z-[9999] overflow-hidden anim-scale-in p-1"
@@ -150,17 +157,17 @@ const FilterChip = ({ label, active, onClick, icon: Icon }: any) => (
 
 const TransactionRow = React.memo(({ index, data }: any) => {
   const item = data.items[index];
-  const hideValues = data.hideValues;
+  const privacyMode = data.privacyMode;
   const isSelectionMode = data.isSelectionMode;
   const isSelected = data.selectedIds.has(item.data?.id);
   
   if (item.type === 'header') {
       return (
-          <div className="sticky top-[138px] z-10 py-3 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-xl -mx-4 px-4 border-b border-zinc-100 dark:border-zinc-800/50 mb-1 mt-2 shadow-sm">
+          <div className="sticky top-[158px] z-10 py-3 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-xl -mx-4 px-4 border-b border-zinc-100 dark:border-zinc-800/50 mb-1 mt-2 shadow-sm">
               <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 flex justify-between items-center">
                   {formatMonthHeader(item.monthKey)}
                   <span className={`text-[9px] px-2 py-0.5 rounded-md font-bold ${item.monthlyNet >= 0 ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'}`}>
-                      {item.monthlyNet > 0 ? '+' : ''}{formatBRL(item.monthlyNet, hideValues)}
+                      {item.monthlyNet > 0 ? '+' : ''}{formatBRL(item.monthlyNet, privacyMode)}
                   </span>
               </h3>
           </div>
@@ -206,7 +213,7 @@ const TransactionRow = React.memo(({ index, data }: any) => {
           
           <div className="text-right">
               <p className={`text-sm font-black tracking-tight ${isBuy ? 'text-zinc-900 dark:text-white' : 'text-zinc-900 dark:text-white'}`}>
-                  {formatBRL(totalValue, hideValues)}
+                  {formatBRL(totalValue, privacyMode)}
               </p>
               <p className={`text-[9px] font-bold uppercase tracking-wider ${isBuy ? 'text-emerald-500' : 'text-rose-500'}`}>
                   {isBuy ? 'Compra' : 'Venda'}
@@ -220,18 +227,14 @@ interface TransactionsProps {
     transactions: Transaction[];
     onAddTransaction: (t: Omit<Transaction, 'id'>) => Promise<void>;
     onUpdateTransaction: (id: string, t: Partial<Transaction>) => Promise<void>;
-    onBulkDelete: (ids: string[]) => Promise<void>;
     onRequestDeleteConfirmation: (id: string) => void;
     privacyMode?: boolean;
 }
 
-function TransactionsComponent({ transactions, onAddTransaction, onUpdateTransaction, onBulkDelete, onRequestDeleteConfirmation, privacyMode = false }: TransactionsProps) {
+const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAddTransaction, onUpdateTransaction, onRequestDeleteConfirmation, privacyMode = false }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
-    
-    // Strict Boolean
-    const isPrivacyActive = !!privacyMode;
     
     // --- ESTADOS DE FILTRO ---
     const [searchTerm, setSearchTerm] = useState('');
@@ -251,23 +254,9 @@ function TransactionsComponent({ transactions, onAddTransaction, onUpdateTransac
     const [price, setPrice] = useState('');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     
-    const estimatedTotal = (parseFloat(quantity.replace(',','.')) || 0) * (parseFloat(price.replace(',','.')) || 0);
+    const estimatedTotal = (parseFloat(quantity) || 0) * (parseFloat(price) || 0);
 
-    // Função "Inteligente" para auto-detectar FII vs Ação
-    const handleTickerChange = (val: string) => {
-        const clean = val.toUpperCase().trim();
-        setTicker(clean);
-        
-        // Lógica de Detecção
-        if (clean.length > 2) {
-            if (clean.endsWith('11') || clean.endsWith('11B') || clean.endsWith('33') || clean.endsWith('34')) {
-                setAssetType(AssetType.FII);
-            } else if (clean.length >= 4) {
-                setAssetType(AssetType.STOCK);
-            }
-        }
-    };
-
+    // Gera lista de anos disponíveis baseada no histórico
     const availableYears = useMemo(() => {
         const years = new Set(transactions.map(t => t.date.substring(0, 4)));
         return Array.from(years).sort((a,b) => String(b).localeCompare(String(a)));
@@ -307,7 +296,7 @@ function TransactionsComponent({ transactions, onAddTransaction, onUpdateTransac
     }, [filteredTransactions]);
 
     const handleOpenAdd = () => {
-        setEditingId(null); setTicker(''); setType('BUY'); setAssetType(AssetType.STOCK); // Default inicial
+        setEditingId(null); setTicker(''); setType('BUY'); setAssetType(AssetType.FII);
         setQuantity(''); setPrice(''); setDate(new Date().toISOString().split('T')[0]);
         setIsModalOpen(true);
     };
@@ -321,25 +310,7 @@ function TransactionsComponent({ transactions, onAddTransaction, onUpdateTransac
     const handleSave = async () => {
         if (!ticker || !quantity || !price || !date || isSaving) return;
         setIsSaving(true);
-        // Robustez: aceita virgula ou ponto
-        const qtyNum = parseFloat(quantity.replace(',', '.'));
-        const priceNum = parseFloat(price.replace(',', '.'));
-
-        if (isNaN(qtyNum) || isNaN(priceNum) || qtyNum <= 0 || priceNum <= 0) {
-            setIsSaving(false);
-            alert("Valores inválidos");
-            return;
-        }
-
-        const payload = { 
-            ticker: ticker.toUpperCase().trim(), 
-            type, 
-            assetType, 
-            quantity: qtyNum, 
-            price: priceNum, 
-            date 
-        };
-
+        const payload = { ticker: ticker.toUpperCase(), type, assetType, quantity: Number(quantity.replace(',', '.')), price: Number(price.replace(',', '.')), date };
         try {
             if (editingId) await onUpdateTransaction(editingId, payload);
             else await onAddTransaction(payload);
@@ -348,25 +319,28 @@ function TransactionsComponent({ transactions, onAddTransaction, onUpdateTransac
     };
 
     const handleBulkDelete = async () => {
-        if (selectedIds.size === 0) return;
         try {
-            await onBulkDelete(Array.from(selectedIds));
-            setSelectedIds(new Set());
-            setIsSelectionMode(false);
+            const { error } = await supabase.from('transactions').delete().in('id', Array.from(selectedIds));
+            if (error) throw error;
+            window.location.reload(); 
         } catch (err) { alert('Erro ao excluir.'); } finally { setShowBulkDeleteConfirm(false); }
     };
 
     const clearFilters = () => {
-        setSearchTerm(''); setTypeFilter('ALL'); setAssetFilter('ALL'); setYearFilter('ALL');
+        setSearchTerm('');
+        setTypeFilter('ALL');
+        setAssetFilter('ALL');
+        setYearFilter('ALL');
     };
 
     const hasActiveFilters = searchTerm || typeFilter !== 'ALL' || assetFilter !== 'ALL' || yearFilter !== 'ALL';
 
     return (
         <div className="anim-fade-in min-h-screen pb-32">
-            {/* Header Sticky com Filtros */}
-            <div className="sticky top-14 z-20 bg-primary-light dark:bg-primary-dark transition-all -mx-4 px-4 pt-2 pb-3 border-b border-zinc-200 dark:border-zinc-800 shadow-sm">
+            {/* Header Sticky com Filtros Refinados */}
+            <div className="sticky top-20 z-20 bg-primary-light dark:bg-primary-dark transition-all -mx-4 px-4 pt-2 pb-3 border-b border-zinc-200 dark:border-zinc-800 shadow-sm">
                 
+                {/* Linha 1: Título e Ações Principais */}
                 <div className="flex items-center justify-between mb-3">
                     <h2 className="text-sm font-black text-zinc-900 dark:text-white tracking-tight flex items-center gap-2">
                         {isSelectionMode ? (
@@ -398,6 +372,7 @@ function TransactionsComponent({ transactions, onAddTransaction, onUpdateTransac
 
                 {!isSelectionMode && (
                     <div className="space-y-3">
+                        {/* Busca Discreta */}
                         <div className="relative group">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 group-focus-within:text-indigo-500 transition-colors" />
                             <input 
@@ -409,17 +384,28 @@ function TransactionsComponent({ transactions, onAddTransaction, onUpdateTransac
                             />
                         </div>
 
+                        {/* Filtros em Chips (Scroll Horizontal) */}
                         <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
                             <YearFilterChip years={availableYears} selectedYear={yearFilter} onChange={setYearFilter} />
-                            <FilterChip label={typeFilter === 'ALL' ? 'Tipo' : typeFilter === 'BUY' ? 'Compras' : 'Vendas'} active={typeFilter !== 'ALL'} onClick={() => setTypeFilter(prev => prev === 'ALL' ? 'BUY' : prev === 'BUY' ? 'SELL' : 'ALL')} />
-                            <FilterChip label={assetFilter === 'ALL' ? 'Classe' : assetFilter === 'FII' ? 'FIIs' : 'Ações'} active={assetFilter !== 'ALL'} onClick={() => setAssetFilter(prev => prev === 'ALL' ? 'FII' : prev === 'FII' ? 'STOCK' : 'ALL')} />
+
+                            <FilterChip 
+                                label={typeFilter === 'ALL' ? 'Tipo' : typeFilter === 'BUY' ? 'Compras' : 'Vendas'} 
+                                active={typeFilter !== 'ALL'}
+                                onClick={() => setTypeFilter(prev => prev === 'ALL' ? 'BUY' : prev === 'BUY' ? 'SELL' : 'ALL')}
+                            />
+
+                            <FilterChip 
+                                label={assetFilter === 'ALL' ? 'Classe' : assetFilter === 'FII' ? 'FIIs' : 'Ações'} 
+                                active={assetFilter !== 'ALL'}
+                                onClick={() => setAssetFilter(prev => prev === 'ALL' ? 'FII' : prev === 'FII' ? 'STOCK' : 'ALL')}
+                            />
                         </div>
                     </div>
                 )}
             </div>
 
             <div className="pt-2">
-                <TransactionsSummary transactions={filteredTransactions} hideValues={isPrivacyActive} />
+                <TransactionsSummary transactions={filteredTransactions} privacyMode={privacyMode} />
                 
                 {flatTransactions.length > 0 ? (
                     <div className="pb-10">
@@ -427,7 +413,7 @@ function TransactionsComponent({ transactions, onAddTransaction, onUpdateTransac
                             <TransactionRow 
                                 key={item.data?.id || `header-${item.monthKey}`} 
                                 index={index} 
-                                data={{ items: flatTransactions, onRowClick: handleOpenEdit, hideValues: isPrivacyActive, isSelectionMode, selectedIds, onToggleSelect: (id: string) => { const n = new Set(selectedIds); if (n.has(id)) n.delete(id); else n.add(id); setSelectedIds(n); } }}
+                                data={{ items: flatTransactions, onRowClick: handleOpenEdit, privacyMode, isSelectionMode, selectedIds, onToggleSelect: (id: string) => { const n = new Set(selectedIds); if (n.has(id)) n.delete(id); else n.add(id); setSelectedIds(n); } }}
                             />
                         ))}
                     </div>
@@ -442,135 +428,56 @@ function TransactionsComponent({ transactions, onAddTransaction, onUpdateTransac
 
             {/* Modal de Edição */}
             <SwipeableModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
-                <div className="flex flex-col h-full bg-[#F2F2F2] dark:bg-black relative px-6 pt-4 pb-20">
-                    
-                    {/* Header Limpo */}
+                <div className="p-6 pb-20">
                     <div className="flex justify-between items-center mb-6">
-                        <div className="flex items-center gap-2">
-                            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shadow-sm ${editingId ? 'bg-zinc-100 dark:bg-zinc-800' : 'bg-black dark:bg-white text-white dark:text-black'}`}>
-                                {editingId ? <Pencil className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+                        <h2 className="text-xl font-black text-zinc-900 dark:text-white">{editingId ? 'Editar Ordem' : 'Nova Ordem'}</h2>
+                        {editingId && <button onClick={() => onRequestDeleteConfirmation(editingId)} className="p-2 text-rose-500 bg-rose-50 rounded-lg"><Trash2 className="w-5 h-5" /></button>}
+                    </div>
+                    
+                    <div className="space-y-4">
+                        <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl">
+                            {['BUY', 'SELL'].map(t => (
+                                <button key={t} onClick={() => setType(t as any)} className={`flex-1 py-3 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${type === t ? (t === 'BUY' ? 'bg-emerald-500 text-white shadow-lg' : 'bg-rose-500 text-white shadow-lg') : 'text-zinc-400'}`}>
+                                    {t === 'BUY' ? 'Compra' : 'Venda'}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div>
+                            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Ativo</label>
+                            <div className="flex gap-2 mt-1">
+                                <input type="text" value={ticker} onChange={e => { setTicker(e.target.value.toUpperCase()); if (!editingId && e.target.value.endsWith('11')) setAssetType(AssetType.FII); }} placeholder="ABCD11" className="flex-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-lg font-black uppercase outline-none focus:border-zinc-400 dark:focus:border-zinc-600" />
+                                <button onClick={() => setAssetType(assetType === AssetType.FII ? AssetType.STOCK : AssetType.FII)} className="px-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-xs font-bold border border-zinc-200 dark:border-zinc-700 min-w-[60px]">
+                                    {assetType === AssetType.FII ? 'FII' : 'AÇÃO'}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Qtd</label>
+                                <input type="number" value={quantity} onChange={e => setQuantity(e.target.value)} placeholder="0" className="w-full mt-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-lg font-bold outline-none" />
                             </div>
                             <div>
-                                <h2 className="text-xl font-black tracking-tight text-zinc-900 dark:text-white">{editingId ? 'Editar Ordem' : 'Nova Ordem'}</h2>
-                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Preencha os detalhes</p>
+                                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Preço</label>
+                                <input type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="0.00" className="w-full mt-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-lg font-bold outline-none" />
                             </div>
                         </div>
-                        {editingId && (
-                            <button onClick={() => onRequestDeleteConfirmation(editingId)} className="p-2.5 bg-rose-50 dark:bg-rose-900/10 text-rose-500 rounded-xl hover:bg-rose-100 dark:hover:bg-rose-900/20 transition-colors">
-                                <Trash2 className="w-5 h-5" />
-                            </button>
-                        )}
-                    </div>
 
-                    <div className="space-y-6">
-                        
-                        {/* 1. Tipo de Operação (Segmented Control) */}
-                        <div className="bg-zinc-200/50 dark:bg-zinc-800/50 p-1 rounded-2xl flex relative overflow-hidden">
-                            <div 
-                                className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-xl shadow-sm transition-all duration-300 ease-out-mola ${type === 'BUY' ? 'bg-emerald-500 translate-x-1' : 'bg-rose-500 translate-x-[100%] translate-x-[calc(100%+4px)]'}`}
-                            ></div>
-                            
-                            <button onClick={() => setType('BUY')} className={`flex-1 py-3 text-xs font-black uppercase tracking-widest relative z-10 transition-colors ${type === 'BUY' ? 'text-white' : 'text-zinc-500 dark:text-zinc-400'}`}>
-                                Compra
-                            </button>
-                            <button onClick={() => setType('SELL')} className={`flex-1 py-3 text-xs font-black uppercase tracking-widest relative z-10 transition-colors ${type === 'SELL' ? 'text-white' : 'text-zinc-500 dark:text-zinc-400'}`}>
-                                Venda
+                        <div>
+                            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Data</label>
+                            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full mt-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-sm font-bold outline-none" />
+                        </div>
+
+                        <div className="pt-4">
+                            <div className="flex justify-between items-center mb-4 px-2">
+                                <span className="text-xs font-bold text-zinc-500">Total Estimado</span>
+                                <span className="text-xl font-black text-zinc-900 dark:text-white">{formatBRL(estimatedTotal)}</span>
+                            </div>
+                            <button onClick={handleSave} disabled={isSaving || !ticker || !quantity || !price} className="w-full py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl press-effect disabled:opacity-50">
+                                {isSaving ? 'Salvando...' : 'Confirmar'}
                             </button>
                         </div>
-
-                        {/* 2. Ticker Input (Hero) com Inteligência Visual */}
-                        <div className={`bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border-2 transition-all shadow-sm group focus-within:shadow-md relative overflow-hidden ${type === 'BUY' ? 'focus-within:border-emerald-500/30 border-zinc-100 dark:border-zinc-800' : 'focus-within:border-rose-500/30 border-zinc-100 dark:border-zinc-800'}`}>
-                            <div className="flex justify-between items-center mb-2">
-                                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Ativo</label>
-                                
-                                {/* Tag Inteligente */}
-                                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-all duration-500 ${ticker.length > 2 ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'} ${assetType === AssetType.FII ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400' : 'bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400'}`}>
-                                    {assetType === AssetType.FII ? <Building2 className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
-                                    <span className="text-[9px] font-black uppercase">{assetType === AssetType.FII ? 'Fundo Imobiliário' : 'Ação'}</span>
-                                </div>
-                            </div>
-                            
-                            <input 
-                                type="text" 
-                                value={ticker} 
-                                onChange={e => handleTickerChange(e.target.value)}
-                                placeholder="CÓDIGO" 
-                                className="w-full bg-transparent text-4xl font-black text-zinc-900 dark:text-white outline-none placeholder:text-zinc-200 dark:placeholder:text-zinc-800 uppercase tracking-tight"
-                                autoFocus={!editingId}
-                            />
-                            
-                            {/* Ícone de Busca Decorativo */}
-                            {!ticker && (
-                                <Search className="absolute right-6 bottom-6 w-6 h-6 text-zinc-200 dark:text-zinc-700 pointer-events-none" />
-                            )}
-                        </div>
-
-                        {/* 3. Grid de Detalhes */}
-                        <div className="grid grid-cols-2 gap-4">
-                            {/* Quantidade */}
-                            <div className="bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                                <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Quantidade</label>
-                                <div className="flex items-center gap-2">
-                                    <Hash className="w-4 h-4 text-zinc-300" />
-                                    <input 
-                                        type="text" 
-                                        value={quantity} 
-                                        onChange={e => setQuantity(e.target.value.replace(/[^0-9,.]/g, ''))} 
-                                        placeholder="0"
-                                        inputMode="decimal" 
-                                        className="w-full bg-transparent text-xl font-bold text-zinc-900 dark:text-white outline-none placeholder:text-zinc-200 dark:placeholder:text-zinc-800" 
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Preço */}
-                            <div className="bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                                <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Preço Unitário</label>
-                                <div className="flex items-center gap-1">
-                                    <span className="text-zinc-300 font-bold text-sm">R$</span>
-                                    <input 
-                                        type="text" 
-                                        value={price} 
-                                        onChange={e => setPrice(e.target.value.replace(/[^0-9,.]/g, ''))} 
-                                        placeholder="0,00"
-                                        inputMode="decimal"
-                                        className="w-full bg-transparent text-xl font-bold text-zinc-900 dark:text-white outline-none placeholder:text-zinc-200 dark:placeholder:text-zinc-800" 
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Data */}
-                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-2xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-400 shrink-0">
-                                <Calendar className="w-5 h-5" />
-                            </div>
-                            <div className="flex-1">
-                                <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block">Data da Operação</label>
-                                <input 
-                                    type="date" 
-                                    value={date} 
-                                    onChange={e => setDate(e.target.value)} 
-                                    className="w-full bg-transparent text-sm font-bold text-zinc-900 dark:text-white outline-none pt-0.5" 
-                                />
-                            </div>
-                        </div>
-
-                        {/* Resumo Final */}
-                        <div className={`p-5 rounded-[2rem] flex justify-between items-center transition-colors ${type === 'BUY' ? 'bg-emerald-50 dark:bg-emerald-900/10' : 'bg-rose-50 dark:bg-rose-900/10'}`}>
-                            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Total Estimado</span>
-                            <span className={`text-2xl font-black tracking-tight ${type === 'BUY' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                                {formatBRL(estimatedTotal, isPrivacyActive)}
-                            </span>
-                        </div>
-
-                        <button 
-                            onClick={handleSave} 
-                            disabled={isSaving || !ticker || !quantity || !price} 
-                            className={`w-full py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl press-effect disabled:opacity-50 disabled:cursor-not-allowed text-white transition-all transform hover:scale-[1.01] active:scale-[0.99] ${type === 'BUY' ? 'bg-emerald-600 shadow-emerald-600/20' : 'bg-rose-600 shadow-rose-600/20'}`}
-                        >
-                            {isSaving ? 'Salvando...' : editingId ? 'Atualizar Ordem' : 'Confirmar'}
-                        </button>
                     </div>
                 </div>
             </SwipeableModal>
@@ -578,6 +485,6 @@ function TransactionsComponent({ transactions, onAddTransaction, onUpdateTransac
             <ConfirmationModal isOpen={showBulkDeleteConfirm} title="Excluir Itens?" message={`Deseja apagar ${selectedIds.size} registros selecionados?`} onConfirm={handleBulkDelete} onCancel={() => setShowBulkDeleteConfirm(false)} />
         </div>
     );
-}
+};
 
 export const Transactions = React.memo(TransactionsComponent);

@@ -10,241 +10,324 @@ const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_KEY || process.env.SUPABASE_KEY;
 const supabase = createClient(supabaseUrl || '', supabaseKey || '');
 
-// Lista rotativa expandida de User-Agents
-const USER_AGENTS = [
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1'
-];
-
 const httpsAgent = new https.Agent({ 
     keepAlive: true,
+    maxSockets: 100,
+    maxFreeSockets: 10,
+    timeout: 10000, 
     rejectUnauthorized: false
 });
 
 const client = axios.create({
     httpsAgent,
-    timeout: 20000, 
+    headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
+        'Upgrade-Insecure-Requests': '1'
+    },
+    timeout: 8000, 
     maxRedirects: 5
 });
 
+// --- HELPERS TÉCNICOS ---
+const REGEX_NORMALIZE = /[\u0300-\u036f]/g;
+
 function normalize(str: string) {
     if (!str) return '';
-    return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    return str.normalize("NFD").replace(REGEX_NORMALIZE, "").toLowerCase().trim();
 }
 
 function parseValue(valueStr: any): number | null {
+    if (valueStr === undefined || valueStr === null) return null;
     if (typeof valueStr === 'number') return valueStr;
-    if (!valueStr) return null;
     
     let str = String(valueStr).trim();
-    if (str === '-' || str === '--' || str.toLowerCase() === 'n/a') return null;
+    // Proteção Crítica: Ignora valores percentuais (Yield)
+    if (str.includes('%')) return null;
+    if (!str || str === '-' || str === '--' || str === 'N/A') return null;
+
+    str = str.replace(/^R\$\s?/, '').trim();
 
     let multiplier = 1;
-    if (str.toUpperCase().endsWith('K')) multiplier = 1e3;
-    if (str.toUpperCase().endsWith('M')) multiplier = 1e6;
-    if (str.toUpperCase().endsWith('B')) multiplier = 1e9;
-
-    str = str.replace(/[R$%\sA-Za-z]/g, ''); 
-    
-    if (str.includes(',')) {
-        str = str.replace(/\./g, '').replace(',', '.');
+    const lastChar = str.slice(-1).toUpperCase();
+    if (['B', 'M', 'K'].includes(lastChar)) {
+        if (lastChar === 'B') multiplier = 1e9;
+        else if (lastChar === 'M') multiplier = 1e6;
+        else if (lastChar === 'K') multiplier = 1e3;
+        str = str.slice(0, -1).trim();
     }
 
-    const num = parseFloat(str);
-    return isNaN(num) ? null : num * multiplier;
+    str = str.replace(/\s/g, '').replace(/\u00A0/g, '');
+
+    const lastCommaIndex = str.lastIndexOf(',');
+    const lastDotIndex = str.lastIndexOf('.');
+    
+    let clean = "";
+    if (lastCommaIndex > lastDotIndex) {
+        clean = str.replace(/\./g, '').replace(',', '.');
+    } else if (lastDotIndex > lastCommaIndex) {
+        clean = str.replace(/,/g, '');
+    } else {
+        if (lastCommaIndex !== -1) clean = str.replace(',', '.');
+        else clean = str;
+    }
+
+    clean = clean.replace(/[^0-9.-]/g, '');
+    if (!clean) return null;
+    
+    const result = parseFloat(clean);
+    return isNaN(result) ? null : result * multiplier;
 }
 
-function getKeyFromLabel(label: string): string | null {
-    const n = normalize(label);
-    if (!n) return null;
+function parseDate(dateStr: string) {
+    if (!dateStr || dateStr === '-' || dateStr.length < 8) return null;
+    try {
+        const parts = dateStr.trim().split('/');
+        if (parts.length === 3) {
+            let year = parts[2];
+            if (year.length === 2) year = '20' + year;
+            return `${year}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        }
+        return null;
+    } catch { return null; }
+}
 
-    if (n === 'p/vp' || n === 'vp') return 'pvp';
-    if (n.includes('dividend yield') || n === 'dy') return 'dy';
-    if (n.includes('cotacao') || n.includes('valor atual')) return 'cotacao_atual';
-    if (n.includes('liquidez')) return 'liquidez';
-    if (n === 'valor de mercado') return 'val_mercado';
+function mapLabelToKey(label: string): string | null {
+    const norm = normalize(label);
+    if (!norm) return null;
+    const cleanNorm = norm.replace(/\s+/g, '');
     
-    if (n.includes('vacancia fisica') || n === 'vacancia') return 'vacancia';
-    if (n.includes('ultimo rendimento')) return 'ultimo_rendimento';
-    if (n.includes('patrimonio liquido')) return 'patrimonio_liquido';
-    if (n.includes('numero de cotistas') || n.includes('qtd cotistas')) return 'num_cotistas';
-    
-    if (n === 'p/l' || n === 'pl') return 'pl';
-    if (n === 'roe') return 'roe';
-    if (n.includes('margem liquida')) return 'margem_liquida';
-    if (n.includes('divida liquida / ebitda') || n.includes('div liq / ebitda')) return 'divida_liquida_ebitda';
-    if (n === 'ev / ebitda') return 'ev_ebitda';
-    if (n.includes('cagr receitas')) return 'cagr_receita_5a';
+    if (cleanNorm === 'p/vp' || cleanNorm === 'vp' || cleanNorm === 'p/vpa') return 'pvp'; 
+    if (cleanNorm === 'p/l' || cleanNorm === 'pl') return 'pl';
+    if (norm.includes('dy') || norm.includes('dividend yield')) return 'dy';
+    if (norm === 'cotacao' || norm.includes('valor atual')) return 'cotacao_atual';
+    if (norm.includes('cota') && (norm.includes('patrim') || norm.includes('vp'))) return 'vpa';
+    if (cleanNorm === 'vpa' || cleanNorm === 'vp/cota' || cleanNorm === 'vpcota') return 'vpa';
+    if (norm === 'lpa') return 'lpa';
+    if (cleanNorm === 'ev/ebitda') return 'ev_ebitda';
+    if (norm === 'roe') return 'roe';
+    if (norm === 'margem liquida') return 'margem_liquida';
+    if (norm === 'margem bruta') return 'margem_bruta';
+    if (norm.includes('cagr receitas')) return 'cagr_receita_5a';
+    if (norm.includes('cagr lucros')) return 'cagr_lucros_5a';
+    if (norm.includes('liquida/ebitda') || norm.includes('liq/ebitda')) return 'divida_liquida_ebitda';
+    if (norm.includes('liquidez')) return 'liquidez';
+    if (norm.includes('valor de mercado')) return 'val_mercado';
+    if (norm.includes('ultimo rendimento')) return 'ultimo_rendimento';
+    if ((norm.includes('patrim') && (norm.includes('liquido') || norm.includes('liq'))) || norm === 'patrimonio' || norm === 'patrim.' || norm === 'valor patrimonial' || cleanNorm === 'valorpatrimonial' || cleanNorm === 'val.patrimonial') return 'patrimonio_liquido'; 
+    if (norm.includes('cotistas') || norm.includes('numero de cotistas')) return 'num_cotistas';
+    if (norm.includes('vacancia') && !norm.includes('financeira')) return 'vacancia'; 
+    if (norm.includes('tipo de gestao') || norm === 'gestao') return 'tipo_gestao';
+    if (norm.includes('taxa de administracao') || norm.includes('taxa de admin')) return 'taxa_adm';
+    if (norm.includes('segmento') || norm === 'setor' || norm.includes('setor de atuacao')) return 'segmento';
 
     return null;
 }
 
 async function scrapeInvestidor10(ticker: string) {
-    const isLikelyFii = ticker.endsWith('11') || ticker.endsWith('11B');
     const tickerLower = ticker.toLowerCase();
+    const isLikelyFii = ticker.endsWith('11') || ticker.endsWith('11B');
     
-    const urls = isLikelyFii 
-        ? [`https://investidor10.com.br/fiis/${tickerLower}/`, `https://investidor10.com.br/acoes/${tickerLower}/`, `https://investidor10.com.br/fiagros/${tickerLower}/`]
-        : [`https://investidor10.com.br/acoes/${tickerLower}/`, `https://investidor10.com.br/fiis/${tickerLower}/`, `https://investidor10.com.br/bdrs/${tickerLower}/`];
+    const urlFii = `https://investidor10.com.br/fiis/${tickerLower}/`;
+    const urlFiagro = `https://investidor10.com.br/fiagros/${tickerLower}/`;
+    const urlAcao = `https://investidor10.com.br/acoes/${tickerLower}/`;
+    const urlBdr = `https://investidor10.com.br/bdrs/${tickerLower}/`;
 
-    let finalData: any = {};
-    let foundAny = false;
+    const urls = isLikelyFii ? [urlFii, urlFiagro, urlAcao, urlBdr] : [urlAcao, urlFii, urlFiagro, urlBdr];
+
+    let finalData: any = null;
+    let finalDividends: any[] = [];
 
     for (const url of urls) {
         try {
-            const res = await client.get(url, {
-                headers: {
-                    'User-Agent': USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)],
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                    'Referer': 'https://google.com'
-                }
-            });
+            const res = await client.get(url);
+            if (res.data.length < 5000) continue;
 
-            if (res.status !== 200) continue;
-            
             const $ = cheerio.load(res.data);
             
-            if ($('title').text().includes('404') || $('body').text().includes('Página não encontrada')) continue;
+            let type = 'ACAO';
+            if (url.includes('/fiis/')) type = 'FII';
+            else if (url.includes('/fiagros/')) type = 'FII';
+            else if (url.includes('/bdrs/')) type = 'BDR';
 
-            if (url.includes('/fiis/') || url.includes('/fiagros/')) finalData.type = 'FII';
-            else if (url.includes('/bdrs/')) finalData.type = 'BDR';
-            else finalData.type = 'ACAO';
+            const dados: any = {
+                ticker: ticker.toUpperCase(),
+                type: type,
+                updated_at: new Date().toISOString(),
+                dy: null, pvp: null, pl: null, 
+                liquidez: null, val_mercado: null,
+                segmento: null,
+                roe: null, margem_liquida: null, margem_bruta: null,
+                cagr_receita_5a: null, cagr_lucros_5a: null,
+                divida_liquida_ebitda: null, ev_ebitda: null,
+                lpa: null, vpa: null,
+                vacancia: null, ultimo_rendimento: null, num_cotistas: null, 
+                patrimonio_liquido: null,
+                taxa_adm: null, tipo_gestao: null
+            };
 
-            // --- COLETA DE FUNDAMENTOS ---
-            $('div, span, p').each((_, el) => {
-                const text = $(el).text().trim();
-                const key = getKeyFromLabel(text);
-                
-                if (key && !finalData[key]) {
-                    let val = $(el).next().text().trim() || 
-                              $(el).find('span').last().text().trim() ||
-                              $(el).parent().find('.value').text().trim() ||
-                              $(el).parent().next().text().trim();
+            const selectors = ['div._card', '#table-indicators .cell', '#table-general-data .cell', '.indicator-box', '.data-entry', '.cell'];
+            
+            selectors.forEach(selector => {
+                $(selector).each((_, el) => {
+                    let label = $(el).find('div._card-header, .name, .title, span:first-child').first().text().trim();
+                    let value = $(el).find('div._card-body, .value, .data, span:last-child').last().text().trim();
 
-                    if (!val) {
-                        val = $(el).closest('div').find('._card-body, .value').text().trim();
-                    }
-
-                    if (val && val !== text) {
-                        const parsed = parseValue(val);
-                        if (parsed !== null) {
-                            finalData[key] = parsed;
-                            foundAny = true;
+                    if (!label && !value) {
+                        const spans = $(el).find('span');
+                        if (spans.length >= 2) {
+                            label = $(spans[0]).text().trim();
+                            value = $(spans[1]).text().trim();
                         }
                     }
-                }
-            });
 
-            $('.cell').each((_, cell) => {
-                const label = $(cell).find('.name, .title').text().trim();
-                const value = $(cell).find('.value, .data').text().trim();
-                const key = getKeyFromLabel(label);
-                if (key && value && !finalData[key]) {
-                    const parsed = parseValue(value);
-                    if (parsed !== null) {
-                        finalData[key] = parsed;
-                        foundAny = true;
+                    if (label && value) {
+                        const key = mapLabelToKey(label);
+                        if (key && dados[key] === null) {
+                            if (['segmento', 'tipo_gestao', 'taxa_adm'].includes(key)) {
+                                dados[key] = value;
+                            } else {
+                                const parsed = parseValue(value);
+                                if (parsed !== null) dados[key] = parsed;
+                            }
+                        }
                     }
-                }
+                });
             });
 
-            if (!finalData.segmento) {
+            if (!dados.segmento) {
                 $('#breadcrumbs li, .breadcrumbs li').each((_, el) => {
                     const txt = $(el).text().trim();
                     if (txt && !['Início', 'Home', 'Ações', 'FIIs', 'BDRs', 'Fiagros'].includes(txt) && txt.toUpperCase() !== ticker) {
-                        finalData.segmento = txt;
+                        dados.segmento = txt;
                     }
                 });
             }
 
-            if (foundAny) {
-                finalData.ticker = ticker.toUpperCase();
-                finalData.updated_at = new Date().toISOString();
-                
-                finalData.current_price = finalData.cotacao_atual;
-                finalData.dy_12m = finalData.dy;
-                
-                if (!finalData.dy_12m && finalData.ultimo_rendimento && finalData.current_price) {
-                    finalData.dy_12m = (finalData.ultimo_rendimento / finalData.current_price) * 100 * 12;
+            if (dados.cotacao_atual !== null || dados.dy !== null || dados.pvp !== null || dados.pl !== null) {
+                if (dados.dy === null) {
+                     $('span, div, p').each((_, el) => {
+                         const txt = $(el).text().trim().toLowerCase();
+                         if (txt === 'dividend yield' || txt === 'dy') {
+                             const val = $(el).next().text().trim() || $(el).parent().find('.value').text().trim();
+                             const p = parseValue(val);
+                             if (p !== null) dados.dy = p;
+                         }
+                     });
                 }
 
-                // --- COLETA DE DIVIDENDOS (LÓGICA ROBUSTA) ---
+                if (dados.vpa === null && dados.pvp > 0 && dados.cotacao_atual > 0) {
+                     dados.vpa = dados.cotacao_atual / dados.pvp;
+                }
+
+                // --- SCRAPER DE DIVIDENDOS APERFEIÇOADO (HEURÍSTICA DE CONTEÚDO) ---
                 const dividends: any[] = [];
-                
-                // Itera sobre TODAS as tabelas da página
-                $('table').each((_, table) => {
-                    // Mapeia índices das colunas baseado no texto do cabeçalho
-                    let idxDataCom = -1;
-                    let idxPagamento = -1;
-                    let idxValor = -1;
-                    let idxTipo = -1;
+                let tableDivs: cheerio.Cheerio<any> | null = null;
 
-                    $(table).find('thead th').each((idx, th) => {
-                        const txt = $(th).text().toLowerCase().trim();
-                        if (txt.includes('com') || txt.includes('base')) idxDataCom = idx;
-                        if (txt.includes('pagamento')) idxPagamento = idx;
-                        if (txt.includes('valor')) idxValor = idx;
-                        if (txt.includes('tipo')) idxTipo = idx;
+                // 1. Tenta ID específico primeiro (Mais confiável)
+                const specificTable = $('#table-dividends-history');
+                if (specificTable.length > 0) {
+                    tableDivs = specificTable;
+                } else {
+                    // 2. Busca genérica (Fallback)
+                    $('table').each((_, table) => {
+                        const txt = $(table).text().toLowerCase();
+                        if ((txt.includes('tipo') || txt.includes('data com')) && 
+                            (txt.includes('pagamento') || txt.includes('valor'))) {
+                            tableDivs = $(table);
+                            return false; 
+                        }
                     });
+                }
 
-                    // Se encontrou as colunas essenciais (Com e Valor são obrigatórios)
-                    if (idxDataCom !== -1 && idxValor !== -1) {
-                        $(table).find('tbody tr').each((_, tr) => {
-                            const tds = $(tr).find('td');
-                            
-                            const extractDate = (idx: number) => {
-                                if (idx === -1) return null;
-                                const raw = $(tds[idx]).text().trim();
-                                if (!raw || raw === '-' || raw.toLowerCase().includes('aguard')) return null;
-                                const match = raw.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-                                return match ? `${match[3]}-${match[2]}-${match[1]}` : null;
-                            };
+                if (tableDivs) {
+                    tableDivs.find('tbody tr').each((i, tr) => {
+                        const cols = $(tr).find('td');
+                        if (cols.length < 3) return;
 
-                            const dateCom = extractDate(idxDataCom);
-                            let payDate = extractDate(idxPagamento); // Pode ser null
-                            
-                            const valStr = $(tds[idxValor]).text().trim();
-                            const rate = parseValue(valStr);
-                            
-                            let type = 'DIV';
-                            if (idxTipo !== -1) {
-                                const rawType = $(tds[idxTipo]).text().trim().toLowerCase();
-                                if (rawType.includes('jcp') || rawType.includes('juros')) type = 'JCP';
-                                else if (rawType.includes('rendimento')) type = 'REND';
-                                else if (rawType.includes('dividendo')) type = 'DIV';
+                        let typeDiv = 'DIV';
+                        let dateComStr = '';
+                        let datePayStr = '';
+                        let valStr = '';
+
+                        // Varre as colunas da linha
+                        cols.each((_, td) => {
+                            const text = $(td).text().trim();
+                            const normText = normalize(text);
+
+                            // Identifica Tipo
+                            if (normText.includes('jcp') || normText.includes('juros')) typeDiv = 'JCP';
+                            else if (normText.includes('rendimento')) typeDiv = 'REND';
+                            else if (normText.includes('dividendo')) typeDiv = 'DIV';
+                            else if (normText.includes('amortiza')) typeDiv = 'AMORT';
+
+                            // Identifica Datas (DD/MM/AAAA)
+                            if (text.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+                                if (!dateComStr) dateComStr = text; // Primeira data geralmente é Datacom
+                                else if (!datePayStr) datePayStr = text; // Segunda é Pagamento
                             }
 
-                            // Validação: precisa de data com e valor positivo
-                            if (dateCom && rate && rate > 0) {
-                                dividends.push({
-                                    ticker: ticker.toUpperCase(),
-                                    type,
-                                    date_com: dateCom,
-                                    payment_date: payDate, // Mantém null se não tiver data, o frontend trata como "A Definir"
-                                    rate
-                                });
+                            // Identifica Valor (Prioriza formatos monetários R$ ou decimal com vírgula, SEM %)
+                            if (!text.includes('%')) {
+                                if (text.includes('R$') || (text.match(/\d+,\d+/) && !valStr)) {
+                                    // Se tem R$, é certeza. Se não tem R$ mas parece número e ainda não temos valor, pega.
+                                    valStr = text;
+                                } else if (text.match(/\d+,\d+/) && valStr && text.includes('R$')) {
+                                    // Se já tínhamos um valor "fraco" e agora achamos um com R$, substitui (R$ ganha)
+                                    valStr = text;
+                                }
                             }
                         });
-                    }
+
+                        const rate = parseValue(valStr);
+                        const dateCom = parseDate(dateComStr);
+                        const paymentDate = parseDate(datePayStr);
+
+                        if (dateCom && rate !== null && rate > 0) {
+                            dividends.push({ ticker: ticker.toUpperCase(), type: typeDiv, date_com: dateCom, payment_date: paymentDate || null, rate });
+                        }
+                    });
+                }
+
+                if ((dados.dy === null || dados.dy === 0) && dados.ultimo_rendimento && dados.cotacao_atual) {
+                    dados.dy = (dados.ultimo_rendimento / dados.cotacao_atual) * 100 * 12; 
+                }
+
+                Object.keys(dados).forEach(k => {
+                    if (dados[k] === null || dados[k] === undefined || dados[k] === '') delete dados[k];
                 });
 
-                return { metadata: finalData, dividends };
+                finalData = {
+                    ...dados,
+                    dy_12m: dados.dy,
+                    current_price: dados.cotacao_atual,
+                };
+                finalDividends = dividends;
+                
+                break; 
             }
+
         } catch (e) {
-            console.error(`Erro ao acessar ${url}:`, e.message);
+            continue;
         }
     }
-    return null;
+
+    if (!finalData) return null; 
+
+    return { metadata: finalData, dividends: finalDividends };
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('Access-Control-Allow-Origin', '*');
-    
-    const ticker = String(req.query.ticker || '').trim().toUpperCase();
-    const force = req.query.force === 'true';
+    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+    if (req.method === 'OPTIONS') return res.status(200).end();
 
+    const ticker = String(req.query.ticker || '').trim().toUpperCase();
+    const force = req.query.force === 'true'; 
+    
     if (!ticker) return res.status(400).json({ error: 'Ticker required' });
 
     try {
@@ -257,10 +340,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             
             if (existing && existing.updated_at) {
                 const age = Date.now() - new Date(existing.updated_at).getTime();
-                // Cache de 3 horas
-                if (age < 10800000) {
-                    const { data: divs } = await supabase.from('market_dividends').select('*').eq('ticker', ticker);
-                    return res.status(200).json({ success: true, data: existing, dividends: divs || [] });
+                const cacheTime = existing.dy_12m === 0 ? 3600000 : 10800000;
+                
+                if (age < cacheTime) {
+                     const { data: divs } = await supabase
+                        .from('market_dividends')
+                        .select('*')
+                        .eq('ticker', ticker);
+                    return res.status(200).json({ success: true, data: existing, dividends: divs || [], cached: true });
                 }
             }
         }
@@ -268,25 +355,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const result = await scrapeInvestidor10(ticker);
         
         if (!result) {
-            return res.status(404).json({ success: false, error: 'Dados não encontrados na fonte.' });
+            return res.status(404).json({ success: false, error: 'Falha ao obter dados.' });
         }
 
-        const { error: metaError } = await supabase.from('ativos_metadata').upsert(result.metadata, { onConflict: 'ticker' });
-        
-        if (result.dividends.length > 0) {
-            const cleanDivs = result.dividends.map(d => ({
-                ticker: d.ticker,
-                type: d.type,
-                date_com: d.date_com,
-                payment_date: d.payment_date,
-                rate: d.rate
-            }));
+        const { metadata, dividends } = result;
+
+        if (metadata) {
+            const dbPayload = { ...metadata };
+            delete dbPayload.dy;
+            delete dbPayload.cotacao_atual;
             
-            // Upsert seguro para evitar duplicatas, mas atualizando datas de pagamento que mudaram de null para valor real
-            await supabase.from('market_dividends').upsert(cleanDivs, { onConflict: 'ticker,type,date_com,rate', ignoreDuplicates: false });
+            const { error } = await supabase.from('ativos_metadata').upsert(dbPayload, { onConflict: 'ticker' });
+            if (error) console.error('Error saving metadata:', error);
         }
 
-        return res.status(200).json({ success: true, data: result.metadata, dividends: result.dividends });
+        if (dividends.length > 0) {
+             // CLEANUP: Remove registros futuros existentes para este ticker (limpa dados velhos/errados)
+             const today = new Date().toISOString().split('T')[0];
+             const { error: delError } = await supabase.from('market_dividends')
+                .delete()
+                .eq('ticker', ticker.toUpperCase())
+                .gte('payment_date', today);
+             
+             if (delError) console.warn('Clean up error (ignorable):', delError);
+
+             const uniqueDivs = Array.from(new Map(dividends.map(item => [
+                `${item.type}-${item.date_com}-${item.rate}`, item
+            ])).values());
+            
+            const { error } = await supabase.from('market_dividends').upsert(uniqueDivs, { onConflict: 'ticker,type,date_com,rate' });
+            if (error) console.error('Error saving dividends:', error);
+        }
+
+        return res.status(200).json({ success: true, data: metadata, dividends });
 
     } catch (e: any) {
         return res.status(500).json({ success: false, error: e.message });
