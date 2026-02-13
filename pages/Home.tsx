@@ -17,7 +17,8 @@ interface HomeProps {
   balance: number;
   totalAppreciation: number;
   transactions?: Transaction[];
-  privacyMode?: boolean;
+  // Aceita boolean, string ou undefined para evitar conflitos de tipagem estrita
+  privacyMode?: boolean | string; 
   onViewAsset?: (ticker: string) => void;
 }
 
@@ -167,13 +168,13 @@ const AgendaItem: React.FC<AgendaItemProps> = ({ event, hideValues }) => {
 
 // --- MAIN COMPONENT ---
 
-function HomeComponent({ portfolio, dividendReceipts, salesGain = 0, totalDividendsReceived = 0, invested, balance, totalAppreciation, transactions, privacyMode = false, onViewAsset }: HomeProps) {
+function HomeComponent({ portfolio, dividendReceipts, salesGain = 0, totalDividendsReceived = 0, invested, balance, totalAppreciation, transactions, privacyMode, onViewAsset }: HomeProps) {
   const [showAgendaModal, setShowAgendaModal] = useState(false);
   const [showProventosModal, setShowProventosModal] = useState(false);
   const [showAllocationModal, setShowAllocationModal] = useState(false);
   
-  // Renamed to safePrivacy to ensure no variable shadowing or type inference issues
-  const safePrivacy = !!privacyMode;
+  // GARANTIA DE BOOLEAN: Converte qualquer entrada (string 'true', boolean true, undefined) para boolean estrito.
+  const safePrivacy: boolean = privacyMode === true || String(privacyMode) === 'true';
   
   const [showMagicModal, setShowMagicModal] = useState(false);
   const [showGoalModal, setShowGoalModal] = useState(false);
