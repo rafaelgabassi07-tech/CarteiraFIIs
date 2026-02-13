@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useEffect } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
 import { CircleDollarSign, CalendarClock, TrendingUp, TrendingDown, Wallet, PieChart as PieIcon, ArrowUpRight, ArrowDownRight, Layers, Filter, Calendar, Wand2, Target, Sparkles, CheckCircle2, ChevronRight, Calculator, PiggyBank, Coins, Banknote, AlertCircle } from 'lucide-react';
@@ -73,10 +72,10 @@ const CustomBarTooltip = ({ active, payload, label, privacyMode }: any) => {
 
 interface ProventosChartProps {
     data: HistoryItem[];
-    privacyMode: boolean;
+    hideValues: boolean;
 }
 
-function ProventosChart({ data, privacyMode }: ProventosChartProps) {
+function ProventosChart({ data, hideValues }: ProventosChartProps) {
     return (
         <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
@@ -90,7 +89,7 @@ function ProventosChart({ data, privacyMode }: ProventosChartProps) {
                 />
                 <RechartsTooltip 
                     cursor={{fill: 'transparent'}} 
-                    content={<CustomBarTooltip privacyMode={privacyMode} />} 
+                    content={<CustomBarTooltip privacyMode={hideValues} />} 
                 />
                 <Bar dataKey="value" radius={[3, 3, 3, 3]}>
                     {data.map((entry, index) => (
@@ -104,10 +103,10 @@ function ProventosChart({ data, privacyMode }: ProventosChartProps) {
 
 interface AgendaItemProps {
     event: RadarEvent;
-    privacyMode: boolean;
+    hideValues: boolean;
 }
 
-const AgendaItem: React.FC<AgendaItemProps> = ({ event, privacyMode }) => {
+const AgendaItem: React.FC<AgendaItemProps> = ({ event, hideValues }) => {
     const isDatacom = event.eventType === 'DATACOM';
     
     let day = '--';
@@ -144,7 +143,7 @@ const AgendaItem: React.FC<AgendaItemProps> = ({ event, privacyMode }) => {
             {!isDatacom && (
                 <div className="text-right">
                     <span className="block text-emerald-600 dark:text-emerald-400 font-black text-xs">
-                        {formatBRL(event.amount, privacyMode)}
+                        {formatBRL(event.amount, hideValues)}
                     </span>
                     <span className="text-[9px] text-zinc-400">Total Previsto</span>
                 </div>
@@ -572,7 +571,7 @@ const HomeComponent = ({ portfolio, dividendReceipts, salesGain = 0, totalDivide
                         <div key={monthKey}>
                             <h3 className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-2 ml-1 sticky top-0 bg-[#F2F2F2] dark:bg-black py-2 z-10">{monthKey}</h3>
                             {filteredAgenda.grouped[monthKey].map(event => (
-                                <AgendaItem key={event.id} event={event} privacyMode={isPrivacyActive} />
+                                <AgendaItem key={event.id} event={event} hideValues={isPrivacyActive} />
                             ))}
                         </div>
                     ))
@@ -626,7 +625,7 @@ const HomeComponent = ({ portfolio, dividendReceipts, salesGain = 0, totalDivide
              <div className="flex-1 overflow-y-auto px-6 pb-20 pt-2">
                  {chartData.length > 0 && (
                      <div className="h-32 w-full mb-4 bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm shrink-0">
-                         <ProventosChart data={chartData} privacyMode={isPrivacyActive} />
+                         <ProventosChart data={chartData} hideValues={isPrivacyActive} />
                      </div>
                  )}
                  
@@ -672,6 +671,7 @@ const HomeComponent = ({ portfolio, dividendReceipts, salesGain = 0, totalDivide
       </SwipeableModal>
 
       <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
+         {/* ... (Allocation Content remains the same) ... */}
          <div className="flex flex-col h-full bg-[#F2F2F2] dark:bg-black">
              <div className="px-6 pt-4 pb-2 shrink-0">
                  <div className="flex items-center gap-3 mb-4">
