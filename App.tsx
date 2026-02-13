@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Header, BottomNav, ChangelogModal, NotificationsModal, ConfirmationModal, InstallPromptModal, UpdateReportModal } from './components/Layout';
 import { SplashScreen } from './components/SplashScreen';
@@ -43,7 +42,7 @@ const mergeDividends = (current: DividendReceipt[], incoming: DividendReceipt[])
 
 const App: React.FC = () => {
   const updateManager = useUpdateManager(APP_VERSION);
-  const { setShowChangelog, checkForUpdates, isUpdateAvailable, currentVersionDate, startUpdateProcess, isUpdating, updateProgress, releaseNotes, showChangelog: isChangelogOpen } = updateManager;
+  const { setShowChangelog, checkForUpdates, isUpdateAvailable, availableVersion, currentVersionDate, startUpdateProcess, isUpdating, updateProgress, releaseNotes, showChangelog: isChangelogOpen } = updateManager;
   const { scrollDirection, isTop } = useScrollDirection();
   
   const [isReady, setIsReady] = useState(false); 
@@ -62,7 +61,8 @@ const App: React.FC = () => {
 
   const [theme, setTheme] = useState<ThemeType>(() => (localStorage.getItem(STORAGE_KEYS.THEME) as ThemeType) || 'system');
   const [accentColor, setAccentColor] = useState(() => localStorage.getItem(STORAGE_KEYS.ACCENT) || '#10b981'); 
-  const [privacyMode, setPrivacyMode] = useState(() => localStorage.getItem(STORAGE_KEYS.PRIVACY) === 'true');
+  // Strict Boolean Initialization
+  const [privacyMode, setPrivacyMode] = useState<boolean>(() => localStorage.getItem(STORAGE_KEYS.PRIVACY) === 'true');
   const [pushEnabled, setPushEnabled] = useState(() => localStorage.getItem(STORAGE_KEYS.PUSH_ENABLED) === 'true');
   
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
@@ -118,6 +118,8 @@ const App: React.FC = () => {
   useEffect(() => { window.scrollTo(0, 0); }, [currentTab, showSettings]);
   useEffect(() => { if (isReady) { setTimeout(() => { document.body.classList.add('app-revealed'); }, 100); } }, [isReady]);
 
+  useEffect(() => { localStorage.setItem(STORAGE_KEYS.PRIVACY, String(privacyMode)); }, [privacyMode]);
+
   // Notificações Locais
   useEffect(() => {
       if (!dividends || dividends.length === 0 || !transactions || transactions.length === 0) return;
@@ -142,305 +144,216 @@ const App: React.FC = () => {
               }
           }
       });
-      if (newNotifs.length > 0) { setNotifications(prev => [...newNotifs, ...prev]); if (navigator.vibrate) navigator.vibrate(200); }
+      if (newNotifs.length > 0) { 
+          setNotifications(prev => [...newNotifs, ...prev].slice(0, 50)); 
+      }
   }, [dividends, transactions]);
 
-  const showToast = useCallback((type: 'success' | 'error' | 'info', text: string) => {
-    if (toastTimeoutRef.current) window.clearTimeout(toastTimeoutRef.current);
-    setToast(null);
-    setTimeout(() => { setToast({ type, text }); toastTimeoutRef.current = window.setTimeout(() => setToast(null), 3500); }, 50);
+  // Auth & Initial Data
+  useEffect(() => {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+          setSession(session);
+      });
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+          setSession(session);
+      });
+      return () => subscription.unsubscribe();
   }, []);
 
-  const checkConnection = useCallback(async () => {
-      setIsCheckingServices(true);
-      const newServices = [...servicesRef.current];
-      
-      const checkUrl = async (url: string) => {
-          const start = Date.now();
+  // Sync Logic
+  useEffect(() => {
+      const sync = async () => {
+          if (!transactions.length) {
+              // Se não tem transações, tenta carregar do localStorage ou DB
+              setIsReady(true);
+              return;
+          }
+          
+          setCloudStatus('syncing');
+          setLoadingProgress(30);
+          
+          const tickers: string[] = [...new Set(transactions.map(t => t.ticker))];
+          
           try {
-              await fetch(url, { method: 'HEAD', mode: 'no-cors' }); 
-              return Date.now() - start;
-          } catch {
-              return null;
+              // 1. Quotes
+              const quoteRes = await getQuotes(tickers);
+              if (quoteRes.quotes) {
+                  const qMap = { ...quotes };
+                  quoteRes.quotes.forEach(q => { qMap[q.symbol] = q; });
+                  setQuotes(qMap);
+              }
+              setLoadingProgress(60);
+
+              // 2. Data Service (Dividends + Metadata + Indicators)
+              const data = await fetchUnifiedMarketData(tickers);
+              
+              if (data.dividends.length > 0) {
+                  setDividends(prev => mergeDividends(prev, data.dividends));
+              }
+              if (data.metadata) {
+                  setAssetsMetadata(prev => ({ ...prev, ...data.metadata }));
+              }
+              if (data.indicators) {
+                  setMarketIndicators({ ipca: data.indicators.ipca_cumulative, startDate: '' });
+              }
+              
+              setLoadingProgress(100);
+              setCloudStatus('connected');
+          } catch (e) {
+              console.error('Sync failed', e);
+              setCloudStatus('disconnected');
+          } finally {
+              setIsReady(true);
+              setTimeout(() => setCloudStatus('hidden'), 2000);
           }
       };
 
-      const dbPing = await checkUrl(SUPABASE_URL || '');
-      newServices[0] = { ...newServices[0], status: dbPing ? 'operational' : 'error', latency: dbPing };
+      sync();
+      const interval = setInterval(sync, 300000); // 5 min refresh
+      return () => clearInterval(interval);
+  }, [transactions]); 
 
-      const marketPing = await checkUrl('https://brapi.dev');
-      newServices[1] = { ...newServices[1], status: marketPing ? 'operational' : 'degraded', latency: marketPing };
+  // Handlers de dados
+  const handleAddTransaction = async (t: Omit<Transaction, 'id'>) => {
+      const newTx = { ...t, id: crypto.randomUUID() };
+      setTransactions(prev => [...prev, newTx]);
+      // Opcional: Persistir no Supabase aqui
+  };
 
-      newServices[2] = { ...newServices[2], status: 'operational', latency: 10 };
+  const handleUpdateTransaction = async (id: string, t: Partial<Transaction>) => {
+      setTransactions(prev => prev.map(x => x.id === id ? { ...x, ...t } : x));
+  };
 
-      setServices(newServices);
-      setIsCheckingServices(false);
-  }, []);
+  const handleBulkDelete = async (ids: string[]) => {
+      setTransactions(prev => prev.filter(x => !ids.includes(x.id)));
+  };
 
-  const syncMarketData = useCallback(async (force = false, txsToUse: Transaction[], initialLoad = false) => {
-    const tickers = Array.from(new Set(txsToUse.map(t => t.ticker.toUpperCase())));
-    if (tickers.length === 0) return;
-    
-    if (initialLoad) setLoadingProgress(50);
-    
-    try {
-      const { quotes: newQuotesData } = await getQuotes(tickers);
-      if (newQuotesData.length > 0) {
-        setQuotes(prev => ({...prev, ...newQuotesData.reduce((acc: any, q: any) => ({...acc, [q.symbol]: q }), {})}));
-      }
-      
-      if (initialLoad) setLoadingProgress(70); 
-      
-      const startDate = txsToUse.reduce((min, t) => t.date < min ? t.date : min, txsToUse[0].date);
-      
-      let data = await fetchUnifiedMarketData(tickers, startDate, force);
+  // Cálculo Principal
+  const { portfolio, balance, invested, totalDividendsReceived, salesGain } = useMemo(() => 
+      processPortfolio(transactions, dividends, quotes, assetsMetadata), 
+  [transactions, dividends, quotes, assetsMetadata]);
 
-      if (data.dividends.length > 0) {
-          setDividends(prev => mergeDividends(prev, data.dividends));
-      }
-      if (Object.keys(data.metadata).length > 0) {
-          setAssetsMetadata(prev => {
-              const next = { ...prev };
-              Object.entries(data.metadata).forEach(([ticker, newMeta]) => { next[ticker] = newMeta; });
-              return next;
-          });
-      }
-      if (data.indicators) {
-         setMarketIndicators({ ipca: data.indicators.ipca_cumulative || 4.62, startDate: data.indicators.start_date_used });
-      }
-      
-      localStorage.setItem(STORAGE_KEYS.LAST_AUTO_SYNC, Date.now().toString());
-      if (initialLoad) setLoadingProgress(100); 
-
-    } catch (e) { console.error(e); } 
-  }, []);
-
-  const refreshSingleAsset = useCallback(async (ticker: string) => {
-      try {
-          const { dividends: newDivs, metadata: newMeta } = await fetchUnifiedMarketData([ticker], undefined, true);
-          if (newDivs.length > 0) setDividends(prev => mergeDividends(prev, newDivs));
-          if (newMeta[ticker]) setAssetsMetadata(prev => ({ ...prev, [ticker]: newMeta[ticker] }));
-          const { quotes: q } = await getQuotes([ticker]);
-          if(q.length > 0) setQuotes(prev => ({...prev, [ticker]: q[0]}));
-      } catch (e) { console.error("Single asset refresh failed:", e); }
-  }, []);
-
-  const fetchTransactionsFromCloud = useCallback(async (currentSession: Session | null, initialLoad = false) => {
-    setCloudStatus('syncing');
-    if (initialLoad) setLoadingProgress(25);
-    try {
-        if (!currentSession?.user?.id) return;
-        const { data, error } = await supabase.from('transactions').select('*').eq('user_id', currentSession.user.id);
-        if (error) throw error;
-        
-        const cloudTxs = (data || []).map(mapSupabaseToTx);
-        setTransactions(cloudTxs);
-        setCloudStatus('connected');
-        setTimeout(() => setCloudStatus('hidden'), 3000);
-        
-        if (cloudTxs.length > 0) {
-            await syncMarketData(false, cloudTxs, initialLoad);
-        } else {
-             if (initialLoad) setLoadingProgress(100);
-        }
-    } catch (err) { 
-        console.error(err);
-        showToast('error', 'Erro de conexão.'); 
-        setCloudStatus('disconnected'); 
-    }
-  }, [syncMarketData, showToast]);
-
-  useEffect(() => {
-    const initApp = async () => {
-        const startTime = Date.now();
-        setLoadingProgress(10);
-        try {
-            const { data } = await supabase.auth.getSession();
-            const initialSession = data?.session;
-            setSession(initialSession);
-            setLoadingProgress(50);
-            if (initialSession) {
-                await fetchTransactionsFromCloud(initialSession, true);
-            }
-            const elapsed = Date.now() - startTime;
-            if (elapsed < 2000) await new Promise(resolve => setTimeout(resolve, 2000 - elapsed));
-            setLoadingProgress(100);
-        } catch (e) {
-            console.warn("Init error:", e);
-            setSession(null);
-        } finally {
-            setIsReady(true);
-        }
-    };
-    initApp();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
-        setSession(newSession);
-        if (event === 'SIGNED_IN' && newSession) fetchTransactionsFromCloud(newSession, true);
-        if (!newSession) { setTransactions([]); setDividends([]); }
-    });
-    return () => subscription.unsubscribe();
-  }, []); 
-
-  const handleLogout = useCallback(async () => {
-    setSession(null); setTransactions([]); setDividends([]);
-    await supabase.auth.signOut();
-    try { Object.keys(localStorage).forEach(key => { if (key.startsWith('sb-')) localStorage.removeItem(key); }); } catch {}
-  }, []);
-
-  const memoizedPortfolioData = useMemo(() => {
-      return processPortfolio(transactions, dividends, quotes, assetsMetadata);
-  }, [transactions, quotes, dividends, assetsMetadata]);
-
-  const isHeaderVisible = showSettings || scrollDirection === 'up' || isTop;
-  const showHeaderActions = currentTab === 'home';
-
-  if (!isReady) return <SplashScreen finishLoading={false} realProgress={loadingProgress} />;
-  if (!session) return <> <SplashScreen finishLoading={true} realProgress={100} /> <InstallPromptModal isOpen={showInstallModal} onInstall={() => installPrompt?.prompt()} onDismiss={() => setShowInstallModal(false)} /> <Login /> </>;
+  const totalAppreciation = balance - invested;
 
   return (
-    <div className="min-h-screen bg-[#F2F2F2] dark:bg-black text-zinc-900 dark:text-white pb-safe">
-      <SplashScreen finishLoading={true} realProgress={100} />
+    <>
+      <SplashScreen finishLoading={isReady} realProgress={loadingProgress} />
       
-      {toast && ( 
-        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[3000] w-auto max-w-sm px-4">
-            <div className={`text-white px-4 py-3 rounded-2xl text-xs font-bold flex items-center gap-2 anim-scale-in backdrop-blur-md shadow-2xl ${toast.type === 'error' ? 'bg-rose-500' : 'bg-black/90 dark:bg-white/90 dark:text-black'}`}>
-               {toast.text}
-            </div>
-        </div> 
+      {showSettings ? (
+          <Settings 
+            user={session?.user} 
+            transactions={transactions}
+            onImportTransactions={setTransactions}
+            dividends={dividends}
+            onImportDividends={setDividends}
+            onLogout={() => supabase.auth.signOut()}
+            onResetApp={() => {
+                localStorage.clear();
+                window.location.reload();
+            }}
+            theme={theme}
+            onSetTheme={setTheme}
+            accentColor={accentColor}
+            onSetAccentColor={setAccentColor}
+            privacyMode={privacyMode}
+            onSetPrivacyMode={setPrivacyMode}
+            appVersion={APP_VERSION}
+            updateAvailable={isUpdateAvailable}
+            onCheckUpdates={checkForUpdates}
+            onShowChangelog={() => setShowChangelog(true)}
+            pushEnabled={pushEnabled}
+            onRequestPushPermission={() => setPushEnabled(true)}
+            onSyncAll={async () => {}} 
+            currentVersionDate={currentVersionDate}
+            onForceUpdate={startUpdateProcess}
+            services={services}
+            onCheckConnection={async () => {}} 
+            isCheckingConnection={isCheckingServices}
+          />
+      ) : (
+        <>
+          <Header 
+            title="InvestFIIs" 
+            isVisible={true}
+            onSettingsClick={() => setShowSettings(true)}
+            notificationCount={notifications.filter(n => !n.read).length}
+            onNotificationClick={() => setShowNotifications(true)}
+            updateAvailable={isUpdateAvailable}
+            onUpdateClick={startUpdateProcess}
+            cloudStatus={cloudStatus}
+          />
+
+          <main className="pt-20 px-4 min-h-screen">
+            {currentTab === 'home' && (
+                <Home 
+                    portfolio={portfolio}
+                    dividendReceipts={dividends}
+                    salesGain={salesGain}
+                    totalDividendsReceived={totalDividendsReceived}
+                    invested={invested}
+                    balance={balance}
+                    totalAppreciation={totalAppreciation}
+                    transactions={transactions}
+                    privacyMode={privacyMode}
+                />
+            )}
+            {currentTab === 'portfolio' && (
+                <Portfolio 
+                    portfolio={portfolio}
+                    dividends={dividends}
+                    privacyMode={privacyMode}
+                    targetAsset={targetAssetTicker}
+                    onClearTarget={() => setTargetAssetTicker(null)}
+                />
+            )}
+            {currentTab === 'transactions' && (
+                <Transactions 
+                    transactions={transactions}
+                    privacyMode={privacyMode}
+                    onAddTransaction={handleAddTransaction}
+                    onUpdateTransaction={handleUpdateTransaction}
+                    onBulkDelete={handleBulkDelete}
+                    onRequestDeleteConfirmation={(id) => {}}
+                />
+            )}
+            {currentTab === 'news' && (
+                <News transactions={transactions} />
+            )}
+          </main>
+
+          <BottomNav 
+            currentTab={currentTab} 
+            onTabChange={setCurrentTab} 
+            isVisible={true}
+          />
+        </>
       )}
 
-      <>
-        <Header 
-            title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Carteira' : currentTab === 'transactions' ? 'Extrato' : 'Notícias'} 
-            showBack={showSettings} onBack={() => setShowSettings(false)} 
-            onSettingsClick={showHeaderActions ? () => setShowSettings(true) : undefined} 
-            updateAvailable={isUpdateAvailable} onUpdateClick={() => setShowChangelog(true)} 
-            onNotificationClick={showHeaderActions ? () => setShowNotifications(true) : undefined} 
-            notificationCount={notifications.filter(n=>!n.read).length} 
-            cloudStatus={cloudStatus} 
-            isVisible={isHeaderVisible}
-        />
-        
-        <main className="max-w-xl mx-auto pt-20 pb-32 min-h-screen px-6">
-          {showSettings ? (
-            <div className="pt-2">
-              <Settings 
-                onLogout={handleLogout} 
-                user={session.user} 
-                transactions={transactions} 
-                onImportTransactions={setTransactions} 
-                dividends={dividends} 
-                onImportDividends={setDividends} 
-                onResetApp={() => { localStorage.clear(); window.location.reload(); }} 
-                theme={theme} 
-                onSetTheme={setTheme} 
-                accentColor={accentColor} 
-                onSetAccentColor={setAccentColor} 
-                privacyMode={privacyMode} 
-                onSetPrivacyMode={setPrivacyMode} 
-                appVersion={APP_VERSION} 
-                updateAvailable={isUpdateAvailable} 
-                onCheckUpdates={checkForUpdates} 
-                onShowChangelog={() => setShowChangelog(true)} 
-                pushEnabled={pushEnabled} 
-                onRequestPushPermission={() => setPushEnabled(!pushEnabled)} 
-                onSyncAll={() => fetchTransactionsFromCloud(session, true)} 
-                onForceUpdate={() => window.location.reload()} 
-                currentVersionDate={currentVersionDate} 
-                services={services} 
-                onCheckConnection={checkConnection} 
-                isCheckingConnection={isCheckingServices} 
-              />
-            </div>
-          ) : (
-            <div key={currentTab} className="anim-page-enter">
-              {currentTab === 'home' && (
-                <Home 
-                    {...memoizedPortfolioData} 
-                    transactions={transactions} 
-                    totalAppreciation={memoizedPortfolioData.balance - memoizedPortfolioData.invested} 
-                    inflationRate={marketIndicators.ipca} 
-                    privacyMode={privacyMode} 
-                    onViewAsset={(t) => { setTargetAssetTicker(t); setCurrentTab('portfolio'); }} 
-                />
-              )}
-              
-              {currentTab === 'portfolio' && (
-                <Portfolio 
-                    portfolio={memoizedPortfolioData.portfolio} 
-                    dividends={dividends} 
-                    privacyMode={privacyMode} 
-                    onAssetRefresh={refreshSingleAsset} 
-                    headerVisible={isHeaderVisible} 
-                    targetAsset={targetAssetTicker} 
-                    onClearTarget={() => setTargetAssetTicker(null)} 
-                />
-              )}
-              
-              {currentTab === 'transactions' && (
-                <Transactions 
-                    transactions={transactions} 
-                    onAddTransaction={async (t) => { 
-                        if (!session?.user?.id) { showToast('error', 'Usuário não autenticado'); return; }
-                        const payload = {
-                            id: crypto.randomUUID(), 
-                            ticker: t.ticker,
-                            type: t.type,
-                            quantity: t.quantity,
-                            price: t.price,
-                            date: t.date,
-                            asset_type: t.assetType, 
-                            user_id: session.user.id
-                        };
-                        try {
-                            const { error } = await supabase.from('transactions').insert(payload); 
-                            if (error) { console.error(error); showToast('error', `Erro: ${error.message}`); } 
-                            else { showToast('success', 'Ordem salva!'); await fetchTransactionsFromCloud(session); }
-                        } catch (e: any) { console.error(e); showToast('error', 'Erro ao salvar.'); }
-                    }} 
-                    onUpdateTransaction={async (id, t) => { 
-                        const payload: any = { ...t };
-                        if (t.assetType) { payload.asset_type = t.assetType; delete payload.assetType; }
-                        const { error } = await supabase.from('transactions').update(payload).eq('id', id); 
-                        if(!error) { await fetchTransactionsFromCloud(session); showToast('success', 'Atualizado!'); } 
-                        else { showToast('error', 'Erro ao atualizar.'); }
-                    }} 
-                    onBulkDelete={async (ids) => {
-                        const { error } = await supabase.from('transactions').delete().in('id', ids);
-                        if(!error) { await fetchTransactionsFromCloud(session); showToast('success', 'Removido!'); } 
-                        else { showToast('error', 'Erro ao excluir.'); }
-                    }}
-                    onRequestDeleteConfirmation={(id) => setConfirmModal({ 
-                        isOpen: true, 
-                        title: 'Excluir?', 
-                        message: 'Ação irreversível.', 
-                        onConfirm: async () => { 
-                            const { error } = await supabase.from('transactions').delete().eq('id', id); 
-                            if (!error) { await fetchTransactionsFromCloud(session); showToast('success', 'Removido.'); } 
-                            else { showToast('error', 'Erro.'); }
-                            setConfirmModal(null); 
-                        } 
-                    })} 
-                    privacyMode={privacyMode} 
-                />
-              )}
-              
-              {currentTab === 'news' && <News transactions={transactions} />}
-            </div>
-          )}
-        </main>
-        
-        {!showSettings && <BottomNav currentTab={currentTab} onTabChange={setCurrentTab} isVisible={isHeaderVisible} />}
-        
-        <ChangelogModal isOpen={isChangelogOpen} onClose={() => setShowChangelog(false)} version={APP_VERSION} notes={releaseNotes} isUpdatePending={isUpdateAvailable} onUpdate={startUpdateProcess} isUpdating={isUpdating} progress={updateProgress} />
-        <NotificationsModal isOpen={showNotifications} onClose={() => setShowNotifications(false)} notifications={notifications} onClear={() => setNotifications(prev => prev.map(n => ({...n, read: true})))} />
-        <ConfirmationModal isOpen={!!confirmModal} title={confirmModal?.title} message={confirmModal?.message} onConfirm={confirmModal?.onConfirm} onCancel={() => setConfirmModal(null)} />
-        <InstallPromptModal isOpen={showInstallModal} onInstall={() => installPrompt?.prompt()} onDismiss={() => setShowInstallModal(false)} />
-        <UpdateReportModal isOpen={showUpdateReport} onClose={() => setShowUpdateReport(false)} results={updateResults || { results: [] }} />
-      </>
-    </div>
+      {/* Global Modals */}
+      <NotificationsModal 
+        isOpen={showNotifications} 
+        onClose={() => setShowNotifications(false)} 
+        notifications={notifications}
+        onClear={() => setNotifications([])}
+      />
+      
+      <ChangelogModal 
+        isOpen={isChangelogOpen} 
+        onClose={() => setShowChangelog(false)} 
+        version={availableVersion || APP_VERSION} 
+        notes={releaseNotes}
+        isUpdatePending={isUpdateAvailable}
+        onUpdate={startUpdateProcess}
+        isUpdating={isUpdating}
+      />
+
+      <InstallPromptModal 
+        isOpen={showInstallModal}
+        onInstall={() => { installPrompt?.prompt(); setShowInstallModal(false); }}
+        onDismiss={() => setShowInstallModal(false)}
+      />
+    </>
   );
 };
 
-export default App;
+export { App };

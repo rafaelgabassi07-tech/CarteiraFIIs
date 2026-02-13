@@ -5,6 +5,8 @@ import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis } from 'recharts';
 import { fetchFutureAnnouncements } from '../services/dataService';
 
+// --- INTERFACES & TYPES ---
+
 interface HomeProps {
   portfolio: AssetPosition[];
   dividendReceipts: DividendReceipt[];
@@ -49,33 +51,44 @@ interface MagicData {
     isFII: boolean;
 }
 
-const formatBRL = (val: any, privacy: boolean = false): string => {
-  if (privacy) return 'R$ ••••••';
+// --- HELPERS ---
+
+const formatBRL = (val: any, hide: boolean): string => {
+  if (hide) return 'R$ ••••••';
   const num = typeof val === 'number' ? val : 0;
   return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 };
 
 const CHART_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#6366f1', '#f43f5e'];
 
-const CustomBarTooltip = ({ active, payload, label, privacyMode }: any) => { 
+// --- SUB-COMPONENTS ---
+
+interface CustomTooltipProps {
+    active?: boolean;
+    payload?: any[];
+    label?: string;
+    hideValues: boolean;
+}
+
+const CustomBarTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label, hideValues }) => { 
     if (active && payload && payload.length) { 
         const data = payload[0]; 
         return (
             <div className="bg-zinc-900/90 dark:bg-zinc-800/90 backdrop-blur-md p-2 rounded-xl shadow-xl border border-white/10 text-center min-w-[60px]">
                 <p className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">{String(label)} {data.payload.year}</p>
-                <p className="text-[10px] font-black text-white">{formatBRL(data.value, privacyMode)}</p>
+                <p className="text-[10px] font-black text-white">{formatBRL(data.value, hideValues)}</p>
             </div>
         ); 
     } 
     return null; 
-};
+}
 
 interface ProventosChartProps {
     data: HistoryItem[];
     hideValues: boolean;
 }
 
-function ProventosChart({ data, hideValues }: ProventosChartProps) {
+const ProventosChart: React.FC<ProventosChartProps> = ({ data, hideValues }) => {
     return (
         <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
@@ -89,7 +102,7 @@ function ProventosChart({ data, hideValues }: ProventosChartProps) {
                 />
                 <RechartsTooltip 
                     cursor={{fill: 'transparent'}} 
-                    content={<CustomBarTooltip privacyMode={hideValues} />} 
+                    content={<CustomBarTooltip hideValues={hideValues} />} 
                 />
                 <Bar dataKey="value" radius={[3, 3, 3, 3]}>
                     {data.map((entry, index) => (
@@ -150,9 +163,11 @@ const AgendaItem: React.FC<AgendaItemProps> = ({ event, hideValues }) => {
             )}
         </div>
     );
-};
+}
 
-const HomeComponent = ({ portfolio, dividendReceipts, salesGain = 0, totalDividendsReceived = 0, invested, balance, totalAppreciation, transactions, privacyMode = false, onViewAsset }: HomeProps) => {
+// --- MAIN COMPONENT ---
+
+function HomeComponent({ portfolio, dividendReceipts, salesGain = 0, totalDividendsReceived = 0, invested, balance, totalAppreciation, transactions, privacyMode = false, onViewAsset }: HomeProps) {
   const [showAgendaModal, setShowAgendaModal] = useState(false);
   const [showProventosModal, setShowProventosModal] = useState(false);
   const [showAllocationModal, setShowAllocationModal] = useState(false);
@@ -671,7 +686,6 @@ const HomeComponent = ({ portfolio, dividendReceipts, salesGain = 0, totalDivide
       </SwipeableModal>
 
       <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
-         {/* ... (Allocation Content remains the same) ... */}
          <div className="flex flex-col h-full bg-[#F2F2F2] dark:bg-black">
              <div className="px-6 pt-4 pb-2 shrink-0">
                  <div className="flex items-center gap-3 mb-4">
@@ -752,6 +766,6 @@ const HomeComponent = ({ portfolio, dividendReceipts, salesGain = 0, totalDivide
       </SwipeableModal>
     </div>
   );
-};
+}
 
 export const Home = React.memo(HomeComponent);

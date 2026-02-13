@@ -1,12 +1,11 @@
-
-import React, { useMemo, useState, useRef, useEffect } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { TrendingUp, TrendingDown, Plus, Hash, Trash2, Save, X, ArrowRightLeft, Building2, CandlestickChart, Filter, Check, Calendar, CheckSquare, Search, ChevronDown, RefreshCw, Wallet, DollarSign, ArrowUpRight, ArrowDownLeft, Pencil, Coins, Sparkles, Tag } from 'lucide-react';
+import { TrendingUp, Plus, Hash, Trash2, X, ArrowRightLeft, Building2, Filter, Check, Calendar, CheckSquare, Search, ChevronDown, Wallet, ArrowUpRight, ArrowDownLeft, Pencil } from 'lucide-react';
 import { SwipeableModal, ConfirmationModal } from '../components/Layout';
 import { Transaction, AssetType } from '../types';
 
-const formatBRL = (val: number, privacy = false) => {
-  if (privacy) return '••••••';
+const formatBRL = (val: number, hide: boolean) => {
+  if (hide) return '••••••';
   return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 };
 
@@ -20,7 +19,7 @@ const formatMonthHeader = (monthKey: string) => {
     }
 };
 
-const TransactionsSummary = ({ transactions, privacyMode }: { transactions: Transaction[], privacyMode: boolean }) => {
+const TransactionsSummary = ({ transactions, hideValues }: { transactions: Transaction[], hideValues: boolean }) => {
     const { totalInvested, totalSold, netFlow, count } = useMemo(() => {
         let invested = 0;
         let sold = 0;
@@ -46,7 +45,7 @@ const TransactionsSummary = ({ transactions, privacyMode }: { transactions: Tran
                     </div>
                     <div className="flex items-baseline gap-2">
                         <h2 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tight">
-                            {formatBRL(Math.abs(netFlow), privacyMode)}
+                            {formatBRL(Math.abs(netFlow), hideValues)}
                         </h2>
                         <span className={`text-xs font-black px-1.5 py-0.5 rounded-md ${netFlow >= 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'}`}>
                             {netFlow >= 0 ? 'INVESTIDO' : 'RETIRADO'}
@@ -64,7 +63,7 @@ const TransactionsSummary = ({ transactions, privacyMode }: { transactions: Tran
                         </div>
                         <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide">Compras</span>
                     </div>
-                    <p className="text-sm font-black text-zinc-900 dark:text-white truncate">{formatBRL(totalInvested, privacyMode)}</p>
+                    <p className="text-sm font-black text-zinc-900 dark:text-white truncate">{formatBRL(totalInvested, hideValues)}</p>
                 </div>
                 
                 <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex flex-col">
@@ -74,7 +73,7 @@ const TransactionsSummary = ({ transactions, privacyMode }: { transactions: Tran
                         </div>
                         <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide">Vendas</span>
                     </div>
-                    <p className="text-sm font-black text-zinc-900 dark:text-white truncate">{formatBRL(totalSold, privacyMode)}</p>
+                    <p className="text-sm font-black text-zinc-900 dark:text-white truncate">{formatBRL(totalSold, hideValues)}</p>
                 </div>
             </div>
         </div>
@@ -151,7 +150,7 @@ const FilterChip = ({ label, active, onClick, icon: Icon }: any) => (
 
 const TransactionRow = React.memo(({ index, data }: any) => {
   const item = data.items[index];
-  const privacyMode = data.privacyMode;
+  const hideValues = data.hideValues;
   const isSelectionMode = data.isSelectionMode;
   const isSelected = data.selectedIds.has(item.data?.id);
   
@@ -161,7 +160,7 @@ const TransactionRow = React.memo(({ index, data }: any) => {
               <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 flex justify-between items-center">
                   {formatMonthHeader(item.monthKey)}
                   <span className={`text-[9px] px-2 py-0.5 rounded-md font-bold ${item.monthlyNet >= 0 ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'}`}>
-                      {item.monthlyNet > 0 ? '+' : ''}{formatBRL(item.monthlyNet, privacyMode)}
+                      {item.monthlyNet > 0 ? '+' : ''}{formatBRL(item.monthlyNet, hideValues)}
                   </span>
               </h3>
           </div>
@@ -207,7 +206,7 @@ const TransactionRow = React.memo(({ index, data }: any) => {
           
           <div className="text-right">
               <p className={`text-sm font-black tracking-tight ${isBuy ? 'text-zinc-900 dark:text-white' : 'text-zinc-900 dark:text-white'}`}>
-                  {formatBRL(totalValue, privacyMode)}
+                  {formatBRL(totalValue, hideValues)}
               </p>
               <p className={`text-[9px] font-bold uppercase tracking-wider ${isBuy ? 'text-emerald-500' : 'text-rose-500'}`}>
                   {isBuy ? 'Compra' : 'Venda'}
@@ -226,10 +225,13 @@ interface TransactionsProps {
     privacyMode?: boolean;
 }
 
-const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAddTransaction, onUpdateTransaction, onBulkDelete, onRequestDeleteConfirmation, privacyMode = false }) => {
+function TransactionsComponent({ transactions, onAddTransaction, onUpdateTransaction, onBulkDelete, onRequestDeleteConfirmation, privacyMode = false }: TransactionsProps) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
+    
+    // Strict Boolean
+    const isPrivacyActive = !!privacyMode;
     
     // --- ESTADOS DE FILTRO ---
     const [searchTerm, setSearchTerm] = useState('');
@@ -417,7 +419,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
             </div>
 
             <div className="pt-2">
-                <TransactionsSummary transactions={filteredTransactions} privacyMode={privacyMode} />
+                <TransactionsSummary transactions={filteredTransactions} hideValues={isPrivacyActive} />
                 
                 {flatTransactions.length > 0 ? (
                     <div className="pb-10">
@@ -425,7 +427,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                             <TransactionRow 
                                 key={item.data?.id || `header-${item.monthKey}`} 
                                 index={index} 
-                                data={{ items: flatTransactions, onRowClick: handleOpenEdit, privacyMode, isSelectionMode, selectedIds, onToggleSelect: (id: string) => { const n = new Set(selectedIds); if (n.has(id)) n.delete(id); else n.add(id); setSelectedIds(n); } }}
+                                data={{ items: flatTransactions, onRowClick: handleOpenEdit, hideValues: isPrivacyActive, isSelectionMode, selectedIds, onToggleSelect: (id: string) => { const n = new Set(selectedIds); if (n.has(id)) n.delete(id); else n.add(id); setSelectedIds(n); } }}
                             />
                         ))}
                     </div>
@@ -438,7 +440,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                 )}
             </div>
 
-            {/* Modal de Edição REFORMULADO (Design Inteligente) */}
+            {/* Modal de Edição */}
             <SwipeableModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
                 <div className="flex flex-col h-full bg-[#F2F2F2] dark:bg-black relative px-6 pt-4 pb-20">
                     
@@ -558,7 +560,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                         <div className={`p-5 rounded-[2rem] flex justify-between items-center transition-colors ${type === 'BUY' ? 'bg-emerald-50 dark:bg-emerald-900/10' : 'bg-rose-50 dark:bg-rose-900/10'}`}>
                             <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Total Estimado</span>
                             <span className={`text-2xl font-black tracking-tight ${type === 'BUY' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                                {formatBRL(estimatedTotal)}
+                                {formatBRL(estimatedTotal, isPrivacyActive)}
                             </span>
                         </div>
 
@@ -576,6 +578,6 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
             <ConfirmationModal isOpen={showBulkDeleteConfirm} title="Excluir Itens?" message={`Deseja apagar ${selectedIds.size} registros selecionados?`} onConfirm={handleBulkDelete} onCancel={() => setShowBulkDeleteConfirm(false)} />
         </div>
     );
-};
+}
 
 export const Transactions = React.memo(TransactionsComponent);

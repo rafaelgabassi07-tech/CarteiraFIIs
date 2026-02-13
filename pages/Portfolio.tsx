@@ -1,7 +1,6 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, TrendingUp, ChevronRight, Wallet, Info, DollarSign, Activity, Percent, BarChart3, Building2, Coins, Scale, AlertCircle } from 'lucide-react';
+import { Search, TrendingUp, Wallet, Info, Activity, BarChart3, AlertCircle } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 
 interface PortfolioProps {
@@ -14,8 +13,8 @@ interface PortfolioProps {
   onClearTarget?: () => void;
 }
 
-const formatBRL = (val: any, privacy = false) => {
-  if (privacy) return 'R$ ••••••';
+const formatBRL = (val: any, hide: boolean) => {
+  if (hide) return 'R$ ••••••';
   const num = typeof val === 'number' && !isNaN(val) ? val : 0;
   return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 };
@@ -27,53 +26,62 @@ const displayVal = (val: any, suffix = '', precision = 2) => {
     return `${num.toFixed(precision)}${suffix}`;
 };
 
-const HighlightCard = ({ label, value, icon: Icon, color }: { label: string, value: string, icon: React.ElementType, color: string }) => (
-    <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex flex-col items-center justify-center text-center h-28 relative overflow-hidden group">
-        <div className={`absolute top-0 left-0 w-full h-1 ${color}`}></div>
-        <div className={`mb-2 p-2 rounded-xl ${color.replace('bg-', 'bg-').replace('500', '100')} dark:bg-opacity-20`}>
-            <Icon className={`w-5 h-5 ${color.replace('bg-', 'text-')}`} />
+function HighlightCard({ label, value, icon: Icon, color }: { label: string, value: string, icon: React.ElementType, color: string }) {
+    return (
+        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex flex-col items-center justify-center text-center h-28 relative overflow-hidden group">
+            <div className={`absolute top-0 left-0 w-full h-1 ${color}`}></div>
+            <div className={`mb-2 p-2 rounded-xl ${color.replace('bg-', 'bg-').replace('500', '100')} dark:bg-opacity-20`}>
+                <Icon className={`w-5 h-5 ${color.replace('bg-', 'text-')}`} />
+            </div>
+            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">{label}</p>
+            <p className="text-xl font-black text-zinc-900 dark:text-white">{value}</p>
         </div>
-        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">{label}</p>
-        <p className="text-xl font-black text-zinc-900 dark:text-white">{value}</p>
-    </div>
-);
+    );
+}
 
-const DetailRow = ({ label, value }: { label: string, value: string | number }) => (
-    <div className="flex justify-between items-center py-3 border-b border-zinc-50 dark:border-zinc-800/50 last:border-0">
-        <span className="text-xs font-bold text-zinc-500">{label}</span>
-        <span className="text-sm font-black text-zinc-900 dark:text-white">{value}</span>
-    </div>
-);
+function DetailRow({ label, value }: { label: string, value: string | number }) {
+    return (
+        <div className="flex justify-between items-center py-3 border-b border-zinc-50 dark:border-zinc-800/50 last:border-0">
+            <span className="text-xs font-bold text-zinc-500">{label}</span>
+            <span className="text-sm font-black text-zinc-900 dark:text-white">{value}</span>
+        </div>
+    );
+}
 
 interface AssetListItemProps {
     asset: AssetPosition;
     onClick: () => void;
-    privacyMode: boolean;
+    hideValues: boolean;
 }
 
-const AssetListItem: React.FC<AssetListItemProps> = ({ asset, onClick, privacyMode }) => (
-    <button onClick={onClick} className="w-full flex items-center justify-between py-4 border-b border-zinc-100 dark:border-zinc-800 last:border-0 group active:bg-zinc-50 dark:active:bg-zinc-900/50 transition-colors px-2">
-        <div className="flex items-center gap-4">
-            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xs font-black transition-colors shadow-sm ${asset.assetType === AssetType.FII ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' : 'bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400'}`}>
-                {asset.ticker.substring(0, 2)}
+const AssetListItem: React.FC<AssetListItemProps> = ({ asset, onClick, hideValues }) => {
+    return (
+        <button onClick={onClick} className="w-full flex items-center justify-between py-4 border-b border-zinc-100 dark:border-zinc-800 last:border-0 group active:bg-zinc-50 dark:active:bg-zinc-900/50 transition-colors px-2">
+            <div className="flex items-center gap-4">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xs font-black transition-colors shadow-sm ${asset.assetType === AssetType.FII ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' : 'bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400'}`}>
+                    {asset.ticker.substring(0, 2)}
+                </div>
+                <div className="text-left">
+                    <h4 className="text-base font-bold text-zinc-900 dark:text-white tracking-tight">{asset.ticker}</h4>
+                    <p className="text-xs text-zinc-400 font-medium">{asset.quantity} cotas</p>
+                </div>
             </div>
-            <div className="text-left">
-                <h4 className="text-base font-bold text-zinc-900 dark:text-white tracking-tight">{asset.ticker}</h4>
-                <p className="text-xs text-zinc-400 font-medium">{asset.quantity} cotas</p>
+            <div className="text-right">
+                <p className="text-base font-bold text-zinc-900 dark:text-white tracking-tight">{formatBRL((asset.currentPrice || 0) * asset.quantity, hideValues)}</p>
+                <div className={`text-xs font-bold ${(asset.dailyChange || 0) >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                    {(asset.dailyChange || 0) >= 0 ? '+' : ''}{(asset.dailyChange || 0).toFixed(2)}%
+                </div>
             </div>
-        </div>
-        <div className="text-right">
-            <p className="text-base font-bold text-zinc-900 dark:text-white tracking-tight">{formatBRL((asset.currentPrice || 0) * asset.quantity, privacyMode)}</p>
-            <div className={`text-xs font-bold ${(asset.dailyChange || 0) >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                {(asset.dailyChange || 0) >= 0 ? '+' : ''}{(asset.dailyChange || 0).toFixed(2)}%
-            </div>
-        </div>
-    </button>
-);
+        </button>
+    );
+}
 
-const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode = false, onAssetRefresh, headerVisible = true, targetAsset, onClearTarget }) => {
+function PortfolioComponent({ portfolio, privacyMode = false, onAssetRefresh, headerVisible = true, targetAsset, onClearTarget }: PortfolioProps) {
     const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
+    
+    // Strict boolean casting
+    const isPrivacyActive = !!privacyMode;
 
     useEffect(() => {
         if (targetAsset) {
@@ -130,11 +138,11 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                         <div className="flex justify-between items-end mb-2 ml-2 mr-2">
                             <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Fundos Imobiliários</h3>
                             <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-0.5 rounded-lg">
-                                {formatBRL(grouped.fiiTotal, privacyMode)}
+                                {formatBRL(grouped.fiiTotal, isPrivacyActive)}
                             </span>
                         </div>
                         <div className="bg-white dark:bg-zinc-900 rounded-[2rem] shadow-sm border border-zinc-100 dark:border-zinc-800 px-4">
-                            {grouped.fiis.map(asset => <AssetListItem key={asset.ticker} asset={asset} onClick={() => setSelectedTicker(asset.ticker)} privacyMode={privacyMode} />)}
+                            {grouped.fiis.map(asset => <AssetListItem key={asset.ticker} asset={asset} onClick={() => setSelectedTicker(asset.ticker)} hideValues={isPrivacyActive} />)}
                         </div>
                     </div>
                 )}
@@ -144,11 +152,11 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                         <div className="flex justify-between items-end mb-2 ml-2 mr-2">
                             <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Ações</h3>
                             <span className="text-[10px] font-black text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-900/20 px-2 py-0.5 rounded-lg">
-                                {formatBRL(grouped.stockTotal, privacyMode)}
+                                {formatBRL(grouped.stockTotal, isPrivacyActive)}
                             </span>
                         </div>
                         <div className="bg-white dark:bg-zinc-900 rounded-[2rem] shadow-sm border border-zinc-100 dark:border-zinc-800 px-4">
-                            {grouped.stocks.map(asset => <AssetListItem key={asset.ticker} asset={asset} onClick={() => setSelectedTicker(asset.ticker)} privacyMode={privacyMode} />)}
+                            {grouped.stocks.map(asset => <AssetListItem key={asset.ticker} asset={asset} onClick={() => setSelectedTicker(asset.ticker)} hideValues={isPrivacyActive} />)}
                         </div>
                     </div>
                 )}
@@ -196,11 +204,11 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                             <div className="grid grid-cols-2 gap-6">
                                 <div>
                                     <p className="text-[10px] font-bold opacity-60 uppercase mb-1">Total Investido</p>
-                                    <p className="text-xl font-black">{formatBRL(selectedAsset.averagePrice * selectedAsset.quantity, privacyMode)}</p>
+                                    <p className="text-xl font-black">{formatBRL(selectedAsset.averagePrice * selectedAsset.quantity, isPrivacyActive)}</p>
                                 </div>
                                 <div>
                                     <p className="text-[10px] font-bold opacity-60 uppercase mb-1">Valor Atual</p>
-                                    <p className="text-xl font-black">{formatBRL((selectedAsset.currentPrice || 0) * selectedAsset.quantity, privacyMode)}</p>
+                                    <p className="text-xl font-black">{formatBRL((selectedAsset.currentPrice || 0) * selectedAsset.quantity, isPrivacyActive)}</p>
                                 </div>
                             </div>
                         </div>
@@ -213,7 +221,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                             <div className="space-y-1">
                                 {selectedAsset.assetType === AssetType.FII ? (
                                     <>
-                                        <DetailRow label="Último Rendimento" value={formatBRL(selectedAsset.last_dividend)} />
+                                        <DetailRow label="Último Rendimento" value={formatBRL(selectedAsset.last_dividend, false)} />
                                         <DetailRow label="Patrimônio Líquido" value={selectedAsset.assets_value || '---'} />
                                         <DetailRow label="Vacância Física" value={displayVal(selectedAsset.vacancy, '%')} />
                                         <DetailRow label="P/VP" value={displayVal(selectedAsset.p_vp)} />
@@ -241,6 +249,6 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
             </SwipeableModal>
         </div>
     );
-};
+}
 
 export const Portfolio = React.memo(PortfolioComponent);
