@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, Transaction } from '../types';
 import { CircleDollarSign, CalendarClock, TrendingUp, TrendingDown, Wallet, PieChart as PieIcon, ArrowUpRight, ArrowDownRight, Layers, Filter, Calendar, Wand2, Target, Sparkles, CheckCircle2, ChevronRight, Calculator, PiggyBank, Coins, Banknote, AlertCircle } from 'lucide-react';
@@ -75,7 +76,7 @@ interface ProventosChartProps {
     privacyMode: boolean;
 }
 
-const ProventosChart = ({ data, privacyMode }: ProventosChartProps) => {
+function ProventosChart({ data, privacyMode }: ProventosChartProps) {
     return (
         <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
@@ -99,7 +100,7 @@ const ProventosChart = ({ data, privacyMode }: ProventosChartProps) => {
             </BarChart>
         </ResponsiveContainer>
     );
-};
+}
 
 interface AgendaItemProps {
     event: RadarEvent;
@@ -157,8 +158,8 @@ const HomeComponent = ({ portfolio, dividendReceipts, salesGain = 0, totalDivide
   const [showProventosModal, setShowProventosModal] = useState(false);
   const [showAllocationModal, setShowAllocationModal] = useState(false);
   
-  // Renomear e tipar explicitamente
-  const shouldHideValues: boolean = privacyMode === true;
+  // Garantia absoluta de booleano
+  const isPrivacyActive = !!privacyMode;
   
   const [showMagicModal, setShowMagicModal] = useState(false);
   const [showGoalModal, setShowGoalModal] = useState(false);
@@ -427,7 +428,7 @@ const HomeComponent = ({ portfolio, dividendReceipts, salesGain = 0, totalDivide
                   <Wallet className="w-3 h-3" /> Patrimônio Líquido
               </span>
               <h2 className="text-4xl sm:text-5xl font-black text-zinc-900 dark:text-white tracking-tighter bg-clip-text text-transparent bg-gradient-to-b from-zinc-900 to-zinc-600 dark:from-white dark:to-zinc-400">
-                  {formatBRL(balance, shouldHideValues)}
+                  {formatBRL(balance, isPrivacyActive)}
               </h2>
           </div>
 
@@ -436,7 +437,7 @@ const HomeComponent = ({ portfolio, dividendReceipts, salesGain = 0, totalDivide
                   <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-1 flex items-center gap-1">
                       <Layers className="w-2.5 h-2.5" /> Investido
                   </p>
-                  <p className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(invested, shouldHideValues)}</p>
+                  <p className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(invested, isPrivacyActive)}</p>
               </div>
               
               <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800">
@@ -452,14 +453,14 @@ const HomeComponent = ({ portfolio, dividendReceipts, salesGain = 0, totalDivide
                    <div className="text-left">
                         <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-0.5">Valorização</p>
                         <p className={`text-xs font-black ${totalAppreciation >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                            {totalAppreciation > 0 ? '+' : ''}{formatBRL(totalAppreciation, shouldHideValues)}
+                            {totalAppreciation > 0 ? '+' : ''}{formatBRL(totalAppreciation, isPrivacyActive)}
                         </p>
                    </div>
                    <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-700 mx-2"></div>
                    <div className="text-right">
                         <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-0.5">Proventos</p>
                         <p className="text-xs font-black text-indigo-600 dark:text-indigo-400">
-                            {formatBRL(totalDividendsReceived, shouldHideValues)}
+                            {formatBRL(totalDividendsReceived, isPrivacyActive)}
                         </p>
                    </div>
               </div>
@@ -486,7 +487,7 @@ const HomeComponent = ({ portfolio, dividendReceipts, salesGain = 0, totalDivide
                       <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0"><CircleDollarSign className="w-5 h-5" /></div>
                       <div className="text-left">
                           <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Recebidos</span>
-                          <span className="text-sm font-black text-zinc-900 dark:text-white truncate block">{formatBRL(totalDividendsReceived, shouldHideValues)}</span>
+                          <span className="text-sm font-black text-zinc-900 dark:text-white truncate block">{formatBRL(totalDividendsReceived, isPrivacyActive)}</span>
                       </div>
                   </div>
               </button>
@@ -555,7 +556,7 @@ const HomeComponent = ({ portfolio, dividendReceipts, salesGain = 0, totalDivide
                             <p className="text-[10px] font-bold opacity-90 uppercase tracking-widest">Confirmado</p>
                             <p className="text-[9px] font-medium opacity-70">A receber no futuro</p>
                         </div>
-                        <p className="text-2xl font-black tracking-tighter">{formatBRL(filteredAgenda.totalConfirmed, shouldHideValues)}</p>
+                        <p className="text-2xl font-black tracking-tighter">{formatBRL(filteredAgenda.totalConfirmed, isPrivacyActive)}</p>
                     </div>
                 )}
             </div>
@@ -571,7 +572,7 @@ const HomeComponent = ({ portfolio, dividendReceipts, salesGain = 0, totalDivide
                         <div key={monthKey}>
                             <h3 className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-2 ml-1 sticky top-0 bg-[#F2F2F2] dark:bg-black py-2 z-10">{monthKey}</h3>
                             {filteredAgenda.grouped[monthKey].map(event => (
-                                <AgendaItem key={event.id} event={event} privacyMode={shouldHideValues} />
+                                <AgendaItem key={event.id} event={event} privacyMode={isPrivacyActive} />
                             ))}
                         </div>
                     ))
@@ -590,13 +591,13 @@ const HomeComponent = ({ portfolio, dividendReceipts, salesGain = 0, totalDivide
                             <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Já Recebido</p>
                         </div>
                         <h2 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter leading-none">
-                            {formatBRL(proventosTotal, shouldHideValues)}
+                            {formatBRL(proventosTotal, isPrivacyActive)}
                         </h2>
                      </div>
                      <div className="text-right">
                         <p className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Média Mensal</p>
                         <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">
-                            {formatBRL(proventosAverage, shouldHideValues)}
+                            {formatBRL(proventosAverage, isPrivacyActive)}
                         </p>
                      </div>
                  </div>
@@ -625,7 +626,7 @@ const HomeComponent = ({ portfolio, dividendReceipts, salesGain = 0, totalDivide
              <div className="flex-1 overflow-y-auto px-6 pb-20 pt-2">
                  {chartData.length > 0 && (
                      <div className="h-32 w-full mb-4 bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm shrink-0">
-                         <ProventosChart data={chartData} privacyMode={shouldHideValues} />
+                         <ProventosChart data={chartData} privacyMode={isPrivacyActive} />
                      </div>
                  )}
                  
@@ -640,7 +641,7 @@ const HomeComponent = ({ portfolio, dividendReceipts, salesGain = 0, totalDivide
                                  <div className="flex justify-between items-center mb-2 ml-1 sticky top-0 bg-[#F2F2F2] dark:bg-black py-2 z-10">
                                      <h3 className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">{monthKey}</h3>
                                      <span className="text-[9px] font-black text-zinc-500 bg-zinc-200 dark:bg-zinc-800 px-1.5 py-0.5 rounded">
-                                         {formatBRL(groupedProventos[monthKey].total, shouldHideValues)}
+                                         {formatBRL(groupedProventos[monthKey].total, isPrivacyActive)}
                                      </span>
                                  </div>
                                  
@@ -657,7 +658,7 @@ const HomeComponent = ({ portfolio, dividendReceipts, salesGain = 0, totalDivide
                                                  </div>
                                              </div>
                                              <span className="font-bold text-emerald-600 dark:text-emerald-400 text-xs">
-                                                 {formatBRL(r.totalReceived, shouldHideValues)}
+                                                 {formatBRL(r.totalReceived, isPrivacyActive)}
                                              </span>
                                          </div>
                                      ))}
@@ -671,7 +672,6 @@ const HomeComponent = ({ portfolio, dividendReceipts, salesGain = 0, totalDivide
       </SwipeableModal>
 
       <SwipeableModal isOpen={showAllocationModal} onClose={() => setShowAllocationModal(false)}>
-         {/* ... (Allocation Content remains the same) ... */}
          <div className="flex flex-col h-full bg-[#F2F2F2] dark:bg-black">
              <div className="px-6 pt-4 pb-2 shrink-0">
                  <div className="flex items-center gap-3 mb-4">
@@ -725,7 +725,7 @@ const HomeComponent = ({ portfolio, dividendReceipts, salesGain = 0, totalDivide
                         <span className="text-xl font-black text-zinc-900 dark:text-white tracking-tighter">
                             {activeIndexClass !== undefined 
                                 ? `${(allocationTab === 'CLASS' ? classChartData : sectorChartData)[activeIndexClass].percent.toFixed(1)}%` 
-                                : formatBRL(typeData.total, shouldHideValues)}
+                                : formatBRL(typeData.total, isPrivacyActive)}
                         </span>
                     </div>
                  </div>
@@ -741,169 +741,11 @@ const HomeComponent = ({ portfolio, dividendReceipts, salesGain = 0, totalDivide
                                  <span className="text-xs font-bold text-zinc-700 dark:text-zinc-200">{item.name}</span>
                              </div>
                              <div className="text-right">
-                                 <span className="block text-xs font-black text-zinc-900 dark:text-white">{formatBRL(item.value, shouldHideValues)}</span>
+                                 <span className="block text-xs font-black text-zinc-900 dark:text-white">{formatBRL(item.value, isPrivacyActive)}</span>
                                  <span className="text-[9px] font-bold text-zinc-400">{item.percent.toFixed(1)}%</span>
                              </div>
                          </div>
                      ))}
-                 </div>
-             </div>
-         </div>
-      </SwipeableModal>
-
-      <SwipeableModal isOpen={showMagicModal} onClose={() => setShowMagicModal(false)}>
-         {/* ... (Magic Content remains the same) ... */}
-         <div className="flex flex-col h-full bg-[#F2F2F2] dark:bg-black">
-             <div className="px-6 pt-4 pb-2 shrink-0">
-                 <div className="flex items-center gap-3 mb-4">
-                     <div className="w-10 h-10 bg-white dark:bg-zinc-800 text-purple-600 dark:text-purple-400 rounded-xl flex items-center justify-center border border-zinc-200 dark:border-zinc-800 shadow-sm">
-                         <Wand2 className="w-5 h-5" />
-                     </div>
-                     <div>
-                         <h2 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">Número Mágico</h2>
-                         <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Dividendos infinitos</p>
-                     </div>
-                 </div>
-                 {totalCostToReachAll > 0 && (
-                     <div className="bg-purple-600 dark:bg-purple-900/40 text-white p-5 rounded-[2rem] shadow-lg shadow-purple-600/20 mb-4 relative overflow-hidden">
-                         <div className="relative z-10">
-                             <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest mb-1">Custo Restante Total</p>
-                             <h3 className="text-3xl font-black tracking-tighter mb-2">{formatBRL(totalCostToReachAll, shouldHideValues)}</h3>
-                             <div className="flex items-center gap-2 text-xs font-medium opacity-90">
-                                 <CheckCircle2 className="w-3 h-3" />
-                                 <span>{magicReachedCount} de {portfolio.length} ativos atingiram a meta</span>
-                             </div>
-                         </div>
-                         <Sparkles className="w-24 h-24 absolute -right-6 -bottom-6 opacity-20 rotate-12" />
-                     </div>
-                 )}
-             </div>
-             <div className="flex-1 overflow-y-auto px-6 pb-20 pt-2 space-y-3">
-                 {magicData.length === 0 && (
-                     <div className="flex flex-col items-center justify-center py-16 opacity-50 text-center">
-                         <Wand2 className="w-16 h-16 text-zinc-300 mb-4" strokeWidth={1} />
-                         <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-1">Cálculo Indisponível</h3>
-                         <p className="text-[10px] text-zinc-500 max-w-[200px] leading-relaxed">
-                             Precisamos do Dividend Yield (DY) e cotação para calcular. Aguarde a atualização dos dados.
-                         </p>
-                     </div>
-                 )}
-                 {magicData.map((asset) => {
-                     const isReached = asset.progress >= 100;
-                     return (
-                         <div key={asset.ticker} className={`p-4 rounded-3xl border shadow-sm transition-all relative overflow-hidden ${isReached ? 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800'}`}>
-                             {!isReached && (
-                                 <div className="absolute bottom-0 left-0 h-1 bg-purple-500 transition-all duration-1000" style={{ width: `${asset.progress}%` }}></div>
-                             )}
-                             <div className="flex justify-between items-start mb-3">
-                                 <div className="flex items-center gap-3">
-                                     <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-xs font-black ${isReached ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400'}`}>
-                                         {isReached ? <CheckCircle2 className="w-5 h-5" /> : asset.ticker.substring(0, 2)}
-                                     </div>
-                                     <div>
-                                         <h4 className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">{asset.ticker}</h4>
-                                         <p className="text-[10px] font-bold text-zinc-400 uppercase">{isReached ? 'Meta Atingida!' : `Faltam ${Math.max(0, asset.magicNumber - asset.owned)} cotas`}</p>
-                                     </div>
-                                 </div>
-                                 <div className="text-right">
-                                     <span className="block text-xs font-black text-zinc-900 dark:text-white">{formatBRL(asset.costToReach, shouldHideValues)}</span>
-                                     <span className="text-[9px] font-bold text-zinc-400">para o objetivo</span>
-                                 </div>
-                             </div>
-                             <div className="grid grid-cols-3 gap-2 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-2.5">
-                                 <div className="text-center">
-                                     <p className="text-[8px] font-bold text-zinc-400 uppercase mb-0.5">DY (12m)</p>
-                                     <p className="text-[10px] font-black text-zinc-700 dark:text-zinc-300">
-                                         {asset.dy12m.toFixed(2)}%
-                                     </p>
-                                 </div>
-                                 <div className="text-center border-l border-zinc-200 dark:border-zinc-700">
-                                     <p className="text-[8px] font-bold text-zinc-400 uppercase mb-0.5">Cotação</p>
-                                     <p className="text-[10px] font-black text-zinc-700 dark:text-zinc-300">{formatBRL(asset.currentPrice, shouldHideValues)}</p>
-                                 </div>
-                                 <div className="text-center border-l border-zinc-200 dark:border-zinc-700">
-                                     <p className="text-[8px] font-bold text-zinc-400 uppercase mb-0.5">Nº Mágico</p>
-                                     <p className="text-[10px] font-black text-purple-600 dark:text-purple-400">{asset.magicNumber}</p>
-                                 </div>
-                             </div>
-                         </div>
-                     );
-                 })}
-             </div>
-         </div>
-      </SwipeableModal>
-
-      <SwipeableModal isOpen={showGoalModal} onClose={() => setShowGoalModal(false)}>
-         {/* ... (Goal Content remains the same) ... */}
-         <div className="flex flex-col h-full bg-[#F2F2F2] dark:bg-black">
-             <div className="px-6 pt-4 pb-2 shrink-0">
-                 <div className="flex items-center gap-3 mb-6">
-                     <div className="w-10 h-10 bg-white dark:bg-zinc-800 text-amber-600 dark:text-amber-400 rounded-xl flex items-center justify-center border border-zinc-200 dark:border-zinc-800 shadow-sm">
-                         <Target className="w-5 h-5" />
-                     </div>
-                     <div>
-                         <h2 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">Objetivos</h2>
-                         <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Defina suas metas</p>
-                     </div>
-                 </div>
-                 <div className="flex bg-zinc-200/50 dark:bg-zinc-800 p-1 rounded-xl mb-6">
-                     <button 
-                        onClick={() => setGoalTab('INCOME')}
-                        className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${goalTab === 'INCOME' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
-                     >
-                         <Banknote className="w-3.5 h-3.5" /> Renda Mensal
-                     </button>
-                     <button 
-                        onClick={() => setGoalTab('WEALTH')}
-                        className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${goalTab === 'WEALTH' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
-                     >
-                         <PiggyBank className="w-3.5 h-3.5" /> Patrimônio
-                     </button>
-                 </div>
-             </div>
-             <div className="flex-1 overflow-y-auto px-6 pb-20 pt-2">
-                 <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] shadow-sm border border-zinc-100 dark:border-zinc-800 text-center mb-6 relative overflow-hidden anim-scale-in">
-                     <div className="absolute top-0 left-0 w-full h-1.5 bg-zinc-100 dark:bg-zinc-800">
-                         <div 
-                            className={`h-full transition-all duration-1000 ease-out ${goalTab === 'INCOME' ? 'bg-gradient-to-r from-amber-400 to-orange-600' : 'bg-gradient-to-r from-blue-400 to-indigo-600'}`} 
-                            style={{ width: `${goalTab === 'INCOME' ? incomeProgress : patrimonyProgress}%` }}
-                         ></div>
-                     </div>
-                     <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mt-2 mb-1">
-                         {goalTab === 'INCOME' ? 'Média Mensal Atual' : 'Patrimônio Atual'}
-                     </p>
-                     <h3 className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter mb-4">
-                         {formatBRL(goalTab === 'INCOME' ? proventosAverage : balance, shouldHideValues)}
-                     </h3>
-                     <div className="bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 flex items-center justify-between">
-                         <span className="text-[10px] font-bold text-zinc-500 uppercase">Progresso</span>
-                         <span className={`text-sm font-black ${goalTab === 'INCOME' ? 'text-amber-600 dark:text-amber-400' : 'text-blue-600 dark:text-blue-400'}`}>
-                             {(goalTab === 'INCOME' ? incomeProgress : patrimonyProgress).toFixed(1)}%
-                         </span>
-                     </div>
-                 </div>
-                 <div className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm anim-slide-up">
-                     <div className="flex items-center gap-3 mb-3">
-                         <Calculator className="w-4 h-4 text-zinc-400" />
-                         <label className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wide">
-                             Definir Meta de {goalTab === 'INCOME' ? 'Renda' : 'Patrimônio'}
-                         </label>
-                     </div>
-                     <div className={`flex items-center gap-2 border-b-2 border-zinc-100 dark:border-zinc-800 pb-2 transition-colors ${goalTab === 'INCOME' ? 'focus-within:border-amber-500' : 'focus-within:border-blue-500'}`}>
-                         <input 
-                            type="text" 
-                            value={formattedGoalValue} 
-                            onChange={handleGoalChange}
-                            className="w-full bg-transparent text-2xl font-black text-zinc-900 dark:text-white outline-none placeholder:text-zinc-300 text-center"
-                            placeholder="R$ 0,00"
-                            inputMode="numeric"
-                         />
-                     </div>
-                     <p className="text-[10px] text-zinc-400 mt-3 leading-relaxed text-center">
-                         {goalTab === 'INCOME' 
-                            ? 'Digite o valor que deseja receber mensalmente em proventos.' 
-                            : 'Digite o valor total que deseja acumular em patrimônio.'}
-                     </p>
                  </div>
              </div>
          </div>
