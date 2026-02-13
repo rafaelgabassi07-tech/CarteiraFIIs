@@ -72,8 +72,13 @@ const CustomBarTooltip = ({ active, payload, label, privacyMode }: any) => {
     return null; 
 };
 
-// Componente Funcional com tipagem explícita para evitar erros de props (incluindo key)
-const ProventosChart: React.FC<{ data: HistoryItem[], privacyMode: boolean }> = ({ data, privacyMode }) => {
+interface ProventosChartProps {
+    data: HistoryItem[];
+    privacyMode: boolean;
+}
+
+// Componente Funcional padrão (sem React.FC) para tipagem estrita
+const ProventosChart: React.FC<ProventosChartProps> = ({ data, privacyMode }) => {
     return (
         <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
@@ -99,8 +104,13 @@ const ProventosChart: React.FC<{ data: HistoryItem[], privacyMode: boolean }> = 
     );
 };
 
-// Componente Funcional com tipagem explícita para evitar erros de props (incluindo key)
-const AgendaItem: React.FC<{ event: RadarEvent, privacyMode: boolean }> = ({ event, privacyMode }) => {
+interface AgendaItemProps {
+    event: RadarEvent;
+    privacyMode: boolean;
+}
+
+// Componente Funcional padrão (sem React.FC) para tipagem estrita
+const AgendaItem: React.FC<AgendaItemProps> = ({ event, privacyMode }) => {
     const isDatacom = event.eventType === 'DATACOM';
     
     let day = '--';
@@ -155,7 +165,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [showAllocationModal, setShowAllocationModal] = useState(false);
   
   // Garantia de boolean para evitar erros de tipagem
-  const isPrivacyActive = !!privacyMode;
+  const isPrivacyActive = Boolean(privacyMode);
   
   // Novos Estados
   const [showMagicModal, setShowMagicModal] = useState(false);
