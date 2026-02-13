@@ -172,7 +172,7 @@ const App: React.FC = () => {
           setCloudStatus('syncing');
           setLoadingProgress(30);
           
-          const tickers: string[] = [...new Set(transactions.map(t => t.ticker))];
+          const tickers: string[] = Array.from(new Set(transactions.map(t => t.ticker)));
           
           try {
               // 1. Quotes

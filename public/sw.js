@@ -1,5 +1,4 @@
-
-const CACHE_NAME = 'investfiis-pwa-v8.3.17'; // Bumped version
+const CACHE_NAME = 'investfiis-pwa-v9.2.3'; // Bumped version
 
 // Mantemos apenas o essencial no precache para garantir instalação rápida e sem erros.
 // Assets como logo.svg serão cacheados dinamicamente na primeira requisição (estratégia Cache First).
