@@ -17,8 +17,8 @@ interface HomeProps {
   balance: number;
   totalAppreciation: number;
   transactions?: Transaction[];
-  // Aceita boolean, string ou undefined para evitar conflitos de tipagem estrita
-  privacyMode?: boolean | string; 
+  // Relaxed type to any to prevent strict checking issues with upstream data
+  privacyMode?: any; 
   onViewAsset?: (ticker: string) => void;
 }
 
@@ -173,8 +173,8 @@ function HomeComponent({ portfolio, dividendReceipts, salesGain = 0, totalDivide
   const [showProventosModal, setShowProventosModal] = useState(false);
   const [showAllocationModal, setShowAllocationModal] = useState(false);
   
-  // GARANTIA DE BOOLEAN: Converte qualquer entrada (string 'true', boolean true, undefined) para boolean estrito.
-  const safePrivacy: boolean = privacyMode === true || String(privacyMode) === 'true';
+  // Robust boolean conversion for privacyMode
+  const isPrivacyEnabled = privacyMode === true || String(privacyMode) === 'true';
   
   const [showMagicModal, setShowMagicModal] = useState(false);
   const [showGoalModal, setShowGoalModal] = useState(false);
@@ -443,7 +443,7 @@ function HomeComponent({ portfolio, dividendReceipts, salesGain = 0, totalDivide
                   <Wallet className="w-3 h-3" /> Patrimônio Líquido
               </span>
               <h2 className="text-4xl sm:text-5xl font-black text-zinc-900 dark:text-white tracking-tighter bg-clip-text text-transparent bg-gradient-to-b from-zinc-900 to-zinc-600 dark:from-white dark:to-zinc-400">
-                  {formatBRL(balance, safePrivacy)}
+                  {formatBRL(balance, isPrivacyEnabled)}
               </h2>
           </div>
 
@@ -452,7 +452,7 @@ function HomeComponent({ portfolio, dividendReceipts, salesGain = 0, totalDivide
                   <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-1 flex items-center gap-1">
                       <Layers className="w-2.5 h-2.5" /> Investido
                   </p>
-                  <p className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(invested, safePrivacy)}</p>
+                  <p className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(invested, isPrivacyEnabled)}</p>
               </div>
               
               <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800">
@@ -468,14 +468,14 @@ function HomeComponent({ portfolio, dividendReceipts, salesGain = 0, totalDivide
                    <div className="text-left">
                         <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-0.5">Valorização</p>
                         <p className={`text-xs font-black ${totalAppreciation >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                            {totalAppreciation > 0 ? '+' : ''}{formatBRL(totalAppreciation, safePrivacy)}
+                            {totalAppreciation > 0 ? '+' : ''}{formatBRL(totalAppreciation, isPrivacyEnabled)}
                         </p>
                    </div>
                    <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-700 mx-2"></div>
                    <div className="text-right">
                         <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide mb-0.5">Proventos</p>
                         <p className="text-xs font-black text-indigo-600 dark:text-indigo-400">
-                            {formatBRL(totalDividendsReceived, safePrivacy)}
+                            {formatBRL(totalDividendsReceived, isPrivacyEnabled)}
                         </p>
                    </div>
               </div>
@@ -502,7 +502,7 @@ function HomeComponent({ portfolio, dividendReceipts, salesGain = 0, totalDivide
                       <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0"><CircleDollarSign className="w-5 h-5" /></div>
                       <div className="text-left">
                           <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Recebidos</span>
-                          <span className="text-sm font-black text-zinc-900 dark:text-white truncate block">{formatBRL(totalDividendsReceived, safePrivacy)}</span>
+                          <span className="text-sm font-black text-zinc-900 dark:text-white truncate block">{formatBRL(totalDividendsReceived, isPrivacyEnabled)}</span>
                       </div>
                   </div>
               </button>
@@ -571,7 +571,7 @@ function HomeComponent({ portfolio, dividendReceipts, salesGain = 0, totalDivide
                             <p className="text-[10px] font-bold opacity-90 uppercase tracking-widest">Confirmado</p>
                             <p className="text-[9px] font-medium opacity-70">A receber no futuro</p>
                         </div>
-                        <p className="text-2xl font-black tracking-tighter">{formatBRL(filteredAgenda.totalConfirmed, safePrivacy)}</p>
+                        <p className="text-2xl font-black tracking-tighter">{formatBRL(filteredAgenda.totalConfirmed, isPrivacyEnabled)}</p>
                     </div>
                 )}
             </div>
@@ -587,7 +587,7 @@ function HomeComponent({ portfolio, dividendReceipts, salesGain = 0, totalDivide
                         <div key={monthKey}>
                             <h3 className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-2 ml-1 sticky top-0 bg-[#F2F2F2] dark:bg-black py-2 z-10">{monthKey}</h3>
                             {filteredAgenda.grouped[monthKey].map(event => (
-                                <AgendaItem key={event.id} event={event} hideValues={safePrivacy} />
+                                <AgendaItem key={event.id} event={event} hideValues={isPrivacyEnabled} />
                             ))}
                         </div>
                     ))
@@ -606,13 +606,13 @@ function HomeComponent({ portfolio, dividendReceipts, salesGain = 0, totalDivide
                             <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Já Recebido</p>
                         </div>
                         <h2 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter leading-none">
-                            {formatBRL(proventosTotal, safePrivacy)}
+                            {formatBRL(proventosTotal, isPrivacyEnabled)}
                         </h2>
                      </div>
                      <div className="text-right">
                         <p className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Média Mensal</p>
                         <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">
-                            {formatBRL(proventosAverage, safePrivacy)}
+                            {formatBRL(proventosAverage, isPrivacyEnabled)}
                         </p>
                      </div>
                  </div>
@@ -641,7 +641,7 @@ function HomeComponent({ portfolio, dividendReceipts, salesGain = 0, totalDivide
              <div className="flex-1 overflow-y-auto px-6 pb-20 pt-2">
                  {chartData.length > 0 && (
                      <div className="h-32 w-full mb-4 bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm shrink-0">
-                         <ProventosChart data={chartData} hideValues={safePrivacy} />
+                         <ProventosChart data={chartData} hideValues={isPrivacyEnabled} />
                      </div>
                  )}
                  
@@ -656,7 +656,7 @@ function HomeComponent({ portfolio, dividendReceipts, salesGain = 0, totalDivide
                                  <div className="flex justify-between items-center mb-2 ml-1 sticky top-0 bg-[#F2F2F2] dark:bg-black py-2 z-10">
                                      <h3 className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">{monthKey}</h3>
                                      <span className="text-[9px] font-black text-zinc-500 bg-zinc-200 dark:bg-zinc-800 px-1.5 py-0.5 rounded">
-                                         {formatBRL(groupedProventos[monthKey].total, safePrivacy)}
+                                         {formatBRL(groupedProventos[monthKey].total, isPrivacyEnabled)}
                                      </span>
                                  </div>
                                  
@@ -673,7 +673,7 @@ function HomeComponent({ portfolio, dividendReceipts, salesGain = 0, totalDivide
                                                  </div>
                                              </div>
                                              <span className="font-bold text-emerald-600 dark:text-emerald-400 text-xs">
-                                                 {formatBRL(r.totalReceived, safePrivacy)}
+                                                 {formatBRL(r.totalReceived, isPrivacyEnabled)}
                                              </span>
                                          </div>
                                      ))}
@@ -740,7 +740,7 @@ function HomeComponent({ portfolio, dividendReceipts, salesGain = 0, totalDivide
                         <span className="text-xl font-black text-zinc-900 dark:text-white tracking-tighter">
                             {activeIndexClass !== undefined 
                                 ? `${(allocationTab === 'CLASS' ? classChartData : sectorChartData)[activeIndexClass].percent.toFixed(1)}%` 
-                                : formatBRL(typeData.total, safePrivacy)}
+                                : formatBRL(typeData.total, isPrivacyEnabled)}
                         </span>
                     </div>
                  </div>
@@ -756,7 +756,7 @@ function HomeComponent({ portfolio, dividendReceipts, salesGain = 0, totalDivide
                                  <span className="text-xs font-bold text-zinc-700 dark:text-zinc-200">{item.name}</span>
                              </div>
                              <div className="text-right">
-                                 <span className="block text-xs font-black text-zinc-900 dark:text-white">{formatBRL(item.value, safePrivacy)}</span>
+                                 <span className="block text-xs font-black text-zinc-900 dark:text-white">{formatBRL(item.value, isPrivacyEnabled)}</span>
                                  <span className="text-[9px] font-bold text-zinc-400">{item.percent.toFixed(1)}%</span>
                              </div>
                          </div>
