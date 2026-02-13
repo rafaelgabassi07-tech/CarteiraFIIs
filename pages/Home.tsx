@@ -172,8 +172,8 @@ function HomeComponent({ portfolio, dividendReceipts, salesGain = 0, totalDivide
   const [showProventosModal, setShowProventosModal] = useState(false);
   const [showAllocationModal, setShowAllocationModal] = useState(false);
   
-  // Garantia absoluta de booleano
-  const isPrivacyActive = !!privacyMode;
+  // Garantia de booleano via cast explícito
+  const isPrivacyActive = Boolean(privacyMode);
   
   const [showMagicModal, setShowMagicModal] = useState(false);
   const [showGoalModal, setShowGoalModal] = useState(false);
