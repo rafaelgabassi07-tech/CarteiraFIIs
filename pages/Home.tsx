@@ -462,31 +462,31 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                 </div>
 
-                {/* Cards de Resumo */}
-                <div className="grid grid-cols-2 gap-3 mb-6 shrink-0">
-                    <div className="bg-violet-50 dark:bg-violet-900/10 p-3 rounded-2xl border border-violet-100 dark:border-violet-900/20">
-                        <p className="text-[10px] text-violet-600 dark:text-violet-400 uppercase font-bold mb-1">Próximo Pagamento</p>
-                        <div className="flex items-end gap-1.5">
-                            <span className="text-2xl font-black text-violet-700 dark:text-violet-400">
+                {/* Cards de Resumo Compactos */}
+                <div className="grid grid-cols-2 gap-2.5 mb-5 shrink-0">
+                    <div className="bg-violet-50 dark:bg-violet-900/10 p-2.5 rounded-xl border border-violet-100 dark:border-violet-900/20 flex flex-col justify-center min-h-[60px]">
+                        <p className="text-[9px] text-violet-600 dark:text-violet-400 uppercase font-bold mb-0.5">Próximo Pagamento</p>
+                        <div className="flex items-baseline gap-1">
+                            <span className="text-xl font-black text-violet-700 dark:text-violet-400 leading-none">
                                 {agendaData.daysToNext === 0 ? 'Hoje' : agendaData.daysToNext}
                             </span>
-                            <span className="text-[10px] font-bold text-violet-500 mb-1">
+                            <span className="text-[9px] font-bold text-violet-500">
                                 {agendaData.daysToNext === 0 ? '' : 'dias'}
                             </span>
                         </div>
                         {agendaData.nextPayment && (
-                            <p className="text-[9px] text-zinc-500 mt-1 truncate">
+                            <p className="text-[9px] text-zinc-500 mt-1 truncate font-medium border-t border-violet-200/50 dark:border-violet-800/50 pt-1">
                                 {agendaData.nextPayment.ticker} • {formatBRL(agendaData.nextPayment.totalReceived, privacyMode)}
                             </p>
                         )}
                     </div>
-                    <div className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-700/50">
-                        <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Status</p>
-                        <div className="flex items-center gap-2 mt-1">
-                            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                            <span className="text-sm font-bold text-zinc-900 dark:text-white">Confirmado</span>
+                    <div className="bg-zinc-50 dark:bg-zinc-800 p-2.5 rounded-xl border border-zinc-100 dark:border-zinc-700/50 flex flex-col justify-center min-h-[60px]">
+                        <p className="text-[9px] text-zinc-500 uppercase font-bold mb-0.5">Status</p>
+                        <div className="flex items-center gap-1.5 mb-1">
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                            <span className="text-xs font-bold text-zinc-900 dark:text-white leading-none">Confirmado</span>
                         </div>
-                        <p className="text-[9px] text-zinc-400 mt-1">Baseado na B3</p>
+                        <p className="text-[9px] text-zinc-400 leading-tight">Baseado na B3</p>
                     </div>
                 </div>
 
