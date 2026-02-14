@@ -215,7 +215,11 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
           <div className="w-12 h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full"></div>
         </div>
 
-        <div className="overflow-y-auto overscroll-contain flex-1 pb-safe">
+        {/* 
+           FIX: Adicionado padding-bottom extra (pb-24) para garantir que o conteúdo final 
+           não fique escondido atrás da borda do modal ou da barra de navegação do OS 
+        */}
+        <div className="overflow-y-auto overscroll-contain flex-1 pb-24 px-1">
             {children}
         </div>
       </div>
@@ -224,7 +228,6 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
 };
 
 // --- OTHER MODALS ---
-// Mantendo a lógica funcional, mas atualizando o visual para o novo padrão
 export const ConfirmationModal: React.FC<any> = ({ isOpen, title, message, onConfirm, onCancel }) => {
     if (!isOpen) return null;
     return (
@@ -267,7 +270,7 @@ export const InstallPromptModal: React.FC<any> = ({ isOpen, onInstall, onDismiss
 
 export const UpdateReportModal: React.FC<any> = (props) => (
     <SwipeableModal {...props}>
-        <div className="p-6 pb-20">
+        <div className="p-6">
             <h2 className="text-2xl font-bold mb-6 text-zinc-900 dark:text-white">Relatório de Atualização</h2>
             {/* Logic remains same, visuals inherit global CSS */}
             <div className="space-y-4">
@@ -284,7 +287,7 @@ export const UpdateReportModal: React.FC<any> = (props) => (
 
 export const ChangelogModal: React.FC<any> = ({ isOpen, onClose, version, notes, onUpdate, isUpdating }) => (
     <SwipeableModal isOpen={isOpen} onClose={onClose}>
-        <div className="p-8 pb-20 text-center">
+        <div className="p-8 text-center">
             <div className="w-16 h-16 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mx-auto mb-6 text-indigo-600">
                 <Gift className="w-8 h-8" />
             </div>
@@ -311,7 +314,7 @@ export const ChangelogModal: React.FC<any> = ({ isOpen, onClose, version, notes,
 
 export const NotificationsModal: React.FC<any> = ({ isOpen, onClose, notifications, onClear }) => (
     <SwipeableModal isOpen={isOpen} onClose={onClose}>
-        <div className="p-6 pb-20">
+        <div className="p-6">
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">Notificações</h2>
                 {notifications.length > 0 && <button onClick={onClear} className="text-xs font-bold text-zinc-400 uppercase">Limpar</button>}

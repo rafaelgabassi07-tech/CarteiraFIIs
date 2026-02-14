@@ -4,7 +4,7 @@ import {
   ChevronRight, ArrowLeft, Bell, Sun, Moon, Monitor, RefreshCw, 
   Eye, EyeOff, Palette, Database, ShieldAlert, Info, 
   LogOut, Check, Activity, Terminal, Trash2, FileSpreadsheet, FileJson, 
-  Smartphone, Github, Globe, CreditCard, LayoutGrid, Zap, Download, Upload
+  Smartphone, Github, Globe, CreditCard, LayoutGrid, Zap, Download, Upload, Server
 } from 'lucide-react';
 import { Transaction, DividendReceipt, ServiceMetric, LogEntry, ThemeType } from '../types';
 import { logger } from '../services/logger';
@@ -88,7 +88,7 @@ const SectionHeader = ({ title }: { title: string }) => (
     <h3 className="px-2 mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 mt-6">{title}</h3>
 );
 
-const SettingsRow = ({ icon: Icon, label, value, onClick, isDestructive = false, isLast = false }: any) => (
+const SettingsRow = ({ icon: Icon, label, value, onClick, isDestructive = false, isLast = false, isLoading = false }: any) => (
     <button 
         onClick={onClick}
         className={`w-full flex items-center justify-between p-4 bg-white dark:bg-zinc-900 press-effect hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors ${!isLast ? 'border-b border-zinc-100 dark:border-zinc-800' : ''}`}
@@ -100,7 +100,7 @@ const SettingsRow = ({ icon: Icon, label, value, onClick, isDestructive = false,
             <span className={`text-sm font-bold ${isDestructive ? 'text-rose-600' : 'text-zinc-700 dark:text-zinc-200'}`}>{label}</span>
         </div>
         <div className="flex items-center gap-2">
-            {value && <span className="text-xs font-medium text-zinc-400">{value}</span>}
+            {isLoading ? <RefreshCw className="w-3 h-3 animate-spin text-zinc-400" /> : value && <span className="text-xs font-medium text-zinc-400">{value}</span>}
             <ChevronRight className="w-4 h-4 text-zinc-300" />
         </div>
     </button>
@@ -174,6 +174,7 @@ export const Settings: React.FC<SettingsProps> = ({
           showToast('error', 'Erro ao ler arquivo.');
       } finally {
           setIsImporting(false);
+          // IMPORTANTE: Reseta o valor do input para permitir selecionar o mesmo arquivo novamente se necessário
           if (excelInputRef.current) excelInputRef.current.value = '';
       }
   };
@@ -236,7 +237,7 @@ export const Settings: React.FC<SettingsProps> = ({
                         />
                         <QuickAction 
                             icon={Bell} 
-                            label="Notificações" 
+                            label={pushEnabled ? "Notificações: On" : "Notificações: Off"}
                             colorClass={pushEnabled ? "bg-sky-100 dark:bg-sky-900/20 text-sky-600" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500"}
                             onClick={onRequestPushPermission}
                             delay={150}
@@ -244,22 +245,19 @@ export const Settings: React.FC<SettingsProps> = ({
                     </div>
 
                     <SectionHeader title="Sistema" />
-                    <div className="bg-white dark:bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                        <SettingsRow icon={Activity} label="Status de Rede" onClick={onCheckConnection} value={isCheckingConnection ? 'Testando...' : 'Online'} />
-                        <SettingsRow icon={Terminal} label="Logs do Sistema" onClick={() => setShowLogs(true)} />
+                    <div className="bg-white dark:bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-100 dark:border-zinc-800 shadow-sm mb-6">
+                        <SettingsRow icon={Server} label="Conexão com Servidor" onClick={onCheckConnection} value={isCheckingConnection ? 'Verificando...' : 'Online'} isLoading={isCheckingConnection} />
+                        <SettingsRow icon={Terminal} label="Logs de Diagnóstico" onClick={() => setShowLogs(true)} />
                         <SettingsRow icon={Info} label="Sobre & Versão" onClick={() => setActiveSection('about')} value={`v${appVersion}`} isLast />
                     </div>
 
-                    <div className="mt-8 mb-4">
-                        <button 
-                            onClick={onLogout} 
-                            className="w-full py-4 rounded-2xl bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 press-effect"
-                        >
-                            <LogOut className="w-4 h-4" /> Desconectar
-                        </button>
+                    <SectionHeader title="Zona de Perigo" />
+                    <div className="bg-white dark:bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                        <SettingsRow icon={LogOut} label="Desconectar Conta" onClick={onLogout} isDestructive />
+                        <SettingsRow icon={Trash2} label="Resetar Aplicativo" onClick={onResetApp} isDestructive isLast />
                     </div>
                     
-                    <p className="text-center text-[10px] text-zinc-400 font-mono">Build: {currentVersionDate || 'Dev'}</p>
+                    <p className="text-center text-[10px] text-zinc-400 font-mono mt-8">Build: {currentVersionDate || 'Dev'}</p>
                 </div>
             )}
 
@@ -318,6 +316,7 @@ export const Settings: React.FC<SettingsProps> = ({
                         </button>
                     </div>
 
+                    {/* Reset Button moved to Data Management as well for redundancy */}
                     <div className="p-1">
                         <button onClick={onResetApp} className="w-full flex items-center justify-between p-4 bg-rose-50 dark:bg-rose-900/10 rounded-2xl border border-rose-100 dark:border-rose-900/30 press-effect group">
                             <div className="flex items-center gap-3">
@@ -325,16 +324,16 @@ export const Settings: React.FC<SettingsProps> = ({
                                     <ShieldAlert className="w-5 h-5" />
                                 </div>
                                 <div className="text-left">
-                                    <p className="text-sm font-bold text-rose-700 dark:text-rose-400">Resetar Dados</p>
-                                    <p className="text-[10px] text-rose-500/70">Limpa cache local. Nuvem segura.</p>
+                                    <p className="text-sm font-bold text-rose-700 dark:text-rose-400">Limpar Cache Local</p>
+                                    <p className="text-[10px] text-rose-500/70">Força recarregamento total.</p>
                                 </div>
                             </div>
                             <Trash2 className="w-5 h-5 text-rose-400" />
                         </button>
                     </div>
 
-                    <input type="file" ref={fileInputRef} onChange={() => {}} accept=".json" className="hidden" />
-                    <input type="file" ref={excelInputRef} onChange={handleImportExcel} accept=".xlsx,.xls" className="hidden" />
+                    <input type="file" ref={fileInputRef} onChange={() => {}} accept=".json" className="hidden" onClick={(e) => (e.target as any).value = null} />
+                    <input type="file" ref={excelInputRef} onChange={handleImportExcel} accept=".xlsx,.xls" className="hidden" onClick={(e) => (e.target as any).value = null} />
                 </div>
             )}
 
