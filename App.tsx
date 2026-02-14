@@ -59,6 +59,7 @@ const mergeDividends = (current: DividendReceipt[], incoming: DividendReceipt[])
 };
 
 // --- LOGO COMPONENT ---
+// Defined explicitly as a component to prevent rendering issues with Header
 const AppLogo = () => (
   <img src="./logo.svg" className="w-7 h-7 object-contain drop-shadow-sm" alt="InvestFIIs" />
 );

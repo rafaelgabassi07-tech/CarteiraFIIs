@@ -13,6 +13,15 @@ const formatBRL = (val: any, privacy = false) => {
   return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 };
 
+const formatDateShort = (dateStr?: string) => {
+    if (!dateStr || typeof dateStr !== 'string' || dateStr.length < 10) return '--/--';
+    try {
+        return dateStr.split('-').reverse().slice(0, 2).join('/');
+    } catch {
+        return '--/--';
+    }
+};
+
 const CHART_COLORS = ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'];
 
 // --- SUB-COMPONENTS ---
@@ -29,7 +38,7 @@ const BentoCard = ({ title, value, subtext, icon: Icon, colorClass, onClick, cla
         </div>
         <div className="relative z-10">
             <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 mb-1">{title}</h3>
-            <p className="text-xl font-bold text-zinc-900 dark:text-white tracking-tight leading-none">{value}</p>
+            <p className="text-xl font-bold text-zinc-900 dark:text-white tracking-tight leading-none">{typeof value === 'object' ? '' : value}</p>
             {subtext && <p className="text-[10px] text-zinc-400 font-medium mt-1.5">{subtext}</p>}
         </div>
     </button>
@@ -101,8 +110,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const agendaData = useMemo(() => {
       const todayStr = new Date().toISOString().split('T')[0];
       // Filtra proventos com data de pagamento futura ou hoje
-      const future = dividendReceipts.filter(d => d.paymentDate >= todayStr)
-          .sort((a, b) => a.paymentDate.localeCompare(b.paymentDate));
+      // Proteção: Garante que paymentDate existe
+      const future = dividendReceipts.filter(d => d.paymentDate && d.paymentDate >= todayStr)
+          .sort((a, b) => (a.paymentDate || '').localeCompare(b.paymentDate || ''));
       
       const totalFuture = future.reduce((acc, curr) => acc + curr.totalReceived, 0);
       const nextPayment = future[0];
@@ -114,6 +124,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const incomeHistory = useMemo(() => {
       const groups: Record<string, number> = {};
       dividendReceipts.forEach(d => {
+          if (!d.paymentDate) return;
           const monthKey = d.paymentDate.substring(0, 7); // YYYY-MM
           groups[monthKey] = (groups[monthKey] || 0) + d.totalReceived;
       });
@@ -131,29 +142,29 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       const magicList: any[] = [];
       portfolio.forEach(asset => {
           if (asset.quantity > 0 && asset.currentPrice && asset.currentPrice > 0) {
-              // Estima DY mensal. Se dy_12m vier zerado, tenta fallback seguro ou ignora
               const dyAnnual = asset.dy_12m || 0;
               const monthlyYield = dyAnnual > 0 ? (dyAnnual / 100) / 12 : 0;
               
               if (monthlyYield > 0) {
                   const estimatedDivPerShare = asset.currentPrice * monthlyYield;
-                  // Fórmula: Preço / Div por Cota
-                  const magicNumber = Math.ceil(asset.currentPrice / estimatedDivPerShare);
-                  const missing = Math.max(0, magicNumber - asset.quantity);
-                  const progress = Math.min(100, (asset.quantity / magicNumber) * 100);
+                  const magicNumber = estimatedDivPerShare > 0 ? Math.ceil(asset.currentPrice / estimatedDivPerShare) : 0;
                   
-                  magicList.push({
-                      ticker: asset.ticker,
-                      current: asset.quantity,
-                      target: magicNumber,
-                      missing,
-                      progress,
-                      type: asset.assetType
-                  });
+                  if (magicNumber > 0) {
+                      const missing = Math.max(0, magicNumber - asset.quantity);
+                      const progress = Math.min(100, (asset.quantity / magicNumber) * 100);
+                      
+                      magicList.push({
+                          ticker: asset.ticker,
+                          current: asset.quantity,
+                          target: magicNumber,
+                          missing,
+                          progress,
+                          type: asset.assetType
+                      });
+                  }
               }
           }
       });
-      // Prioriza os que estão mais perto (progress desc)
       return magicList.sort((a, b) => b.progress - a.progress);
   }, [portfolio]);
 
@@ -161,17 +172,18 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
   // 5. Objetivos (Gamification)
   const goalsData = useMemo(() => {
-      // Marcos de Patrimônio
+      const safeBalance = balance || 0;
+      const safeIncome = currentMonthIncome || 0;
+
       const patrimonyMilestones = [1000, 5000, 10000, 25000, 50000, 100000, 500000, 1000000];
-      const nextPatrimony = patrimonyMilestones.find(m => m > balance) || 10000000;
+      const nextPatrimony = patrimonyMilestones.find(m => m > safeBalance) || 10000000;
       
-      // Marcos de Renda Mensal (Média simples dos ultimos 3 meses ou mês atual)
       const incomeMilestones = [50, 100, 500, 1000, 2500, 5000, 10000];
-      const nextIncome = incomeMilestones.find(m => m > currentMonthIncome) || 50000;
+      const nextIncome = incomeMilestones.find(m => m > safeIncome) || 50000;
 
       return {
-          patrimony: { current: balance, target: nextPatrimony },
-          income: { current: currentMonthIncome, target: nextIncome }
+          patrimony: { current: safeBalance, target: nextPatrimony },
+          income: { current: safeIncome, target: nextIncome }
       };
   }, [balance, currentMonthIncome]);
 
@@ -233,7 +245,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             {/* Agenda */}
             <BentoCard 
                 title="Agenda" 
-                value={agendaData.nextPayment ? agendaData.nextPayment.dateCom.split('-').reverse().slice(0,2).join('/') : '--'} 
+                value={agendaData.nextPayment ? formatDateShort(agendaData.nextPayment.paymentDate || agendaData.nextPayment.dateCom) : '--'} 
                 subtext={agendaData.nextPayment ? `Próx: ${agendaData.nextPayment.ticker}` : 'Sem previsões'}
                 icon={CalendarClock} 
                 colorClass="bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400"
@@ -263,7 +275,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             {/* Objetivos */}
             <BentoCard 
                 title="Meta" 
-                value={`${((balance / goalsData.patrimony.target) * 100).toFixed(0)}%`} 
+                value={`${((balance / (goalsData.patrimony.target || 1)) * 100).toFixed(0)}%`} 
                 subtext="Do próximo nível"
                 icon={Target} 
                 colorClass="bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400"
@@ -317,7 +329,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                     </div>
                                     <div>
                                         <h4 className="font-bold text-sm text-zinc-900 dark:text-white">{item.ticker}</h4>
-                                        <p className="text-[10px] text-zinc-500 uppercase font-bold">{item.paymentDate.split('-').reverse().join('/')}</p>
+                                        <p className="text-[10px] text-zinc-500 uppercase font-bold">{formatDateShort(item.paymentDate)}</p>
                                     </div>
                                 </div>
                                 <div className="text-right">
@@ -505,7 +517,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: entry.color }}></div>
                             <div>
                                 <p className="text-xs font-bold text-zinc-900 dark:text-white">{entry.name}</p>
-                                <p className="text-[10px] text-zinc-500">{((entry.value / balance) * 100).toFixed(1)}%</p>
+                                <p className="text-[10px] text-zinc-500">{((entry.value / (balance || 1)) * 100).toFixed(1)}%</p>
                             </div>
                         </div>
                     ))}
