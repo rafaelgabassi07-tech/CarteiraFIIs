@@ -106,13 +106,19 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   // 1. Alocação (Classes e Ativos)
   const allocationData = useMemo(() => {
       let fiis = 0, stocks = 0;
-      const assetList: { name: string, value: number, color: string }[] = [];
-      
+      const assetList: { name: string, value: number, color: string, percent: number }[] = [];
+      const totalBalance = balance || 1;
+
       portfolio.forEach((p, idx) => {
           const v = p.quantity * (p.currentPrice || 0);
           if(p.assetType === AssetType.FII) fiis += v; else stocks += v;
           if (v > 0) {
-              assetList.push({ name: p.ticker, value: v, color: CHART_COLORS[idx % CHART_COLORS.length] });
+              assetList.push({ 
+                  name: p.ticker, 
+                  value: v, 
+                  color: CHART_COLORS[idx % CHART_COLORS.length],
+                  percent: (v / totalBalance) * 100
+              });
           }
       });
 
@@ -121,10 +127,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           { name: 'Ações', value: stocks, color: '#0ea5e9' }
       ].filter(d => d.value > 0);
 
-      const byAsset = assetList.sort((a,b) => b.value - a.value).slice(0, 8); // Top 8
+      // Sort by Value DESC and take top 12 to show in list
+      const byAsset = assetList.sort((a,b) => b.value - a.value).slice(0, 12);
 
       return { byClass, byAsset };
-  }, [portfolio]);
+  }, [portfolio, balance]);
 
   // 2. Agenda (Proventos Futuros) - AGRUPADA & COMPACTA
   const agendaData = useMemo(() => {
@@ -203,17 +210,25 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
   const currentMonthIncome = incomeData.chartData[incomeData.chartData.length - 1]?.value || 0;
 
-  // 4. Número Mágico - ROBUSTO
+  // 4. Número Mágico - ROBUSTO (Correção de Fallback)
   const magicNumberData = useMemo(() => {
       const magicList: any[] = [];
       portfolio.forEach(asset => {
           if (asset.quantity > 0 && asset.currentPrice && asset.currentPrice > 0) {
-              const dyAnnual = asset.dy_12m || 0;
-              const monthlyYield = dyAnnual > 0 ? (dyAnnual / 100) / 12 : 0;
               
-              if (monthlyYield > 0) {
-                  const estimatedDivPerShare = asset.currentPrice * monthlyYield;
-                  const magicNumber = estimatedDivPerShare > 0 ? Math.ceil(asset.currentPrice / estimatedDivPerShare) : 0;
+              let estimatedDiv = 0;
+              
+              // Prioridade 1: DY anualizado (mais estável)
+              if (asset.dy_12m && asset.dy_12m > 0) {
+                  estimatedDiv = (asset.currentPrice * (asset.dy_12m / 100)) / 12;
+              } 
+              // Prioridade 2: Último dividendo declarado (Fallback se DY falhar/estiver zerado)
+              else if (asset.last_dividend && asset.last_dividend > 0) {
+                  estimatedDiv = asset.last_dividend;
+              }
+
+              if (estimatedDiv > 0) {
+                  const magicNumber = Math.ceil(asset.currentPrice / estimatedDiv);
                   
                   if (magicNumber > 0) {
                       const missing = Math.max(0, magicNumber - asset.quantity);
@@ -225,7 +240,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                           target: magicNumber,
                           missing,
                           progress,
-                          estimatedDiv: estimatedDivPerShare,
+                          estimatedDiv: estimatedDiv,
                           price: asset.currentPrice,
                           type: asset.assetType
                       });
@@ -233,7 +248,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
               }
           }
       });
-      return magicList.sort((a, b) => b.progress - a.progress); // Mais próximos primeiro
+      return magicList.sort((a, b) => b.progress - a.progress); 
   }, [portfolio]);
 
   const magicReachedCount = magicNumberData.filter(m => m.missing === 0).length;
@@ -394,7 +409,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
         {/* 1. AGENDA (Compact Mode) */}
         <SwipeableModal isOpen={showAgenda} onClose={() => setShowAgenda(false)}>
-            <div className="p-6 pb-20 min-h-[60vh]">
+            <div className="p-6 pb-20 min-h-[60vh] anim-slide-up">
                 <div className="flex items-center gap-4 mb-6">
                     <div className="w-12 h-12 rounded-2xl bg-violet-100 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 flex items-center justify-center">
                         <CalendarClock className="w-6 h-6" />
@@ -452,7 +467,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
         {/* 2. RENDA (Com Histórico) */}
         <SwipeableModal isOpen={showProventos} onClose={() => setShowProventos(false)}>
-            <div className="p-6 pb-20">
+            <div className="p-6 pb-20 anim-slide-up">
                 <div className="flex items-center gap-4 mb-6">
                     <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
                         <CircleDollarSign className="w-6 h-6" />
@@ -523,9 +538,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
         </SwipeableModal>
 
-        {/* 3. NÚMERO MÁGICO (CARD PREMIUM) */}
+        {/* 3. NÚMERO MÁGICO (CARD PREMIUM + FALLBACK) */}
         <SwipeableModal isOpen={showMagicNumber} onClose={() => setShowMagicNumber(false)}>
-            <div className="p-6 pb-20 min-h-[60vh]">
+            <div className="p-6 pb-20 min-h-[60vh] anim-slide-up">
                 <div className="flex items-center gap-4 mb-6">
                     <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
                         <Sparkles className="w-6 h-6" />
@@ -584,7 +599,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                 ) : (
                     <div className="text-center py-10 opacity-50">
-                        <p>Adicione ativos para calcular o número mágico.</p>
+                        <Sparkles className="w-12 h-12 mx-auto mb-3 text-zinc-300" />
+                        <p className="text-sm font-bold text-zinc-500">Dados insuficientes para cálculo.</p>
+                        <p className="text-[10px] text-zinc-400 mt-1 max-w-[200px] mx-auto">Adicione ativos com histórico de dividendos ou aguarde a atualização de mercado.</p>
                     </div>
                 )}
             </div>
@@ -592,7 +609,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
         {/* 4. OBJETIVOS (LEVEL SYSTEM + METAS CLARAS) */}
         <SwipeableModal isOpen={showGoals} onClose={() => setShowGoals(false)}>
-            <div className="p-6 pb-20">
+            <div className="p-6 pb-20 anim-slide-up">
                 <div className="flex items-center gap-4 mb-8">
                     <div className="w-12 h-12 rounded-2xl bg-rose-100 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 flex items-center justify-center">
                         <Trophy className="w-6 h-6" />
@@ -648,9 +665,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
         </SwipeableModal>
 
-        {/* 5. ALOCAÇÃO (COM ABAS) */}
+        {/* 5. ALOCAÇÃO (COM LISTA DE ATIVOS APRIMORADA) */}
         <SwipeableModal isOpen={showAllocation} onClose={() => setShowAllocation(false)}>
-             <div className="p-6 h-[80vh] flex flex-col">
+             <div className="p-6 h-[80vh] flex flex-col anim-slide-up">
                 <div className="flex items-center gap-4 mb-6 shrink-0">
                     <div className="w-12 h-12 rounded-2xl bg-sky-100 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 flex items-center justify-center">
                         <PieIcon className="w-6 h-6" />
@@ -674,7 +691,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </button>
                 </div>
                 
-                <div className="flex-1 min-h-0 w-full relative mb-4">
+                <div className="flex-1 min-h-0 w-full relative mb-4 anim-scale-in">
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                             <Pie 
@@ -700,16 +717,40 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 shrink-0 overflow-y-auto pb-4 max-h-[40vh]">
-                    {(allocationView === 'CLASS' ? allocationData.byClass : allocationData.byAsset).map((entry) => (
-                        <div key={entry.name} className="flex items-center gap-3 p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl">
-                            <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: entry.color }}></div>
-                            <div className="min-w-0">
-                                <p className="text-xs font-bold text-zinc-900 dark:text-white truncate">{entry.name}</p>
-                                <p className="text-[10px] text-zinc-500">{((entry.value / (balance || 1)) * 100).toFixed(1)}%</p>
-                            </div>
+                <div className="overflow-y-auto pb-4 max-h-[40vh] shrink-0 no-scrollbar">
+                    {allocationView === 'CLASS' ? (
+                        <div className="grid grid-cols-2 gap-3">
+                            {allocationData.byClass.map((entry) => (
+                                <div key={entry.name} className="flex items-center gap-3 p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl">
+                                    <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: entry.color }}></div>
+                                    <div className="min-w-0">
+                                        <p className="text-xs font-bold text-zinc-900 dark:text-white truncate">{entry.name}</p>
+                                        <p className="text-[10px] text-zinc-500">{((entry.value / (balance || 1)) * 100).toFixed(1)}%</p>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
-                    ))}
+                    ) : (
+                        <div className="space-y-2">
+                            {allocationData.byAsset.map((entry, idx) => (
+                                <div key={entry.name} className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl border border-transparent dark:border-zinc-700/50 anim-slide-up" style={{ animationDelay: `${idx * 50}ms`, opacity: 0 }}>
+                                    <div className="flex items-center gap-3 flex-1">
+                                        <div className="w-1.5 h-8 rounded-full shrink-0" style={{ backgroundColor: entry.color }}></div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex justify-between items-center mb-1">
+                                                <p className="text-xs font-bold text-zinc-900 dark:text-white truncate">{entry.name}</p>
+                                                <span className="text-[10px] font-bold text-zinc-500">{entry.percent.toFixed(1)}%</span>
+                                            </div>
+                                            <div className="h-1.5 w-full bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden mb-1">
+                                                <div className="h-full rounded-full" style={{ width: `${entry.percent}%`, backgroundColor: entry.color }}></div>
+                                            </div>
+                                            <p className="text-[10px] font-medium text-zinc-400">{formatBRL(entry.value, privacyMode)}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
         </SwipeableModal>
