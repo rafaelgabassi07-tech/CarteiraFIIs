@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
-import { CircleDollarSign, CalendarClock, PieChart as PieIcon, TrendingUp, TrendingDown, ArrowUpRight, Wallet, ArrowRight, Zap, Target, Layers, LayoutGrid, Coins, Sparkles, CheckCircle2, Lock, Calendar, Trophy, Medal, Star, ListFilter, TrendingUp as GrowthIcon, Anchor, Calculator } from 'lucide-react';
+import { CircleDollarSign, CalendarClock, PieChart as PieIcon, TrendingUp, TrendingDown, ArrowUpRight, Wallet, ArrowRight, Zap, Target, Layers, LayoutGrid, Coins, Sparkles, CheckCircle2, Lock, Calendar, Trophy, Medal, Star, ListFilter, TrendingUp as GrowthIcon, Anchor, Calculator, Repeat } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area } from 'recharts';
 
@@ -248,6 +248,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                       const missing = Math.max(0, magicNumber - asset.quantity);
                       const progress = Math.min(100, (asset.quantity / magicNumber) * 100);
                       const costToReach = missing * asset.currentPrice;
+                      
+                      // Nova métrica: Poder de Recompra (Quantas cotas a renda compra por mês)
+                      const currentIncome = asset.quantity * estimatedDiv;
+                      const repurchasePower = currentIncome / asset.currentPrice;
 
                       magicList.push({
                           ticker: asset.ticker,
@@ -258,7 +262,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                           estimatedDiv: estimatedDiv,
                           price: asset.currentPrice,
                           type: asset.assetType,
-                          costToReach
+                          costToReach,
+                          repurchasePower // Nova métrica
                       });
                   }
               }
@@ -313,6 +318,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       // Calculo de Liberdade (Salário Mínimo 2024 Base)
       const MIN_WAGE = 1412;
       const freedomPct = (safeIncome / MIN_WAGE) * 100;
+      
+      // Calculo Renda Passiva Diária
+      const dailyPassiveIncome = safeIncome / 30;
 
       return { 
           currentLevel, 
@@ -320,7 +328,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           progress,
           patrimony: { current: safeBalance, target: nextLevel.target },
           income: { current: safeIncome, target: nextIncome },
-          freedom: { current: safeIncome, target: MIN_WAGE, pct: freedomPct }
+          freedom: { current: safeIncome, target: MIN_WAGE, pct: freedomPct },
+          dailyIncome: dailyPassiveIncome
       };
   }, [balance, currentMonthIncome]);
 
@@ -424,7 +433,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
         {/* 1. AGENDA (Compact Mode) */}
         <SwipeableModal isOpen={showAgenda} onClose={() => setShowAgenda(false)}>
-            <div className="p-6 pb-20 h-full flex flex-col anim-slide-up">
+            <div className="p-6 h-full flex flex-col anim-slide-up">
                 <div className="flex items-center gap-4 mb-6 shrink-0">
                     <div className="w-12 h-12 rounded-2xl bg-violet-100 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 flex items-center justify-center">
                         <CalendarClock className="w-6 h-6" />
@@ -435,7 +444,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto min-h-0">
+                {/* Container de Scroll Dedicado */}
+                <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar">
                     {Object.keys(agendaData.grouped).length > 0 ? (
                         <div className="space-y-6">
                             {Object.entries(agendaData.grouped).map(([monthKey, items]) => (
@@ -484,7 +494,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
         {/* 2. RENDA (Com Histórico) */}
         <SwipeableModal isOpen={showProventos} onClose={() => setShowProventos(false)}>
-            <div className="p-6 pb-20 h-full flex flex-col anim-slide-up">
+            <div className="p-6 h-full flex flex-col anim-slide-up">
                 <div className="flex items-center gap-4 mb-6 shrink-0">
                     <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
                         <CircleDollarSign className="w-6 h-6" />
@@ -495,7 +505,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto min-h-0">
+                <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar">
                     <div className="h-56 w-full mb-6 shrink-0">
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={incomeData.chartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
@@ -566,7 +576,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
         </SwipeableModal>
 
-        {/* 3. NÚMERO MÁGICO (CARD PREMIUM + FALLBACK) */}
+        {/* 3. NÚMERO MÁGICO (CARD PREMIUM + FALLBACK + PODER DE RECOMPRA) */}
         <SwipeableModal isOpen={showMagicNumber} onClose={() => setShowMagicNumber(false)}>
             <div className="p-6 h-full flex flex-col anim-slide-up">
                 <div className="flex items-center gap-4 mb-6 shrink-0">
@@ -579,7 +589,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto min-h-0 pb-32">
+                <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar">
                     {magicNumberData.length > 0 ? (
                         <div className="space-y-4">
                             {magicNumberData.map((item) => {
@@ -622,6 +632,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                             ></div>
                                         </div>
 
+                                        {/* Status e Métrica de Recompra */}
                                         <div className="flex justify-between items-end bg-zinc-50 dark:bg-zinc-950/50 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800/50">
                                             {!isReached ? (
                                                 <div>
@@ -633,9 +644,13 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                                 </div>
                                             ) : (
                                                 <div>
-                                                    <p className="text-[9px] text-zinc-400 uppercase font-bold mb-0.5">Status</p>
-                                                    <p className="text-sm font-black text-amber-600 dark:text-amber-400">Autossustentável</p>
-                                                    <p className="text-[9px] text-zinc-400 font-medium mt-0.5">Renda compra novas cotas sozinha</p>
+                                                    <p className="text-[9px] text-zinc-400 uppercase font-bold mb-0.5">Poder de Recompra</p>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <Repeat className="w-3.5 h-3.5 text-amber-500" />
+                                                        <p className="text-sm font-black text-zinc-900 dark:text-white">
+                                                            {item.repurchasePower.toFixed(2)} <span className="text-[9px] font-bold text-zinc-500">cotas/mês</span>
+                                                        </p>
+                                                    </div>
                                                 </div>
                                             )}
                                             
@@ -659,7 +674,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
         </SwipeableModal>
 
-        {/* 4. OBJETIVOS (LEVEL SYSTEM + METAS CLARAS) */}
+        {/* 4. OBJETIVOS (LEVEL SYSTEM + RENDA DIÁRIA) */}
         <SwipeableModal isOpen={showGoals} onClose={() => setShowGoals(false)}>
             <div className="p-6 h-full flex flex-col anim-slide-up">
                 <div className="flex items-center gap-4 mb-8 shrink-0">
@@ -672,7 +687,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto min-h-0 pb-32">
+                <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar">
                     {/* Level Card */}
                     <div className="text-center mb-8 relative">
                         <div className="inline-block p-1 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-rose-500 shadow-xl shadow-indigo-500/20 mb-4">
@@ -707,11 +722,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         </div>
                         <div className="bg-zinc-50 dark:bg-zinc-800 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-700/50">
                             <div className="flex items-center gap-2 mb-2">
-                                <Calculator className="w-4 h-4 text-emerald-500" />
-                                <span className="text-[9px] font-bold uppercase text-zinc-400 tracking-wider">Projeção</span>
+                                <Coins className="w-4 h-4 text-amber-500" />
+                                <span className="text-[9px] font-bold uppercase text-zinc-400 tracking-wider">Passiva Diária</span>
                             </div>
-                            <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(goalsData.income.current * 12, privacyMode)}</p>
-                            <p className="text-[9px] text-zinc-500 mt-1">Renda Anual Estimada</p>
+                            <p className="text-xl font-black text-zinc-900 dark:text-white">{formatBRL(goalsData.dailyIncome, privacyMode)}</p>
+                            <p className="text-[9px] text-zinc-500 mt-1">Ganhos por dia</p>
                         </div>
                     </div>
 
@@ -766,7 +781,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 </div>
                 
                 {/* Gráfico fixo com altura controlada */}
-                <div className="flex-1 w-full min-h-[220px] max-h-[35%] relative mb-4 anim-scale-in">
+                <div className="flex-1 w-full min-h-[220px] max-h-[35%] relative mb-4 anim-scale-in shrink-0">
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                             <Pie 
@@ -792,7 +807,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto pb-4 shrink-0 no-scrollbar">
+                <div className="flex-1 overflow-y-auto pb-24 shrink-0 no-scrollbar">
                     {allocationView === 'CLASS' ? (
                         <div className="grid grid-cols-2 gap-3">
                             {allocationData.byClass.map((entry) => (

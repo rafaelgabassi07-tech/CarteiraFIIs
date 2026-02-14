@@ -199,7 +199,8 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
             transform: isVisible ? `translateY(${dragY}px)` : 'translateY(100%)',
             transition: dragY === 0 ? 'transform 500ms cubic-bezier(0.32, 0.72, 0, 1)' : 'none',
         }}
-        // Aumentado para 92dvh para dar mais área útil
+        // FIX: Usamos Flex Col e overflow-hidden aqui. O CHILDREN deve gerenciar o scroll.
+        // Isso impede que o modal crie um scroll wrapper conflitante.
         className={`relative bg-white dark:bg-zinc-900 w-full h-[92dvh] rounded-t-[2.5rem] shadow-2xl shadow-black/50 overflow-hidden flex flex-col`}
       >
         {/* Handle */}
@@ -216,11 +217,8 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
           <div className="w-12 h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full"></div>
         </div>
 
-        {/* 
-           Container de conteúdo com flex-1 para ocupar TODO o espaço restante.
-           pb-32 garante que o conteúdo final fique bem acima da borda inferior.
-        */}
-        <div className="flex-1 min-h-0 w-full overflow-y-auto overscroll-contain pb-32 px-1 relative">
+        {/* Content Wrapper - Sem overflow-y-auto aqui. Deixamos para o children. */}
+        <div className="flex-1 min-h-0 w-full relative flex flex-col">
             {children}
         </div>
       </div>
@@ -271,10 +269,9 @@ export const InstallPromptModal: React.FC<any> = ({ isOpen, onInstall, onDismiss
 
 export const UpdateReportModal: React.FC<any> = (props) => (
     <SwipeableModal {...props}>
-        <div className="p-6">
-            <h2 className="text-2xl font-bold mb-6 text-zinc-900 dark:text-white">Relatório de Atualização</h2>
-            {/* Logic remains same, visuals inherit global CSS */}
-            <div className="space-y-4">
+        <div className="p-6 h-full flex flex-col">
+            <h2 className="text-2xl font-bold mb-6 text-zinc-900 dark:text-white shrink-0">Relatório de Atualização</h2>
+            <div className="space-y-4 flex-1 overflow-y-auto pb-20">
                  <div className="bg-zinc-50 dark:bg-zinc-800 p-4 rounded-2xl">
                      <div className="flex justify-between items-center">
                          <span className="text-sm font-medium text-zinc-500">Ativos Processados</span>
@@ -288,12 +285,12 @@ export const UpdateReportModal: React.FC<any> = (props) => (
 
 export const ChangelogModal: React.FC<any> = ({ isOpen, onClose, version, notes, onUpdate, isUpdating }) => (
     <SwipeableModal isOpen={isOpen} onClose={onClose}>
-        <div className="p-8 text-center">
-            <div className="w-16 h-16 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mx-auto mb-6 text-indigo-600">
+        <div className="p-8 text-center h-full flex flex-col overflow-y-auto pb-20">
+            <div className="w-16 h-16 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mx-auto mb-6 text-indigo-600 shrink-0">
                 <Gift className="w-8 h-8" />
             </div>
-            <h2 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">Novidades v{version}</h2>
-            <div className="space-y-4 text-left mt-8 mb-8">
+            <h2 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2 shrink-0">Novidades v{version}</h2>
+            <div className="space-y-4 text-left mt-8 mb-8 flex-1">
                 {notes?.map((n: any, i: number) => (
                     <div key={i} className="flex gap-4">
                         <Star className="w-5 h-5 text-amber-500 shrink-0" />
@@ -305,7 +302,7 @@ export const ChangelogModal: React.FC<any> = ({ isOpen, onClose, version, notes,
                 ))}
             </div>
             {onUpdate && (
-                <button onClick={onUpdate} disabled={isUpdating} className="w-full py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-bold shadow-lg press-effect">
+                <button onClick={onUpdate} disabled={isUpdating} className="w-full py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-bold shadow-lg press-effect shrink-0">
                     {isUpdating ? 'Atualizando...' : 'Instalar Atualização'}
                 </button>
             )}
@@ -315,12 +312,12 @@ export const ChangelogModal: React.FC<any> = ({ isOpen, onClose, version, notes,
 
 export const NotificationsModal: React.FC<any> = ({ isOpen, onClose, notifications, onClear }) => (
     <SwipeableModal isOpen={isOpen} onClose={onClose}>
-        <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
+        <div className="p-6 h-full flex flex-col">
+            <div className="flex justify-between items-center mb-6 shrink-0">
                 <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">Notificações</h2>
                 {notifications.length > 0 && <button onClick={onClear} className="text-xs font-bold text-zinc-400 uppercase">Limpar</button>}
             </div>
-            <div className="space-y-3">
+            <div className="space-y-3 flex-1 overflow-y-auto pb-20">
                 {notifications.length === 0 ? (
                     <div className="text-center py-10 text-zinc-400">Nenhuma notificação recente.</div>
                 ) : notifications.map((n: any) => (

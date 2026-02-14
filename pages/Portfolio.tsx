@@ -103,23 +103,25 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
             )}
 
             <SwipeableModal isOpen={!!selectedAsset} onClose={() => setSelectedAsset(null)}>
-                <div className="p-6 h-[80vh]">
+                <div className="p-6 h-full flex flex-col">
                     {selectedAsset && (
-                        <div className="text-center">
-                            <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mx-auto mb-4 text-xl font-black">
-                                {selectedAsset.ticker.substring(0,2)}
-                            </div>
-                            <h2 className="text-3xl font-bold dark:text-white mb-1">{selectedAsset.ticker}</h2>
-                            <p className="text-zinc-500">{selectedAsset.segment}</p>
-                            
-                            <div className="mt-8 grid grid-cols-2 gap-4">
-                                <div className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl">
-                                    <p className="text-xs text-zinc-500 uppercase">Preço Médio</p>
-                                    <p className="text-lg font-bold dark:text-white">{formatBRL(selectedAsset.averagePrice, privacyMode)}</p>
+                        <div className="flex-1 overflow-y-auto no-scrollbar pb-24">
+                            <div className="text-center">
+                                <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mx-auto mb-4 text-xl font-black">
+                                    {selectedAsset.ticker.substring(0,2)}
                                 </div>
-                                <div className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl">
-                                    <p className="text-xs text-zinc-500 uppercase">Preço Atual</p>
-                                    <p className="text-lg font-bold dark:text-white">{formatBRL(selectedAsset.currentPrice, privacyMode)}</p>
+                                <h2 className="text-3xl font-bold dark:text-white mb-1">{selectedAsset.ticker}</h2>
+                                <p className="text-zinc-500">{selectedAsset.segment}</p>
+                                
+                                <div className="mt-8 grid grid-cols-2 gap-4">
+                                    <div className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl">
+                                        <p className="text-xs text-zinc-500 uppercase">Preço Médio</p>
+                                        <p className="text-lg font-bold dark:text-white">{formatBRL(selectedAsset.averagePrice, privacyMode)}</p>
+                                    </div>
+                                    <div className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl">
+                                        <p className="text-xs text-zinc-500 uppercase">Preço Atual</p>
+                                        <p className="text-lg font-bold dark:text-white">{formatBRL(selectedAsset.currentPrice, privacyMode)}</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
