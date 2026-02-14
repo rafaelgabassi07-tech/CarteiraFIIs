@@ -10,7 +10,7 @@ import { Settings } from './pages/Settings';
 import { Login } from './pages/Login';
 import { Transaction, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals, ServiceMetric, ThemeType, ScrapeResult, UpdateReportData } from './types';
 import { getQuotes } from './services/brapiService';
-import { fetchUnifiedMarketData, triggerScraperUpdate, mapScraperToFundamentals } from './services/dataService';
+import { fetchUnifiedMarketData, triggerScraperUpdate, mapScraperToFundamentals, fetchFutureAnnouncements } from './services/dataService';
 import { getQuantityOnDate, isSameDayLocal, mapSupabaseToTx, processPortfolio, normalizeTicker } from './services/portfolioRules';
 import { Check, Loader2, AlertTriangle, Info, Database, Activity, Globe } from 'lucide-react';
 import { useUpdateManager } from './hooks/useUpdateManager';
@@ -18,7 +18,7 @@ import { supabase, SUPABASE_URL } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 import { useScrollDirection } from './hooks/useScrollDirection';
 
-const APP_VERSION = '8.8.9'; 
+const APP_VERSION = '8.9.0'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -332,10 +332,12 @@ const App: React.FC = () => {
       
       // Busca dados unificados (Supabase cache ou Scraper se force=true)
       const startDate = txsToUse.reduce((min, t) => t.date < min ? t.date : min, txsToUse[0].date);
-      let data = await fetchUnifiedMarketData(tickers, startDate, force);
+      
+      // Se for initialLoad, forçamos o scraper para garantir dados frescos (Automatização)
+      const shouldForce = force || initialLoad;
+      let data = await fetchUnifiedMarketData(tickers, startDate, shouldForce);
 
       if (data.dividends.length > 0) {
-          // Merge seguro em vez de substituição para evitar perda de dados de ativos não listados nesta chamada
           setDividends(prev => mergeDividends(prev, data.dividends));
       }
       if (Object.keys(data.metadata).length > 0) {
@@ -353,6 +355,27 @@ const App: React.FC = () => {
              ipca: data.indicators.ipca_cumulative || 4.62, 
              startDate: data.indicators.start_date_used 
          });
+      }
+
+      // --- AUTOMATIZAÇÃO ROBÔ DA AGENDA ---
+      // Calcula projeções baseadas nos dados atualizados e insere na agenda
+      // Recalcula portfolio temporário para o robô ter qtd correta
+      const tempPortfolio = processPortfolio(txsToUse, [], {}, data.metadata).portfolio;
+      const predictions = await fetchFutureAnnouncements(tempPortfolio);
+      
+      if (predictions.length > 0) {
+          const predictionReceipts: DividendReceipt[] = predictions.map(p => ({
+              id: `pred-${p.ticker}-${p.paymentDate}-${p.rate}`,
+              ticker: p.ticker,
+              type: p.type,
+              dateCom: p.dateCom !== 'Já ocorreu' ? p.dateCom : new Date().toISOString(),
+              paymentDate: p.paymentDate !== 'A Definir' ? p.paymentDate : '',
+              rate: p.rate,
+              quantityOwned: p.quantity,
+              totalReceived: p.projectedTotal,
+              assetType: AssetType.FII // Default, ajustado se possível
+          }));
+          setDividends(prev => mergeDividends(prev, predictionReceipts));
       }
       
       if (initialLoad) setLoadingProgress(100); 
@@ -425,6 +448,7 @@ const App: React.FC = () => {
             setSession(initialSession);
             setLoadingProgress(50);
             if (initialSession) {
+                // Initial Load = true triggers the automatic Scraper and Robot
                 fetchTransactionsFromCloud(initialSession, false, true);
             }
             const elapsed = Date.now() - startTime;

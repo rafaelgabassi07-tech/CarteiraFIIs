@@ -220,27 +220,31 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
   const currentMonthIncome = incomeData.chartData[incomeData.chartData.length - 1]?.value || 0;
 
-  // 4. Número Mágico - ROBUSTO (Correção de Fallback)
+  // 4. Número Mágico - ROBUSTO (Suporte a Ações)
   const magicNumberData = useMemo(() => {
       const magicList: any[] = [];
       portfolio.forEach(asset => {
           if (asset.quantity > 0 && asset.currentPrice && asset.currentPrice > 0) {
               
               let estimatedDiv = 0;
+              let hasData = false;
               
-              // Prioridade 1: DY anualizado (mais estável)
+              // 1. Tenta usar DY Anualizado (Melhor para ações e FIIs)
               if (asset.dy_12m && asset.dy_12m > 0) {
+                  // Converte Yield anual em valor monetário mensal médio aproximado
                   estimatedDiv = (asset.currentPrice * (asset.dy_12m / 100)) / 12;
+                  hasData = true;
               } 
-              // Prioridade 2: Último dividendo declarado (Fallback se DY falhar/estiver zerado)
+              // 2. Fallback: Último dividendo declarado (FIIs)
               else if (asset.last_dividend && asset.last_dividend > 0) {
                   estimatedDiv = asset.last_dividend;
+                  hasData = true;
               }
 
-              if (estimatedDiv > 0) {
+              if (hasData && estimatedDiv > 0) {
                   const magicNumber = Math.ceil(asset.currentPrice / estimatedDiv);
                   
-                  if (magicNumber > 0) {
+                  if (magicNumber > 0 && magicNumber < 100000) { // Sanity check
                       const missing = Math.max(0, magicNumber - asset.quantity);
                       const progress = Math.min(100, (asset.quantity / magicNumber) * 100);
                       
@@ -576,8 +580,13 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                                     {item.ticker.substring(0,2)}
                                                 </div>
                                                 <div>
-                                                    <h4 className="font-bold text-base text-zinc-900 dark:text-white">{item.ticker}</h4>
-                                                    <p className="text-[10px] text-zinc-500 font-medium">Preço: {formatBRL(item.price)}</p>
+                                                    <div className="flex items-center gap-2">
+                                                        <h4 className="font-bold text-base text-zinc-900 dark:text-white">{item.ticker}</h4>
+                                                        <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${item.type === AssetType.FII ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' : 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400'}`}>
+                                                            {item.type === AssetType.FII ? 'FII' : 'AÇÃO'}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-[10px] text-zinc-500 font-medium mt-0.5">Preço: {formatBRL(item.price)}</p>
                                                 </div>
                                             </div>
                                             <div className="text-right">
@@ -602,8 +611,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                                 </p>
                                             </div>
                                             <div className="text-right">
-                                                <p className="text-[9px] text-zinc-400 uppercase font-bold">Rend. por Cota</p>
-                                                <p className="text-xs font-bold text-zinc-600 dark:text-zinc-300">~{formatBRL(item.estimatedDiv)}</p>
+                                                <p className="text-[9px] text-zinc-400 uppercase font-bold">Rend. Estimado</p>
+                                                <p className="text-xs font-bold text-zinc-600 dark:text-zinc-300">~{formatBRL(item.estimatedDiv)}/mês</p>
                                             </div>
                                         </div>
                                     </div>
@@ -614,7 +623,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         <div className="text-center py-10 opacity-50">
                             <Sparkles className="w-12 h-12 mx-auto mb-3 text-zinc-300" />
                             <p className="text-sm font-bold text-zinc-500">Dados insuficientes para cálculo.</p>
-                            <p className="text-[10px] text-zinc-400 mt-1 max-w-[200px] mx-auto">Adicione ativos com histórico de dividendos ou aguarde a atualização de mercado.</p>
+                            <p className="text-[10px] text-zinc-400 mt-1 max-w-[200px] mx-auto">Adicione ativos com histórico de dividendos (FIIs ou Ações) e aguarde a atualização de mercado.</p>
                         </div>
                     )}
                 </div>
