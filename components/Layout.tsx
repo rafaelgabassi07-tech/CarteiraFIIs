@@ -67,8 +67,8 @@ export const Header: React.FC<HeaderProps> = ({
     <header 
       className={`fixed top-0 left-0 right-0 z-40 transition-transform duration-500 cubic-bezier(0.16, 1, 0.3, 1) ${isVisible ? 'translate-y-0' : '-translate-y-full'}`}
     >
-      {/* Blur Background Layer */}
-      <div className={`absolute inset-0 bg-white/80 dark:bg-black/80 backdrop-blur-xl border-b border-zinc-200/50 dark:border-zinc-800/50 transition-opacity duration-300 ${hideBorder ? 'opacity-0' : 'opacity-100'}`}></div>
+      {/* Unified Blur Background Layer */}
+      <div className={`absolute inset-0 bg-primary-light/80 dark:bg-primary-dark/80 backdrop-blur-xl border-b border-zinc-200/50 dark:border-zinc-800/50 transition-opacity duration-300 ${hideBorder ? 'opacity-0' : 'opacity-100'}`}></div>
 
       <div className="relative z-10 flex flex-col justify-end px-6 h-[calc(3.5rem+env(safe-area-inset-top))] pb-3 pt-safe">
         <div className="flex items-center justify-between">
@@ -244,7 +244,6 @@ export const ConfirmationModal: React.FC<any> = ({ isOpen, title, message, onCon
     )
 }
 
-// Re-exporting simplified versions of other modals with consistent styling
 export const InstallPromptModal: React.FC<any> = ({ isOpen, onInstall, onDismiss }) => {
     if(!isOpen) return null;
     return (

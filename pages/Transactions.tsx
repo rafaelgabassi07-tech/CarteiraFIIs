@@ -42,7 +42,7 @@ const TransactionsSummary = ({ transactions, privacyMode }: { transactions: Tran
                 </div>
                 <div className="relative z-10">
                     <div className="flex justify-between items-start mb-2">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Resultado Líquido</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Fluxo Líquido</span>
                         <span className="text-[10px] font-bold bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full text-zinc-500 border border-zinc-200 dark:border-zinc-700">{count} Ordens</span>
                     </div>
                     <div className="flex items-baseline gap-2">
@@ -50,32 +50,9 @@ const TransactionsSummary = ({ transactions, privacyMode }: { transactions: Tran
                             {formatBRL(Math.abs(netFlow), privacyMode)}
                         </h2>
                         <span className={`text-xs font-black px-1.5 py-0.5 rounded-md ${netFlow >= 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'}`}>
-                            {netFlow >= 0 ? 'INVESTIDO' : 'RETIRADO'}
+                            {netFlow >= 0 ? 'ENTRADA' : 'SAÍDA'}
                         </span>
                     </div>
-                </div>
-            </div>
-
-            {/* Grid Secundário: Entradas e Saídas */}
-            <div className="grid grid-cols-2 gap-3">
-                <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex flex-col">
-                    <div className="flex items-center gap-2 mb-2">
-                        <div className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                            <ArrowDownLeft className="w-3.5 h-3.5" strokeWidth={2.5} />
-                        </div>
-                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide">Compras</span>
-                    </div>
-                    <p className="text-sm font-black text-zinc-900 dark:text-white truncate">{formatBRL(totalInvested, privacyMode)}</p>
-                </div>
-                
-                <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex flex-col">
-                    <div className="flex items-center gap-2 mb-2">
-                        <div className="w-6 h-6 rounded-full bg-rose-100 dark:bg-rose-900/20 flex items-center justify-center text-rose-600 dark:text-rose-400">
-                            <ArrowUpRight className="w-3.5 h-3.5" strokeWidth={2.5} />
-                        </div>
-                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide">Vendas</span>
-                    </div>
-                    <p className="text-sm font-black text-zinc-900 dark:text-white truncate">{formatBRL(totalSold, privacyMode)}</p>
                 </div>
             </div>
         </div>
@@ -91,7 +68,6 @@ const YearFilterChip = ({ years, selectedYear, onChange }: { years: string[], se
     const handleToggle = () => {
         if (!isOpen && buttonRef.current) {
             const rect = buttonRef.current.getBoundingClientRect();
-            // Calcula posição para o portal
             setCoords({ 
                 top: rect.bottom + 6, 
                 left: rect.left 
@@ -114,7 +90,6 @@ const YearFilterChip = ({ years, selectedYear, onChange }: { years: string[], se
 
             {isOpen && createPortal(
                 <>
-                    {/* Backdrop transparente para fechar ao clicar fora */}
                     <div className="fixed inset-0 z-[9998]" onClick={() => setIsOpen(false)}></div>
                     <div 
                         className="fixed w-32 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-xl z-[9999] overflow-hidden anim-scale-in p-1"
@@ -163,7 +138,7 @@ const TransactionRow = React.memo(({ index, data }: any) => {
   
   if (item.type === 'header') {
       return (
-          <div className="sticky top-[158px] z-10 py-3 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-xl -mx-4 px-4 border-b border-zinc-100 dark:border-zinc-800/50 mb-1 mt-2 shadow-sm">
+          <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top)+60px)] z-10 py-3 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-xl -mx-4 px-4 border-b border-zinc-100 dark:border-zinc-800/50 mb-1 mt-2 shadow-sm">
               <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 flex justify-between items-center">
                   {formatMonthHeader(item.monthKey)}
                   <span className={`text-[9px] px-2 py-0.5 rounded-md font-bold ${item.monthlyNet >= 0 ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'}`}>
@@ -181,42 +156,41 @@ const TransactionRow = React.memo(({ index, data }: any) => {
   return (
       <button 
         onClick={() => isSelectionMode ? data.onToggleSelect(t.id) : data.onRowClick(t)}
-        className={`w-full text-left py-3 px-2 flex items-center justify-between group transition-all duration-200 border-b border-zinc-50 dark:border-zinc-800/50 last:border-0 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 rounded-xl mb-1 ${
-            isSelected ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-900/30 ring-1 ring-indigo-500/20' : ''
+        className={`w-full flex items-center justify-between py-3 px-1 group transition-all active:scale-[0.98] border-b border-zinc-50 dark:border-zinc-800/30 last:border-0 ${
+            isSelected ? 'bg-indigo-50/50 dark:bg-indigo-900/20 rounded-xl' : ''
         }`}
       >
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3.5">
               {isSelectionMode ? (
                   <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-all border ${isSelected ? 'bg-zinc-900 dark:bg-white border-transparent text-white dark:text-zinc-900' : 'bg-transparent border-zinc-300 dark:border-zinc-600'}`}>
                       {isSelected && <Check className="w-3 h-3" strokeWidth={3} />}
                   </div>
               ) : (
-                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-[10px] font-black border shadow-sm ${isBuy ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-900/30' : 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-900/30'}`}>
-                      {isBuy ? <ArrowDownLeft className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
+                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
+                      isBuy 
+                      ? 'bg-emerald-100/50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' 
+                      : 'bg-rose-100/50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400'
+                  }`}>
+                      {isBuy ? <ArrowDownLeft className="w-5 h-5" strokeWidth={2.5} /> : <ArrowUpRight className="w-5 h-5" strokeWidth={2.5} />}
                   </div>
               )}
               
-              <div>
-                  <div className="flex items-center gap-2">
-                      <h4 className="font-bold text-sm text-zinc-900 dark:text-white tracking-tight">
-                          {t.ticker}
-                      </h4>
-                      <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wide ${t.assetType === AssetType.FII ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400' : 'bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400'}`}>
-                          {t.assetType === AssetType.FII ? 'FII' : 'AÇÃO'}
-                      </span>
-                  </div>
-                  <p className="text-[10px] font-medium text-zinc-400 mt-0.5">
-                      {t.date.split('-').reverse().slice(0,2).join('/')} • {t.quantity} un x {t.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              <div className="text-left">
+                  <h4 className="font-bold text-sm text-zinc-900 dark:text-white leading-tight">
+                      {t.ticker}
+                  </h4>
+                  <p className="text-[11px] font-medium text-zinc-400 mt-0.5">
+                      {t.date.split('-').reverse().slice(0,2).join('/')} <span className="mx-1">·</span> {t.quantity} un
                   </p>
               </div>
           </div>
           
           <div className="text-right">
-              <p className={`text-sm font-black tracking-tight ${isBuy ? 'text-zinc-900 dark:text-white' : 'text-zinc-900 dark:text-white'}`}>
+              <p className={`font-bold text-sm tabular-nums tracking-tight ${isBuy ? 'text-zinc-900 dark:text-white' : 'text-zinc-900 dark:text-white'}`}>
                   {formatBRL(totalValue, privacyMode)}
               </p>
-              <p className={`text-[9px] font-bold uppercase tracking-wider ${isBuy ? 'text-emerald-500' : 'text-rose-500'}`}>
-                  {isBuy ? 'Compra' : 'Venda'}
+              <p className="text-[10px] font-medium text-zinc-400 tabular-nums">
+                  {formatBRL(t.price)}
               </p>
           </div>
       </button>
@@ -256,7 +230,6 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     
     const estimatedTotal = (parseFloat(quantity) || 0) * (parseFloat(price) || 0);
 
-    // Gera lista de anos disponíveis baseada no histórico
     const availableYears = useMemo(() => {
         const years = new Set(transactions.map(t => t.date.substring(0, 4)));
         return Array.from(years).sort((a,b) => String(b).localeCompare(String(a)));
@@ -338,17 +311,28 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     return (
         <div className="anim-fade-in min-h-screen pb-32">
             {/* Header Sticky com Filtros Refinados */}
-            <div className="sticky top-20 z-20 bg-primary-light dark:bg-primary-dark transition-all -mx-4 px-4 pt-2 pb-3 border-b border-zinc-200 dark:border-zinc-800 shadow-sm">
+            <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-20 bg-primary-light dark:bg-primary-dark transition-all -mx-4 px-4 pt-2 pb-3 border-b border-zinc-200 dark:border-zinc-800 shadow-sm">
                 
-                {/* Linha 1: Título e Ações Principais */}
                 <div className="flex items-center justify-between mb-3">
-                    <h2 className="text-sm font-black text-zinc-900 dark:text-white tracking-tight flex items-center gap-2">
+                    <div className="flex items-center gap-2">
                         {isSelectionMode ? (
-                            <span className="text-indigo-500">{selectedIds.size} selecionados</span>
+                            <span className="text-sm font-black text-indigo-500">{selectedIds.size} selecionados</span>
                         ) : (
-                            <>Histórico</>
+                            <div className="flex gap-2">
+                                <YearFilterChip years={availableYears} selectedYear={yearFilter} onChange={setYearFilter} />
+                                <FilterChip 
+                                    label={typeFilter === 'ALL' ? 'Tipo' : typeFilter === 'BUY' ? 'Compras' : 'Vendas'} 
+                                    active={typeFilter !== 'ALL'}
+                                    onClick={() => setTypeFilter(prev => prev === 'ALL' ? 'BUY' : prev === 'BUY' ? 'SELL' : 'ALL')}
+                                />
+                                <FilterChip 
+                                    label={assetFilter === 'ALL' ? 'Classe' : assetFilter === 'FII' ? 'FIIs' : 'Ações'} 
+                                    active={assetFilter !== 'ALL'}
+                                    onClick={() => setAssetFilter(prev => prev === 'ALL' ? 'FII' : prev === 'FII' ? 'STOCK' : 'ALL')}
+                                />
+                            </div>
                         )}
-                    </h2>
+                    </div>
                     
                     <div className="flex items-center gap-2">
                         {isSelectionMode ? (
@@ -359,8 +343,8 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                         ) : (
                             <>
                                 {hasActiveFilters && (
-                                    <button onClick={clearFilters} className="text-[10px] font-bold text-rose-500 bg-rose-50 dark:bg-rose-900/20 px-3 py-1.5 rounded-lg flex items-center gap-1 mr-1 transition-colors hover:bg-rose-100">
-                                        <X className="w-3 h-3" /> Limpar
+                                    <button onClick={clearFilters} className="text-[10px] font-bold text-rose-500 bg-rose-50 dark:bg-rose-900/20 w-8 h-8 flex items-center justify-center rounded-lg transition-colors hover:bg-rose-100">
+                                        <X className="w-3.5 h-3.5" />
                                     </button>
                                 )}
                                 <button onClick={() => setIsSelectionMode(true)} className="p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors bg-zinc-100 dark:bg-zinc-800 rounded-lg"><CheckSquare className="w-4 h-4" /></button>
@@ -371,35 +355,15 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                 </div>
 
                 {!isSelectionMode && (
-                    <div className="space-y-3">
-                        {/* Busca Discreta */}
-                        <div className="relative group">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 group-focus-within:text-indigo-500 transition-colors" />
-                            <input 
-                                type="text" 
-                                placeholder="Buscar ativo..." 
-                                value={searchTerm}
-                                onChange={e => setSearchTerm(e.target.value.toUpperCase())}
-                                className="w-full bg-zinc-100 dark:bg-zinc-800 pl-10 pr-4 py-2 rounded-xl text-xs font-bold text-zinc-900 dark:text-white placeholder:text-zinc-400 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all border border-transparent focus:bg-white dark:focus:bg-zinc-900 focus:border-indigo-500/20"
-                            />
-                        </div>
-
-                        {/* Filtros em Chips (Scroll Horizontal) */}
-                        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-                            <YearFilterChip years={availableYears} selectedYear={yearFilter} onChange={setYearFilter} />
-
-                            <FilterChip 
-                                label={typeFilter === 'ALL' ? 'Tipo' : typeFilter === 'BUY' ? 'Compras' : 'Vendas'} 
-                                active={typeFilter !== 'ALL'}
-                                onClick={() => setTypeFilter(prev => prev === 'ALL' ? 'BUY' : prev === 'BUY' ? 'SELL' : 'ALL')}
-                            />
-
-                            <FilterChip 
-                                label={assetFilter === 'ALL' ? 'Classe' : assetFilter === 'FII' ? 'FIIs' : 'Ações'} 
-                                active={assetFilter !== 'ALL'}
-                                onClick={() => setAssetFilter(prev => prev === 'ALL' ? 'FII' : prev === 'FII' ? 'STOCK' : 'ALL')}
-                            />
-                        </div>
+                    <div className="relative group">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 group-focus-within:text-indigo-500 transition-colors" />
+                        <input 
+                            type="text" 
+                            placeholder="Buscar ativo..." 
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value.toUpperCase())}
+                            className="w-full bg-zinc-100 dark:bg-zinc-800 pl-10 pr-4 py-2 rounded-xl text-xs font-bold text-zinc-900 dark:text-white placeholder:text-zinc-400 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all border border-transparent focus:bg-white dark:focus:bg-zinc-900 focus:border-indigo-500/20"
+                        />
                     </div>
                 )}
             </div>
@@ -426,7 +390,6 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                 )}
             </div>
 
-            {/* Modal de Edição */}
             <SwipeableModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
                 <div className="p-6 pb-20">
                     <div className="flex justify-between items-center mb-6">
