@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
-import { CircleDollarSign, CalendarClock, PieChart as PieIcon, TrendingUp, TrendingDown, ArrowUpRight, Wallet, ArrowRight, Zap, Target, Layers, LayoutGrid, Coins, Sparkles, CheckCircle2, Lock, Calendar, Trophy, Medal, Star, ListFilter, TrendingUp as GrowthIcon, Anchor, Calculator, Repeat, ChevronRight } from 'lucide-react';
+import { CircleDollarSign, CalendarClock, PieChart as PieIcon, TrendingUp, TrendingDown, ArrowUpRight, Wallet, ArrowRight, Zap, Target, Layers, LayoutGrid, Coins, Sparkles, CheckCircle2, Lock, Calendar, Trophy, Medal, Star, ListFilter, TrendingUp as GrowthIcon, Anchor, Calculator, Repeat, ChevronRight, Hourglass, Landmark } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area } from 'recharts';
 
@@ -31,6 +31,16 @@ const getMonthName = (dateStr: string) => {
     } catch {
         return dateStr;
     }
+};
+
+const getDaysUntil = (dateStr: string) => {
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const target = new Date(dateStr + 'T12:00:00');
+    target.setHours(0,0,0,0);
+    const diffTime = target.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
 };
 
 const CHART_COLORS = ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#f43f5e', '#84cc16'];
@@ -102,6 +112,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   // --- CALCS ---
   const totalReturn = (totalAppreciation + salesGain) + totalDividendsReceived;
   const totalReturnPercent = invested > 0 ? (totalReturn / invested) * 100 : 0;
+  
+  // Yield on Cost (Baseado no total investido)
+  const yieldOnCost = invested > 0 ? (totalDividendsReceived / invested) * 100 : 0;
 
   // 1. Alocação (Classes e Ativos)
   const allocationData = useMemo(() => {
@@ -146,6 +159,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       
       const totalFuture = future.reduce((acc, curr) => acc + (curr.totalReceived || 0), 0);
       const nextPayment = future[0];
+      
+      let daysToNext = 0;
+      if (nextPayment) {
+          daysToNext = getDaysUntil(nextPayment.paymentDate || nextPayment.dateCom);
+      }
 
       // Agrupamento por Mês
       const grouped: Record<string, DividendReceipt[]> = {};
@@ -157,7 +175,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           grouped[monthKey].push(item);
       });
 
-      return { list: future, grouped, totalFuture, nextPayment };
+      return { list: future, grouped, totalFuture, nextPayment, daysToNext };
   }, [dividendReceipts]);
 
   // 3. Renda (Histórico) - COM LISTA DE ÚLTIMOS PAGAMENTOS E AGRUPAMENTO
@@ -431,7 +449,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
         {/* --- MODALS --- */}
 
-        {/* 1. AGENDA (Compact Mode) */}
+        {/* 1. AGENDA (Informações Adicionais) */}
         <SwipeableModal isOpen={showAgenda} onClose={() => setShowAgenda(false)}>
             <div className="p-6 h-full flex flex-col anim-slide-up">
                 <div className="flex items-center gap-4 mb-6 shrink-0">
@@ -441,6 +459,34 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     <div>
                         <h2 className="text-2xl font-bold text-zinc-900 dark:text-white leading-none">Agenda</h2>
                         <p className="text-xs text-zinc-500 font-medium mt-1">Previsão: {formatBRL(agendaData.totalFuture, privacyMode)}</p>
+                    </div>
+                </div>
+
+                {/* Cards de Resumo */}
+                <div className="grid grid-cols-2 gap-3 mb-6 shrink-0">
+                    <div className="bg-violet-50 dark:bg-violet-900/10 p-3 rounded-2xl border border-violet-100 dark:border-violet-900/20">
+                        <p className="text-[10px] text-violet-600 dark:text-violet-400 uppercase font-bold mb-1">Próximo Pagamento</p>
+                        <div className="flex items-end gap-1.5">
+                            <span className="text-2xl font-black text-violet-700 dark:text-violet-400">
+                                {agendaData.daysToNext === 0 ? 'Hoje' : agendaData.daysToNext}
+                            </span>
+                            <span className="text-[10px] font-bold text-violet-500 mb-1">
+                                {agendaData.daysToNext === 0 ? '' : 'dias'}
+                            </span>
+                        </div>
+                        {agendaData.nextPayment && (
+                            <p className="text-[9px] text-zinc-500 mt-1 truncate">
+                                {agendaData.nextPayment.ticker} • {formatBRL(agendaData.nextPayment.totalReceived, privacyMode)}
+                            </p>
+                        )}
+                    </div>
+                    <div className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-700/50">
+                        <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Status</p>
+                        <div className="flex items-center gap-2 mt-1">
+                            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                            <span className="text-sm font-bold text-zinc-900 dark:text-white">Confirmado</span>
+                        </div>
+                        <p className="text-[9px] text-zinc-400 mt-1">Baseado na B3</p>
                     </div>
                 </div>
 
@@ -467,9 +513,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                                                 <h4 className="font-bold text-xs text-zinc-900 dark:text-white">{item.ticker}</h4>
                                                                 <span className="text-[9px] text-zinc-400 uppercase">{item.type}</span>
                                                             </div>
-                                                            <p className="text-[10px] text-zinc-500 font-medium">
-                                                                {item.paymentDate ? `Pag: ${formatDateShort(item.paymentDate)}` : `Com: ${formatDateShort(item.dateCom)}`}
-                                                            </p>
+                                                            <div className="flex items-center gap-2 text-[9px] text-zinc-500 font-medium">
+                                                                <span className={item.paymentDate ? '' : 'text-zinc-300'}>Pag: {formatDateShort(item.paymentDate)}</span>
+                                                                <span className="w-1 h-1 rounded-full bg-zinc-300"></span>
+                                                                <span>Com: {formatDateShort(item.dateCom)}</span>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                     <div className="text-right">
@@ -492,7 +540,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
         </SwipeableModal>
 
-        {/* 2. RENDA (Com Histórico + Total no Header) */}
+        {/* 2. RENDA (Aprimorada - Total Histórico + YoC) */}
         <SwipeableModal isOpen={showProventos} onClose={() => setShowProventos(false)}>
             <div className="p-6 h-full flex flex-col anim-slide-up">
                 <div className="flex items-center gap-4 mb-6 shrink-0">
@@ -506,7 +554,36 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 </div>
 
                 <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar">
-                    <div className="h-56 w-full mb-6 shrink-0">
+                    
+                    {/* Novos Cards de Resumo Aprimorados */}
+                    <div className="grid grid-cols-2 gap-3 mb-6">
+                        <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-4 rounded-2xl text-white shadow-lg shadow-emerald-500/20 col-span-2">
+                            <div className="flex justify-between items-start mb-2">
+                                <span className="text-[10px] font-bold uppercase tracking-widest opacity-80">Total Recebido (Histórico)</span>
+                                <Landmark className="w-4 h-4 opacity-80" />
+                            </div>
+                            <p className="text-3xl font-black tracking-tight mb-2">{formatBRL(totalDividendsReceived, privacyMode)}</p>
+                            <div className="flex items-center gap-2 text-[10px] font-medium opacity-90 bg-white/10 w-fit px-2 py-1 rounded-lg">
+                                <span>Yield on Cost:</span>
+                                <span className="font-bold text-white">{yieldOnCost.toFixed(2)}%</span>
+                            </div>
+                        </div>
+
+                        <div className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-700/50">
+                            <p className="text-[9px] text-zinc-500 uppercase font-bold mb-1">Média Mensal (12m)</p>
+                            <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(incomeData.average, privacyMode)}</p>
+                        </div>
+                        <div className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-700/50">
+                            <p className="text-[9px] text-zinc-500 uppercase font-bold mb-1">Maior Recebimento</p>
+                            <div className="flex items-center gap-1">
+                                <Trophy className="w-3 h-3 text-amber-500" />
+                                <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(incomeData.max, privacyMode)}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Gráfico com Visual Aprimorado */}
+                    <div className="h-48 w-full mb-8 shrink-0 bg-zinc-50/50 dark:bg-zinc-900/50 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 p-2">
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={incomeData.chartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                                 <defs>
@@ -526,17 +603,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                 <Area type="monotone" dataKey="value" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorIncome)" />
                             </AreaChart>
                         </ResponsiveContainer>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-3 mb-8 shrink-0">
-                        <div className="bg-zinc-50 dark:bg-zinc-800 p-4 rounded-2xl">
-                            <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Média Mensal</p>
-                            <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(incomeData.average, privacyMode)}</p>
-                        </div>
-                        <div className="bg-emerald-50 dark:bg-emerald-900/10 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/20">
-                            <p className="text-[10px] text-emerald-600 dark:text-emerald-400 uppercase font-bold mb-1">Recorde</p>
-                            <p className="text-lg font-black text-emerald-700 dark:text-emerald-400">{formatBRL(incomeData.max, privacyMode)}</p>
-                        </div>
                     </div>
 
                     {/* Histórico Recente (Lista Agrupada com Total no Header) */}
@@ -616,7 +682,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                                     {item.ticker.substring(0,2)}
                                                 </div>
                                                 <div>
-                                                    <h4 className="font-bold text-sm text-zinc-900 dark:text-white leading-tight">{item.ticker}</h4>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <h4 className="font-bold text-sm text-zinc-900 dark:text-white leading-tight">{item.ticker}</h4>
+                                                        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded uppercase ${item.type === AssetType.FII ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' : 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400'}`}>
+                                                            {item.type === AssetType.FII ? 'FII' : 'Ação'}
+                                                        </span>
+                                                    </div>
                                                     <p className="text-[9px] text-zinc-400 font-medium">Preço: {formatBRL(item.price)}</p>
                                                 </div>
                                             </div>

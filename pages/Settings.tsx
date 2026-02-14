@@ -4,7 +4,7 @@ import {
   ChevronRight, ArrowLeft, Bell, Sun, Moon, Monitor, RefreshCw, 
   Eye, EyeOff, Palette, Database, ShieldAlert, Info, 
   LogOut, Check, Activity, Terminal, Trash2, FileSpreadsheet, FileJson, 
-  Smartphone, Github, Globe, CreditCard, LayoutGrid, Zap, Download, Upload, Server
+  Smartphone, Github, Globe, CreditCard, LayoutGrid, Zap, Download, Upload, Server, Wifi, Cloud
 } from 'lucide-react';
 import { Transaction, DividendReceipt, ServiceMetric, LogEntry, ThemeType } from '../types';
 import { logger } from '../services/logger';
@@ -88,7 +88,7 @@ const SectionHeader = ({ title }: { title: string }) => (
     <h3 className="px-2 mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 mt-6">{title}</h3>
 );
 
-const SettingsRow = ({ icon: Icon, label, value, onClick, isDestructive = false, isLast = false, isLoading = false }: any) => (
+const SettingsRow = ({ icon: Icon, label, value, onClick, isDestructive = false, isLast = false, isLoading = false, subContent }: any) => (
     <button 
         onClick={onClick}
         className={`w-full flex items-center justify-between p-4 bg-white dark:bg-zinc-900 press-effect hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors ${!isLast ? 'border-b border-zinc-100 dark:border-zinc-800' : ''}`}
@@ -97,7 +97,10 @@ const SettingsRow = ({ icon: Icon, label, value, onClick, isDestructive = false,
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isDestructive ? 'bg-rose-100 dark:bg-rose-900/20 text-rose-600' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'}`}>
                 <Icon className="w-4 h-4" />
             </div>
-            <span className={`text-sm font-bold ${isDestructive ? 'text-rose-600' : 'text-zinc-700 dark:text-zinc-200'}`}>{label}</span>
+            <div className="text-left">
+                <span className={`text-sm font-bold block ${isDestructive ? 'text-rose-600' : 'text-zinc-700 dark:text-zinc-200'}`}>{label}</span>
+                {subContent}
+            </div>
         </div>
         <div className="flex items-center gap-2">
             {isLoading ? <RefreshCw className="w-3 h-3 animate-spin text-zinc-400" /> : value && <span className="text-xs font-medium text-zinc-400">{value}</span>}
@@ -161,7 +164,6 @@ export const Settings: React.FC<SettingsProps> = ({
                   onImportTransactions([...transactions, ...txsToAdd]);
               }
 
-              // Dividends Logic (Simplified)
               if (newDivs.length > 0) {
                   onImportDividends([...dividends, ...newDivs]);
               }
@@ -174,7 +176,6 @@ export const Settings: React.FC<SettingsProps> = ({
           showToast('error', 'Erro ao ler arquivo.');
       } finally {
           setIsImporting(false);
-          // IMPORTANTE: Reseta o valor do input para permitir selecionar o mesmo arquivo novamente se necessário
           if (excelInputRef.current) excelInputRef.current.value = '';
       }
   };
@@ -248,7 +249,23 @@ export const Settings: React.FC<SettingsProps> = ({
 
                     <SectionHeader title="Sistema" />
                     <div className="bg-white dark:bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-100 dark:border-zinc-800 shadow-sm mb-6">
-                        <SettingsRow icon={Server} label="Conexão com Servidor" onClick={onCheckConnection} value={isCheckingConnection ? 'Verificando...' : 'Online'} isLoading={isCheckingConnection} />
+                        <SettingsRow 
+                            icon={Wifi} 
+                            label="Conexão com Servidor" 
+                            onClick={onCheckConnection} 
+                            isLoading={isCheckingConnection}
+                            value={isCheckingConnection ? 'Testando...' : 'Verificar'}
+                            subContent={
+                                <div className="flex gap-1.5 mt-1">
+                                    {services.map((s, i) => (
+                                        <div key={s.id} className={`w-2 h-2 rounded-full ${s.status === 'operational' ? 'bg-emerald-500' : s.status === 'error' ? 'bg-rose-500' : s.status === 'degraded' ? 'bg-amber-500' : 'bg-zinc-300 dark:bg-zinc-700'}`} title={s.label}></div>
+                                    ))}
+                                    <span className="text-[9px] text-zinc-400 ml-1">
+                                        {services.filter(s => s.status === 'operational').length}/{services.length} Online
+                                    </span>
+                                </div>
+                            }
+                        />
                         <SettingsRow icon={Terminal} label="Logs de Diagnóstico" onClick={() => setShowLogs(true)} />
                         <SettingsRow icon={Info} label="Sobre & Versão" onClick={() => setActiveSection('about')} value={`v${appVersion}`} isLast />
                     </div>
@@ -318,7 +335,6 @@ export const Settings: React.FC<SettingsProps> = ({
                         </button>
                     </div>
 
-                    {/* Reset Button moved to Data Management as well for redundancy */}
                     <div className="p-1">
                         <button onClick={onResetApp} className="w-full flex items-center justify-between p-4 bg-rose-50 dark:bg-rose-900/10 rounded-2xl border border-rose-100 dark:border-rose-900/30 press-effect group">
                             <div className="flex items-center gap-3">

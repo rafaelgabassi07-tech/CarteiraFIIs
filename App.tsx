@@ -276,21 +276,25 @@ const App: React.FC = () => {
 
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000); 
+            const timeoutId = setTimeout(() => controller.abort(), 8000); 
 
             if (s.id === 'db') {
+                // Supabase Check
                 const { error } = await supabase.from('transactions').select('id').limit(1).maybeSingle();
+                // Error PGRST116 means no rows found (but connection worked), so it's a success for health check.
                 if (error && error.code !== 'PGRST116') {
                     const { error: authError } = await supabase.auth.getSession();
-                    if (authError) throw error; 
+                    if (authError) throw error; // Real error
                 }
-                message = 'Conexão com Banco de Dados estabelecida.';
+                message = 'Conexão com Banco de Dados OK.';
             } 
             else if (s.id === 'market') {
+                // Brapi Check - No-CORS allows opaque check. If fetch doesn't throw, server is reachable.
                 await fetch('https://brapi.dev/api/quote/PETR4', { mode: 'no-cors', signal: controller.signal });
                 message = 'API de Cotações acessível.';
             } 
             else if (s.id === 'cdn') {
+                // CDN Check
                 const res = await fetch(`${window.location.origin}/version.json?t=${Date.now()}`, { signal: controller.signal });
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 message = 'Arquivos estáticos carregados.';
@@ -298,11 +302,11 @@ const App: React.FC = () => {
 
             clearTimeout(timeoutId);
             latency = Date.now() - start;
-            if (latency > 2000) status = 'degraded';
+            if (latency > 2500) status = 'degraded';
 
         } catch (e: any) {
             status = 'error';
-            message = e.name === 'AbortError' ? 'Tempo limite excedido (Timeout)' : (e.message || 'Falha na conexão');
+            message = e.name === 'AbortError' ? 'Tempo limite (Timeout)' : (e.message || 'Falha');
             latency = 0;
         }
 
