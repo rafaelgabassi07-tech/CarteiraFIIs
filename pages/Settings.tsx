@@ -5,13 +5,14 @@ import {
   Palette, Database, ShieldAlert, Info, 
   LogOut, Check, Activity, Terminal, Trash2, FileSpreadsheet, FileJson, 
   Smartphone, Github, Globe, CreditCard, LayoutGrid, Zap, Download, Upload, Server, Wifi, Cloud,
-  Calculator, TrendingUp, DollarSign, Calendar, Target, RotateCcw
+  Calculator, TrendingUp, DollarSign, Calendar, Target, RotateCcw, ArrowDown
 } from 'lucide-react';
 import { Transaction, DividendReceipt, ServiceMetric, LogEntry, ThemeType } from '../types';
 import { logger } from '../services/logger';
 import { parseB3Excel } from '../services/excelService';
 import { supabase } from '../services/supabase';
 import { SwipeableModal } from '../components/Layout';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 
 interface SettingsProps {
   user: any;
@@ -112,33 +113,55 @@ const SettingsRow = ({ icon: Icon, label, value, onClick, isDestructive = false,
 
 // --- CALCULADORAS INTERNAS ---
 
+const formatCurrency = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
 const CompoundInterestCalc = () => {
     const [initial, setInitial] = useState('');
     const [monthly, setMonthly] = useState('');
     const [rate, setRate] = useState('');
     const [years, setYears] = useState('');
-    const [result, setResult] = useState<{ total: number, invested: number, interest: number } | null>(null);
+    const [result, setResult] = useState<{ total: number, invested: number, interest: number, chartData: any[] } | null>(null);
 
     const calculate = () => {
         const p = parseFloat(initial) || 0;
         const pm = parseFloat(monthly) || 0;
-        const r = (parseFloat(rate) || 0) / 100 / 12; // Taxa mensal
-        const n = (parseFloat(years) || 0) * 12;
+        const annualRate = parseFloat(rate) || 0;
+        const timeYears = parseFloat(years) || 0;
+        
+        if (timeYears <= 0) return;
 
-        if (n <= 0) return;
+        const r = annualRate / 100 / 12; // Taxa mensal
+        const nTotal = timeYears * 12;
 
-        let futureValue = 0;
-        if (r === 0) {
-            futureValue = p + (pm * n);
-        } else {
-            futureValue = (p * Math.pow(1 + r, n)) + (pm * (Math.pow(1 + r, n) - 1)) / r;
+        const dataPoints = [];
+        let currentTotal = p;
+        let currentInvested = p;
+
+        // Gera pontos para o gráfico (anual)
+        for (let y = 0; y <= timeYears; y++) {
+            if (y === 0) {
+                dataPoints.push({ year: y, total: p, invested: p });
+                continue;
+            }
+            
+            // Calcula o final do ano Y
+            // Simplificação: Iterar mês a mês para precisão do gráfico
+            for (let m = 1; m <= 12; m++) {
+                currentTotal = currentTotal * (1 + r) + pm;
+                currentInvested += pm;
+            }
+            dataPoints.push({ 
+                year: y, 
+                total: Math.round(currentTotal), 
+                invested: Math.round(currentInvested) 
+            });
         }
 
-        const totalInvested = p + (pm * n);
         setResult({
-            total: futureValue,
-            invested: totalInvested,
-            interest: futureValue - totalInvested
+            total: currentTotal,
+            invested: currentInvested,
+            interest: currentTotal - currentInvested,
+            chartData: dataPoints
         });
     };
 
@@ -150,7 +173,7 @@ const CompoundInterestCalc = () => {
                     <input type="number" value={initial} onChange={e => setInitial(e.target.value)} className="input-field" placeholder="0,00" />
                 </div>
                 <div>
-                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Mensal (R$)</label>
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Aporte Mensal (R$)</label>
                     <input type="number" value={monthly} onChange={e => setMonthly(e.target.value)} className="input-field" placeholder="0,00" />
                 </div>
                 <div>
@@ -164,20 +187,49 @@ const CompoundInterestCalc = () => {
             </div>
             
             <button onClick={calculate} className="w-full py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-bold text-xs uppercase tracking-widest press-effect shadow-lg">
-                Calcular Futuro
+                Calcular Evolução
             </button>
 
             {result && (
-                <div className="mt-4 p-4 bg-zinc-100 dark:bg-zinc-800 rounded-2xl border border-zinc-200 dark:border-zinc-700 anim-scale-in">
-                    <p className="text-[10px] text-zinc-400 uppercase font-bold tracking-widest text-center mb-2">Resultado Estimado</p>
-                    <div className="text-center mb-4">
-                        <span className="text-3xl font-black text-zinc-900 dark:text-white">
-                            {result.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                        </span>
+                <div className="mt-6 anim-scale-in">
+                    <div className="bg-zinc-100 dark:bg-zinc-800 rounded-2xl p-4 border border-zinc-200 dark:border-zinc-700 mb-4">
+                        <div className="flex justify-between items-end mb-2">
+                            <span className="text-[10px] font-bold text-zinc-400 uppercase">Patrimônio Final</span>
+                            <span className="text-xl font-black text-emerald-600 dark:text-emerald-400">{formatCurrency(result.total)}</span>
+                        </div>
+                        <div className="flex gap-2 text-[9px] font-bold uppercase tracking-wider">
+                            <div className="flex items-center gap-1 text-zinc-500">
+                                <div className="w-2 h-2 rounded-full bg-zinc-400"></div>
+                                Investido: {formatCurrency(result.invested)}
+                            </div>
+                            <div className="flex items-center gap-1 text-emerald-500">
+                                <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                                Juros: {formatCurrency(result.interest)}
+                            </div>
+                        </div>
                     </div>
-                    <div className="flex justify-between text-xs font-medium text-zinc-500 px-2">
-                        <span>Investido: {result.invested.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                        <span className="text-emerald-500">Juros: {result.interest.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+
+                    <div className="h-48 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={result.chartData} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
+                                <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#71717a' }} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#71717a' }} tickFormatter={(val) => `R$${val/1000}k`} />
+                                <RechartsTooltip 
+                                    contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: '#18181b', color: '#fff' }}
+                                    formatter={(val: number) => formatCurrency(val)}
+                                    labelFormatter={(label) => `Ano ${label}`}
+                                />
+                                <Area type="monotone" dataKey="total" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorTotal)" name="Total" />
+                                <Area type="monotone" dataKey="invested" stroke="#71717a" strokeWidth={2} fillOpacity={0.1} fill="#71717a" name="Investido" />
+                            </AreaChart>
+                        </ResponsiveContainer>
                     </div>
                 </div>
             )}
@@ -187,19 +239,19 @@ const CompoundInterestCalc = () => {
 
 const CeilingPriceCalc = () => {
     const [dividend, setDividend] = useState('');
-    const [yieldTarget, setYieldTarget] = useState('');
+    const [yieldTarget, setYieldTarget] = useState('6');
     const [result, setResult] = useState<number | null>(null);
 
     const calculate = () => {
-        const d = parseFloat(dividend) || 0;
-        const y = parseFloat(yieldTarget) || 0;
+        const d = parseFloat(dividend.replace(',','.')) || 0;
+        const y = parseFloat(yieldTarget.replace(',','.')) || 0;
         if (y > 0) setResult((d / y) * 100);
     };
 
     return (
         <div className="space-y-4">
             <p className="text-xs text-zinc-500 leading-relaxed">
-                Descubra o preço máximo a pagar por uma ação ou FII para garantir um retorno (Yield) mínimo desejado.
+                Descubra o preço máximo a pagar (Método Bazin) para garantir um retorno mínimo desejado.
             </p>
             <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -207,7 +259,7 @@ const CeilingPriceCalc = () => {
                     <input type="number" value={dividend} onChange={e => setDividend(e.target.value)} className="input-field" placeholder="R$ 1,20" />
                 </div>
                 <div>
-                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Yield Desejado (%)</label>
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Yield Alvo (%)</label>
                     <input type="number" value={yieldTarget} onChange={e => setYieldTarget(e.target.value)} className="input-field" placeholder="6" />
                 </div>
             </div>
@@ -217,11 +269,26 @@ const CeilingPriceCalc = () => {
             </button>
 
             {result !== null && (
-                <div className="mt-4 p-4 bg-emerald-50 dark:bg-emerald-900/10 rounded-2xl border border-emerald-100 dark:border-emerald-900/30 anim-scale-in text-center">
-                    <p className="text-[10px] text-emerald-600 dark:text-emerald-400 uppercase font-bold tracking-widest mb-1">Preço Teto</p>
-                    <p className="text-3xl font-black text-emerald-700 dark:text-emerald-400">
-                        {result.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                    </p>
+                <div className="mt-4 anim-scale-in space-y-3">
+                    <div className="p-4 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl text-white text-center shadow-lg shadow-indigo-500/20">
+                        <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-1">Preço Teto ({yieldTarget}%)</p>
+                        <p className="text-3xl font-black">{formatCurrency(result)}</p>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2">
+                        {[6, 8, 10].map(y => {
+                            const val = ((parseFloat(dividend) || 0) / y) * 100;
+                            const isSelected = parseFloat(yieldTarget) === y;
+                            return (
+                                <div key={y} className={`p-2 rounded-xl border text-center ${isSelected ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800'}`}>
+                                    <p className="text-[9px] text-zinc-400 font-bold uppercase">{y}% Yield</p>
+                                    <p className={`text-xs font-bold ${isSelected ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-700 dark:text-zinc-300'}`}>
+                                        {val > 0 ? formatCurrency(val) : '-'}
+                                    </p>
+                                </div>
+                            )
+                        })}
+                    </div>
                 </div>
             )}
         </div>
@@ -229,46 +296,80 @@ const CeilingPriceCalc = () => {
 };
 
 const FireCalc = () => {
-    const [monthlyIncome, setMonthlyIncome] = useState('');
-    const [yieldRate, setYieldRate] = useState(''); // Taxa de retirada segura ou yield da carteira
-    const [patrimony, setPatrimony] = useState<number | null>(null);
+    const [mode, setMode] = useState<'income' | 'patrimony'>('income'); // income = Quero renda X, qual patrimonio? patrimony = Tenho patrimonio X, qual renda?
+    const [inputValue, setInputValue] = useState('');
+    const [yieldRate, setYieldRate] = useState('8'); 
+    const [result, setResult] = useState<number | null>(null);
 
     const calculate = () => {
-        const income = parseFloat(monthlyIncome) || 0;
+        const val = parseFloat(inputValue) || 0;
         const rate = parseFloat(yieldRate) || 0;
-        if (rate > 0) {
-            // Renda Anual / Taxa Decimal
-            const anualIncome = income * 12;
-            setPatrimony(anualIncome / (rate / 100));
+        
+        if (rate <= 0) return;
+
+        if (mode === 'income') {
+            // Quero renda mensal X -> Preciso de (X * 12) / rate
+            const annualIncome = val * 12;
+            setResult(annualIncome / (rate / 100));
+        } else {
+            // Tenho patrimonio X -> Renda mensal = (X * rate) / 12
+            const annualIncome = val * (rate / 100);
+            setResult(annualIncome / 12);
         }
     };
 
+    // Reset result on mode switch
+    useEffect(() => { setResult(null); setInputValue(''); }, [mode]);
+
     return (
         <div className="space-y-4">
-            <p className="text-xs text-zinc-500 leading-relaxed">
-                Estime o patrimônio necessário para viver de renda passiva (Independência Financeira).
-            </p>
+            <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl mb-2">
+                <button 
+                    onClick={() => setMode('income')}
+                    className={`flex-1 py-2 text-[9px] font-bold uppercase tracking-wider rounded-lg transition-all ${mode === 'income' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}
+                >
+                    Meta de Renda
+                </button>
+                <button 
+                    onClick={() => setMode('patrimony')}
+                    className={`flex-1 py-2 text-[9px] font-bold uppercase tracking-wider rounded-lg transition-all ${mode === 'patrimony' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}
+                >
+                    Renda Possível
+                </button>
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
                 <div>
-                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Renda Mensal (R$)</label>
-                    <input type="number" value={monthlyIncome} onChange={e => setMonthlyIncome(e.target.value)} className="input-field" placeholder="5.000" />
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block">
+                        {mode === 'income' ? 'Renda Desejada (Mensal)' : 'Patrimônio Atual'}
+                    </label>
+                    <input type="number" value={inputValue} onChange={e => setInputValue(e.target.value)} className="input-field" placeholder="0,00" />
                 </div>
                 <div>
-                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Yield Anual (%)</label>
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Yield Anual Médio (%)</label>
                     <input type="number" value={yieldRate} onChange={e => setYieldRate(e.target.value)} className="input-field" placeholder="8" />
                 </div>
             </div>
             
             <button onClick={calculate} className="w-full py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-bold text-xs uppercase tracking-widest press-effect shadow-lg">
-                Calcular Meta
+                Calcular
             </button>
 
-            {patrimony !== null && (
-                <div className="mt-4 p-4 bg-indigo-50 dark:bg-indigo-900/10 rounded-2xl border border-indigo-100 dark:border-indigo-900/30 anim-scale-in text-center">
-                    <p className="text-[10px] text-indigo-600 dark:text-indigo-400 uppercase font-bold tracking-widest mb-1">Patrimônio Necessário</p>
-                    <p className="text-2xl font-black text-indigo-700 dark:text-indigo-400 break-all">
-                        {patrimony.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                    </p>
+            {result !== null && (
+                <div className="mt-4 p-5 bg-sky-50 dark:bg-sky-900/10 rounded-2xl border border-sky-100 dark:border-sky-900/30 anim-scale-in text-center relative overflow-hidden">
+                    <div className="relative z-10">
+                        <p className="text-[10px] text-sky-600 dark:text-sky-400 uppercase font-bold tracking-widest mb-1">
+                            {mode === 'income' ? 'Patrimônio Necessário' : 'Renda Mensal Estimada'}
+                        </p>
+                        <p className="text-3xl font-black text-sky-700 dark:text-sky-400 break-all leading-tight">
+                            {formatCurrency(result)}
+                        </p>
+                        {mode === 'income' && result > 0 && (
+                            <p className="text-[9px] text-sky-500 mt-2 font-medium">
+                                Equivalente a ~{Math.ceil(result / 10)} cotas de um FII base 10 (aprox).
+                            </p>
+                        )}
+                    </div>
                 </div>
             )}
         </div>
@@ -466,7 +567,7 @@ export const Settings: React.FC<SettingsProps> = ({
                                 </div>
                                 <div>
                                     <h3 className="font-bold text-zinc-900 dark:text-white">Juros Compostos</h3>
-                                    <p className="text-xs text-zinc-500">Simule o crescimento do seu patrimônio a longo prazo.</p>
+                                    <p className="text-xs text-zinc-500">Simule o crescimento do seu patrimônio com aportes mensais.</p>
                                 </div>
                             </button>
 
@@ -476,7 +577,7 @@ export const Settings: React.FC<SettingsProps> = ({
                                 </div>
                                 <div>
                                     <h3 className="font-bold text-zinc-900 dark:text-white">Preço Teto</h3>
-                                    <p className="text-xs text-zinc-500">Calcule o preço máximo baseado no Yield esperado.</p>
+                                    <p className="text-xs text-zinc-500">Calcule o preço máximo baseado no Yield esperado (Bazin).</p>
                                 </div>
                             </button>
 
@@ -486,7 +587,7 @@ export const Settings: React.FC<SettingsProps> = ({
                                 </div>
                                 <div>
                                     <h3 className="font-bold text-zinc-900 dark:text-white">Independência Financeira</h3>
-                                    <p className="text-xs text-zinc-500">Quanto você precisa acumular para viver de renda?</p>
+                                    <p className="text-xs text-zinc-500">Planeje quanto você precisa acumular para viver de renda.</p>
                                 </div>
                             </button>
                         </div>
