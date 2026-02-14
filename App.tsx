@@ -686,6 +686,7 @@ const App: React.FC = () => {
                       <Home 
                           {...memoizedPortfolioData} 
                           totalAppreciation={memoizedPortfolioData.balance - memoizedPortfolioData.invested} 
+                          marketIndicators={marketIndicators}
                           privacyMode={privacyMode} 
                           onViewAsset={handleViewAsset} 
                       />
