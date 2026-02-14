@@ -18,17 +18,25 @@ const httpsAgent = new https.Agent({
     rejectUnauthorized: false
 });
 
+const USER_AGENTS = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36 Edg/123.0.0.0',
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+];
+
+const getRandomAgent = () => USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+
 const client = axios.create({
     httpsAgent,
     headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
         'Accept-Encoding': 'gzip, deflate, br',
         'Cache-Control': 'no-cache',
         'Pragma': 'no-cache',
         'Upgrade-Insecure-Requests': '1'
     },
-    timeout: 8000, 
+    timeout: 10000, 
     maxRedirects: 5
 });
 
@@ -45,10 +53,10 @@ function parseValue(valueStr: any): number | null {
     if (typeof valueStr === 'number') return valueStr;
     
     let str = String(valueStr).trim();
-    // Proteção Crítica: Ignora valores percentuais (Yield)
-    if (str.includes('%')) return null;
     if (!str || str === '-' || str === '--' || str === 'N/A') return null;
 
+    // Remove % para permitir processamento de indicadores percentuais (DY, ROE, etc)
+    str = str.replace('%', '').trim();
     str = str.replace(/^R\$\s?/, '').trim();
 
     let multiplier = 1;
@@ -143,7 +151,11 @@ async function scrapeInvestidor10(ticker: string) {
 
     for (const url of urls) {
         try {
-            const res = await client.get(url);
+            // Rotação de User-Agent por tentativa
+            const res = await client.get(url, {
+                headers: { 'User-Agent': getRandomAgent() }
+            });
+            
             if (res.data.length < 5000) continue;
 
             const $ = cheerio.load(res.data);
@@ -207,6 +219,7 @@ async function scrapeInvestidor10(ticker: string) {
                 });
             }
 
+            // Fallbacks específicos
             if (dados.cotacao_atual !== null || dados.dy !== null || dados.pvp !== null || dados.pl !== null) {
                 if (dados.dy === null) {
                      $('span, div, p').each((_, el) => {
