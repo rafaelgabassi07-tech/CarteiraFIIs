@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
-import { CircleDollarSign, CalendarClock, PieChart as PieIcon, TrendingUp, TrendingDown, ArrowUpRight, Wallet, ArrowRight, Zap, Target, Layers, LayoutGrid, Coins, Sparkles, CheckCircle2, Lock, Calendar, Trophy, Medal, Star, ListFilter, TrendingUp as GrowthIcon, Anchor, Calculator, Repeat } from 'lucide-react';
+import { CircleDollarSign, CalendarClock, PieChart as PieIcon, TrendingUp, TrendingDown, ArrowUpRight, Wallet, ArrowRight, Zap, Target, Layers, LayoutGrid, Coins, Sparkles, CheckCircle2, Lock, Calendar, Trophy, Medal, Star, ListFilter, TrendingUp as GrowthIcon, Anchor, Calculator, Repeat, ChevronRight } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area } from 'recharts';
 
@@ -58,18 +58,18 @@ const BentoCard = ({ title, value, subtext, icon: Icon, colorClass, onClick, cla
 const ProgressBar = ({ current, target, label, colorClass, privacyMode }: any) => {
     const progress = Math.min(100, Math.max(0, (current / (target || 1)) * 100));
     return (
-        <div className="mb-5 last:mb-0">
-            <div className="flex justify-between items-end mb-2">
-                <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">{label}</span>
-                <span className="text-xs font-black text-zinc-900 dark:text-white">{progress.toFixed(1)}%</span>
+        <div className="mb-4 last:mb-0">
+            <div className="flex justify-between items-end mb-1.5">
+                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{label}</span>
+                <span className="text-[10px] font-black text-zinc-900 dark:text-white">{progress.toFixed(1)}%</span>
             </div>
-            <div className="h-2.5 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+            <div className="h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
                 <div 
                     className={`h-full rounded-full transition-all duration-1000 ease-out ${colorClass}`} 
                     style={{ width: `${progress}%` }}
                 ></div>
             </div>
-            <div className="flex justify-between mt-1.5 text-[10px] text-zinc-400 font-medium">
+            <div className="flex justify-between mt-1 text-[9px] text-zinc-400 font-medium">
                 <span>{formatBRL(current, privacyMode)}</span>
                 <span>Meta: {formatBRL(target, privacyMode)}</span>
             </div>
@@ -492,7 +492,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
         </SwipeableModal>
 
-        {/* 2. RENDA (Com Histórico) */}
+        {/* 2. RENDA (Com Histórico + Total no Header) */}
         <SwipeableModal isOpen={showProventos} onClose={() => setShowProventos(false)}>
             <div className="p-6 h-full flex flex-col anim-slide-up">
                 <div className="flex items-center gap-4 mb-6 shrink-0">
@@ -539,35 +539,47 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         </div>
                     </div>
 
-                    {/* Histórico Recente (Lista Agrupada) */}
+                    {/* Histórico Recente (Lista Agrupada com Total no Header) */}
                     <div>
                         {Object.keys(incomeData.groupedHistory).length > 0 ? (
                             Object.entries(incomeData.groupedHistory)
                                 .sort((a,b) => b[0].localeCompare(a[0])) // Sort keys DESC (Newest month first)
-                                .map(([monthKey, items]) => (
-                                <div key={monthKey} className="mb-6">
-                                    <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3 sticky top-0 bg-white dark:bg-zinc-900 py-2 z-10 border-b border-zinc-100 dark:border-zinc-800">
-                                        {getMonthName(monthKey + '-01')}
-                                    </h3>
-                                    <div className="space-y-3">
-                                        {(items as DividendReceipt[]).map((div, i) => (
-                                            <div key={i} className="flex items-center justify-between">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="flex flex-col items-center justify-center w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
-                                                        <span className="text-[10px] font-bold text-zinc-400 uppercase">{new Date(div.paymentDate).toLocaleDateString('pt-BR', {month:'short'}).replace('.','')}</span>
-                                                        <span className="text-sm font-black text-zinc-900 dark:text-white leading-none">{new Date(div.paymentDate).getDate()}</span>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-xs font-bold text-zinc-900 dark:text-white">{div.ticker}</p>
-                                                        <p className="text-[10px] text-zinc-400 uppercase font-medium">{div.type}</p>
-                                                    </div>
-                                                </div>
-                                                <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">+{formatBRL(div.totalReceived, privacyMode)}</p>
+                                .map(([monthKey, items]) => {
+                                    // Calcula total do mês
+                                    const monthTotal = (items as DividendReceipt[]).reduce((acc, curr) => acc + curr.totalReceived, 0);
+                                    
+                                    return (
+                                        <div key={monthKey} className="mb-6">
+                                            {/* Header do Mês com Total */}
+                                            <div className="sticky top-0 bg-white dark:bg-zinc-900 py-2 z-10 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center mb-2">
+                                                <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                                                    {getMonthName(monthKey + '-01')}
+                                                </h3>
+                                                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded">
+                                                    +{formatBRL(monthTotal, privacyMode)}
+                                                </span>
                                             </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            ))
+
+                                            <div className="space-y-3">
+                                                {(items as DividendReceipt[]).map((div, i) => (
+                                                    <div key={i} className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="flex flex-col items-center justify-center w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
+                                                                <span className="text-[10px] font-bold text-zinc-400 uppercase">{new Date(div.paymentDate).toLocaleDateString('pt-BR', {month:'short'}).replace('.','')}</span>
+                                                                <span className="text-sm font-black text-zinc-900 dark:text-white leading-none">{new Date(div.paymentDate).getDate()}</span>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-xs font-bold text-zinc-900 dark:text-white">{div.ticker}</p>
+                                                                <p className="text-[10px] text-zinc-400 uppercase font-medium">{div.type}</p>
+                                                            </div>
+                                                        </div>
+                                                        <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">+{formatBRL(div.totalReceived, privacyMode)}</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                })
                         ) : (
                             <p className="text-center text-xs text-zinc-400 py-4">Nenhum pagamento registrado.</p>
                         )}
@@ -576,7 +588,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
         </SwipeableModal>
 
-        {/* 3. NÚMERO MÁGICO (CARD PREMIUM + FALLBACK + PODER DE RECOMPRA) */}
+        {/* 3. NÚMERO MÁGICO (COMPACTADO E OTIMIZADO) */}
         <SwipeableModal isOpen={showMagicNumber} onClose={() => setShowMagicNumber(false)}>
             <div className="p-6 h-full flex flex-col anim-slide-up">
                 <div className="flex items-center gap-4 mb-6 shrink-0">
@@ -591,72 +603,66 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
                 <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar">
                     {magicNumberData.length > 0 ? (
-                        <div className="space-y-4">
+                        <div className="space-y-2.5">
                             {magicNumberData.map((item) => {
                                 const isReached = item.missing === 0;
                                 return (
-                                    <div key={item.ticker} className={`p-5 rounded-2xl border transition-all ${isReached ? 'bg-gradient-to-br from-amber-50 to-white dark:from-amber-900/10 dark:to-zinc-900 border-amber-200 dark:border-amber-900/30' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 shadow-sm'}`}>
-                                        <div className="flex justify-between items-start mb-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black ${isReached ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'}`}>
+                                    <div key={item.ticker} className={`p-3 rounded-2xl border transition-all ${isReached ? 'bg-gradient-to-br from-amber-50 to-white dark:from-amber-900/10 dark:to-zinc-900 border-amber-200 dark:border-amber-900/30' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 shadow-sm'}`}>
+                                        
+                                        {/* Header Compacto */}
+                                        <div className="flex justify-between items-center mb-2">
+                                            <div className="flex items-center gap-2.5">
+                                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black ${isReached ? 'bg-amber-500 text-white shadow-md' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'}`}>
                                                     {item.ticker.substring(0,2)}
                                                 </div>
                                                 <div>
-                                                    <div className="flex items-center gap-2">
-                                                        <h4 className="font-bold text-base text-zinc-900 dark:text-white">{item.ticker}</h4>
-                                                        {isReached && (
-                                                            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/30 text-[8px] font-black uppercase text-amber-700 dark:text-amber-400 tracking-wider">
-                                                                <Sparkles className="w-2.5 h-2.5" />
-                                                                Bola de Neve
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <p className="text-[10px] text-zinc-500 font-medium mt-0.5 flex items-center gap-1">
-                                                        <span className={item.type === AssetType.FII ? 'text-indigo-500' : 'text-sky-500'}>{item.type === AssetType.FII ? 'FII' : 'Ação'}</span>
-                                                        <span>•</span>
-                                                        <span>Preço: {formatBRL(item.price)}</span>
-                                                    </p>
+                                                    <h4 className="font-bold text-sm text-zinc-900 dark:text-white leading-tight">{item.ticker}</h4>
+                                                    <p className="text-[9px] text-zinc-400 font-medium">Preço: {formatBRL(item.price)}</p>
                                                 </div>
                                             </div>
                                             <div className="text-right">
-                                                <span className={`text-[10px] font-black px-2 py-1 rounded-full ${isReached ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'}`}>
-                                                    {item.progress.toFixed(0)}%
-                                                </span>
+                                                {isReached ? (
+                                                    <span className="inline-flex items-center gap-1 text-[9px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-wide bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-md">
+                                                        <Sparkles className="w-2.5 h-2.5" /> Atingido
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-xs font-black text-zinc-900 dark:text-white">{item.progress.toFixed(0)}%</span>
+                                                )}
                                             </div>
                                         </div>
 
-                                        <div className="h-2.5 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden mb-3">
+                                        {/* Barra Compacta */}
+                                        <div className="h-1.5 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden mb-3">
                                             <div 
                                                 className={`h-full rounded-full transition-all duration-1000 ${isReached ? 'bg-amber-500' : 'bg-zinc-300 dark:bg-zinc-600'}`} 
                                                 style={{ width: `${item.progress}%` }}
                                             ></div>
                                         </div>
 
-                                        {/* Status e Métrica de Recompra */}
-                                        <div className="flex justify-between items-end bg-zinc-50 dark:bg-zinc-950/50 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800/50">
+                                        {/* Grid de Informações Densas */}
+                                        <div className="grid grid-cols-2 gap-2 bg-zinc-50 dark:bg-zinc-950/50 p-2 rounded-xl border border-zinc-100 dark:border-zinc-800/50">
                                             {!isReached ? (
-                                                <div>
-                                                    <p className="text-[9px] text-zinc-400 uppercase font-bold mb-0.5">Custo para Atingir</p>
-                                                    <p className="text-sm font-black text-zinc-900 dark:text-white">
+                                                <div className="flex flex-col">
+                                                    <span className="text-[8px] text-zinc-400 uppercase font-bold tracking-wider">Custo p/ Meta</span>
+                                                    <span className="text-xs font-bold text-zinc-900 dark:text-white leading-tight">
                                                         {formatBRL(item.costToReach, privacyMode)}
-                                                    </p>
-                                                    <p className="text-[9px] text-zinc-400 font-medium mt-0.5">Faltam {item.missing} cotas</p>
+                                                        <span className="text-[9px] text-zinc-400 font-normal ml-1">({item.missing} cotas)</span>
+                                                    </span>
                                                 </div>
                                             ) : (
-                                                <div>
-                                                    <p className="text-[9px] text-zinc-400 uppercase font-bold mb-0.5">Poder de Recompra</p>
-                                                    <div className="flex items-center gap-1.5">
-                                                        <Repeat className="w-3.5 h-3.5 text-amber-500" />
-                                                        <p className="text-sm font-black text-zinc-900 dark:text-white">
-                                                            {item.repurchasePower.toFixed(2)} <span className="text-[9px] font-bold text-zinc-500">cotas/mês</span>
-                                                        </p>
-                                                    </div>
+                                                <div className="flex flex-col">
+                                                    <span className="text-[8px] text-zinc-400 uppercase font-bold tracking-wider">Status</span>
+                                                    <span className="text-xs font-bold text-amber-600 dark:text-amber-400 leading-tight">Bola de Neve Ativa</span>
                                                 </div>
                                             )}
                                             
-                                            <div className="text-right">
-                                                <p className="text-[9px] text-zinc-400 uppercase font-bold mb-0.5">Rend. Estimado</p>
-                                                <p className="text-xs font-bold text-zinc-600 dark:text-zinc-300">~{formatBRL(item.estimatedDiv)}/mês</p>
+                                            <div className="flex flex-col text-right border-l border-zinc-200 dark:border-zinc-800 pl-2">
+                                                <span className="text-[8px] text-zinc-400 uppercase font-bold tracking-wider">{isReached ? 'Potencial' : 'Recompra Atual'}</span>
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <span className="text-xs font-bold text-zinc-900 dark:text-white leading-tight">
+                                                        {item.repurchasePower.toFixed(2)} <span className="text-[9px] text-zinc-400 font-normal">cotas/mês</span>
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -666,18 +672,17 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     ) : (
                         <div className="text-center py-10 opacity-50">
                             <Sparkles className="w-12 h-12 mx-auto mb-3 text-zinc-300" />
-                            <p className="text-sm font-bold text-zinc-500">Dados insuficientes para cálculo.</p>
-                            <p className="text-[10px] text-zinc-400 mt-1 max-w-[200px] mx-auto">Adicione ativos com histórico de dividendos (FIIs ou Ações) e aguarde a atualização de mercado.</p>
+                            <p className="text-sm font-bold text-zinc-500">Dados insuficientes.</p>
                         </div>
                     )}
                 </div>
             </div>
         </SwipeableModal>
 
-        {/* 4. OBJETIVOS (LEVEL SYSTEM + RENDA DIÁRIA) */}
+        {/* 4. OBJETIVOS (SEM SCROLL + LAYOUT OTIMIZADO) */}
         <SwipeableModal isOpen={showGoals} onClose={() => setShowGoals(false)}>
             <div className="p-6 h-full flex flex-col anim-slide-up">
-                <div className="flex items-center gap-4 mb-8 shrink-0">
+                <div className="flex items-center gap-4 mb-4 shrink-0">
                     <div className="w-12 h-12 rounded-2xl bg-rose-100 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 flex items-center justify-center">
                         <Trophy className="w-6 h-6" />
                     </div>
@@ -688,54 +693,64 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 </div>
 
                 <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar">
-                    {/* Level Card */}
-                    <div className="text-center mb-8 relative">
-                        <div className="inline-block p-1 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-rose-500 shadow-xl shadow-indigo-500/20 mb-4">
-                            <div className="w-24 h-24 rounded-full bg-white dark:bg-zinc-900 flex flex-col items-center justify-center border-4 border-transparent">
-                                <span className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-br from-indigo-600 to-purple-600">{goalsData.currentLevel.level}</span>
-                                <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mt-1">Nível</span>
+                    
+                    {/* Card de Nível Horizontal (Economiza Espaço Vertical) */}
+                    <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 to-purple-700 rounded-3xl p-5 mb-4 text-white shadow-xl shadow-indigo-900/20">
+                        <div className="relative z-10 flex items-center gap-5">
+                            <div className="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-md flex flex-col items-center justify-center border border-white/20 shrink-0">
+                                <span className="text-3xl font-black leading-none">{goalsData.currentLevel.level}</span>
+                                <span className="text-[8px] font-bold uppercase tracking-widest opacity-80">Nível</span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <h3 className="text-xl font-bold mb-1 truncate">{goalsData.currentLevel.name}</h3>
+                                <div className="flex items-center justify-between text-[10px] font-medium opacity-80 mb-1.5">
+                                    <span>Progresso</span>
+                                    <span>{goalsData.progress.toFixed(0)}%</span>
+                                </div>
+                                <div className="h-1.5 w-full bg-black/20 rounded-full overflow-hidden">
+                                    <div 
+                                        className="h-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.5)] transition-all duration-1000"
+                                        style={{ width: `${goalsData.progress}%` }}
+                                    ></div>
+                                </div>
+                                <p className="text-[9px] mt-1.5 opacity-70">Próximo: {goalsData.nextLevel.name}</p>
                             </div>
                         </div>
-                        <h3 className="text-2xl font-black text-zinc-900 dark:text-white">{goalsData.currentLevel.name}</h3>
-                        <div className="mt-4 px-8">
-                            <div className="h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                                <div 
-                                    className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/30 transition-all duration-1000 ease-out" 
-                                    style={{ width: `${goalsData.progress}%` }}
-                                ></div>
-                            </div>
-                            <p className="text-[10px] text-zinc-400 mt-2 font-bold uppercase tracking-widest">
-                                {goalsData.progress.toFixed(0)}% para {goalsData.nextLevel.name}
-                            </p>
-                        </div>
+                        {/* Decorative BG */}
+                        <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-3xl"></div>
+                        <div className="absolute -bottom-10 -left-10 w-24 h-24 bg-purple-500/20 rounded-full blur-2xl"></div>
                     </div>
 
-                    {/* Freedom Metrics */}
-                    <div className="grid grid-cols-2 gap-3 mb-6">
-                        <div className="bg-zinc-50 dark:bg-zinc-800 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-700/50">
-                            <div className="flex items-center gap-2 mb-2">
-                                <Anchor className="w-4 h-4 text-sky-500" />
+                    {/* Métricas Compactas */}
+                    <div className="grid grid-cols-2 gap-2 mb-4">
+                        <div className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-700/50">
+                            <div className="flex items-center gap-1.5 mb-1">
+                                <Anchor className="w-3.5 h-3.5 text-sky-500" />
                                 <span className="text-[9px] font-bold uppercase text-zinc-400 tracking-wider">Liberdade</span>
                             </div>
-                            <p className="text-2xl font-black text-zinc-900 dark:text-white">{goalsData.freedom.pct.toFixed(1)}%</p>
-                            <p className="text-[9px] text-zinc-500 mt-1">de 1 Salário Mínimo</p>
-                        </div>
-                        <div className="bg-zinc-50 dark:bg-zinc-800 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-700/50">
-                            <div className="flex items-center gap-2 mb-2">
-                                <Coins className="w-4 h-4 text-amber-500" />
-                                <span className="text-[9px] font-bold uppercase text-zinc-400 tracking-wider">Passiva Diária</span>
+                            <div className="flex items-baseline gap-1">
+                                <p className="text-lg font-black text-zinc-900 dark:text-white">{goalsData.freedom.pct.toFixed(1)}%</p>
+                                <span className="text-[9px] text-zinc-400">do teto</span>
                             </div>
-                            <p className="text-xl font-black text-zinc-900 dark:text-white">{formatBRL(goalsData.dailyIncome, privacyMode)}</p>
-                            <p className="text-[9px] text-zinc-500 mt-1">Ganhos por dia</p>
+                        </div>
+                        <div className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-700/50">
+                            <div className="flex items-center gap-1.5 mb-1">
+                                <Coins className="w-3.5 h-3.5 text-amber-500" />
+                                <span className="text-[9px] font-bold uppercase text-zinc-400 tracking-wider">Passiva/Dia</span>
+                            </div>
+                            <div className="flex items-baseline gap-1">
+                                <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(goalsData.dailyIncome, privacyMode)}</p>
+                                <span className="text-[9px] text-zinc-400">diários</span>
+                            </div>
                         </div>
                     </div>
 
-                    {/* Concrete Goals */}
-                    <div className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm space-y-6">
-                        <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-4">Próximos Marcos</h3>
+                    {/* Metas Concretas (Compacto) */}
+                    <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                        <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3">Próximos Marcos</h3>
                         
                         <ProgressBar 
-                            label="Meta de Patrimônio" 
+                            label="Patrimônio" 
                             current={goalsData.patrimony.current} 
                             target={goalsData.patrimony.target} 
                             colorClass="bg-gradient-to-r from-blue-500 to-indigo-600"
@@ -743,7 +758,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         />
                         
                         <ProgressBar 
-                            label="Meta de Renda Mensal" 
+                            label="Renda Mensal" 
                             current={goalsData.income.current} 
                             target={goalsData.income.target} 
                             colorClass="bg-gradient-to-r from-emerald-400 to-emerald-600"
