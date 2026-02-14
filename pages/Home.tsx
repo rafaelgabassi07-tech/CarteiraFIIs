@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
 import { CircleDollarSign, CalendarClock, PieChart as PieIcon, TrendingUp, TrendingDown, ArrowUpRight, Wallet, ArrowRight, Zap, Target, Layers, LayoutGrid, Coins, Sparkles, CheckCircle2, Lock, Calendar, Trophy, Medal, Star, ListFilter, TrendingUp as GrowthIcon, Anchor, Calculator, Repeat, ChevronRight, Hourglass, Landmark, Crown, LockKeyhole, Info, Footprints } from 'lucide-react';
-import { SwipeableModal } from '../components/Layout';
+import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area } from 'recharts';
 
 // --- UTILS & HELPERS ---
@@ -47,7 +47,7 @@ const CHART_COLORS = ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#ec4899', '#8
 
 // --- SUB-COMPONENTS ---
 
-const BentoCard = ({ title, value, subtext, icon: Icon, colorClass, onClick, className }: any) => (
+const BentoCard = ({ title, value, subtext, icon: Icon, colorClass, onClick, className, info }: any) => (
     <button onClick={onClick} className={`relative overflow-hidden bg-white dark:bg-zinc-900 p-5 rounded-[1.5rem] flex flex-col justify-between items-start text-left shadow-[0_4px_20px_rgb(0,0,0,0.02)] dark:shadow-none border border-zinc-100 dark:border-zinc-800 press-effect h-full min-h-[140px] ${className}`}>
         <div className="flex justify-between w-full mb-3 relative z-10">
             <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${colorClass}`}>
@@ -57,8 +57,11 @@ const BentoCard = ({ title, value, subtext, icon: Icon, colorClass, onClick, cla
                 <ArrowRight className="w-4 h-4 -rotate-45" />
             </div>
         </div>
-        <div className="relative z-10">
-            <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 mb-1">{title}</h3>
+        <div className="relative z-10 w-full">
+            <div className="flex justify-between items-center mb-1">
+                <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">{title}</h3>
+                {info && <InfoTooltip title={title} text={info} />}
+            </div>
             <p className="text-xl font-bold text-zinc-900 dark:text-white tracking-tight leading-none">{typeof value === 'object' ? '' : value}</p>
             {subtext && <p className="text-[10px] text-zinc-400 font-medium mt-1.5">{subtext}</p>}
         </div>
@@ -372,7 +375,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         <div className="relative overflow-hidden rounded-[2rem] bg-zinc-900 border border-zinc-800 p-6 shadow-xl anim-fade-in">
             <div className="flex justify-between items-start mb-6">
                 <div>
-                    <p className="text-zinc-400 text-[10px] font-bold uppercase tracking-[0.2em] mb-2">Patrimônio Total</p>
+                    <div className="flex items-center gap-2 mb-2">
+                        <p className="text-zinc-400 text-[10px] font-bold uppercase tracking-[0.2em]">Patrimônio Total</p>
+                        <InfoTooltip title="Patrimônio Total" text="Soma do valor atual de mercado de todos os seus ativos (Cotação Atual × Quantidade). Atualizado com delay de ~15min." />
+                    </div>
                     <h1 className="text-4xl font-bold text-white tracking-tight tabular-nums">
                         {formatBRL(balance, privacyMode)}
                     </h1>
@@ -384,7 +390,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
             <div className="grid grid-cols-2 gap-4">
                 <div className="rounded-2xl p-4 bg-zinc-950/30 border border-zinc-800/50">
-                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Retorno</p>
+                    <div className="flex justify-between items-center mb-1">
+                        <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Retorno</p>
+                        <InfoTooltip title="Retorno" text="Lucro total estimado: (Valorização das Cotas + Proventos Recebidos) - (Valor Total Investido)." />
+                    </div>
                     <div className="flex items-baseline gap-2">
                         <span className={`text-lg font-bold tabular-nums ${totalReturn >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                             {totalReturn >= 0 ? '+' : ''}{formatBRL(totalReturn, privacyMode)}
@@ -393,7 +402,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 </div>
 
                 <div className="rounded-2xl p-4 bg-zinc-950/30 border border-zinc-800/50">
-                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Proventos</p>
+                    <div className="flex justify-between items-center mb-1">
+                         <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Proventos</p>
+                         <InfoTooltip title="Total Proventos" text="Soma histórica de todos os dividendos e JCP já recebidos na carteira desde o início." />
+                    </div>
                     <p className="text-lg font-bold text-zinc-200 tabular-nums">
                         +{formatBRL(totalDividendsReceived, privacyMode)}
                     </p>
@@ -411,6 +423,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 icon={CalendarClock} 
                 colorClass="bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400"
                 onClick={() => setShowAgenda(true)}
+                info="Previsão de pagamentos futuros baseada nas datas 'Com' confirmadas pela B3."
             />
             
             <BentoCard 
@@ -420,6 +433,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 icon={CircleDollarSign} 
                 colorClass="bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
                 onClick={() => setShowProventos(true)}
+                info="Total de proventos (Dividendos, JCP) recebidos acumulados no mês atual."
             />
 
             <BentoCard 
@@ -429,6 +443,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 icon={Sparkles} 
                 colorClass="bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
                 onClick={() => setShowMagicNumber(true)}
+                info="Quantidade de cotas necessária para que os dividendos mensais comprem uma nova cota do mesmo ativo (Bola de Neve)."
             />
 
             <BentoCard 
@@ -438,6 +453,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 icon={Trophy} 
                 colorClass="bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400"
                 onClick={() => setShowGoals(true)}
+                info="Seu nível na jornada de investidor, baseado no patrimônio acumulado e metas atingidas."
             />
 
             <div className="col-span-2">
@@ -447,7 +463,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                             <PieIcon className="w-6 h-6" />
                         </div>
                         <div className="text-left">
-                            <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Alocação</h3>
+                            <div className="flex items-center gap-2">
+                                <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Alocação</h3>
+                                <InfoTooltip title="Alocação" text="Distribuição atual do seu patrimônio por classe de ativo (FIIs vs Ações)." />
+                            </div>
                             <div className="flex gap-3 mt-1 text-xs text-zinc-500">
                                 <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div> FIIs {allocationData.byClass.find(c=>c.name==='FIIs')?.value ? ((allocationData.byClass.find(c=>c.name==='FIIs')?.value || 0)/(balance || 1)*100).toFixed(0) : 0}%</span>
                                 <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-sky-500"></div> Ações {allocationData.byClass.find(c=>c.name==='Ações')?.value ? ((allocationData.byClass.find(c=>c.name==='Ações')?.value || 0)/(balance || 1)*100).toFixed(0) : 0}%</span>

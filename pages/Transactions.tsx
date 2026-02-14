@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { TrendingUp, TrendingDown, Plus, Hash, Trash2, Save, X, ArrowRightLeft, Building2, CandlestickChart, Filter, Check, Calendar, CheckSquare, Search, ChevronDown, RefreshCw, Wallet, DollarSign, ArrowUpRight, ArrowDownLeft, Calculator, Tag } from 'lucide-react';
-import { SwipeableModal, ConfirmationModal } from '../components/Layout';
+import { SwipeableModal, ConfirmationModal, InfoTooltip } from '../components/Layout';
 import { Transaction, AssetType } from '../types';
 import { supabase } from '../services/supabase';
 
@@ -42,7 +42,10 @@ const TransactionsSummary = ({ transactions, privacyMode }: { transactions: Tran
                 </div>
                 <div className="relative z-10">
                     <div className="flex justify-between items-start mb-2">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Fluxo Líquido</span>
+                        <div className="flex items-center gap-2">
+                             <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Fluxo Líquido</span>
+                             <InfoTooltip title="Fluxo Líquido" text="Diferença entre o total comprado e o total vendido. Indica quanto dinheiro 'novo' saiu do seu bolso para aportes." />
+                        </div>
                         <span className="text-[10px] font-bold bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full text-zinc-500 border border-zinc-200 dark:border-zinc-700">{count} Ordens</span>
                     </div>
                     <div className="flex items-baseline gap-2">
@@ -594,7 +597,10 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                                 </div>
                             </div>
                             <div>
-                                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1 mb-1 block">Preço Unitário</label>
+                                <div className="flex items-center gap-1 mb-1 ml-1">
+                                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">Preço Unitário</label>
+                                    <InfoTooltip title="Preço Unitário" text="Valor exato de execução da ordem. Se desejar, inclua as taxas de corretagem no preço para aumentar a precisão do preço médio." />
+                                </div>
                                 <div className="relative">
                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-zinc-400">R$</span>
                                     <input 
