@@ -1,9 +1,9 @@
 
 import React, { useMemo, useState } from 'react';
-import { AssetPosition, DividendReceipt, AssetType, MarketIndicators } from '../types';
-import { CircleDollarSign, CalendarClock, PieChart as PieIcon, TrendingUp, TrendingDown, ArrowUpRight, Wallet, ArrowRight, Zap, Target, Layers, LayoutGrid, Coins, Sparkles, CheckCircle2, Lock, Calendar, Trophy, Medal, Star, ListFilter, TrendingUp as GrowthIcon, Anchor, Calculator, Repeat, ChevronRight, Hourglass, Landmark, Crown, LockKeyhole, Info, Percent, BarChart2 } from 'lucide-react';
+import { AssetPosition, DividendReceipt, AssetType } from '../types';
+import { CircleDollarSign, CalendarClock, PieChart as PieIcon, TrendingUp, TrendingDown, ArrowUpRight, Wallet, ArrowRight, Zap, Target, Layers, LayoutGrid, Coins, Sparkles, CheckCircle2, Lock, Calendar, Trophy, Medal, Star, ListFilter, TrendingUp as GrowthIcon, Anchor, Calculator, Repeat, ChevronRight, Hourglass, Landmark, Crown, LockKeyhole } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area, ReferenceLine } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area } from 'recharts';
 
 // --- UTILS & HELPERS ---
 
@@ -11,10 +11,6 @@ const formatBRL = (val: any, privacy = false) => {
   if (privacy) return '••••••';
   const num = typeof val === 'number' ? val : 0;
   return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-};
-
-const formatPercent = (val: number) => {
-    return `${val.toFixed(2)}%`;
 };
 
 const formatDateShort = (dateStr?: string) => {
@@ -101,31 +97,24 @@ interface HomeProps {
   invested: number;
   balance: number;
   totalAppreciation: number;
-  marketIndicators: MarketIndicators; 
   privacyMode?: boolean;
   onViewAsset?: (ticker: string) => void;
 }
 
-const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, salesGain, totalDividendsReceived, invested, balance, totalAppreciation, marketIndicators, privacyMode = false }) => {
+const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, salesGain, totalDividendsReceived, invested, balance, totalAppreciation, privacyMode = false }) => {
   const [showAgenda, setShowAgenda] = useState(false);
   const [showProventos, setShowProventos] = useState(false);
   const [showAllocation, setShowAllocation] = useState(false);
-  const [showInflation, setShowInflation] = useState(false);
   const [allocationView, setAllocationView] = useState<'CLASS' | 'ASSET'>('CLASS');
   const [showMagicNumber, setShowMagicNumber] = useState(false);
   const [showGoals, setShowGoals] = useState(false);
 
   // --- CALCS ---
   const totalReturn = (totalAppreciation + salesGain) + totalDividendsReceived;
+  const totalReturnPercent = invested > 0 ? (totalReturn / invested) * 100 : 0;
   
   // Yield on Cost (Baseado no total investido)
   const yieldOnCost = invested > 0 ? (totalDividendsReceived / invested) * 100 : 0;
-
-  // Calculo de Ganho Real (Fisher Equation Simplificada para o contexto)
-  // Real = ((1 + Nominal) / (1 + Inflacao)) - 1
-  // Assumindo YoC como o rendimento da carteira no período para simplificação no card
-  const inflationRate = marketIndicators.ipca_cumulative || 4.62;
-  const realYield = (((1 + (yieldOnCost / 100)) / (1 + (inflationRate / 100))) - 1) * 100;
 
   // 1. Alocação (Classes e Ativos)
   const allocationData = useMemo(() => {
@@ -159,11 +148,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       return { byClass, byAsset };
   }, [portfolio, balance]);
 
-  // 2. Agenda (Proventos Futuros)
+  // 2. Agenda (Proventos Futuros) - AGRUPADA & COMPACTA
   const agendaData = useMemo(() => {
       const todayStr = new Date().toISOString().split('T')[0];
       const validReceipts = dividendReceipts.filter(d => d && (d.paymentDate || d.dateCom));
       
+      // Filtra futuros ou hoje
       const future = validReceipts.filter(d => (d.paymentDate && d.paymentDate >= todayStr) || (!d.paymentDate && d.dateCom >= todayStr))
           .sort((a, b) => (a.paymentDate || a.dateCom || '').localeCompare(b.paymentDate || b.dateCom || ''));
       
@@ -175,6 +165,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           daysToNext = getDaysUntil(nextPayment.paymentDate || nextPayment.dateCom);
       }
 
+      // Agrupamento por Mês
       const grouped: Record<string, DividendReceipt[]> = {};
       future.forEach(item => {
           const dateRef = item.paymentDate || item.dateCom;
@@ -187,11 +178,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       return { list: future, grouped, totalFuture, nextPayment, daysToNext };
   }, [dividendReceipts]);
 
-  // 3. Renda (Histórico)
+  // 3. Renda (Histórico) - COM LISTA DE ÚLTIMOS PAGAMENTOS E AGRUPAMENTO
   const incomeData = useMemo(() => {
       const groups: Record<string, number> = {};
       const todayStr = new Date().toISOString().split('T')[0];
       
+      // Pega ultimos 12 meses
       for (let i = 5; i >= 0; i--) {
           const d = new Date();
           d.setMonth(d.getMonth() - i);
@@ -202,7 +194,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       const receivedList: DividendReceipt[] = [];
 
       dividendReceipts.forEach(d => {
-          if (!d.paymentDate || d.paymentDate > todayStr) return; 
+          if (!d.paymentDate || d.paymentDate > todayStr) return; // Apenas pagos
           
           const monthKey = d.paymentDate.substring(0, 7);
           if (groups[monthKey] !== undefined) {
@@ -228,8 +220,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       const average = chartData.reduce((acc, cur) => acc + cur.value, 0) / (chartData.length || 1);
       const max = Math.max(...chartData.map(d => d.value));
 
-      const history = receivedList.sort((a, b) => b.paymentDate.localeCompare(a.paymentDate)).slice(0, 50);
+      // Últimos 50 pagamentos recebidos
+      const history = receivedList
+          .sort((a, b) => b.paymentDate.localeCompare(a.paymentDate))
+          .slice(0, 50);
 
+      // Agrupamento para lista
       const groupedHistory: Record<string, DividendReceipt[]> = {};
       history.forEach(d => {
           const k = d.paymentDate.substring(0, 7);
@@ -242,28 +238,36 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
   const currentMonthIncome = incomeData.chartData[incomeData.chartData.length - 1]?.value || 0;
 
-  // 4. Número Mágico
+  // 4. Número Mágico - ROBUSTO (Suporte a Ações)
   const magicNumberData = useMemo(() => {
       const magicList: any[] = [];
       portfolio.forEach(asset => {
           if (asset.quantity > 0 && asset.currentPrice && asset.currentPrice > 0) {
+              
               let estimatedDiv = 0;
               let hasData = false;
               
+              // 1. Tenta usar DY Anualizado (Melhor para ações e FIIs)
               if (asset.dy_12m && asset.dy_12m > 0) {
+                  // Converte Yield anual em valor monetário mensal médio aproximado
                   estimatedDiv = (asset.currentPrice * (asset.dy_12m / 100)) / 12;
                   hasData = true;
-              } else if (asset.last_dividend && asset.last_dividend > 0) {
+              } 
+              // 2. Fallback: Último dividendo declarado (FIIs)
+              else if (asset.last_dividend && asset.last_dividend > 0) {
                   estimatedDiv = asset.last_dividend;
                   hasData = true;
               }
 
               if (hasData && estimatedDiv > 0) {
                   const magicNumber = Math.ceil(asset.currentPrice / estimatedDiv);
-                  if (magicNumber > 0 && magicNumber < 100000) {
+                  
+                  if (magicNumber > 0 && magicNumber < 100000) { // Sanity check
                       const missing = Math.max(0, magicNumber - asset.quantity);
                       const progress = Math.min(100, (asset.quantity / magicNumber) * 100);
                       const costToReach = missing * asset.currentPrice;
+                      
+                      // Nova métrica: Poder de Recompra (Quantas cotas a renda compra por mês)
                       const currentIncome = asset.quantity * estimatedDiv;
                       const repurchasePower = currentIncome / asset.currentPrice;
 
@@ -277,12 +281,13 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                           price: asset.currentPrice,
                           type: asset.assetType,
                           costToReach,
-                          repurchasePower
+                          repurchasePower // Nova métrica
                       });
                   }
               }
           }
       });
+      // Sort by reached first, then by closest progress
       return magicList.sort((a, b) => {
           if (a.missing === 0 && b.missing !== 0) return -1;
           if (b.missing === 0 && a.missing !== 0) return 1;
@@ -292,11 +297,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
   const magicReachedCount = magicNumberData.filter(m => m.missing === 0).length;
 
-  // 5. Objetivos
+  // 5. Objetivos (Gamification + Metas Reais)
   const goalsData = useMemo(() => {
       const safeBalance = balance || 0;
       const safeIncome = currentMonthIncome || 0;
       
+      // Níveis
       const levels = [
           { level: 1, name: 'Iniciante', target: 1000 },
           { level: 2, name: 'Aprendiz', target: 5000 },
@@ -322,12 +328,19 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       }
 
       const progress = Math.min(100, ((safeBalance - (levels[currentLevel.level-2]?.target || 0)) / (nextLevel.target - (levels[currentLevel.level-2]?.target || 0))) * 100);
+      
+      // Metas Reais (Patrimônio e Renda)
       const incomeMilestones = [50, 100, 500, 1000, 2500, 5000, 10000, 20000];
       const nextIncome = incomeMilestones.find(m => m > safeIncome) || (safeIncome * 1.5);
+
+      // Calculo de Liberdade (Salário Mínimo 2024 Base)
       const MIN_WAGE = 1412;
       const freedomPct = (safeIncome / MIN_WAGE) * 100;
+      
+      // Calculo Renda Passiva Diária
       const dailyPassiveIncome = safeIncome / 30;
 
+      // --- CONQUISTAS (Achievements) ---
       const achievements = [
           { id: 'first_step', label: 'Primeiro Aporte', sub: 'Patrimônio > 0', icon: Wallet, unlocked: safeBalance > 0, color: 'text-emerald-500 bg-emerald-100 dark:bg-emerald-900/20' },
           { id: 'income_start', label: 'Primeira Renda', sub: 'Recebeu proventos', icon: CircleDollarSign, unlocked: safeIncome > 0, color: 'text-violet-500 bg-violet-100 dark:bg-violet-900/20' },
@@ -355,7 +368,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   return (
     <div className="space-y-5 pb-8">
         
-        {/* HERO CARD */}
+        {/* HERO CARD - Estilo Profissional Sóbrio */}
         <div className="relative overflow-hidden rounded-[2rem] bg-zinc-900 border border-zinc-800 p-6 shadow-xl anim-fade-in">
             <div className="flex justify-between items-start mb-6">
                 <div>
@@ -401,12 +414,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             />
             
             <BentoCard 
-                title="Ganho Real" 
-                value={formatPercent(realYield)} 
-                subtext="Acima da Inflação"
-                icon={TrendingUp} 
+                title="Renda" 
+                value={formatBRL(currentMonthIncome, privacyMode)} 
+                subtext="Neste Mês"
+                icon={CircleDollarSign} 
                 colorClass="bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
-                onClick={() => setShowInflation(true)}
+                onClick={() => setShowProventos(true)}
             />
 
             <BentoCard 
@@ -450,7 +463,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
         {/* --- MODALS --- */}
 
-        {/* 1. AGENDA */}
+        {/* 1. AGENDA (Informações Adicionais) */}
         <SwipeableModal isOpen={showAgenda} onClose={() => setShowAgenda(false)}>
             <div className="p-6 h-full flex flex-col anim-slide-up">
                 <div className="flex items-center gap-4 mb-6 shrink-0">
@@ -463,6 +476,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                 </div>
 
+                {/* Cards de Resumo Compactos */}
                 <div className="grid grid-cols-2 gap-2.5 mb-5 shrink-0">
                     <div className="bg-violet-50 dark:bg-violet-900/10 p-2.5 rounded-xl border border-violet-100 dark:border-violet-900/20 flex flex-col justify-center min-h-[60px]">
                         <p className="text-[9px] text-violet-600 dark:text-violet-400 uppercase font-bold mb-0.5">Próximo Pagamento</p>
@@ -490,6 +504,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                 </div>
 
+                {/* Container de Scroll Dedicado */}
                 <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar">
                     {Object.keys(agendaData.grouped).length > 0 ? (
                         <div className="space-y-6">
@@ -539,81 +554,121 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
         </SwipeableModal>
 
-        {/* 2. INFLAÇÃO / GANHO REAL */}
-        <SwipeableModal isOpen={showInflation} onClose={() => setShowInflation(false)}>
+        {/* 2. RENDA (Aprimorada - Total Histórico + YoC) */}
+        <SwipeableModal isOpen={showProventos} onClose={() => setShowProventos(false)}>
             <div className="p-6 h-full flex flex-col anim-slide-up">
                 <div className="flex items-center gap-4 mb-6 shrink-0">
                     <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                        <TrendingUp className="w-6 h-6" />
+                        <CircleDollarSign className="w-6 h-6" />
                     </div>
                     <div>
-                        <h2 className="text-2xl font-bold text-zinc-900 dark:text-white leading-none">Ganho Real</h2>
-                        <p className="text-xs text-zinc-500 font-medium mt-1">Rentabilidade acima da inflação</p>
+                        <h2 className="text-2xl font-bold text-zinc-900 dark:text-white leading-none">Evolução</h2>
+                        <p className="text-xs text-zinc-500 font-medium mt-1">Histórico de Proventos</p>
                     </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar">
-                    {/* Card Principal */}
-                    <div className="bg-zinc-900 dark:bg-black rounded-3xl p-6 text-white mb-6 border border-zinc-800 shadow-xl">
-                        <div className="flex justify-between items-center mb-6">
-                            <div>
-                                <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest mb-1">Rentabilidade Real (12m)</p>
-                                <div className="flex items-baseline gap-2">
-                                    <h3 className="text-4xl font-black tracking-tighter">{realYield > 0 ? '+' : ''}{realYield.toFixed(2)}%</h3>
-                                    <span className="text-[10px] text-zinc-500">a.a.</span>
-                                </div>
+                    
+                    {/* Novos Cards de Resumo Aprimorados */}
+                    <div className="grid grid-cols-2 gap-3 mb-6">
+                        <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-4 rounded-2xl text-white shadow-lg shadow-emerald-500/20 col-span-2">
+                            <div className="flex justify-between items-start mb-2">
+                                <span className="text-[10px] font-bold uppercase tracking-widest opacity-80">Total Recebido (Histórico)</span>
+                                <Landmark className="w-4 h-4 opacity-80" />
                             </div>
-                            <div className={`w-12 h-12 rounded-full flex items-center justify-center ${realYield > 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
-                                {realYield > 0 ? <GrowthIcon className="w-6 h-6" /> : <TrendingDown className="w-6 h-6" />}
+                            <p className="text-3xl font-black tracking-tight mb-2">{formatBRL(totalDividendsReceived, privacyMode)}</p>
+                            <div className="flex items-center gap-2 text-[10px] font-medium opacity-90 bg-white/10 w-fit px-2 py-1 rounded-lg">
+                                <span>Yield on Cost:</span>
+                                <span className="font-bold text-white">{yieldOnCost.toFixed(2)}%</span>
                             </div>
                         </div>
 
-                        {/* Gráfico de Barras Comparativo */}
-                        <div className="h-32 w-full mt-4">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart layout="vertical" data={[
-                                    { name: 'IPCA', value: inflationRate, fill: '#ef4444' },
-                                    { name: 'Carteira', value: yieldOnCost, fill: '#10b981' },
-                                ]} barSize={20}>
-                                    <XAxis type="number" hide />
-                                    <YAxis type="category" dataKey="name" tick={{fill: '#a1a1aa', fontSize: 10}} axisLine={false} tickLine={false} width={50} />
-                                    <RechartsTooltip cursor={{fill: 'transparent'}} contentStyle={{borderRadius: '12px', border: 'none', backgroundColor: '#27272a', color: '#fff'}} formatter={(val: number) => [`${val.toFixed(2)}%`, '']} />
-                                    <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                                        {
-                                            [
-                                                { name: 'IPCA', value: inflationRate, fill: '#ef4444' },
-                                                { name: 'Carteira', value: yieldOnCost, fill: '#10b981' },
-                                            ].map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={entry.fill} />
-                                            ))
-                                        }
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
+                        <div className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-700/50">
+                            <p className="text-[9px] text-zinc-500 uppercase font-bold mb-1">Média Mensal (12m)</p>
+                            <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(incomeData.average, privacyMode)}</p>
+                        </div>
+                        <div className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-700/50">
+                            <p className="text-[9px] text-zinc-500 uppercase font-bold mb-1">Maior Recebimento</p>
+                            <div className="flex items-center gap-1">
+                                <Trophy className="w-3 h-3 text-amber-500" />
+                                <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(incomeData.max, privacyMode)}</p>
+                            </div>
                         </div>
                     </div>
 
-                    {/* Explicação */}
-                    <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 mb-6">
-                        <div className="flex gap-3">
-                            <Info className="w-5 h-5 text-indigo-500 shrink-0" />
-                            <div>
-                                <h4 className="text-sm font-bold text-zinc-900 dark:text-white mb-1">Entenda o Cálculo</h4>
-                                <p className="text-xs text-zinc-500 leading-relaxed">
-                                    O ganho real é calculado descontando a inflação (IPCA) do retorno total da sua carteira (Yield on Cost) nos últimos 12 meses.
-                                </p>
-                                <div className="mt-3 flex gap-4 text-[10px] font-mono text-zinc-400">
-                                    <div>Yield: <span className="text-emerald-500 font-bold">{yieldOnCost.toFixed(2)}%</span></div>
-                                    <div>IPCA: <span className="text-rose-500 font-bold">{inflationRate.toFixed(2)}%</span></div>
-                                </div>
-                            </div>
-                        </div>
+                    {/* Gráfico com Visual Aprimorado */}
+                    <div className="h-48 w-full mb-8 shrink-0 bg-zinc-50/50 dark:bg-zinc-900/50 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 p-2">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={incomeData.chartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
+                                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#71717a' }} dy={10} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#71717a' }} tickFormatter={(val) => `R$${val}`} />
+                                <RechartsTooltip 
+                                    contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: '#18181b', color: '#fff', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
+                                    labelStyle={{ color: '#a1a1aa', marginBottom: '4px', fontSize: '10px', textTransform: 'uppercase' }}
+                                    formatter={(value: number) => [formatBRL(value), 'Renda']}
+                                />
+                                <Area type="monotone" dataKey="value" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorIncome)" />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
+
+                    {/* Histórico Recente (Lista Agrupada com Total no Header) */}
+                    <div>
+                        {Object.keys(incomeData.groupedHistory).length > 0 ? (
+                            Object.entries(incomeData.groupedHistory)
+                                .sort((a,b) => b[0].localeCompare(a[0])) // Sort keys DESC (Newest month first)
+                                .map(([monthKey, items]) => {
+                                    // Calcula total do mês
+                                    const monthTotal = (items as DividendReceipt[]).reduce((acc, curr) => acc + curr.totalReceived, 0);
+                                    
+                                    return (
+                                        <div key={monthKey} className="mb-6">
+                                            {/* Header do Mês com Total */}
+                                            <div className="sticky top-0 bg-white dark:bg-zinc-900 py-2 z-10 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center mb-2">
+                                                <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                                                    {getMonthName(monthKey + '-01')}
+                                                </h3>
+                                                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded">
+                                                    +{formatBRL(monthTotal, privacyMode)}
+                                                </span>
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                {(items as DividendReceipt[]).map((div, i) => (
+                                                    <div key={i} className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="flex flex-col items-center justify-center w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
+                                                                <span className="text-[10px] font-bold text-zinc-400 uppercase">{new Date(div.paymentDate).toLocaleDateString('pt-BR', {month:'short'}).replace('.','')}</span>
+                                                                <span className="text-sm font-black text-zinc-900 dark:text-white leading-none">{new Date(div.paymentDate).getDate()}</span>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-xs font-bold text-zinc-900 dark:text-white">{div.ticker}</p>
+                                                                <p className="text-[10px] text-zinc-400 uppercase font-medium">{div.type}</p>
+                                                            </div>
+                                                        </div>
+                                                        <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">+{formatBRL(div.totalReceived, privacyMode)}</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                        ) : (
+                            <p className="text-center text-xs text-zinc-400 py-4">Nenhum pagamento registrado.</p>
+                        )}
                     </div>
                 </div>
             </div>
         </SwipeableModal>
 
-        {/* 3. NÚMERO MÁGICO */}
+        {/* 3. NÚMERO MÁGICO (COMPACTADO E OTIMIZADO) */}
         <SwipeableModal isOpen={showMagicNumber} onClose={() => setShowMagicNumber(false)}>
             <div className="p-6 h-full flex flex-col anim-slide-up">
                 <div className="flex items-center gap-4 mb-6 shrink-0">
@@ -709,7 +764,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
         </SwipeableModal>
 
-        {/* 4. OBJETIVOS (REDESIGN: COM EXPLICAÇÕES) */}
+        {/* 4. OBJETIVOS (SEM SCROLL + LAYOUT OTIMIZADO) */}
         <SwipeableModal isOpen={showGoals} onClose={() => setShowGoals(false)}>
             <div className="p-6 h-full flex flex-col anim-slide-up">
                 <div className="flex items-center gap-4 mb-4 shrink-0">
@@ -722,41 +777,19 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar space-y-6">
+                <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar">
                     
-                    {/* Guia Explicativo (Topo) */}
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-700/50">
-                            <div className="flex items-center gap-1.5 mb-1.5">
-                                <Trophy className="w-3.5 h-3.5 text-indigo-500" />
-                                <span className="text-[10px] font-bold uppercase text-zinc-900 dark:text-white">Nível</span>
-                            </div>
-                            <p className="text-[10px] text-zinc-500 leading-tight">
-                                Seu status de investidor baseado no patrimônio acumulado total.
-                            </p>
-                        </div>
-                        <div className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-700/50">
-                            <div className="flex items-center gap-1.5 mb-1.5">
-                                <Anchor className="w-3.5 h-3.5 text-sky-500" />
-                                <span className="text-[10px] font-bold uppercase text-zinc-900 dark:text-white">Liberdade</span>
-                            </div>
-                            <p className="text-[10px] text-zinc-500 leading-tight">
-                                Porcentagem do teto do INSS (R$ 7.786) coberta pela sua renda passiva.
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Card de Nível */}
-                    <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 to-purple-700 rounded-3xl p-5 text-white shadow-xl shadow-indigo-900/20">
+                    {/* Card de Nível Horizontal (Economiza Espaço Vertical) */}
+                    <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 to-purple-700 rounded-3xl p-5 mb-4 text-white shadow-xl shadow-indigo-900/20">
                         <div className="relative z-10 flex items-center gap-5">
                             <div className="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-md flex flex-col items-center justify-center border border-white/20 shrink-0">
                                 <span className="text-3xl font-black leading-none">{goalsData.currentLevel.level}</span>
-                                <span className="text-[8px] font-bold uppercase tracking-widest opacity-80">Atual</span>
+                                <span className="text-[8px] font-bold uppercase tracking-widest opacity-80">Nível</span>
                             </div>
                             <div className="flex-1 min-w-0">
                                 <h3 className="text-xl font-bold mb-1 truncate">{goalsData.currentLevel.name}</h3>
                                 <div className="flex items-center justify-between text-[10px] font-medium opacity-80 mb-1.5">
-                                    <span>XP para próximo nível</span>
+                                    <span>Progresso</span>
                                     <span>{goalsData.progress.toFixed(0)}%</span>
                                 </div>
                                 <div className="h-1.5 w-full bg-black/20 rounded-full overflow-hidden">
@@ -765,7 +798,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                         style={{ width: `${goalsData.progress}%` }}
                                     ></div>
                                 </div>
-                                <p className="text-[9px] mt-1.5 opacity-70">Próxima meta: {formatBRL(goalsData.nextLevel.target, privacyMode)}</p>
+                                <p className="text-[9px] mt-1.5 opacity-70">Próximo: {goalsData.nextLevel.name}</p>
                             </div>
                         </div>
                         {/* Decorative BG */}
@@ -773,38 +806,55 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         <div className="absolute -bottom-10 -left-10 w-24 h-24 bg-purple-500/20 rounded-full blur-2xl"></div>
                     </div>
 
-                    {/* Métricas de Vida Real */}
-                    <div className="grid grid-cols-2 gap-2">
-                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex flex-col justify-between h-full">
-                            <div>
-                                <div className="flex items-center gap-1.5 mb-1">
-                                    <Anchor className="w-3.5 h-3.5 text-sky-500" />
-                                    <span className="text-[9px] font-bold uppercase text-zinc-400 tracking-wider">Liberdade</span>
-                                </div>
-                                <div className="flex items-baseline gap-1">
-                                    <p className="text-2xl font-black text-zinc-900 dark:text-white">{goalsData.freedom.pct.toFixed(1)}%</p>
-                                </div>
+                    {/* Métricas Compactas */}
+                    <div className="grid grid-cols-2 gap-2 mb-4">
+                        <div className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-700/50">
+                            <div className="flex items-center gap-1.5 mb-1">
+                                <Anchor className="w-3.5 h-3.5 text-sky-500" />
+                                <span className="text-[9px] font-bold uppercase text-zinc-400 tracking-wider">Liberdade</span>
                             </div>
-                            <p className="text-[9px] text-zinc-400 mt-2">do Salário Mínimo</p>
+                            <div className="flex items-baseline gap-1">
+                                <p className="text-lg font-black text-zinc-900 dark:text-white">{goalsData.freedom.pct.toFixed(1)}%</p>
+                                <span className="text-[9px] text-zinc-400">do teto</span>
+                            </div>
                         </div>
-                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex flex-col justify-between h-full">
-                            <div>
-                                <div className="flex items-center gap-1.5 mb-1">
-                                    <Coins className="w-3.5 h-3.5 text-amber-500" />
-                                    <span className="text-[9px] font-bold uppercase text-zinc-400 tracking-wider">Passiva/Dia</span>
-                                </div>
-                                <div className="flex items-baseline gap-1">
-                                    <p className="text-2xl font-black text-zinc-900 dark:text-white">{formatBRL(goalsData.dailyIncome, privacyMode)}</p>
-                                </div>
+                        <div className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-700/50">
+                            <div className="flex items-center gap-1.5 mb-1">
+                                <Coins className="w-3.5 h-3.5 text-amber-500" />
+                                <span className="text-[9px] font-bold uppercase text-zinc-400 tracking-wider">Passiva/Dia</span>
                             </div>
-                            <p className="text-[9px] text-zinc-400 mt-2">pingando todo dia</p>
+                            <div className="flex items-baseline gap-1">
+                                <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(goalsData.dailyIncome, privacyMode)}</p>
+                                <span className="text-[9px] text-zinc-400">diários</span>
+                            </div>
                         </div>
                     </div>
 
-                    {/* Galeria de Conquistas */}
+                    {/* Metas Concretas (Compacto) */}
+                    <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm mb-4">
+                        <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3">Próximos Marcos</h3>
+                        
+                        <ProgressBar 
+                            label="Patrimônio" 
+                            current={goalsData.patrimony.current} 
+                            target={goalsData.patrimony.target} 
+                            colorClass="bg-gradient-to-r from-blue-500 to-indigo-600"
+                            privacyMode={privacyMode}
+                        />
+                        
+                        <ProgressBar 
+                            label="Renda Mensal" 
+                            current={goalsData.income.current} 
+                            target={goalsData.income.target} 
+                            colorClass="bg-gradient-to-r from-emerald-400 to-emerald-600"
+                            privacyMode={privacyMode}
+                        />
+                    </div>
+
+                    {/* NOVA SEÇÃO: Galeria de Conquistas */}
                     <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Medalhas Desbloqueadas</h3>
+                            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Galeria de Conquistas</h3>
                             <span className="text-[9px] font-bold bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded text-zinc-500">
                                 {goalsData.unlockedCount}/{goalsData.achievements.length}
                             </span>
@@ -826,7 +876,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
         </SwipeableModal>
 
-        {/* 5. ALOCAÇÃO */}
+        {/* 5. ALOCAÇÃO (COM LISTA DE ATIVOS APRIMORADA) */}
         <SwipeableModal isOpen={showAllocation} onClose={() => setShowAllocation(false)}>
              <div className="p-6 h-full flex flex-col anim-slide-up">
                 <div className="flex items-center gap-4 mb-6 shrink-0">
