@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { TrendingUp, TrendingDown, Plus, Hash, Trash2, Save, X, ArrowRightLeft, Building2, CandlestickChart, Filter, Check, Calendar, CheckSquare, Search, ChevronDown, RefreshCw, Wallet, DollarSign, ArrowUpRight, ArrowDownLeft, Calculator, Tag } from 'lucide-react';
-import { SwipeableModal, ConfirmationModal } from '../components/Layout';
+import { SwipeableModal, ConfirmationModal, InfoTooltip } from '../components/Layout';
 import { Transaction, AssetType } from '../types';
 import { supabase } from '../services/supabase';
 
@@ -42,7 +42,10 @@ const TransactionsSummary = ({ transactions, privacyMode }: { transactions: Tran
                 </div>
                 <div className="relative z-10">
                     <div className="flex justify-between items-start mb-2">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Fluxo Líquido</span>
+                        <div className="flex items-center gap-2">
+                             <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Fluxo Líquido</span>
+                             <InfoTooltip title="Fluxo Líquido" text="Diferença entre o total comprado e o total vendido. Indica quanto dinheiro 'novo' saiu do seu bolso para aportes." />
+                        </div>
                         <span className="text-[10px] font-bold bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full text-zinc-500 border border-zinc-200 dark:border-zinc-700">{count} Ordens</span>
                     </div>
                     <div className="flex items-baseline gap-2">
@@ -531,10 +534,10 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
 
             <SwipeableModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
                 <div className="p-5 h-full flex flex-col">
-                    <div className="flex justify-between items-center mb-4 shrink-0">
+                    <div className="flex justify-between items-center mb-6 shrink-0">
                         <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${editingId ? 'bg-indigo-100 dark:bg-indigo-900/20 text-indigo-600' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600'}`}>
-                                {editingId ? <ArrowRightLeft className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${editingId ? 'bg-indigo-100 dark:bg-indigo-900/20 text-indigo-600' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600'}`}>
+                                {editingId ? <ArrowRightLeft className="w-6 h-6" /> : <Plus className="w-6 h-6" />}
                             </div>
                             <div>
                                 <h2 className="text-xl font-black text-zinc-900 dark:text-white leading-none">{editingId ? 'Editar Ordem' : 'Nova Ordem'}</h2>
@@ -544,15 +547,24 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                         {editingId && <button onClick={() => onRequestDeleteConfirmation(editingId)} className="p-2 text-rose-500 bg-rose-50 rounded-lg press-effect"><Trash2 className="w-5 h-5" /></button>}
                     </div>
                     
-                    <div className="space-y-3 flex-1 overflow-y-auto no-scrollbar pb-10">
-                        {/* Tipo de Operação */}
-                        <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-2xl">
-                            {['BUY', 'SELL'].map(t => (
-                                <button key={t} onClick={() => setType(t as any)} className={`flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${type === t ? (t === 'BUY' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-rose-500 text-white shadow-lg shadow-rose-500/20') : 'text-zinc-400 hover:text-zinc-600'}`}>
-                                    {t === 'BUY' ? <ArrowDownLeft className="w-3.5 h-3.5" strokeWidth={3} /> : <ArrowUpRight className="w-3.5 h-3.5" strokeWidth={3} />}
-                                    {t === 'BUY' ? 'Compra' : 'Venda'}
-                                </button>
-                            ))}
+                    <div className="space-y-4 flex-1 overflow-y-auto no-scrollbar pb-10">
+                        {/* Tipo de Operação com Animação Deslizante */}
+                        <div className="relative bg-zinc-100 dark:bg-zinc-800 p-1 rounded-2xl flex h-12">
+                            <div 
+                                className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-white dark:bg-zinc-700 rounded-xl shadow-sm transition-all duration-300 ease-out-mola ${type === 'BUY' ? 'left-1' : 'left-[calc(50%)]'}`}
+                            ></div>
+                            <button 
+                                onClick={() => setType('BUY')} 
+                                className={`relative z-10 flex-1 flex items-center justify-center gap-2 text-xs font-black uppercase tracking-widest transition-colors ${type === 'BUY' ? 'text-zinc-900 dark:text-white' : 'text-zinc-400'}`}
+                            >
+                                <ArrowDownLeft className="w-4 h-4" strokeWidth={3} /> Compra
+                            </button>
+                            <button 
+                                onClick={() => setType('SELL')} 
+                                className={`relative z-10 flex-1 flex items-center justify-center gap-2 text-xs font-black uppercase tracking-widest transition-colors ${type === 'SELL' ? 'text-zinc-900 dark:text-white' : 'text-zinc-400'}`}
+                            >
+                                <ArrowUpRight className="w-4 h-4" strokeWidth={3} /> Venda
+                            </button>
                         </div>
 
                         {/* Ativo e Classe (Smart Detection) */}
@@ -572,7 +584,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                                     value={ticker} 
                                     onChange={e => handleTickerChange(e.target.value)} 
                                     placeholder="EX: PETR4" 
-                                    className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl px-4 py-3 text-xl font-black uppercase outline-none focus:border-zinc-400 dark:focus:border-zinc-600 focus:ring-4 focus:ring-zinc-100 dark:focus:ring-zinc-800 transition-all placeholder:text-zinc-300" 
+                                    className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl px-4 py-4 text-2xl font-black uppercase outline-none focus:border-zinc-400 dark:focus:border-zinc-600 focus:ring-4 focus:ring-zinc-100 dark:focus:ring-zinc-800 transition-all placeholder:text-zinc-300" 
                                 />
                                 {ticker && (
                                     <div className="absolute right-3 top-1/2 -translate-y-1/2 flex gap-1">
@@ -589,12 +601,15 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                             <div>
                                 <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1 mb-1 block">Quantidade</label>
                                 <div className="relative">
-                                    <input type="number" value={quantity} onChange={e => setQuantity(e.target.value)} placeholder="0" className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl pl-4 pr-8 py-3 text-lg font-bold outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-all" />
+                                    <input type="number" value={quantity} onChange={e => setQuantity(e.target.value)} placeholder="0" className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl pl-4 pr-8 py-3.5 text-lg font-bold outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-all" />
                                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-400 uppercase">un</span>
                                 </div>
                             </div>
                             <div>
-                                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1 mb-1 block">Preço Unitário</label>
+                                <div className="flex items-center gap-1 mb-1 ml-1">
+                                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">Preço Unitário</label>
+                                    <InfoTooltip title="Preço Unitário" text="Valor exato de execução da ordem. Se desejar, inclua as taxas de corretagem no preço para aumentar a precisão do preço médio." />
+                                </div>
                                 <div className="relative">
                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-zinc-400">R$</span>
                                     <input 
@@ -603,7 +618,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                                         value={price} 
                                         onChange={handlePriceChange} 
                                         placeholder="0,00" 
-                                        className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl pl-9 pr-4 py-3 text-lg font-bold outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-all" 
+                                        className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl pl-9 pr-4 py-3.5 text-lg font-bold outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-all" 
                                     />
                                 </div>
                             </div>
@@ -617,7 +632,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                                     Hoje
                                 </button>
                             </div>
-                            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl px-4 py-3 text-sm font-bold outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-all" />
+                            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl px-4 py-3.5 text-sm font-bold outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-all" />
                         </div>
 
                         {/* Receipt Summary */}
@@ -644,7 +659,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                                 </div>
                             </div>
                             
-                            <button onClick={handleSave} disabled={isSaving || !ticker || !quantity || !price} className="w-full mt-3 py-3.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl press-effect disabled:opacity-50 disabled:cursor-not-allowed">
+                            <button onClick={handleSave} disabled={isSaving || !ticker || !quantity || !price} className="w-full mt-3 py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl press-effect disabled:opacity-50 disabled:cursor-not-allowed">
                                 {isSaving ? 'Salvando...' : 'Confirmar Ordem'}
                             </button>
                         </div>

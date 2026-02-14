@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, Bell, Download, Trash2, Cloud, CloudOff, Loader2, AlertTriangle, Gift, Star, Inbox, RefreshCw, Smartphone, X, Check, Mail, Server, WifiOff, FileText, CheckCircle, Percent, TrendingUp, DollarSign, Activity, Newspaper, CloudLightning, Wifi } from 'lucide-react';
+import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, Bell, Download, Trash2, Cloud, CloudOff, Loader2, AlertTriangle, Gift, Star, Inbox, RefreshCw, Smartphone, X, Check, Mail, Server, WifiOff, FileText, CheckCircle, Percent, TrendingUp, DollarSign, Activity, Newspaper, CloudLightning, Wifi, CircleHelp } from 'lucide-react';
 import { UpdateReportData } from '../types';
 
 // --- UTILS ---
@@ -29,6 +29,40 @@ const useAnimatedVisibility = (isOpen: boolean, duration: number) => {
 };
 
 // --- COMPONENTS ---
+
+export const InfoTooltip = ({ title, text }: { title: string, text: React.ReactNode }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    
+    return (
+        <>
+            <button 
+                onClick={(e) => { e.stopPropagation(); setIsOpen(true); }} 
+                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors p-1 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                aria-label="Informação"
+            >
+                <CircleHelp className="w-3.5 h-3.5" />
+            </button>
+            
+            {isOpen && createPortal(
+                <div className="fixed inset-0 z-[10000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm anim-fade-in" onClick={() => setIsOpen(false)}>
+                    <div className="bg-white dark:bg-zinc-900 w-full max-w-sm p-6 rounded-[2rem] shadow-2xl anim-scale-in border border-zinc-100 dark:border-zinc-800" onClick={e => e.stopPropagation()}>
+                        <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mb-4 text-indigo-600 mx-auto border-4 border-white dark:border-zinc-900 shadow-sm">
+                            <CircleHelp className="w-6 h-6" />
+                        </div>
+                        <h3 className="text-lg font-bold text-center text-zinc-900 dark:text-white mb-2">{title}</h3>
+                        <div className="text-sm text-zinc-500 dark:text-zinc-400 text-center leading-relaxed mb-6 font-medium">
+                            {text}
+                        </div>
+                        <button onClick={() => setIsOpen(false)} className="w-full py-3.5 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold text-sm press-effect shadow-lg">
+                            Entendi
+                        </button>
+                    </div>
+                </div>,
+                document.body
+            )}
+        </>
+    );
+};
 
 const HeaderCloudStatus: React.FC<{ status: 'disconnected' | 'connected' | 'hidden' | 'syncing' }> = ({ status }) => {
     if (status === 'hidden') return null;
@@ -83,7 +117,7 @@ export const Header: React.FC<HeaderProps> = ({
             ) : (
               <div className="flex flex-col">
                  <div className="flex items-center gap-2">
-                    {headerIcon && <div className="w-6 h-6">{headerIcon}</div>}
+                    {headerIcon && <div className="w-6 h-6 anim-scale-in">{headerIcon}</div>}
                     <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-white truncate">
                       {title}
                     </h1>
@@ -110,7 +144,7 @@ export const Header: React.FC<HeaderProps> = ({
              )}
 
              {updateAvailable && (
-               <button onClick={onUpdateClick} className="w-9 h-9 flex items-center justify-center rounded-full bg-indigo-500 text-white press-effect shadow-lg shadow-indigo-500/30">
+               <button onClick={onUpdateClick} className="w-9 h-9 flex items-center justify-center rounded-full bg-indigo-500 text-white press-effect shadow-lg shadow-indigo-500/30 anim-scale-in">
                  <Download className="w-4 h-4" />
                </button>
              )}
@@ -118,7 +152,7 @@ export const Header: React.FC<HeaderProps> = ({
              {onNotificationClick && !showBack && (
                <button onClick={onNotificationClick} className="w-9 h-9 flex items-center justify-center rounded-full text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors press-effect relative">
                  <Bell className="w-5 h-5" />
-                 {notificationCount > 0 && <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-white dark:border-black"></span>}
+                 {notificationCount > 0 && <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-white dark:border-black anim-scale-in"></span>}
                </button>
              )}
 
@@ -150,23 +184,24 @@ const navItems = [
 export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange, isVisible = true }) => {
   return (
     <div 
-        className="fixed bottom-8 left-0 right-0 z-[90] flex justify-center pointer-events-none transition-transform duration-500 cubic-bezier(0.16, 1, 0.3, 1)"
+        className="fixed bottom-6 left-0 right-0 z-[90] flex justify-center pointer-events-none transition-transform duration-500 cubic-bezier(0.16, 1, 0.3, 1)"
         style={{ transform: isVisible ? 'translateY(0)' : 'translateY(200%)' }}
     >
-      <nav className="pointer-events-auto bg-zinc-900/90 dark:bg-zinc-800/90 backdrop-blur-xl border border-white/10 rounded-full px-2 py-2 flex items-center gap-1 shadow-2xl shadow-black/20 ring-1 ring-black/5">
+      <nav className="pointer-events-auto bg-zinc-900/85 dark:bg-zinc-800/85 backdrop-blur-xl border border-white/10 rounded-full px-2 py-2 flex items-center gap-1 shadow-2xl shadow-black/30 ring-1 ring-black/5">
           {navItems.map((item) => {
             const isActive = currentTab === item.id;
             return (
               <button
                 key={item.id}
                 onClick={() => onTabChange(item.id)}
-                className={`relative flex items-center justify-center w-12 h-12 rounded-full transition-all duration-300 ${isActive ? 'bg-white/20 text-white' : 'text-zinc-400 hover:text-white'}`}
+                className={`relative flex items-center justify-center w-12 h-12 rounded-full transition-all duration-300 ${isActive ? 'bg-white/20 text-white shadow-inner' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}
               >
                 <item.icon 
-                    className={`w-5 h-5 transition-all duration-300 ${isActive ? 'scale-110 stroke-[2.5px]' : 'scale-100'}`} 
+                    className={`w-5 h-5 transition-all duration-300 ${isActive ? 'scale-110' : 'scale-100'}`} 
+                    strokeWidth={isActive ? 2.5 : 2}
                 />
                 {isActive && (
-                  <span className="absolute -bottom-1 w-1 h-1 bg-white rounded-full"></span>
+                  <span className="absolute -bottom-1 w-1 h-1 bg-white rounded-full anim-scale-in"></span>
                 )}
               </button>
             );
@@ -199,8 +234,6 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
             transform: isVisible ? `translateY(${dragY}px)` : 'translateY(100%)',
             transition: dragY === 0 ? 'transform 500ms cubic-bezier(0.32, 0.72, 0, 1)' : 'none',
         }}
-        // FIX: Usamos Flex Col e overflow-hidden aqui. O CHILDREN deve gerenciar o scroll.
-        // Isso impede que o modal crie um scroll wrapper conflitante.
         className={`relative bg-white dark:bg-zinc-900 w-full h-[92dvh] rounded-t-[2.5rem] shadow-2xl shadow-black/50 overflow-hidden flex flex-col`}
       >
         {/* Handle */}
@@ -217,7 +250,7 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
           <div className="w-12 h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full"></div>
         </div>
 
-        {/* Content Wrapper - Sem overflow-y-auto aqui. Deixamos para o children. */}
+        {/* Content Wrapper */}
         <div className="flex-1 min-h-0 w-full relative flex flex-col">
             {children}
         </div>
@@ -227,6 +260,7 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
 };
 
 // --- OTHER MODALS ---
+// ... (ConfirmationModal, InstallPromptModal, UpdateReportModal, ChangelogModal, NotificationsModal mantidos iguais)
 export const ConfirmationModal: React.FC<any> = ({ isOpen, title, message, onConfirm, onCancel }) => {
     if (!isOpen) return null;
     return (
