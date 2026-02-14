@@ -289,6 +289,18 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
 
     const estimatedTotal = (parseFloat(quantity) || 0) * rawPrice;
 
+    // --- BLOQUEIO DE PULL-TO-REFRESH ---
+    useEffect(() => {
+        if (isSelectionMode) {
+            document.body.style.overscrollBehaviorY = 'none';
+        } else {
+            document.body.style.overscrollBehaviorY = 'auto';
+        }
+        return () => {
+            document.body.style.overscrollBehaviorY = 'auto';
+        };
+    }, [isSelectionMode]);
+
     const availableYears = useMemo(() => {
         const years = new Set(transactions.map(t => t.date.substring(0, 4)));
         return Array.from(years).sort((a,b) => String(b).localeCompare(String(a)));
