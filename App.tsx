@@ -32,12 +32,10 @@ const STORAGE_KEYS = {
   METADATA: 'investfiis_metadata_v2' 
 };
 
-// Memoização dos componentes principais para performance e evitar re-renders desnecessários (piscadas)
-const MemoizedHome = React.memo(Home);
-const MemoizedPortfolio = React.memo(Portfolio);
-const MemoizedTransactions = React.memo(Transactions);
+// Pages like Home, Portfolio, Transactions are already memoized in their files.
+// We only memoize News and Settings here to prevent re-renders.
 const MemoizedNews = React.memo(News);
-const MemoizedSettings = React.memo(Settings); // Crucial para evitar piscada no scroll
+const MemoizedSettings = React.memo(Settings); 
 
 // Helper para merge inteligente de dividendos sem duplicatas
 const mergeDividends = (current: DividendReceipt[], incoming: DividendReceipt[]) => {
@@ -59,6 +57,11 @@ const mergeDividends = (current: DividendReceipt[], incoming: DividendReceipt[])
 
     return Array.from(map.values());
 };
+
+// --- LOGO COMPONENT ---
+const AppLogo = () => (
+  <img src="./logo.svg" className="w-7 h-7 object-contain drop-shadow-sm" alt="InvestFIIs" />
+);
 
 const App: React.FC = () => {
   // --- ESTADOS GLOBAIS ---
@@ -587,10 +590,6 @@ const App: React.FC = () => {
   // CRITICAL FIX: Force header visible in Settings to prevent flicker
   const isHeaderVisible = showSettings || scrollDirection === 'up' || isTop;
 
-  // --- LOGO DA MARCA ---
-  // Importante: Passado para o Header apenas nas abas principais
-  const AppLogo = <img src="./logo.svg" className="w-7 h-7 object-contain drop-shadow-sm" alt="InvestFIIs" />;
-
   // --- RENDERIZAÇÃO ---
 
   if (!isReady) return <SplashScreen finishLoading={false} realProgress={loadingProgress} />;
@@ -634,7 +633,7 @@ const App: React.FC = () => {
                 }
                 hideBorder={currentTab === 'transactions'}
                 isVisible={isHeaderVisible}
-                headerIcon={!showSettings ? AppLogo : undefined} // Logo visível apenas nas abas principais
+                headerIcon={!showSettings ? <AppLogo /> : undefined} // Logo visível apenas nas abas principais
             />
             
             <main className="max-w-xl mx-auto pt-24 pb-32 min-h-screen px-4">
@@ -655,7 +654,7 @@ const App: React.FC = () => {
               ) : (
                 <div key={currentTab} className="anim-page-enter">
                   {currentTab === 'home' && (
-                      <MemoizedHome 
+                      <Home 
                           {...memoizedPortfolioData} 
                           totalAppreciation={memoizedPortfolioData.balance - memoizedPortfolioData.invested} 
                           privacyMode={privacyMode} 
@@ -663,7 +662,7 @@ const App: React.FC = () => {
                       />
                   )}
                   {currentTab === 'portfolio' && (
-                      <MemoizedPortfolio 
+                      <Portfolio 
                           portfolio={memoizedPortfolioData.portfolio} 
                           dividends={dividends} 
                           privacyMode={privacyMode} 
@@ -673,7 +672,7 @@ const App: React.FC = () => {
                           onClearTarget={() => setTargetAssetTicker(null)} 
                       />
                   )}
-                  {currentTab === 'transactions' && <MemoizedTransactions transactions={transactions} onAddTransaction={handleAddTransaction} onUpdateTransaction={handleUpdateTransaction} onRequestDeleteConfirmation={handleDeleteTransaction} privacyMode={privacyMode} />}
+                  {currentTab === 'transactions' && <Transactions transactions={transactions} onAddTransaction={handleAddTransaction} onUpdateTransaction={handleUpdateTransaction} onRequestDeleteConfirmation={handleDeleteTransaction} privacyMode={privacyMode} />}
                   {currentTab === 'news' && <MemoizedNews transactions={transactions} />}
                 </div>
               )}
