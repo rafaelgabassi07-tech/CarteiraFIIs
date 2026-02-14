@@ -225,10 +225,16 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     const [type, setType] = useState<'BUY' | 'SELL'>('BUY');
     const [assetType, setAssetType] = useState<AssetType>(AssetType.FII);
     const [quantity, setQuantity] = useState('');
-    const [price, setPrice] = useState('');
+    const [price, setPrice] = useState(''); // Agora é string para controlar a máscara
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     
-    const estimatedTotal = (parseFloat(quantity) || 0) * (parseFloat(price) || 0);
+    // Converte string formatada (1.200,50) para float (1200.50)
+    const rawPrice = useMemo(() => {
+        if (!price) return 0;
+        return parseFloat(price.replace(/\./g, '').replace(',', '.')) || 0;
+    }, [price]);
+
+    const estimatedTotal = (parseFloat(quantity) || 0) * rawPrice;
 
     const availableYears = useMemo(() => {
         const years = new Set(transactions.map(t => t.date.substring(0, 4)));
@@ -268,6 +274,29 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
         return list; 
     }, [filteredTransactions]);
 
+    // Máscara de Moeda ao Digitar
+    const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let value = e.target.value;
+        // Remove tudo que não for dígito
+        value = value.replace(/\D/g, "");
+        
+        if (!value) {
+            setPrice("");
+            return;
+        }
+
+        // Converte para float dividindo por 100 (centavos)
+        const amount = Number(value) / 100;
+        
+        // Formata para BRL
+        const formatted = amount.toLocaleString("pt-BR", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+
+        setPrice(formatted);
+    };
+
     const handleOpenAdd = () => {
         setEditingId(null); setTicker(''); setType('BUY'); setAssetType(AssetType.FII);
         setQuantity(''); setPrice(''); setDate(new Date().toISOString().split('T')[0]);
@@ -276,7 +305,10 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
 
     const handleOpenEdit = (t: Transaction) => {
         setEditingId(t.id); setTicker(t.ticker); setType(t.type); setAssetType(t.assetType || AssetType.FII);
-        setQuantity(String(t.quantity)); setPrice(String(t.price)); setDate(t.date.split('T')[0]);
+        setQuantity(String(t.quantity)); 
+        // Formata o preço existente para o padrão visual editável (1.234,56)
+        setPrice(t.price.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+        setDate(t.date.split('T')[0]);
         setIsModalOpen(true);
     };
 
@@ -302,7 +334,11 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     const handleSave = async () => {
         if (!ticker || !quantity || !price || !date || isSaving) return;
         setIsSaving(true);
-        const payload = { ticker: ticker.toUpperCase(), type, assetType, quantity: Number(quantity.replace(',', '.')), price: Number(price.replace(',', '.')), date };
+        
+        // Converte string formatada para float seguro para o banco
+        const finalPrice = parseFloat(price.replace(/\./g, '').replace(',', '.'));
+
+        const payload = { ticker: ticker.toUpperCase(), type, assetType, quantity: Number(quantity.replace(',', '.')), price: finalPrice, date };
         try {
             if (editingId) await onUpdateTransaction(editingId, payload);
             else await onAddTransaction(payload);
@@ -410,8 +446,8 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
             </div>
 
             <SwipeableModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
-                <div className="p-6 pb-20 h-full flex flex-col">
-                    <div className="flex justify-between items-center mb-6 shrink-0">
+                <div className="p-5 h-full flex flex-col">
+                    <div className="flex justify-between items-center mb-4 shrink-0">
                         <div className="flex items-center gap-3">
                             <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${editingId ? 'bg-indigo-100 dark:bg-indigo-900/20 text-indigo-600' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600'}`}>
                                 {editingId ? <ArrowRightLeft className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
@@ -424,11 +460,11 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                         {editingId && <button onClick={() => onRequestDeleteConfirmation(editingId)} className="p-2 text-rose-500 bg-rose-50 rounded-lg press-effect"><Trash2 className="w-5 h-5" /></button>}
                     </div>
                     
-                    <div className="space-y-5 flex-1 overflow-y-auto no-scrollbar pb-safe">
+                    <div className="space-y-3 flex-1 overflow-y-auto no-scrollbar">
                         {/* Tipo de Operação */}
-                        <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1.5 rounded-2xl">
+                        <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-2xl">
                             {['BUY', 'SELL'].map(t => (
-                                <button key={t} onClick={() => setType(t as any)} className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${type === t ? (t === 'BUY' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-rose-500 text-white shadow-lg shadow-rose-500/20') : 'text-zinc-400 hover:text-zinc-600'}`}>
+                                <button key={t} onClick={() => setType(t as any)} className={`flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${type === t ? (t === 'BUY' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-rose-500 text-white shadow-lg shadow-rose-500/20') : 'text-zinc-400 hover:text-zinc-600'}`}>
                                     {t === 'BUY' ? <ArrowDownLeft className="w-3.5 h-3.5" strokeWidth={3} /> : <ArrowUpRight className="w-3.5 h-3.5" strokeWidth={3} />}
                                     {t === 'BUY' ? 'Compra' : 'Venda'}
                                 </button>
@@ -437,7 +473,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
 
                         {/* Ativo e Classe (Smart Detection) */}
                         <div>
-                            <div className="flex justify-between items-center mb-1.5 px-1">
+                            <div className="flex justify-between items-center mb-1 px-1">
                                 <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Código do Ativo</label>
                                 {ticker.length >= 4 && (
                                     <span className={`text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider flex items-center gap-1 ${assetType === AssetType.FII ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' : 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400'}`}>
@@ -452,7 +488,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                                     value={ticker} 
                                     onChange={e => handleTickerChange(e.target.value)} 
                                     placeholder="EX: PETR4" 
-                                    className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl px-4 py-4 text-2xl font-black uppercase outline-none focus:border-zinc-400 dark:focus:border-zinc-600 focus:ring-4 focus:ring-zinc-100 dark:focus:ring-zinc-800 transition-all placeholder:text-zinc-300" 
+                                    className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl px-4 py-3 text-xl font-black uppercase outline-none focus:border-zinc-400 dark:focus:border-zinc-600 focus:ring-4 focus:ring-zinc-100 dark:focus:ring-zinc-800 transition-all placeholder:text-zinc-300" 
                                 />
                                 {ticker && (
                                     <div className="absolute right-3 top-1/2 -translate-y-1/2 flex gap-1">
@@ -465,37 +501,44 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                         </div>
 
                         {/* Qtd e Preço */}
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1 mb-1.5 block">Quantidade</label>
+                                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1 mb-1 block">Quantidade</label>
                                 <div className="relative">
-                                    <input type="number" value={quantity} onChange={e => setQuantity(e.target.value)} placeholder="0" className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl pl-4 pr-8 py-3.5 text-lg font-bold outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-all" />
+                                    <input type="number" value={quantity} onChange={e => setQuantity(e.target.value)} placeholder="0" className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl pl-4 pr-8 py-3 text-lg font-bold outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-all" />
                                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-400 uppercase">un</span>
                                 </div>
                             </div>
                             <div>
-                                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1 mb-1.5 block">Preço Unitário</label>
+                                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1 mb-1 block">Preço Unitário</label>
                                 <div className="relative">
                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-zinc-400">R$</span>
-                                    <input type="number" step="0.01" value={price} onChange={e => setPrice(e.target.value)} placeholder="0.00" className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl pl-9 pr-4 py-3.5 text-lg font-bold outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-all" />
+                                    <input 
+                                        type="text" 
+                                        inputMode="numeric"
+                                        value={price} 
+                                        onChange={handlePriceChange} 
+                                        placeholder="0,00" 
+                                        className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl pl-9 pr-4 py-3 text-lg font-bold outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-all" 
+                                    />
                                 </div>
                             </div>
                         </div>
 
                         {/* Data */}
                         <div>
-                            <div className="flex justify-between items-center mb-1.5 px-1">
+                            <div className="flex justify-between items-center mb-1 px-1">
                                 <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Data da Ordem</label>
                                 <button onClick={() => setDate(new Date().toISOString().split('T')[0])} className="text-[9px] font-bold text-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-0.5 rounded hover:bg-indigo-100 transition-colors">
                                     Hoje
                                 </button>
                             </div>
-                            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl px-4 py-3.5 text-sm font-bold outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-all" />
+                            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl px-4 py-3 text-sm font-bold outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-all" />
                         </div>
 
                         {/* Receipt Summary */}
-                        <div className="pt-2 pb-4">
-                            <div className="bg-zinc-50 dark:bg-zinc-800/50 border border-dashed border-zinc-300 dark:border-zinc-700 rounded-2xl p-4 flex justify-between items-center relative overflow-hidden">
+                        <div className="pt-2">
+                            <div className="bg-zinc-50 dark:bg-zinc-800/50 border border-dashed border-zinc-300 dark:border-zinc-700 rounded-2xl p-3 flex justify-between items-center relative overflow-hidden">
                                 <div className="absolute left-0 top-1/2 -translate-y-1/2 w-3 h-6 bg-white dark:bg-zinc-900 rounded-r-full border-y border-r border-zinc-200 dark:border-zinc-800"></div>
                                 <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-6 bg-white dark:bg-zinc-900 rounded-l-full border-y border-l border-zinc-200 dark:border-zinc-800"></div>
                                 
@@ -506,18 +549,18 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                                     <div>
                                         <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Total Estimado</p>
                                         <p className="text-xs text-zinc-500 font-medium">
-                                            {quantity || 0} un x {formatBRL(parseFloat(price) || 0)}
+                                            {quantity || 0} un x {formatBRL(rawPrice)}
                                         </p>
                                     </div>
                                 </div>
                                 <div className="text-right pr-2">
-                                    <p className={`text-xl font-black tracking-tight ${type === 'BUY' ? 'text-zinc-900 dark:text-white' : 'text-emerald-500'}`}>
+                                    <p className={`text-lg font-black tracking-tight ${type === 'BUY' ? 'text-zinc-900 dark:text-white' : 'text-emerald-500'}`}>
                                         {formatBRL(estimatedTotal)}
                                     </p>
                                 </div>
                             </div>
                             
-                            <button onClick={handleSave} disabled={isSaving || !ticker || !quantity || !price} className="w-full mt-4 py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl press-effect disabled:opacity-50 disabled:cursor-not-allowed">
+                            <button onClick={handleSave} disabled={isSaving || !ticker || !quantity || !price} className="w-full mt-3 py-3.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl press-effect disabled:opacity-50 disabled:cursor-not-allowed">
                                 {isSaving ? 'Salvando...' : 'Confirmar Ordem'}
                             </button>
                         </div>
