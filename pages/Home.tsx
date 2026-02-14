@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, MarketIndicators } from '../types';
-import { CircleDollarSign, CalendarClock, PieChart as PieIcon, TrendingUp, TrendingDown, ArrowUpRight, Wallet, ArrowRight, Zap, Target, Layers, LayoutGrid, Coins, Sparkles, CheckCircle2, Lock, Calendar, Trophy, Medal, Star, ListFilter, TrendingUp as GrowthIcon, Anchor, Calculator, Repeat, ChevronRight, Hourglass, Landmark, Crown, LockKeyhole, Info, Percent } from 'lucide-react';
+import { CircleDollarSign, CalendarClock, PieChart as PieIcon, TrendingUp, TrendingDown, ArrowUpRight, Wallet, ArrowRight, Zap, Target, Layers, LayoutGrid, Coins, Sparkles, CheckCircle2, Lock, Calendar, Trophy, Medal, Star, ListFilter, TrendingUp as GrowthIcon, Anchor, Calculator, Repeat, ChevronRight, Hourglass, Landmark, Crown, LockKeyhole, Info, Percent, BarChart2 } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area, ReferenceLine } from 'recharts';
 
@@ -101,7 +101,7 @@ interface HomeProps {
   invested: number;
   balance: number;
   totalAppreciation: number;
-  marketIndicators: MarketIndicators; // Props nova
+  marketIndicators: MarketIndicators; 
   privacyMode?: boolean;
   onViewAsset?: (ticker: string) => void;
 }
@@ -123,8 +123,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
   // Calculo de Ganho Real (Fisher Equation Simplificada para o contexto)
   // Real = ((1 + Nominal) / (1 + Inflacao)) - 1
-  const inflationRate = marketIndicators.ipca_cumulative || 0;
-  // Assumindo YoC como o rendimento da carteira no período (aproximação para o card)
+  // Assumindo YoC como o rendimento da carteira no período para simplificação no card
+  const inflationRate = marketIndicators.ipca_cumulative || 4.62;
   const realYield = (((1 + (yieldOnCost / 100)) / (1 + (inflationRate / 100))) - 1) * 100;
 
   // 1. Alocação (Classes e Ativos)
@@ -159,12 +159,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       return { byClass, byAsset };
   }, [portfolio, balance]);
 
-  // 2. Agenda (Proventos Futuros) - AGRUPADA & COMPACTA
+  // 2. Agenda (Proventos Futuros)
   const agendaData = useMemo(() => {
       const todayStr = new Date().toISOString().split('T')[0];
       const validReceipts = dividendReceipts.filter(d => d && (d.paymentDate || d.dateCom));
       
-      // Filtra futuros ou hoje
       const future = validReceipts.filter(d => (d.paymentDate && d.paymentDate >= todayStr) || (!d.paymentDate && d.dateCom >= todayStr))
           .sort((a, b) => (a.paymentDate || a.dateCom || '').localeCompare(b.paymentDate || b.dateCom || ''));
       
@@ -176,7 +175,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           daysToNext = getDaysUntil(nextPayment.paymentDate || nextPayment.dateCom);
       }
 
-      // Agrupamento por Mês
       const grouped: Record<string, DividendReceipt[]> = {};
       future.forEach(item => {
           const dateRef = item.paymentDate || item.dateCom;

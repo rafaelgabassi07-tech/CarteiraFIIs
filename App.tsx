@@ -8,7 +8,7 @@ import { Transactions } from './pages/Transactions';
 import { News } from './pages/News';
 import { Settings } from './pages/Settings';
 import { Login } from './pages/Login';
-import { Transaction, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals, ServiceMetric, ThemeType, ScrapeResult, UpdateReportData } from './types';
+import { Transaction, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals, ServiceMetric, ThemeType, ScrapeResult, UpdateReportData, MarketIndicators } from './types';
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData, triggerScraperUpdate, mapScraperToFundamentals, fetchFutureAnnouncements } from './services/dataService';
 import { getQuantityOnDate, isSameDayLocal, mapSupabaseToTx, processPortfolio, normalizeTicker } from './services/portfolioRules';
@@ -117,11 +117,21 @@ const App: React.FC = () => {
   
   const [dividends, setDividends] = useState<DividendReceipt[]>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.DIVS); return s ? JSON.parse(s) : []; } catch { return []; } });
   
-  const [marketIndicators, setMarketIndicators] = useState<{ipca: number, startDate: string}>(() => { 
+  // CORREÇÃO: Usando a interface MarketIndicators correta e lógica de migração
+  const [marketIndicators, setMarketIndicators] = useState<MarketIndicators>(() => { 
       try { 
           const s = localStorage.getItem(STORAGE_KEYS.INDICATORS); 
-          return s ? JSON.parse(s) : { ipca: 4.62, startDate: '' }; 
-      } catch { return { ipca: 4.62, startDate: '' }; } 
+          const parsed = s ? JSON.parse(s) : null;
+          
+          if (parsed) {
+              // Migração de dados antigos se necessário
+              return { 
+                  ipca_cumulative: parsed.ipca_cumulative ?? parsed.ipca ?? 4.62, 
+                  start_date_used: parsed.start_date_used ?? parsed.startDate ?? '' 
+              }; 
+          }
+          return { ipca_cumulative: 4.62, start_date_used: '' }; 
+      } catch { return { ipca_cumulative: 4.62, start_date_used: '' }; } 
   });
   
   const [assetsMetadata, setAssetsMetadata] = useState<Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }>>(() => {
@@ -356,8 +366,8 @@ const App: React.FC = () => {
       
       if (data.indicators) {
          setMarketIndicators({ 
-             ipca: data.indicators.ipca_cumulative || 4.62, 
-             startDate: data.indicators.start_date_used 
+             ipca_cumulative: data.indicators.ipca_cumulative || 4.62, 
+             start_date_used: data.indicators.start_date_used 
          });
       }
 
