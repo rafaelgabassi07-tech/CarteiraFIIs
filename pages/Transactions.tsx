@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { TrendingUp, TrendingDown, Plus, Hash, Trash2, Save, X, ArrowRightLeft, Building2, CandlestickChart, Filter, Check, Calendar, CheckSquare, Search, ChevronDown, RefreshCw, Wallet, DollarSign, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
+import { TrendingUp, TrendingDown, Plus, Hash, Trash2, Save, X, ArrowRightLeft, Building2, CandlestickChart, Filter, Check, Calendar, CheckSquare, Search, ChevronDown, RefreshCw, Wallet, DollarSign, ArrowUpRight, ArrowDownLeft, Calculator, Tag } from 'lucide-react';
 import { SwipeableModal, ConfirmationModal } from '../components/Layout';
 import { Transaction, AssetType } from '../types';
 import { supabase } from '../services/supabase';
@@ -280,6 +280,25 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
         setIsModalOpen(true);
     };
 
+    // Smart Asset Detection Logic
+    const handleTickerChange = (raw: string) => {
+        const up = raw.toUpperCase().trim();
+        setTicker(up);
+        
+        // Auto-detect asset type if not in edit mode
+        if (!editingId && up.length >= 4) {
+            if (up.endsWith('11') || up.endsWith('11B')) {
+                setAssetType(AssetType.FII);
+            } else if (up.match(/\d$/)) {
+                // Ends in a number (3, 4, 5, 6 etc) usually stocks
+                const lastChar = up.slice(-1);
+                if (['3','4','5','6'].includes(lastChar)) {
+                    setAssetType(AssetType.STOCK);
+                }
+            }
+        }
+    };
+
     const handleSave = async () => {
         if (!ticker || !quantity || !price || !date || isSaving) return;
         setIsSaving(true);
@@ -393,52 +412,113 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
             <SwipeableModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
                 <div className="p-6 pb-20">
                     <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-xl font-black text-zinc-900 dark:text-white">{editingId ? 'Editar Ordem' : 'Nova Ordem'}</h2>
-                        {editingId && <button onClick={() => onRequestDeleteConfirmation(editingId)} className="p-2 text-rose-500 bg-rose-50 rounded-lg"><Trash2 className="w-5 h-5" /></button>}
+                        <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${editingId ? 'bg-indigo-100 dark:bg-indigo-900/20 text-indigo-600' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600'}`}>
+                                {editingId ? <ArrowRightLeft className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-black text-zinc-900 dark:text-white leading-none">{editingId ? 'Editar Ordem' : 'Nova Ordem'}</h2>
+                                <p className="text-xs text-zinc-500 font-medium mt-0.5">Preencha os dados do ativo</p>
+                            </div>
+                        </div>
+                        {editingId && <button onClick={() => onRequestDeleteConfirmation(editingId)} className="p-2 text-rose-500 bg-rose-50 rounded-lg press-effect"><Trash2 className="w-5 h-5" /></button>}
                     </div>
                     
-                    <div className="space-y-4">
-                        <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl">
+                    <div className="space-y-5">
+                        {/* Tipo de Operação */}
+                        <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1.5 rounded-2xl">
                             {['BUY', 'SELL'].map(t => (
-                                <button key={t} onClick={() => setType(t as any)} className={`flex-1 py-3 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${type === t ? (t === 'BUY' ? 'bg-emerald-500 text-white shadow-lg' : 'bg-rose-500 text-white shadow-lg') : 'text-zinc-400'}`}>
+                                <button key={t} onClick={() => setType(t as any)} className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${type === t ? (t === 'BUY' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-rose-500 text-white shadow-lg shadow-rose-500/20') : 'text-zinc-400 hover:text-zinc-600'}`}>
+                                    {t === 'BUY' ? <ArrowDownLeft className="w-3.5 h-3.5" strokeWidth={3} /> : <ArrowUpRight className="w-3.5 h-3.5" strokeWidth={3} />}
                                     {t === 'BUY' ? 'Compra' : 'Venda'}
                                 </button>
                             ))}
                         </div>
 
+                        {/* Ativo e Classe (Smart Detection) */}
                         <div>
-                            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Ativo</label>
-                            <div className="flex gap-2 mt-1">
-                                <input type="text" value={ticker} onChange={e => { setTicker(e.target.value.toUpperCase()); if (!editingId && e.target.value.endsWith('11')) setAssetType(AssetType.FII); }} placeholder="ABCD11" className="flex-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-lg font-black uppercase outline-none focus:border-zinc-400 dark:focus:border-zinc-600" />
-                                <button onClick={() => setAssetType(assetType === AssetType.FII ? AssetType.STOCK : AssetType.FII)} className="px-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-xs font-bold border border-zinc-200 dark:border-zinc-700 min-w-[60px]">
-                                    {assetType === AssetType.FII ? 'FII' : 'AÇÃO'}
+                            <div className="flex justify-between items-center mb-1.5 px-1">
+                                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Código do Ativo</label>
+                                {ticker.length >= 4 && (
+                                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider flex items-center gap-1 ${assetType === AssetType.FII ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' : 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400'}`}>
+                                        <Tag className="w-2.5 h-2.5" />
+                                        {assetType === AssetType.FII ? 'Fundo Imob.' : 'Ação'}
+                                    </span>
+                                )}
+                            </div>
+                            <div className="relative group">
+                                <input 
+                                    type="text" 
+                                    value={ticker} 
+                                    onChange={e => handleTickerChange(e.target.value)} 
+                                    placeholder="EX: PETR4" 
+                                    className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl px-4 py-4 text-2xl font-black uppercase outline-none focus:border-zinc-400 dark:focus:border-zinc-600 focus:ring-4 focus:ring-zinc-100 dark:focus:ring-zinc-800 transition-all placeholder:text-zinc-300" 
+                                />
+                                {ticker && (
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 flex gap-1">
+                                        <button onClick={() => setAssetType(assetType === AssetType.FII ? AssetType.STOCK : AssetType.FII)} className="px-3 py-1.5 rounded-lg bg-zinc-200 dark:bg-zinc-800 text-[10px] font-bold text-zinc-500 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors">
+                                            Trocar
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Qtd e Preço */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1 mb-1.5 block">Quantidade</label>
+                                <div className="relative">
+                                    <input type="number" value={quantity} onChange={e => setQuantity(e.target.value)} placeholder="0" className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl pl-4 pr-8 py-3.5 text-lg font-bold outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-all" />
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-zinc-400 uppercase">un</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1 mb-1.5 block">Preço Unitário</label>
+                                <div className="relative">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-zinc-400">R$</span>
+                                    <input type="number" step="0.01" value={price} onChange={e => setPrice(e.target.value)} placeholder="0.00" className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl pl-9 pr-4 py-3.5 text-lg font-bold outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-all" />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Data */}
+                        <div>
+                            <div className="flex justify-between items-center mb-1.5 px-1">
+                                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Data da Ordem</label>
+                                <button onClick={() => setDate(new Date().toISOString().split('T')[0])} className="text-[9px] font-bold text-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-0.5 rounded hover:bg-indigo-100 transition-colors">
+                                    Hoje
                                 </button>
                             </div>
+                            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl px-4 py-3.5 text-sm font-bold outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-all" />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Qtd</label>
-                                <input type="number" value={quantity} onChange={e => setQuantity(e.target.value)} placeholder="0" className="w-full mt-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-lg font-bold outline-none" />
+                        {/* Receipt Summary */}
+                        <div className="pt-2">
+                            <div className="bg-zinc-50 dark:bg-zinc-800/50 border border-dashed border-zinc-300 dark:border-zinc-700 rounded-2xl p-4 flex justify-between items-center relative overflow-hidden">
+                                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-3 h-6 bg-white dark:bg-zinc-900 rounded-r-full border-y border-r border-zinc-200 dark:border-zinc-800"></div>
+                                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-6 bg-white dark:bg-zinc-900 rounded-l-full border-y border-l border-zinc-200 dark:border-zinc-800"></div>
+                                
+                                <div className="flex items-center gap-3 pl-2">
+                                    <div className="w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center text-zinc-500">
+                                        <Calculator className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Total Estimado</p>
+                                        <p className="text-xs text-zinc-500 font-medium">
+                                            {quantity || 0} un x {formatBRL(parseFloat(price) || 0)}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="text-right pr-2">
+                                    <p className={`text-xl font-black tracking-tight ${type === 'BUY' ? 'text-zinc-900 dark:text-white' : 'text-emerald-500'}`}>
+                                        {formatBRL(estimatedTotal)}
+                                    </p>
+                                </div>
                             </div>
-                            <div>
-                                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Preço</label>
-                                <input type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="0.00" className="w-full mt-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-lg font-bold outline-none" />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Data</label>
-                            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full mt-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-sm font-bold outline-none" />
-                        </div>
-
-                        <div className="pt-4">
-                            <div className="flex justify-between items-center mb-4 px-2">
-                                <span className="text-xs font-bold text-zinc-500">Total Estimado</span>
-                                <span className="text-xl font-black text-zinc-900 dark:text-white">{formatBRL(estimatedTotal)}</span>
-                            </div>
-                            <button onClick={handleSave} disabled={isSaving || !ticker || !quantity || !price} className="w-full py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl press-effect disabled:opacity-50">
-                                {isSaving ? 'Salvando...' : 'Confirmar'}
+                            
+                            <button onClick={handleSave} disabled={isSaving || !ticker || !quantity || !price} className="w-full mt-4 py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl press-effect disabled:opacity-50 disabled:cursor-not-allowed">
+                                {isSaving ? 'Salvando...' : 'Confirmar Ordem'}
                             </button>
                         </div>
                     </div>
