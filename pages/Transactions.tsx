@@ -410,8 +410,8 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
             </div>
 
             <SwipeableModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
-                <div className="p-6 pb-20">
-                    <div className="flex justify-between items-center mb-6">
+                <div className="p-6 pb-20 h-full flex flex-col">
+                    <div className="flex justify-between items-center mb-6 shrink-0">
                         <div className="flex items-center gap-3">
                             <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${editingId ? 'bg-indigo-100 dark:bg-indigo-900/20 text-indigo-600' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600'}`}>
                                 {editingId ? <ArrowRightLeft className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
@@ -424,7 +424,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                         {editingId && <button onClick={() => onRequestDeleteConfirmation(editingId)} className="p-2 text-rose-500 bg-rose-50 rounded-lg press-effect"><Trash2 className="w-5 h-5" /></button>}
                     </div>
                     
-                    <div className="space-y-5">
+                    <div className="space-y-5 flex-1 overflow-y-auto no-scrollbar pb-safe">
                         {/* Tipo de Operação */}
                         <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1.5 rounded-2xl">
                             {['BUY', 'SELL'].map(t => (
@@ -494,7 +494,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                         </div>
 
                         {/* Receipt Summary */}
-                        <div className="pt-2">
+                        <div className="pt-2 pb-4">
                             <div className="bg-zinc-50 dark:bg-zinc-800/50 border border-dashed border-zinc-300 dark:border-zinc-700 rounded-2xl p-4 flex justify-between items-center relative overflow-hidden">
                                 <div className="absolute left-0 top-1/2 -translate-y-1/2 w-3 h-6 bg-white dark:bg-zinc-900 rounded-r-full border-y border-r border-zinc-200 dark:border-zinc-800"></div>
                                 <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-6 bg-white dark:bg-zinc-900 rounded-l-full border-y border-l border-zinc-200 dark:border-zinc-800"></div>

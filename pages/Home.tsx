@@ -129,7 +129,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           { name: 'Ações', value: stocks, color: '#0ea5e9' }
       ].filter(d => d.value > 0);
 
-      // Sort by Value DESC and take top 12 to show in list
+      // Sort by Value DESC and take top 15 to show in list
       const byAsset = assetList.sort((a,b) => b.value - a.value).slice(0, 15);
 
       return { byClass, byAsset };
