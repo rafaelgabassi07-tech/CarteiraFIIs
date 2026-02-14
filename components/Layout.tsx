@@ -199,7 +199,7 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
             transform: isVisible ? `translateY(${dragY}px)` : 'translateY(100%)',
             transition: dragY === 0 ? 'transform 500ms cubic-bezier(0.32, 0.72, 0, 1)' : 'none',
         }}
-        className={`relative bg-white dark:bg-zinc-900 w-full max-h-[92dvh] rounded-t-[2.5rem] shadow-2xl shadow-black/50 overflow-hidden flex flex-col`}
+        className={`relative bg-white dark:bg-zinc-900 w-full h-[90dvh] rounded-t-[2.5rem] shadow-2xl shadow-black/50 overflow-hidden flex flex-col`}
       >
         {/* Handle */}
         <div className="w-full flex justify-center pt-4 pb-2 bg-white dark:bg-zinc-900 shrink-0 cursor-grab active:cursor-grabbing touch-none"

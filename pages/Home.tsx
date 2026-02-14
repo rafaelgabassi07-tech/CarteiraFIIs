@@ -106,7 +106,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   // 1. Alocação (Classes e Ativos)
   const allocationData = useMemo(() => {
       let fiis = 0, stocks = 0;
-      const assetList: { name: string, value: number, color: string, percent: number }[] = [];
+      const assetList: { name: string, value: number, color: string, percent: number, pm: number, current: number }[] = [];
       const totalBalance = balance || 1;
 
       portfolio.forEach((p, idx) => {
@@ -117,7 +117,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   name: p.ticker, 
                   value: v, 
                   color: CHART_COLORS[idx % CHART_COLORS.length],
-                  percent: (v / totalBalance) * 100
+                  percent: (v / totalBalance) * 100,
+                  pm: p.averagePrice,
+                  current: p.currentPrice || 0
               });
           }
       });
@@ -128,7 +130,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       ].filter(d => d.value > 0);
 
       // Sort by Value DESC and take top 12 to show in list
-      const byAsset = assetList.sort((a,b) => b.value - a.value).slice(0, 12);
+      const byAsset = assetList.sort((a,b) => b.value - a.value).slice(0, 15);
 
       return { byClass, byAsset };
   }, [portfolio, balance]);
@@ -158,7 +160,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       return { list: future, grouped, totalFuture, nextPayment };
   }, [dividendReceipts]);
 
-  // 3. Renda (Histórico) - COM LISTA DE ÚLTIMOS PAGAMENTOS
+  // 3. Renda (Histórico) - COM LISTA DE ÚLTIMOS PAGAMENTOS E AGRUPAMENTO
   const incomeData = useMemo(() => {
       const groups: Record<string, number> = {};
       const todayStr = new Date().toISOString().split('T')[0];
@@ -200,12 +202,20 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       const average = chartData.reduce((acc, cur) => acc + cur.value, 0) / (chartData.length || 1);
       const max = Math.max(...chartData.map(d => d.value));
 
-      // Últimos 20 pagamentos recebidos (History List)
+      // Últimos 50 pagamentos recebidos
       const history = receivedList
           .sort((a, b) => b.paymentDate.localeCompare(a.paymentDate))
-          .slice(0, 20);
+          .slice(0, 50);
 
-      return { chartData, average, max, history };
+      // Agrupamento para lista
+      const groupedHistory: Record<string, DividendReceipt[]> = {};
+      history.forEach(d => {
+          const k = d.paymentDate.substring(0, 7);
+          if(!groupedHistory[k]) groupedHistory[k] = [];
+          groupedHistory[k].push(d);
+      });
+
+      return { chartData, average, max, history, groupedHistory };
   }, [dividendReceipts]);
 
   const currentMonthIncome = incomeData.chartData[incomeData.chartData.length - 1]?.value || 0;
@@ -409,8 +419,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
         {/* 1. AGENDA (Compact Mode) */}
         <SwipeableModal isOpen={showAgenda} onClose={() => setShowAgenda(false)}>
-            <div className="p-6 pb-20 min-h-[60vh] anim-slide-up">
-                <div className="flex items-center gap-4 mb-6">
+            <div className="p-6 pb-20 h-full flex flex-col anim-slide-up">
+                <div className="flex items-center gap-4 mb-6 shrink-0">
                     <div className="w-12 h-12 rounded-2xl bg-violet-100 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 flex items-center justify-center">
                         <CalendarClock className="w-6 h-6" />
                     </div>
@@ -420,114 +430,127 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                 </div>
 
-                {Object.keys(agendaData.grouped).length > 0 ? (
-                    <div className="space-y-6">
-                        {Object.entries(agendaData.grouped).map(([monthKey, items]) => (
-                            <div key={monthKey}>
-                                <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2 sticky top-0 bg-white dark:bg-zinc-900 py-2 z-10 border-b border-zinc-100 dark:border-zinc-800">
-                                    {getMonthName(monthKey + '-01')}
-                                </h3>
-                                <div className="space-y-0">
-                                    {(items as DividendReceipt[]).map((item, idx) => {
-                                        const isToday = item.paymentDate === new Date().toISOString().split('T')[0];
-                                        return (
-                                            <div key={idx} className={`flex items-center justify-between py-3 border-b border-zinc-50 dark:border-zinc-800/50 last:border-0 ${isToday ? 'bg-violet-50/50 dark:bg-violet-900/10 px-2 rounded-lg -mx-2' : ''}`}>
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black ${isToday ? 'bg-violet-500 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'}`}>
-                                                        {item.ticker.substring(0, 2)}
-                                                    </div>
-                                                    <div>
-                                                        <div className="flex items-center gap-2">
-                                                            <h4 className="font-bold text-xs text-zinc-900 dark:text-white">{item.ticker}</h4>
-                                                            <span className="text-[9px] text-zinc-400 uppercase">{item.type}</span>
+                <div className="flex-1 overflow-y-auto min-h-0">
+                    {Object.keys(agendaData.grouped).length > 0 ? (
+                        <div className="space-y-6">
+                            {Object.entries(agendaData.grouped).map(([monthKey, items]) => (
+                                <div key={monthKey}>
+                                    <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2 sticky top-0 bg-white dark:bg-zinc-900 py-2 z-10 border-b border-zinc-100 dark:border-zinc-800">
+                                        {getMonthName(monthKey + '-01')}
+                                    </h3>
+                                    <div className="space-y-0">
+                                        {(items as DividendReceipt[]).map((item, idx) => {
+                                            const isToday = item.paymentDate === new Date().toISOString().split('T')[0];
+                                            return (
+                                                <div key={idx} className={`flex items-center justify-between py-3 border-b border-zinc-50 dark:border-zinc-800/50 last:border-0 ${isToday ? 'bg-violet-50/50 dark:bg-violet-900/10 px-2 rounded-lg -mx-2' : ''}`}>
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black ${isToday ? 'bg-violet-500 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'}`}>
+                                                            {item.ticker.substring(0, 2)}
                                                         </div>
-                                                        <p className="text-[10px] text-zinc-500 font-medium">
-                                                            {item.paymentDate ? `Pag: ${formatDateShort(item.paymentDate)}` : `Com: ${formatDateShort(item.dateCom)}`}
-                                                        </p>
+                                                        <div>
+                                                            <div className="flex items-center gap-2">
+                                                                <h4 className="font-bold text-xs text-zinc-900 dark:text-white">{item.ticker}</h4>
+                                                                <span className="text-[9px] text-zinc-400 uppercase">{item.type}</span>
+                                                            </div>
+                                                            <p className="text-[10px] text-zinc-500 font-medium">
+                                                                {item.paymentDate ? `Pag: ${formatDateShort(item.paymentDate)}` : `Com: ${formatDateShort(item.dateCom)}`}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className={`font-bold text-sm ${isToday ? 'text-violet-600 dark:text-violet-400' : 'text-emerald-600 dark:text-emerald-400'}`}>{formatBRL(item.totalReceived, privacyMode)}</p>
                                                     </div>
                                                 </div>
-                                                <div className="text-right">
-                                                    <p className={`font-bold text-sm ${isToday ? 'text-violet-600 dark:text-violet-400' : 'text-emerald-600 dark:text-emerald-400'}`}>{formatBRL(item.totalReceived, privacyMode)}</p>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
+                                            );
+                                        })}
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <div className="text-center py-10 opacity-50">
-                        <CalendarClock className="w-12 h-12 mx-auto mb-3 text-zinc-300" />
-                        <p className="text-sm font-bold text-zinc-500">Sem proventos futuros confirmados.</p>
-                    </div>
-                )}
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-10 opacity-50">
+                            <CalendarClock className="w-12 h-12 mx-auto mb-3 text-zinc-300" />
+                            <p className="text-sm font-bold text-zinc-500">Sem proventos futuros confirmados.</p>
+                        </div>
+                    )}
+                </div>
             </div>
         </SwipeableModal>
 
         {/* 2. RENDA (Com Histórico) */}
         <SwipeableModal isOpen={showProventos} onClose={() => setShowProventos(false)}>
-            <div className="p-6 pb-20 anim-slide-up">
-                <div className="flex items-center gap-4 mb-6">
+            <div className="p-6 pb-20 h-full flex flex-col anim-slide-up">
+                <div className="flex items-center gap-4 mb-6 shrink-0">
                     <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
                         <CircleDollarSign className="w-6 h-6" />
                     </div>
                     <div>
                         <h2 className="text-2xl font-bold text-zinc-900 dark:text-white leading-none">Evolução</h2>
-                        <p className="text-xs text-zinc-500 font-medium mt-1">Histórico de 6 Meses</p>
+                        <p className="text-xs text-zinc-500 font-medium mt-1">Histórico de Proventos</p>
                     </div>
                 </div>
 
-                <div className="h-56 w-full mt-4 mb-6">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={incomeData.chartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-                            <defs>
-                                <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
-                            <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#71717a' }} dy={10} />
-                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#71717a' }} tickFormatter={(val) => `R$${val}`} />
-                            <RechartsTooltip 
-                                contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: '#18181b', color: '#fff', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
-                                labelStyle={{ color: '#a1a1aa', marginBottom: '4px', fontSize: '10px', textTransform: 'uppercase' }}
-                                formatter={(value: number) => [formatBRL(value), 'Renda']}
-                            />
-                            <Area type="monotone" dataKey="value" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorIncome)" />
-                        </AreaChart>
-                    </ResponsiveContainer>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-3 mb-8">
-                    <div className="bg-zinc-50 dark:bg-zinc-800 p-4 rounded-2xl">
-                        <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Média Mensal</p>
-                        <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(incomeData.average, privacyMode)}</p>
+                <div className="flex-1 overflow-y-auto min-h-0">
+                    <div className="h-56 w-full mb-6 shrink-0">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={incomeData.chartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
+                                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#71717a' }} dy={10} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#71717a' }} tickFormatter={(val) => `R$${val}`} />
+                                <RechartsTooltip 
+                                    contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: '#18181b', color: '#fff', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
+                                    labelStyle={{ color: '#a1a1aa', marginBottom: '4px', fontSize: '10px', textTransform: 'uppercase' }}
+                                    formatter={(value: number) => [formatBRL(value), 'Renda']}
+                                />
+                                <Area type="monotone" dataKey="value" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorIncome)" />
+                            </AreaChart>
+                        </ResponsiveContainer>
                     </div>
-                    <div className="bg-emerald-50 dark:bg-emerald-900/10 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/20">
-                        <p className="text-[10px] text-emerald-600 dark:text-emerald-400 uppercase font-bold mb-1">Recorde</p>
-                        <p className="text-lg font-black text-emerald-700 dark:text-emerald-400">{formatBRL(incomeData.max, privacyMode)}</p>
+                    
+                    <div className="grid grid-cols-2 gap-3 mb-8 shrink-0">
+                        <div className="bg-zinc-50 dark:bg-zinc-800 p-4 rounded-2xl">
+                            <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Média Mensal</p>
+                            <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(incomeData.average, privacyMode)}</p>
+                        </div>
+                        <div className="bg-emerald-50 dark:bg-emerald-900/10 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/20">
+                            <p className="text-[10px] text-emerald-600 dark:text-emerald-400 uppercase font-bold mb-1">Recorde</p>
+                            <p className="text-lg font-black text-emerald-700 dark:text-emerald-400">{formatBRL(incomeData.max, privacyMode)}</p>
+                        </div>
                     </div>
-                </div>
 
-                {/* Histórico Recente (Lista) */}
-                <div>
-                    <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-4">Últimos Pagamentos</h3>
-                    <div className="space-y-3">
-                        {incomeData.history.length > 0 ? (
-                            incomeData.history.map((div, i) => (
-                                <div key={i} className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[9px] font-black text-zinc-500">
-                                            {div.ticker.substring(0,2)}
-                                        </div>
-                                        <div>
-                                            <p className="text-xs font-bold text-zinc-900 dark:text-white">{div.ticker}</p>
-                                            <p className="text-[10px] text-zinc-400">{formatDateShort(div.paymentDate)} • {div.type}</p>
-                                        </div>
+                    {/* Histórico Recente (Lista Agrupada) */}
+                    <div>
+                        {Object.keys(incomeData.groupedHistory).length > 0 ? (
+                            Object.entries(incomeData.groupedHistory)
+                                .sort((a,b) => b[0].localeCompare(a[0])) // Sort keys DESC (Newest month first)
+                                .map(([monthKey, items]) => (
+                                <div key={monthKey} className="mb-6">
+                                    <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3 sticky top-0 bg-white dark:bg-zinc-900 py-2 z-10 border-b border-zinc-100 dark:border-zinc-800">
+                                        {getMonthName(monthKey + '-01')}
+                                    </h3>
+                                    <div className="space-y-3">
+                                        {(items as DividendReceipt[]).map((div, i) => (
+                                            <div key={i} className="flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="flex flex-col items-center justify-center w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
+                                                        <span className="text-[10px] font-bold text-zinc-400 uppercase">{new Date(div.paymentDate).toLocaleDateString('pt-BR', {month:'short'}).replace('.','')}</span>
+                                                        <span className="text-sm font-black text-zinc-900 dark:text-white leading-none">{new Date(div.paymentDate).getDate()}</span>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs font-bold text-zinc-900 dark:text-white">{div.ticker}</p>
+                                                        <p className="text-[10px] text-zinc-400 uppercase font-medium">{div.type}</p>
+                                                    </div>
+                                                </div>
+                                                <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">+{formatBRL(div.totalReceived, privacyMode)}</p>
+                                            </div>
+                                        ))}
                                     </div>
-                                    <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">+{formatBRL(div.totalReceived, privacyMode)}</p>
                                 </div>
                             ))
                         ) : (
@@ -540,8 +563,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
         {/* 3. NÚMERO MÁGICO (CARD PREMIUM + FALLBACK) */}
         <SwipeableModal isOpen={showMagicNumber} onClose={() => setShowMagicNumber(false)}>
-            <div className="p-6 pb-20 min-h-[60vh] anim-slide-up">
-                <div className="flex items-center gap-4 mb-6">
+            <div className="p-6 pb-20 h-full flex flex-col anim-slide-up">
+                <div className="flex items-center gap-4 mb-6 shrink-0">
                     <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
                         <Sparkles className="w-6 h-6" />
                     </div>
@@ -551,66 +574,68 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                 </div>
 
-                {magicNumberData.length > 0 ? (
-                    <div className="space-y-4">
-                        {magicNumberData.map((item) => {
-                            const isReached = item.missing === 0;
-                            return (
-                                <div key={item.ticker} className={`p-5 rounded-2xl border transition-all ${isReached ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-900/30' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 shadow-sm'}`}>
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black ${isReached ? 'bg-white text-emerald-600 shadow-sm' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'}`}>
-                                                {item.ticker.substring(0,2)}
+                <div className="flex-1 overflow-y-auto min-h-0">
+                    {magicNumberData.length > 0 ? (
+                        <div className="space-y-4">
+                            {magicNumberData.map((item) => {
+                                const isReached = item.missing === 0;
+                                return (
+                                    <div key={item.ticker} className={`p-5 rounded-2xl border transition-all ${isReached ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-900/30' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 shadow-sm'}`}>
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black ${isReached ? 'bg-white text-emerald-600 shadow-sm' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'}`}>
+                                                    {item.ticker.substring(0,2)}
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-bold text-base text-zinc-900 dark:text-white">{item.ticker}</h4>
+                                                    <p className="text-[10px] text-zinc-500 font-medium">Preço: {formatBRL(item.price)}</p>
+                                                </div>
                                             </div>
+                                            <div className="text-right">
+                                                <span className={`text-[10px] font-black px-2 py-1 rounded-full ${isReached ? 'bg-emerald-200 text-emerald-800' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'}`}>
+                                                    {item.progress.toFixed(0)}%
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="h-2.5 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden mb-3">
+                                            <div 
+                                                className={`h-full rounded-full transition-all duration-1000 ${isReached ? 'bg-emerald-500' : 'bg-amber-500'}`} 
+                                                style={{ width: `${item.progress}%` }}
+                                            ></div>
+                                        </div>
+
+                                        <div className="flex justify-between items-end">
                                             <div>
-                                                <h4 className="font-bold text-base text-zinc-900 dark:text-white">{item.ticker}</h4>
-                                                <p className="text-[10px] text-zinc-500 font-medium">Preço: {formatBRL(item.price)}</p>
+                                                <p className="text-[9px] text-zinc-400 uppercase font-bold">Faltam</p>
+                                                <p className={`text-sm font-black ${isReached ? 'text-emerald-600' : 'text-zinc-900 dark:text-white'}`}>
+                                                    {isReached ? 'Atingido!' : `${item.missing} Cotas`}
+                                                </p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-[9px] text-zinc-400 uppercase font-bold">Rend. por Cota</p>
+                                                <p className="text-xs font-bold text-zinc-600 dark:text-zinc-300">~{formatBRL(item.estimatedDiv)}</p>
                                             </div>
                                         </div>
-                                        <div className="text-right">
-                                            <span className={`text-[10px] font-black px-2 py-1 rounded-full ${isReached ? 'bg-emerald-200 text-emerald-800' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'}`}>
-                                                {item.progress.toFixed(0)}%
-                                            </span>
-                                        </div>
                                     </div>
-
-                                    <div className="h-2.5 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden mb-3">
-                                        <div 
-                                            className={`h-full rounded-full transition-all duration-1000 ${isReached ? 'bg-emerald-500' : 'bg-amber-500'}`} 
-                                            style={{ width: `${item.progress}%` }}
-                                        ></div>
-                                    </div>
-
-                                    <div className="flex justify-between items-end">
-                                        <div>
-                                            <p className="text-[9px] text-zinc-400 uppercase font-bold">Faltam</p>
-                                            <p className={`text-sm font-black ${isReached ? 'text-emerald-600' : 'text-zinc-900 dark:text-white'}`}>
-                                                {isReached ? 'Atingido!' : `${item.missing} Cotas`}
-                                            </p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-[9px] text-zinc-400 uppercase font-bold">Rend. por Cota</p>
-                                            <p className="text-xs font-bold text-zinc-600 dark:text-zinc-300">~{formatBRL(item.estimatedDiv)}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                ) : (
-                    <div className="text-center py-10 opacity-50">
-                        <Sparkles className="w-12 h-12 mx-auto mb-3 text-zinc-300" />
-                        <p className="text-sm font-bold text-zinc-500">Dados insuficientes para cálculo.</p>
-                        <p className="text-[10px] text-zinc-400 mt-1 max-w-[200px] mx-auto">Adicione ativos com histórico de dividendos ou aguarde a atualização de mercado.</p>
-                    </div>
-                )}
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div className="text-center py-10 opacity-50">
+                            <Sparkles className="w-12 h-12 mx-auto mb-3 text-zinc-300" />
+                            <p className="text-sm font-bold text-zinc-500">Dados insuficientes para cálculo.</p>
+                            <p className="text-[10px] text-zinc-400 mt-1 max-w-[200px] mx-auto">Adicione ativos com histórico de dividendos ou aguarde a atualização de mercado.</p>
+                        </div>
+                    )}
+                </div>
             </div>
         </SwipeableModal>
 
         {/* 4. OBJETIVOS (LEVEL SYSTEM + METAS CLARAS) */}
         <SwipeableModal isOpen={showGoals} onClose={() => setShowGoals(false)}>
-            <div className="p-6 pb-20 anim-slide-up">
-                <div className="flex items-center gap-4 mb-8">
+            <div className="p-6 pb-20 h-full flex flex-col anim-slide-up">
+                <div className="flex items-center gap-4 mb-8 shrink-0">
                     <div className="w-12 h-12 rounded-2xl bg-rose-100 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 flex items-center justify-center">
                         <Trophy className="w-6 h-6" />
                     </div>
@@ -620,54 +645,56 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                 </div>
 
-                {/* Level Card */}
-                <div className="text-center mb-10 relative">
-                    <div className="inline-block p-1 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-rose-500 shadow-xl shadow-indigo-500/20 mb-4">
-                        <div className="w-24 h-24 rounded-full bg-white dark:bg-zinc-900 flex flex-col items-center justify-center border-4 border-transparent">
-                            <span className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-br from-indigo-600 to-purple-600">{goalsData.currentLevel.level}</span>
-                            <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mt-1">Nível</span>
+                <div className="flex-1 overflow-y-auto min-h-0">
+                    {/* Level Card */}
+                    <div className="text-center mb-10 relative">
+                        <div className="inline-block p-1 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-rose-500 shadow-xl shadow-indigo-500/20 mb-4">
+                            <div className="w-24 h-24 rounded-full bg-white dark:bg-zinc-900 flex flex-col items-center justify-center border-4 border-transparent">
+                                <span className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-br from-indigo-600 to-purple-600">{goalsData.currentLevel.level}</span>
+                                <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mt-1">Nível</span>
+                            </div>
+                        </div>
+                        <h3 className="text-2xl font-black text-zinc-900 dark:text-white">{goalsData.currentLevel.name}</h3>
+                        <div className="mt-4 px-8">
+                            <div className="h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                                <div 
+                                    className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/30 transition-all duration-1000 ease-out" 
+                                    style={{ width: `${goalsData.progress}%` }}
+                                ></div>
+                            </div>
+                            <p className="text-[10px] text-zinc-400 mt-2 font-bold uppercase tracking-widest">
+                                {goalsData.progress.toFixed(0)}% para {goalsData.nextLevel.name}
+                            </p>
                         </div>
                     </div>
-                    <h3 className="text-2xl font-black text-zinc-900 dark:text-white">{goalsData.currentLevel.name}</h3>
-                    <div className="mt-4 px-8">
-                        <div className="h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                            <div 
-                                className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/30 transition-all duration-1000 ease-out" 
-                                style={{ width: `${goalsData.progress}%` }}
-                            ></div>
-                        </div>
-                        <p className="text-[10px] text-zinc-400 mt-2 font-bold uppercase tracking-widest">
-                            {goalsData.progress.toFixed(0)}% para {goalsData.nextLevel.name}
-                        </p>
-                    </div>
-                </div>
 
-                {/* Concrete Goals */}
-                <div className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm space-y-6">
-                    <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-4">Próximos Marcos</h3>
-                    
-                    <ProgressBar 
-                        label="Meta de Patrimônio" 
-                        current={goalsData.patrimony.current} 
-                        target={goalsData.patrimony.target} 
-                        colorClass="bg-gradient-to-r from-blue-500 to-indigo-600"
-                        privacyMode={privacyMode}
-                    />
-                    
-                    <ProgressBar 
-                        label="Meta de Renda Mensal" 
-                        current={goalsData.income.current} 
-                        target={goalsData.income.target} 
-                        colorClass="bg-gradient-to-r from-emerald-400 to-emerald-600"
-                        privacyMode={privacyMode}
-                    />
+                    {/* Concrete Goals */}
+                    <div className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm space-y-6">
+                        <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-4">Próximos Marcos</h3>
+                        
+                        <ProgressBar 
+                            label="Meta de Patrimônio" 
+                            current={goalsData.patrimony.current} 
+                            target={goalsData.patrimony.target} 
+                            colorClass="bg-gradient-to-r from-blue-500 to-indigo-600"
+                            privacyMode={privacyMode}
+                        />
+                        
+                        <ProgressBar 
+                            label="Meta de Renda Mensal" 
+                            current={goalsData.income.current} 
+                            target={goalsData.income.target} 
+                            colorClass="bg-gradient-to-r from-emerald-400 to-emerald-600"
+                            privacyMode={privacyMode}
+                        />
+                    </div>
                 </div>
             </div>
         </SwipeableModal>
 
         {/* 5. ALOCAÇÃO (COM LISTA DE ATIVOS APRIMORADA) */}
         <SwipeableModal isOpen={showAllocation} onClose={() => setShowAllocation(false)}>
-             <div className="p-6 h-[80vh] flex flex-col anim-slide-up">
+             <div className="p-6 h-full flex flex-col anim-slide-up">
                 <div className="flex items-center gap-4 mb-6 shrink-0">
                     <div className="w-12 h-12 rounded-2xl bg-sky-100 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 flex items-center justify-center">
                         <PieIcon className="w-6 h-6" />
@@ -691,13 +718,14 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </button>
                 </div>
                 
-                <div className="flex-1 min-h-0 w-full relative mb-4 anim-scale-in">
+                {/* Gráfico fixo com altura controlada */}
+                <div className="flex-1 w-full min-h-[220px] max-h-[35%] relative mb-4 anim-scale-in">
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                             <Pie 
                                 data={allocationView === 'CLASS' ? allocationData.byClass : allocationData.byAsset} 
-                                innerRadius={80} 
-                                outerRadius={110} 
+                                innerRadius="60%" 
+                                outerRadius="80%" 
                                 paddingAngle={4} 
                                 dataKey="value" 
                                 cornerRadius={6}
@@ -717,7 +745,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                 </div>
 
-                <div className="overflow-y-auto pb-4 max-h-[40vh] shrink-0 no-scrollbar">
+                <div className="flex-1 overflow-y-auto pb-4 shrink-0 no-scrollbar">
                     {allocationView === 'CLASS' ? (
                         <div className="grid grid-cols-2 gap-3">
                             {allocationData.byClass.map((entry) => (
@@ -731,20 +759,25 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                             ))}
                         </div>
                     ) : (
-                        <div className="space-y-2">
+                        <div className="space-y-3 pr-2">
                             {allocationData.byAsset.map((entry, idx) => (
-                                <div key={entry.name} className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl border border-transparent dark:border-zinc-700/50 anim-slide-up" style={{ animationDelay: `${idx * 50}ms`, opacity: 0 }}>
-                                    <div className="flex items-center gap-3 flex-1">
-                                        <div className="w-1.5 h-8 rounded-full shrink-0" style={{ backgroundColor: entry.color }}></div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex justify-between items-center mb-1">
-                                                <p className="text-xs font-bold text-zinc-900 dark:text-white truncate">{entry.name}</p>
-                                                <span className="text-[10px] font-bold text-zinc-500">{entry.percent.toFixed(1)}%</span>
+                                <div key={entry.name} className="flex items-center justify-between anim-slide-up" style={{ animationDelay: `${idx * 30}ms`, opacity: 0 }}>
+                                    <div className="flex-1">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }}></div>
+                                                <span className="text-xs font-bold text-zinc-900 dark:text-white">{entry.name}</span>
                                             </div>
-                                            <div className="h-1.5 w-full bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden mb-1">
-                                                <div className="h-full rounded-full" style={{ width: `${entry.percent}%`, backgroundColor: entry.color }}></div>
-                                            </div>
-                                            <p className="text-[10px] font-medium text-zinc-400">{formatBRL(entry.value, privacyMode)}</p>
+                                            <span className="text-xs font-black text-zinc-900 dark:text-white">{entry.percent.toFixed(1)}%</span>
+                                        </div>
+                                        
+                                        <div className="h-1.5 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden mb-1">
+                                            <div className="h-full rounded-full" style={{ width: `${entry.percent}%`, backgroundColor: entry.color }}></div>
+                                        </div>
+                                        
+                                        <div className="flex justify-between text-[9px] text-zinc-400 font-medium">
+                                            <span>{formatBRL(entry.value, privacyMode)}</span>
+                                            <span>PM: {formatBRL(entry.pm)} • Atual: {formatBRL(entry.current)}</span>
                                         </div>
                                     </div>
                                 </div>
