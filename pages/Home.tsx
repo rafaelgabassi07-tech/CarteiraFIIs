@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
-import { CircleDollarSign, CalendarClock, PieChart as PieIcon, TrendingUp, TrendingDown, ArrowUpRight, Wallet, ArrowRight, Zap, Target, Layers, LayoutGrid, Coins, Sparkles, CheckCircle2, Lock, Calendar, Trophy, Medal, Star } from 'lucide-react';
+import { CircleDollarSign, CalendarClock, PieChart as PieIcon, TrendingUp, TrendingDown, ArrowUpRight, Wallet, ArrowRight, Zap, Target, Layers, LayoutGrid, Coins, Sparkles, CheckCircle2, Lock, Calendar, Trophy, Medal, Star, ListFilter } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area } from 'recharts';
 
@@ -33,7 +33,7 @@ const getMonthName = (dateStr: string) => {
     }
 };
 
-const CHART_COLORS = ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'];
+const CHART_COLORS = ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#f43f5e', '#84cc16'];
 
 // --- SUB-COMPONENTS ---
 
@@ -55,6 +55,28 @@ const BentoCard = ({ title, value, subtext, icon: Icon, colorClass, onClick, cla
     </button>
 );
 
+const ProgressBar = ({ current, target, label, colorClass, privacyMode }: any) => {
+    const progress = Math.min(100, Math.max(0, (current / (target || 1)) * 100));
+    return (
+        <div className="mb-5 last:mb-0">
+            <div className="flex justify-between items-end mb-2">
+                <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">{label}</span>
+                <span className="text-xs font-black text-zinc-900 dark:text-white">{progress.toFixed(1)}%</span>
+            </div>
+            <div className="h-2.5 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                <div 
+                    className={`h-full rounded-full transition-all duration-1000 ease-out ${colorClass}`} 
+                    style={{ width: `${progress}%` }}
+                ></div>
+            </div>
+            <div className="flex justify-between mt-1.5 text-[10px] text-zinc-400 font-medium">
+                <span>{formatBRL(current, privacyMode)}</span>
+                <span>Meta: {formatBRL(target, privacyMode)}</span>
+            </div>
+        </div>
+    );
+};
+
 // --- MAIN COMPONENT ---
 
 interface HomeProps {
@@ -73,6 +95,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [showAgenda, setShowAgenda] = useState(false);
   const [showProventos, setShowProventos] = useState(false);
   const [showAllocation, setShowAllocation] = useState(false);
+  const [allocationView, setAllocationView] = useState<'CLASS' | 'ASSET'>('CLASS');
   const [showMagicNumber, setShowMagicNumber] = useState(false);
   const [showGoals, setShowGoals] = useState(false);
 
@@ -80,22 +103,30 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const totalReturn = (totalAppreciation + salesGain) + totalDividendsReceived;
   const totalReturnPercent = invested > 0 ? (totalReturn / invested) * 100 : 0;
 
-  // 1. Alocação
-  const { chartData } = useMemo(() => {
+  // 1. Alocação (Classes e Ativos)
+  const allocationData = useMemo(() => {
       let fiis = 0, stocks = 0;
-      portfolio.forEach(p => {
+      const assetList: { name: string, value: number, color: string }[] = [];
+      
+      portfolio.forEach((p, idx) => {
           const v = p.quantity * (p.currentPrice || 0);
           if(p.assetType === AssetType.FII) fiis += v; else stocks += v;
+          if (v > 0) {
+              assetList.push({ name: p.ticker, value: v, color: CHART_COLORS[idx % CHART_COLORS.length] });
+          }
       });
-      return { 
-          chartData: [
-              { name: 'FIIs', value: fiis, color: '#6366f1' }, 
-              { name: 'Ações', value: stocks, color: '#0ea5e9' }
-          ].filter(d => d.value > 0)
-      };
+
+      const byClass = [
+          { name: 'FIIs', value: fiis, color: '#6366f1' }, 
+          { name: 'Ações', value: stocks, color: '#0ea5e9' }
+      ].filter(d => d.value > 0);
+
+      const byAsset = assetList.sort((a,b) => b.value - a.value).slice(0, 8); // Top 8
+
+      return { byClass, byAsset };
   }, [portfolio]);
 
-  // 2. Agenda (Proventos Futuros) - AGRUPADA
+  // 2. Agenda (Proventos Futuros) - AGRUPADA & COMPACTA
   const agendaData = useMemo(() => {
       const todayStr = new Date().toISOString().split('T')[0];
       const validReceipts = dividendReceipts.filter(d => d && (d.paymentDate || d.dateCom));
@@ -120,8 +151,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       return { list: future, grouped, totalFuture, nextPayment };
   }, [dividendReceipts]);
 
-  // 3. Renda (Histórico) - MELHORADA
-  const incomeHistory = useMemo(() => {
+  // 3. Renda (Histórico) - COM LISTA DE ÚLTIMOS PAGAMENTOS
+  const incomeData = useMemo(() => {
       const groups: Record<string, number> = {};
       const todayStr = new Date().toISOString().split('T')[0];
       
@@ -133,15 +164,20 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           groups[key] = 0;
       }
 
+      const receivedList: DividendReceipt[] = [];
+
       dividendReceipts.forEach(d => {
           if (!d.paymentDate || d.paymentDate > todayStr) return; // Apenas pagos
+          
           const monthKey = d.paymentDate.substring(0, 7);
           if (groups[monthKey] !== undefined) {
               groups[monthKey] += d.totalReceived;
           }
+          
+          receivedList.push(d);
       });
       
-      const data = Object.entries(groups)
+      const chartData = Object.entries(groups)
           .map(([date, value]) => {
               const [year, month] = date.split('-');
               const monthShort = new Date(parseInt(year), parseInt(month)-1, 1).toLocaleDateString('pt-BR', { month: 'short' });
@@ -154,13 +190,18 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           })
           .sort((a, b) => a.date.localeCompare(b.date));
 
-      const average = data.reduce((acc, cur) => acc + cur.value, 0) / (data.length || 1);
-      const max = Math.max(...data.map(d => d.value));
+      const average = chartData.reduce((acc, cur) => acc + cur.value, 0) / (chartData.length || 1);
+      const max = Math.max(...chartData.map(d => d.value));
 
-      return { data, average, max };
+      // Últimos 20 pagamentos recebidos (History List)
+      const history = receivedList
+          .sort((a, b) => b.paymentDate.localeCompare(a.paymentDate))
+          .slice(0, 20);
+
+      return { chartData, average, max, history };
   }, [dividendReceipts]);
 
-  const currentMonthIncome = incomeHistory.data[incomeHistory.data.length - 1]?.value || 0;
+  const currentMonthIncome = incomeData.chartData[incomeData.chartData.length - 1]?.value || 0;
 
   // 4. Número Mágico - ROBUSTO
   const magicNumberData = useMemo(() => {
@@ -197,10 +238,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
   const magicReachedCount = magicNumberData.filter(m => m.missing === 0).length;
 
-  // 5. Objetivos (Gamification) - LEVELS
+  // 5. Objetivos (Gamification + Metas Reais)
   const goalsData = useMemo(() => {
       const safeBalance = balance || 0;
+      const safeIncome = currentMonthIncome || 0;
       
+      // Níveis
       const levels = [
           { level: 1, name: 'Iniciante', target: 1000 },
           { level: 2, name: 'Aprendiz', target: 5000 },
@@ -226,10 +269,19 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       }
 
       const progress = Math.min(100, ((safeBalance - (levels[currentLevel.level-2]?.target || 0)) / (nextLevel.target - (levels[currentLevel.level-2]?.target || 0))) * 100);
-      const realProgress = Math.min(100, (safeBalance / nextLevel.target) * 100); // Progresso absoluto até o próximo
+      
+      // Metas Reais (Patrimônio e Renda)
+      const incomeMilestones = [50, 100, 500, 1000, 2500, 5000, 10000, 20000];
+      const nextIncome = incomeMilestones.find(m => m > safeIncome) || (safeIncome * 1.5);
 
-      return { currentLevel, nextLevel, progress: realProgress };
-  }, [balance]);
+      return { 
+          currentLevel, 
+          nextLevel, 
+          progress,
+          patrimony: { current: safeBalance, target: nextLevel.target },
+          income: { current: safeIncome, target: nextIncome }
+      };
+  }, [balance, currentMonthIncome]);
 
   return (
     <div className="space-y-5 pb-8">
@@ -326,8 +378,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         <div className="text-left">
                             <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Alocação</h3>
                             <div className="flex gap-3 mt-1 text-xs text-zinc-500">
-                                <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div> FIIs {chartData.find(c=>c.name==='FIIs')?.value ? ((chartData.find(c=>c.name==='FIIs')?.value || 0)/(balance || 1)*100).toFixed(0) : 0}%</span>
-                                <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-sky-500"></div> Ações {chartData.find(c=>c.name==='Ações')?.value ? ((chartData.find(c=>c.name==='Ações')?.value || 0)/(balance || 1)*100).toFixed(0) : 0}%</span>
+                                <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div> FIIs {allocationData.byClass.find(c=>c.name==='FIIs')?.value ? ((allocationData.byClass.find(c=>c.name==='FIIs')?.value || 0)/(balance || 1)*100).toFixed(0) : 0}%</span>
+                                <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-sky-500"></div> Ações {allocationData.byClass.find(c=>c.name==='Ações')?.value ? ((allocationData.byClass.find(c=>c.name==='Ações')?.value || 0)/(balance || 1)*100).toFixed(0) : 0}%</span>
                             </div>
                         </div>
                     </div>
@@ -340,7 +392,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
         {/* --- MODALS --- */}
 
-        {/* 1. AGENDA */}
+        {/* 1. AGENDA (Compact Mode) */}
         <SwipeableModal isOpen={showAgenda} onClose={() => setShowAgenda(false)}>
             <div className="p-6 pb-20 min-h-[60vh]">
                 <div className="flex items-center gap-4 mb-6">
@@ -357,22 +409,22 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     <div className="space-y-6">
                         {Object.entries(agendaData.grouped).map(([monthKey, items]) => (
                             <div key={monthKey}>
-                                <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-3 sticky top-0 bg-white dark:bg-zinc-900 py-2 z-10">
+                                <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2 sticky top-0 bg-white dark:bg-zinc-900 py-2 z-10 border-b border-zinc-100 dark:border-zinc-800">
                                     {getMonthName(monthKey + '-01')}
                                 </h3>
-                                <div className="space-y-2">
+                                <div className="space-y-0">
                                     {(items as DividendReceipt[]).map((item, idx) => {
                                         const isToday = item.paymentDate === new Date().toISOString().split('T')[0];
                                         return (
-                                            <div key={idx} className={`flex items-center justify-between p-4 rounded-2xl border ${isToday ? 'bg-violet-50 dark:bg-violet-900/10 border-violet-200 dark:border-violet-900/30' : 'bg-zinc-50 dark:bg-zinc-800 border-transparent'}`}>
+                                            <div key={idx} className={`flex items-center justify-between py-3 border-b border-zinc-50 dark:border-zinc-800/50 last:border-0 ${isToday ? 'bg-violet-50/50 dark:bg-violet-900/10 px-2 rounded-lg -mx-2' : ''}`}>
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-700 flex items-center justify-center text-xs font-black shadow-sm">
+                                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black ${isToday ? 'bg-violet-500 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'}`}>
                                                         {item.ticker.substring(0, 2)}
                                                     </div>
                                                     <div>
                                                         <div className="flex items-center gap-2">
-                                                            <h4 className="font-bold text-sm text-zinc-900 dark:text-white">{item.ticker}</h4>
-                                                            {isToday && <span className="text-[9px] font-black bg-violet-500 text-white px-1.5 py-0.5 rounded">HOJE</span>}
+                                                            <h4 className="font-bold text-xs text-zinc-900 dark:text-white">{item.ticker}</h4>
+                                                            <span className="text-[9px] text-zinc-400 uppercase">{item.type}</span>
                                                         </div>
                                                         <p className="text-[10px] text-zinc-500 font-medium">
                                                             {item.paymentDate ? `Pag: ${formatDateShort(item.paymentDate)}` : `Com: ${formatDateShort(item.dateCom)}`}
@@ -380,8 +432,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                                     </div>
                                                 </div>
                                                 <div className="text-right">
-                                                    <p className="font-bold text-emerald-600 dark:text-emerald-400">{formatBRL(item.totalReceived, privacyMode)}</p>
-                                                    <p className="text-[9px] text-zinc-400 uppercase">{item.type || 'DIV'}</p>
+                                                    <p className={`font-bold text-sm ${isToday ? 'text-violet-600 dark:text-violet-400' : 'text-emerald-600 dark:text-emerald-400'}`}>{formatBRL(item.totalReceived, privacyMode)}</p>
                                                 </div>
                                             </div>
                                         );
@@ -399,7 +450,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
         </SwipeableModal>
 
-        {/* 2. RENDA (GRÁFICO MELHORADO) */}
+        {/* 2. RENDA (Com Histórico) */}
         <SwipeableModal isOpen={showProventos} onClose={() => setShowProventos(false)}>
             <div className="p-6 pb-20">
                 <div className="flex items-center gap-4 mb-6">
@@ -412,9 +463,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                 </div>
 
-                <div className="h-64 w-full mt-4 mb-6">
+                <div className="h-56 w-full mt-4 mb-6">
                     <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={incomeHistory.data} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                        <AreaChart data={incomeData.chartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                             <defs>
                                 <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
@@ -434,14 +485,39 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </ResponsiveContainer>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3 mb-8">
                     <div className="bg-zinc-50 dark:bg-zinc-800 p-4 rounded-2xl">
                         <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Média Mensal</p>
-                        <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(incomeHistory.average, privacyMode)}</p>
+                        <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(incomeData.average, privacyMode)}</p>
                     </div>
                     <div className="bg-emerald-50 dark:bg-emerald-900/10 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/20">
                         <p className="text-[10px] text-emerald-600 dark:text-emerald-400 uppercase font-bold mb-1">Recorde</p>
-                        <p className="text-lg font-black text-emerald-700 dark:text-emerald-400">{formatBRL(incomeHistory.max, privacyMode)}</p>
+                        <p className="text-lg font-black text-emerald-700 dark:text-emerald-400">{formatBRL(incomeData.max, privacyMode)}</p>
+                    </div>
+                </div>
+
+                {/* Histórico Recente (Lista) */}
+                <div>
+                    <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-4">Últimos Pagamentos</h3>
+                    <div className="space-y-3">
+                        {incomeData.history.length > 0 ? (
+                            incomeData.history.map((div, i) => (
+                                <div key={i} className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[9px] font-black text-zinc-500">
+                                            {div.ticker.substring(0,2)}
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-bold text-zinc-900 dark:text-white">{div.ticker}</p>
+                                            <p className="text-[10px] text-zinc-400">{formatDateShort(div.paymentDate)} • {div.type}</p>
+                                        </div>
+                                    </div>
+                                    <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">+{formatBRL(div.totalReceived, privacyMode)}</p>
+                                </div>
+                            ))
+                        ) : (
+                            <p className="text-center text-xs text-zinc-400 py-4">Nenhum pagamento registrado.</p>
+                        )}
                     </div>
                 </div>
             </div>
@@ -483,7 +559,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                         </div>
                                     </div>
 
-                                    {/* Progress Bar */}
                                     <div className="h-2.5 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden mb-3">
                                         <div 
                                             className={`h-full rounded-full transition-all duration-1000 ${isReached ? 'bg-emerald-500' : 'bg-amber-500'}`} 
@@ -515,7 +590,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
         </SwipeableModal>
 
-        {/* 4. OBJETIVOS (LEVEL SYSTEM) */}
+        {/* 4. OBJETIVOS (LEVEL SYSTEM + METAS CLARAS) */}
         <SwipeableModal isOpen={showGoals} onClose={() => setShowGoals(false)}>
             <div className="p-6 pb-20">
                 <div className="flex items-center gap-4 mb-8">
@@ -528,7 +603,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                 </div>
 
-                <div className="text-center mb-8 relative">
+                {/* Level Card */}
+                <div className="text-center mb-10 relative">
                     <div className="inline-block p-1 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-rose-500 shadow-xl shadow-indigo-500/20 mb-4">
                         <div className="w-24 h-24 rounded-full bg-white dark:bg-zinc-900 flex flex-col items-center justify-center border-4 border-transparent">
                             <span className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-br from-indigo-600 to-purple-600">{goalsData.currentLevel.level}</span>
@@ -536,73 +612,81 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         </div>
                     </div>
                     <h3 className="text-2xl font-black text-zinc-900 dark:text-white">{goalsData.currentLevel.name}</h3>
-                    <p className="text-xs text-zinc-500 mt-2 max-w-[200px] mx-auto">
-                        Próxima conquista: <strong className="text-indigo-500">{goalsData.nextLevel.name}</strong>
-                    </p>
+                    <div className="mt-4 px-8">
+                        <div className="h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                            <div 
+                                className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/30 transition-all duration-1000 ease-out" 
+                                style={{ width: `${goalsData.progress}%` }}
+                            ></div>
+                        </div>
+                        <p className="text-[10px] text-zinc-400 mt-2 font-bold uppercase tracking-widest">
+                            {goalsData.progress.toFixed(0)}% para {goalsData.nextLevel.name}
+                        </p>
+                    </div>
                 </div>
 
-                <div className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                    <div className="flex justify-between items-end mb-3">
-                        <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Progresso</span>
-                        <span className="text-lg font-black text-indigo-600 dark:text-indigo-400">{goalsData.progress.toFixed(1)}%</span>
-                    </div>
+                {/* Concrete Goals */}
+                <div className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm space-y-6">
+                    <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-4">Próximos Marcos</h3>
                     
-                    <div className="h-4 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden p-1">
-                        <div 
-                            className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/30 transition-all duration-1000 ease-out" 
-                            style={{ width: `${goalsData.progress}%` }}
-                        ></div>
-                    </div>
-
-                    <div className="flex justify-between mt-3 text-[10px] font-bold text-zinc-400">
-                        <span>{formatBRL(balance, privacyMode)}</span>
-                        <span>{formatBRL(goalsData.nextLevel.target)}</span>
-                    </div>
-                </div>
-
-                <div className="mt-6 flex gap-3 overflow-x-auto no-scrollbar pb-2">
-                    <div className="min-w-[120px] p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/20 flex flex-col items-center justify-center text-center">
-                        <Medal className="w-6 h-6 text-emerald-500 mb-2" />
-                        <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">Dividendos</span>
-                        <span className="text-xs font-black text-emerald-800 dark:text-emerald-300 mt-0.5">Ativo</span>
-                    </div>
-                    <div className="min-w-[120px] p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex flex-col items-center justify-center text-center opacity-50">
-                        <Lock className="w-6 h-6 text-zinc-400 mb-2" />
-                        <span className="text-[10px] font-bold text-zinc-500">Magic Number</span>
-                        <span className="text-xs font-black text-zinc-400 mt-0.5">Bloqueado</span>
-                    </div>
-                    <div className="min-w-[120px] p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex flex-col items-center justify-center text-center opacity-50">
-                        <Lock className="w-6 h-6 text-zinc-400 mb-2" />
-                        <span className="text-[10px] font-bold text-zinc-500">100k Club</span>
-                        <span className="text-xs font-black text-zinc-400 mt-0.5">Bloqueado</span>
-                    </div>
+                    <ProgressBar 
+                        label="Meta de Patrimônio" 
+                        current={goalsData.patrimony.current} 
+                        target={goalsData.patrimony.target} 
+                        colorClass="bg-gradient-to-r from-blue-500 to-indigo-600"
+                        privacyMode={privacyMode}
+                    />
+                    
+                    <ProgressBar 
+                        label="Meta de Renda Mensal" 
+                        current={goalsData.income.current} 
+                        target={goalsData.income.target} 
+                        colorClass="bg-gradient-to-r from-emerald-400 to-emerald-600"
+                        privacyMode={privacyMode}
+                    />
                 </div>
             </div>
         </SwipeableModal>
 
-        {/* 5. ALOCAÇÃO (MANTIDO E OTIMIZADO) */}
+        {/* 5. ALOCAÇÃO (COM ABAS) */}
         <SwipeableModal isOpen={showAllocation} onClose={() => setShowAllocation(false)}>
-             <div className="p-6 h-[70vh] flex flex-col">
-                <div className="flex items-center gap-4 mb-2 shrink-0">
+             <div className="p-6 h-[80vh] flex flex-col">
+                <div className="flex items-center gap-4 mb-6 shrink-0">
                     <div className="w-12 h-12 rounded-2xl bg-sky-100 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 flex items-center justify-center">
                         <PieIcon className="w-6 h-6" />
                     </div>
                     <h2 className="text-2xl font-bold dark:text-white">Diversificação</h2>
                 </div>
+
+                {/* Tabs */}
+                <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl mb-4 shrink-0">
+                    <button 
+                        onClick={() => setAllocationView('CLASS')}
+                        className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${allocationView === 'CLASS' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}
+                    >
+                        Por Classe
+                    </button>
+                    <button 
+                        onClick={() => setAllocationView('ASSET')}
+                        className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${allocationView === 'ASSET' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}
+                    >
+                        Por Ativo
+                    </button>
+                </div>
                 
-                <div className="flex-1 min-h-0 w-full relative">
+                <div className="flex-1 min-h-0 w-full relative mb-4">
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                             <Pie 
-                                data={chartData} 
+                                data={allocationView === 'CLASS' ? allocationData.byClass : allocationData.byAsset} 
                                 innerRadius={80} 
                                 outerRadius={110} 
-                                paddingAngle={5} 
+                                paddingAngle={4} 
                                 dataKey="value" 
-                                cornerRadius={8}
+                                cornerRadius={6}
                                 cy="50%"
                             >
-                                {chartData.map((entry, index) => (
+                                {(allocationView === 'CLASS' ? allocationData.byClass : allocationData.byAsset).map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
                                 ))}
                             </Pie>
@@ -610,19 +694,18 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         </PieChart>
                     </ResponsiveContainer>
                     
-                    {/* Center Text Overlay */}
                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                         <span className="text-xs text-zinc-400 font-medium uppercase tracking-widest">Total</span>
                         <span className="text-xl font-bold text-zinc-900 dark:text-white mt-1">100%</span>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 mt-4 shrink-0">
-                    {chartData.map((entry) => (
+                <div className="grid grid-cols-2 gap-3 shrink-0 overflow-y-auto pb-4 max-h-[40vh]">
+                    {(allocationView === 'CLASS' ? allocationData.byClass : allocationData.byAsset).map((entry) => (
                         <div key={entry.name} className="flex items-center gap-3 p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl">
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: entry.color }}></div>
-                            <div>
-                                <p className="text-xs font-bold text-zinc-900 dark:text-white">{entry.name}</p>
+                            <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: entry.color }}></div>
+                            <div className="min-w-0">
+                                <p className="text-xs font-bold text-zinc-900 dark:text-white truncate">{entry.name}</p>
                                 <p className="text-[10px] text-zinc-500">{((entry.value / (balance || 1)) * 100).toFixed(1)}%</p>
                             </div>
                         </div>
