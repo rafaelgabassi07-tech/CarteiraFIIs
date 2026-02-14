@@ -5,12 +5,13 @@ import {
   Palette, Database, ShieldAlert, Info, 
   LogOut, Check, Activity, Terminal, Trash2, FileSpreadsheet, FileJson, 
   Smartphone, Github, Globe, CreditCard, LayoutGrid, Zap, Download, Upload, Server, Wifi, Cloud,
-  Calculator, TrendingUp, DollarSign, Calendar, Target, RotateCcw, ArrowDown
+  Calculator, TrendingUp, DollarSign, Calendar, Target, RotateCcw, ArrowDown, Search, Loader2
 } from 'lucide-react';
 import { Transaction, DividendReceipt, ServiceMetric, LogEntry, ThemeType } from '../types';
 import { logger } from '../services/logger';
 import { parseB3Excel } from '../services/excelService';
 import { supabase } from '../services/supabase';
+import { triggerScraperUpdate } from '../services/dataService';
 import { SwipeableModal } from '../components/Layout';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 
@@ -238,6 +239,10 @@ const CompoundInterestCalc = () => {
 };
 
 const CeilingPriceCalc = () => {
+    const [ticker, setTicker] = useState('');
+    const [isLoadingTicker, setIsLoadingTicker] = useState(false);
+    const [assetData, setAssetData] = useState<{ price: number, dy: number } | null>(null);
+
     const [dividend, setDividend] = useState('');
     const [yieldTarget, setYieldTarget] = useState('6');
     const [result, setResult] = useState<number | null>(null);
@@ -246,13 +251,69 @@ const CeilingPriceCalc = () => {
         const d = parseFloat(dividend.replace(',','.')) || 0;
         const y = parseFloat(yieldTarget.replace(',','.')) || 0;
         if (y > 0) setResult((d / y) * 100);
+        else setResult(null);
+    };
+
+    // Auto-recalculate when inputs change
+    useEffect(() => {
+        if (dividend && yieldTarget) calculate();
+    }, [dividend, yieldTarget]);
+
+    const handleFetchTicker = async () => {
+        if (!ticker || ticker.length < 3) return;
+        setIsLoadingTicker(true);
+        setAssetData(null);
+        setDividend('');
+        try {
+            const results = await triggerScraperUpdate([ticker.toUpperCase()], true);
+            const data = results[0];
+            
+            if (data && data.status === 'success' && data.details) {
+                const price = data.details.price || 0;
+                const dyPercent = data.details.dy || 0;
+                
+                if (price > 0 && dyPercent > 0) {
+                    const annualDiv = price * (dyPercent / 100);
+                    setDividend(annualDiv.toFixed(2).replace('.', ','));
+                    setAssetData({ price, dy: dyPercent });
+                }
+            }
+        } catch (e) {
+            console.error('Error fetching ticker for calc', e);
+        } finally {
+            setIsLoadingTicker(false);
+        }
     };
 
     return (
         <div className="space-y-4">
-            <p className="text-xs text-zinc-500 leading-relaxed">
-                Descubra o preço máximo a pagar (Método Bazin) para garantir um retorno mínimo desejado.
-            </p>
+            <div className="bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2 block ml-1">Preencher Automático</label>
+                <div className="relative flex gap-2">
+                    <input 
+                        type="text" 
+                        value={ticker} 
+                        onChange={e => setTicker(e.target.value.toUpperCase())}
+                        onKeyDown={e => e.key === 'Enter' && handleFetchTicker()}
+                        placeholder="Ex: BBAS3" 
+                        className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm font-bold outline-none focus:border-indigo-500 transition-all uppercase placeholder:normal-case" 
+                    />
+                    <button 
+                        onClick={handleFetchTicker}
+                        disabled={isLoadingTicker}
+                        className="bg-indigo-500 text-white rounded-xl px-3 flex items-center justify-center press-effect disabled:opacity-50"
+                    >
+                        {isLoadingTicker ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                    </button>
+                </div>
+                {assetData && (
+                    <div className="mt-2 flex gap-3 px-1">
+                        <span className="text-[10px] text-zinc-500 font-medium">Preço: <strong>{formatCurrency(assetData.price)}</strong></span>
+                        <span className="text-[10px] text-zinc-500 font-medium">DY 12m: <strong>{assetData.dy.toFixed(2)}%</strong></span>
+                    </div>
+                )}
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
                 <div>
                     <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Div. Projetado (Anual)</label>
@@ -268,19 +329,29 @@ const CeilingPriceCalc = () => {
                 Calcular Teto
             </button>
 
-            {result !== null && (
+            {result !== null && result > 0 && (
                 <div className="mt-4 anim-scale-in space-y-3">
                     <div className="p-4 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl text-white text-center shadow-lg shadow-indigo-500/20">
                         <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-1">Preço Teto ({yieldTarget}%)</p>
-                        <p className="text-3xl font-black">{formatCurrency(result)}</p>
+                        <div className="flex items-baseline justify-center gap-2">
+                            <p className="text-3xl font-black">{formatCurrency(result)}</p>
+                            {assetData && (
+                                <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${assetData.price < result ? 'bg-emerald-400/20 text-emerald-100' : 'bg-rose-400/20 text-rose-100'}`}>
+                                    {assetData.price < result ? 'Compra' : 'Aguarde'}
+                                </span>
+                            )}
+                        </div>
+                        {assetData && (
+                            <p className="text-[10px] opacity-70 mt-1">Margem de segurança: {((1 - (assetData.price / result)) * 100).toFixed(1)}%</p>
+                        )}
                     </div>
 
                     <div className="grid grid-cols-3 gap-2">
                         {[6, 8, 10].map(y => {
-                            const val = ((parseFloat(dividend) || 0) / y) * 100;
-                            const isSelected = parseFloat(yieldTarget) === y;
+                            const val = ((parseFloat(dividend.replace(',', '.')) || 0) / y) * 100;
+                            const isSelected = parseFloat(yieldTarget.replace(',', '.')) === y;
                             return (
-                                <div key={y} className={`p-2 rounded-xl border text-center ${isSelected ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800'}`}>
+                                <div key={y} onClick={() => setYieldTarget(String(y))} className={`p-2 rounded-xl border text-center cursor-pointer transition-colors ${isSelected ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 hover:border-zinc-300'}`}>
                                     <p className="text-[9px] text-zinc-400 font-bold uppercase">{y}% Yield</p>
                                     <p className={`text-xs font-bold ${isSelected ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-700 dark:text-zinc-300'}`}>
                                         {val > 0 ? formatCurrency(val) : '-'}
