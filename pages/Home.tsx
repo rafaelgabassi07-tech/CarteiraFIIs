@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
-import { CircleDollarSign, CalendarClock, PieChart as PieIcon, TrendingUp, TrendingDown, ArrowUpRight, Wallet, ArrowRight, Zap, Target, Layers, LayoutGrid, Coins, Sparkles, CheckCircle2, Lock, Calendar, Trophy, Medal, Star, ListFilter, TrendingUp as GrowthIcon, Anchor, Calculator, Repeat, ChevronRight, Hourglass, Landmark, Crown, LockKeyhole } from 'lucide-react';
+import { CircleDollarSign, CalendarClock, PieChart as PieIcon, TrendingUp, TrendingDown, ArrowUpRight, Wallet, ArrowRight, Zap, Target, Layers, LayoutGrid, Coins, Sparkles, CheckCircle2, Lock, Calendar, Trophy, Medal, Star, ListFilter, TrendingUp as GrowthIcon, Anchor, Calculator, Repeat, ChevronRight, Hourglass, Landmark, Crown, LockKeyhole, Info, Footprints } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area } from 'recharts';
 
@@ -773,14 +773,25 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                     <div>
                         <h2 className="text-2xl font-bold text-zinc-900 dark:text-white leading-none">Minha Jornada</h2>
-                        <p className="text-xs text-zinc-500 font-medium mt-1">Conquiste sua liberdade</p>
+                        <p className="text-xs text-zinc-500 font-medium mt-1">Conquiste sua liberdade financeira</p>
                     </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar">
                     
+                    {/* Bloco Explicativo */}
+                    <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-2xl mb-6 text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed border border-zinc-100 dark:border-zinc-800">
+                       <div className="flex items-start gap-3">
+                           <Info className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
+                           <p className="text-xs">
+                             Sua jornada é calculada com base no seu <strong>Patrimônio Total</strong> e <strong>Proventos Mensais</strong>. 
+                             O objetivo final é cobrir 100% de um Salário Mínimo com renda passiva.
+                           </p>
+                       </div>
+                    </div>
+
                     {/* Card de Nível Horizontal (Economiza Espaço Vertical) */}
-                    <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 to-purple-700 rounded-3xl p-5 mb-4 text-white shadow-xl shadow-indigo-900/20">
+                    <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 to-purple-700 rounded-3xl p-5 mb-6 text-white shadow-xl shadow-indigo-900/20">
                         <div className="relative z-10 flex items-center gap-5">
                             <div className="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-md flex flex-col items-center justify-center border border-white/20 shrink-0">
                                 <span className="text-3xl font-black leading-none">{goalsData.currentLevel.level}</span>
@@ -789,16 +800,18 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                             <div className="flex-1 min-w-0">
                                 <h3 className="text-xl font-bold mb-1 truncate">{goalsData.currentLevel.name}</h3>
                                 <div className="flex items-center justify-between text-[10px] font-medium opacity-80 mb-1.5">
-                                    <span>Progresso</span>
+                                    <span>Progresso para Nível {goalsData.currentLevel.level + 1}</span>
                                     <span>{goalsData.progress.toFixed(0)}%</span>
                                 </div>
-                                <div className="h-1.5 w-full bg-black/20 rounded-full overflow-hidden">
+                                <div className="h-1.5 w-full bg-black/20 rounded-full overflow-hidden mb-2">
                                     <div 
                                         className="h-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.5)] transition-all duration-1000"
                                         style={{ width: `${goalsData.progress}%` }}
                                     ></div>
                                 </div>
-                                <p className="text-[9px] mt-1.5 opacity-70">Próximo: {goalsData.nextLevel.name}</p>
+                                <p className="text-[10px] font-bold opacity-90 bg-white/10 inline-block px-2 py-0.5 rounded">
+                                    Próximo Nível: {formatBRL(goalsData.nextLevel.target, privacyMode)}
+                                </p>
                             </div>
                         </div>
                         {/* Decorative BG */}
@@ -806,36 +819,43 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         <div className="absolute -bottom-10 -left-10 w-24 h-24 bg-purple-500/20 rounded-full blur-2xl"></div>
                     </div>
 
-                    {/* Métricas Compactas */}
-                    <div className="grid grid-cols-2 gap-2 mb-4">
-                        <div className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-700/50">
-                            <div className="flex items-center gap-1.5 mb-1">
-                                <Anchor className="w-3.5 h-3.5 text-sky-500" />
-                                <span className="text-[9px] font-bold uppercase text-zinc-400 tracking-wider">Liberdade</span>
-                            </div>
-                            <div className="flex items-baseline gap-1">
-                                <p className="text-lg font-black text-zinc-900 dark:text-white">{goalsData.freedom.pct.toFixed(1)}%</p>
-                                <span className="text-[9px] text-zinc-400">do teto</span>
-                            </div>
+                    {/* Métricas Explicadas */}
+                    <div className="space-y-3 mb-6">
+                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center gap-4">
+                             <div className="w-10 h-10 rounded-xl bg-sky-100 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
+                                 <Anchor className="w-5 h-5" />
+                             </div>
+                             <div>
+                                 <p className="text-[10px] font-bold uppercase text-zinc-400 tracking-wider mb-0.5">Independência Financeira</p>
+                                 <p className="text-lg font-black text-zinc-900 dark:text-white leading-none mb-1">{goalsData.freedom.pct.toFixed(1)}%</p>
+                                 <p className="text-xs text-zinc-500 leading-tight">
+                                     Seus dividendos cobrem <strong>{goalsData.freedom.pct.toFixed(1)}%</strong> de um salário mínimo (R$ 1.412).
+                                 </p>
+                             </div>
                         </div>
-                        <div className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-700/50">
-                            <div className="flex items-center gap-1.5 mb-1">
-                                <Coins className="w-3.5 h-3.5 text-amber-500" />
-                                <span className="text-[9px] font-bold uppercase text-zinc-400 tracking-wider">Passiva/Dia</span>
-                            </div>
-                            <div className="flex items-baseline gap-1">
-                                <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(goalsData.dailyIncome, privacyMode)}</p>
-                                <span className="text-[9px] text-zinc-400">diários</span>
-                            </div>
+
+                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center gap-4">
+                             <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                                 <Coins className="w-5 h-5" />
+                             </div>
+                             <div>
+                                 <p className="text-[10px] font-bold uppercase text-zinc-400 tracking-wider mb-0.5">Renda Passiva Diária</p>
+                                 <p className="text-lg font-black text-zinc-900 dark:text-white leading-none mb-1">{formatBRL(goalsData.dailyIncome, privacyMode)}</p>
+                                 <p className="text-xs text-zinc-500 leading-tight">
+                                     Se você parasse hoje, receberia em média <strong>{formatBRL(goalsData.dailyIncome, privacyMode)}</strong> por dia sem trabalhar.
+                                 </p>
+                             </div>
                         </div>
                     </div>
 
                     {/* Metas Concretas (Compacto) */}
-                    <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm mb-4">
-                        <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3">Próximos Marcos</h3>
+                    <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm mb-6">
+                        <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                             <Footprints className="w-3 h-3" /> Próximos Marcos
+                        </h3>
                         
                         <ProgressBar 
-                            label="Patrimônio" 
+                            label="Patrimônio Acumulado" 
                             current={goalsData.patrimony.current} 
                             target={goalsData.patrimony.target} 
                             colorClass="bg-gradient-to-r from-blue-500 to-indigo-600"
@@ -843,7 +863,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         />
                         
                         <ProgressBar 
-                            label="Renda Mensal" 
+                            label="Renda Mensal Recorrente" 
                             current={goalsData.income.current} 
                             target={goalsData.income.target} 
                             colorClass="bg-gradient-to-r from-emerald-400 to-emerald-600"
