@@ -311,46 +311,35 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   return (
     <div className="space-y-5 pb-8">
         
-        {/* HERO CARD */}
-        <div className="relative overflow-hidden rounded-[2rem] bg-zinc-900 text-white p-7 shadow-2xl shadow-zinc-900/20 anim-fade-in">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-[80px] -mr-16 -mt-16 pointer-events-none"></div>
-            <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-500/20 rounded-full blur-[80px] -ml-16 -mb-16 pointer-events-none"></div>
-            
-            <div className="relative z-10">
-                <div className="flex justify-between items-start mb-8">
-                    <div>
-                        <p className="text-zinc-400 text-xs font-semibold uppercase tracking-wider mb-1">Patrimônio Total</p>
-                        <h1 className="text-4xl font-bold tracking-tight tabular-nums">
-                            {formatBRL(balance, privacyMode)}
-                        </h1>
-                    </div>
-                    <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-md border border-white/10">
-                        <Wallet className="w-5 h-5 text-white" />
+        {/* HERO CARD - Estilo Profissional Sóbrio */}
+        <div className="relative overflow-hidden rounded-[2rem] bg-zinc-900 border border-zinc-800 p-6 shadow-xl anim-fade-in">
+            <div className="flex justify-between items-start mb-6">
+                <div>
+                    <p className="text-zinc-400 text-[10px] font-bold uppercase tracking-[0.2em] mb-2">Patrimônio Total</p>
+                    <h1 className="text-4xl font-bold text-white tracking-tight tabular-nums">
+                        {formatBRL(balance, privacyMode)}
+                    </h1>
+                </div>
+                <div className="w-10 h-10 rounded-2xl bg-zinc-800 flex items-center justify-center border border-zinc-700/50">
+                    <Wallet className="w-5 h-5 text-zinc-300" strokeWidth={1.5} />
+                </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+                <div className="rounded-2xl p-4 bg-zinc-950/30 border border-zinc-800/50">
+                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Retorno</p>
+                    <div className="flex items-baseline gap-2">
+                        <span className={`text-lg font-bold tabular-nums ${totalReturn >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            {totalReturn >= 0 ? '+' : ''}{formatBRL(totalReturn, privacyMode)}
+                        </span>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-white/5 rounded-2xl p-3 border border-white/5 backdrop-blur-sm">
-                        <div className="flex items-center gap-2 mb-1">
-                            <div className={`w-1.5 h-1.5 rounded-full ${totalReturn >= 0 ? 'bg-emerald-400' : 'bg-rose-400'}`}></div>
-                            <span className="text-xs text-zinc-300 font-medium">Retorno Total</span>
-                        </div>
-                        <div className="flex items-baseline gap-2">
-                            <span className={`text-lg font-bold ${totalReturn >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                {totalReturn >= 0 ? '+' : ''}{formatBRL(totalReturn, privacyMode)}
-                            </span>
-                        </div>
-                    </div>
-
-                    <div className="bg-white/5 rounded-2xl p-3 border border-white/5 backdrop-blur-sm">
-                        <div className="flex items-center gap-2 mb-1">
-                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-400"></div>
-                            <span className="text-xs text-zinc-300 font-medium">Proventos</span>
-                        </div>
-                        <p className="text-lg font-bold text-indigo-400">
-                            +{formatBRL(totalDividendsReceived, privacyMode)}
-                        </p>
-                    </div>
+                <div className="rounded-2xl p-4 bg-zinc-950/30 border border-zinc-800/50">
+                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Proventos</p>
+                    <p className="text-lg font-bold text-zinc-200 tabular-nums">
+                        +{formatBRL(totalDividendsReceived, privacyMode)}
+                    </p>
                 </div>
             </div>
         </div>

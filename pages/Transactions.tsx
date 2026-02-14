@@ -136,6 +136,53 @@ const TransactionRow = React.memo(({ index, data }: any) => {
   const isSelectionMode = data.isSelectionMode;
   const isSelected = data.selectedIds.has(item.data?.id);
   
+  // Timer para Long Press
+  const timerRef = useRef<number | null>(null);
+  const isLongPressTriggered = useRef(false);
+
+  const handleStart = () => {
+      isLongPressTriggered.current = false;
+      timerRef.current = window.setTimeout(() => {
+          isLongPressTriggered.current = true;
+          // Trigger Long Press Action
+          if (data.onLongPress && item.data?.id) {
+              data.onLongPress(item.data.id);
+          }
+      }, 500); // 500ms para considerar long press
+  };
+
+  const handleEnd = (e: React.MouseEvent | React.TouchEvent) => {
+      if (timerRef.current) {
+          clearTimeout(timerRef.current);
+          timerRef.current = null;
+      }
+      // Se foi long press, previne o click normal
+      if (isLongPressTriggered.current) {
+          e.preventDefault();
+          e.stopPropagation();
+      }
+  };
+
+  const handleCancel = () => {
+      if (timerRef.current) {
+          clearTimeout(timerRef.current);
+          timerRef.current = null;
+      }
+  };
+
+  // Se for click normal e não long press
+  const handleClick = (e: React.MouseEvent) => {
+      if (isLongPressTriggered.current) {
+          isLongPressTriggered.current = false;
+          return;
+      }
+      if (isSelectionMode) {
+          data.onToggleSelect(item.data?.id);
+      } else {
+          data.onRowClick(item.data);
+      }
+  };
+  
   if (item.type === 'header') {
       return (
           <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top)+60px)] z-10 py-3 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-xl -mx-4 px-4 border-b border-zinc-100 dark:border-zinc-800/50 mb-1 mt-2 shadow-sm">
@@ -155,8 +202,14 @@ const TransactionRow = React.memo(({ index, data }: any) => {
   
   return (
       <button 
-        onClick={() => isSelectionMode ? data.onToggleSelect(t.id) : data.onRowClick(t)}
-        className={`w-full flex items-center justify-between py-3 px-1 group transition-all active:scale-[0.98] border-b border-zinc-50 dark:border-zinc-800/30 last:border-0 ${
+        onClick={handleClick}
+        onMouseDown={handleStart}
+        onMouseUp={handleEnd}
+        onMouseLeave={handleCancel}
+        onTouchStart={handleStart}
+        onTouchEnd={handleEnd}
+        onTouchMove={handleCancel} // Cancela se fizer scroll
+        className={`w-full flex items-center justify-between py-3 px-1 group transition-all active:scale-[0.98] border-b border-zinc-50 dark:border-zinc-800/30 last:border-0 select-none ${
             isSelected ? 'bg-indigo-50/50 dark:bg-indigo-900/20 rounded-xl' : ''
         }`}
       >
@@ -273,6 +326,17 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
         });
         return list; 
     }, [filteredTransactions]);
+
+    // Lógica Long Press
+    const handleLongPress = (id: string) => {
+        // Se já estiver em modo de seleção, o clique normal cuida do toggle.
+        // Se NÃO estiver, entramos no modo e selecionamos o item.
+        if (!isSelectionMode) {
+            if (navigator.vibrate) navigator.vibrate(50); // Feedback tátil
+            setIsSelectionMode(true);
+            setSelectedIds(new Set([id]));
+        }
+    };
 
     // Máscara de Moeda ao Digitar
     const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -432,7 +496,15 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                             <TransactionRow 
                                 key={item.data?.id || `header-${item.monthKey}`} 
                                 index={index} 
-                                data={{ items: flatTransactions, onRowClick: handleOpenEdit, privacyMode, isSelectionMode, selectedIds, onToggleSelect: (id: string) => { const n = new Set(selectedIds); if (n.has(id)) n.delete(id); else n.add(id); setSelectedIds(n); } }}
+                                data={{ 
+                                    items: flatTransactions, 
+                                    onRowClick: handleOpenEdit, 
+                                    privacyMode, 
+                                    isSelectionMode, 
+                                    selectedIds, 
+                                    onToggleSelect: (id: string) => { const n = new Set(selectedIds); if (n.has(id)) n.delete(id); else n.add(id); setSelectedIds(n); },
+                                    onLongPress: handleLongPress
+                                }}
                             />
                         ))}
                     </div>
@@ -460,7 +532,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                         {editingId && <button onClick={() => onRequestDeleteConfirmation(editingId)} className="p-2 text-rose-500 bg-rose-50 rounded-lg press-effect"><Trash2 className="w-5 h-5" /></button>}
                     </div>
                     
-                    <div className="space-y-3 flex-1 overflow-y-auto no-scrollbar">
+                    <div className="space-y-3 flex-1 overflow-y-auto no-scrollbar pb-10">
                         {/* Tipo de Operação */}
                         <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-2xl">
                             {['BUY', 'SELL'].map(t => (
