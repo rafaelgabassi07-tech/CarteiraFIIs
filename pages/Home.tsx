@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
-import { CircleDollarSign, CalendarClock, PieChart as PieIcon, TrendingUp, TrendingDown, ArrowUpRight, Wallet, ArrowRight, Zap, Target, Layers, LayoutGrid, Coins, Sparkles, CheckCircle2, Lock, Calendar, Trophy, Medal, Star, ListFilter } from 'lucide-react';
+import { CircleDollarSign, CalendarClock, PieChart as PieIcon, TrendingUp, TrendingDown, ArrowUpRight, Wallet, ArrowRight, Zap, Target, Layers, LayoutGrid, Coins, Sparkles, CheckCircle2, Lock, Calendar, Trophy, Medal, Star, ListFilter, TrendingUp as GrowthIcon, Anchor, Calculator } from 'lucide-react';
 import { SwipeableModal } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area } from 'recharts';
 
@@ -247,7 +247,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   if (magicNumber > 0 && magicNumber < 100000) { // Sanity check
                       const missing = Math.max(0, magicNumber - asset.quantity);
                       const progress = Math.min(100, (asset.quantity / magicNumber) * 100);
-                      
+                      const costToReach = missing * asset.currentPrice;
+
                       magicList.push({
                           ticker: asset.ticker,
                           current: asset.quantity,
@@ -256,13 +257,19 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                           progress,
                           estimatedDiv: estimatedDiv,
                           price: asset.currentPrice,
-                          type: asset.assetType
+                          type: asset.assetType,
+                          costToReach
                       });
                   }
               }
           }
       });
-      return magicList.sort((a, b) => b.progress - a.progress); 
+      // Sort by reached first, then by closest progress
+      return magicList.sort((a, b) => {
+          if (a.missing === 0 && b.missing !== 0) return -1;
+          if (b.missing === 0 && a.missing !== 0) return 1;
+          return b.progress - a.progress;
+      }); 
   }, [portfolio]);
 
   const magicReachedCount = magicNumberData.filter(m => m.missing === 0).length;
@@ -303,12 +310,17 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       const incomeMilestones = [50, 100, 500, 1000, 2500, 5000, 10000, 20000];
       const nextIncome = incomeMilestones.find(m => m > safeIncome) || (safeIncome * 1.5);
 
+      // Calculo de Liberdade (Salário Mínimo 2024 Base)
+      const MIN_WAGE = 1412;
+      const freedomPct = (safeIncome / MIN_WAGE) * 100;
+
       return { 
           currentLevel, 
           nextLevel, 
           progress,
           patrimony: { current: safeBalance, target: nextLevel.target },
-          income: { current: safeIncome, target: nextIncome }
+          income: { current: safeIncome, target: nextIncome },
+          freedom: { current: safeIncome, target: MIN_WAGE, pct: freedomPct }
       };
   }, [balance, currentMonthIncome]);
 
@@ -556,7 +568,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
         {/* 3. NÚMERO MÁGICO (CARD PREMIUM + FALLBACK) */}
         <SwipeableModal isOpen={showMagicNumber} onClose={() => setShowMagicNumber(false)}>
-            <div className="p-6 pb-20 h-full flex flex-col anim-slide-up">
+            <div className="p-6 h-full flex flex-col anim-slide-up">
                 <div className="flex items-center gap-4 mb-6 shrink-0">
                     <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
                         <Sparkles className="w-6 h-6" />
@@ -567,30 +579,37 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto min-h-0">
+                <div className="flex-1 overflow-y-auto min-h-0 pb-32">
                     {magicNumberData.length > 0 ? (
                         <div className="space-y-4">
                             {magicNumberData.map((item) => {
                                 const isReached = item.missing === 0;
                                 return (
-                                    <div key={item.ticker} className={`p-5 rounded-2xl border transition-all ${isReached ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-900/30' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 shadow-sm'}`}>
+                                    <div key={item.ticker} className={`p-5 rounded-2xl border transition-all ${isReached ? 'bg-gradient-to-br from-amber-50 to-white dark:from-amber-900/10 dark:to-zinc-900 border-amber-200 dark:border-amber-900/30' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 shadow-sm'}`}>
                                         <div className="flex justify-between items-start mb-4">
                                             <div className="flex items-center gap-3">
-                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black ${isReached ? 'bg-white text-emerald-600 shadow-sm' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'}`}>
+                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black ${isReached ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'}`}>
                                                     {item.ticker.substring(0,2)}
                                                 </div>
                                                 <div>
                                                     <div className="flex items-center gap-2">
                                                         <h4 className="font-bold text-base text-zinc-900 dark:text-white">{item.ticker}</h4>
-                                                        <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${item.type === AssetType.FII ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' : 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400'}`}>
-                                                            {item.type === AssetType.FII ? 'FII' : 'AÇÃO'}
-                                                        </span>
+                                                        {isReached && (
+                                                            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/30 text-[8px] font-black uppercase text-amber-700 dark:text-amber-400 tracking-wider">
+                                                                <Sparkles className="w-2.5 h-2.5" />
+                                                                Bola de Neve
+                                                            </span>
+                                                        )}
                                                     </div>
-                                                    <p className="text-[10px] text-zinc-500 font-medium mt-0.5">Preço: {formatBRL(item.price)}</p>
+                                                    <p className="text-[10px] text-zinc-500 font-medium mt-0.5 flex items-center gap-1">
+                                                        <span className={item.type === AssetType.FII ? 'text-indigo-500' : 'text-sky-500'}>{item.type === AssetType.FII ? 'FII' : 'Ação'}</span>
+                                                        <span>•</span>
+                                                        <span>Preço: {formatBRL(item.price)}</span>
+                                                    </p>
                                                 </div>
                                             </div>
                                             <div className="text-right">
-                                                <span className={`text-[10px] font-black px-2 py-1 rounded-full ${isReached ? 'bg-emerald-200 text-emerald-800' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'}`}>
+                                                <span className={`text-[10px] font-black px-2 py-1 rounded-full ${isReached ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'}`}>
                                                     {item.progress.toFixed(0)}%
                                                 </span>
                                             </div>
@@ -598,20 +617,30 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
                                         <div className="h-2.5 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden mb-3">
                                             <div 
-                                                className={`h-full rounded-full transition-all duration-1000 ${isReached ? 'bg-emerald-500' : 'bg-amber-500'}`} 
+                                                className={`h-full rounded-full transition-all duration-1000 ${isReached ? 'bg-amber-500' : 'bg-zinc-300 dark:bg-zinc-600'}`} 
                                                 style={{ width: `${item.progress}%` }}
                                             ></div>
                                         </div>
 
-                                        <div className="flex justify-between items-end">
-                                            <div>
-                                                <p className="text-[9px] text-zinc-400 uppercase font-bold">Faltam</p>
-                                                <p className={`text-sm font-black ${isReached ? 'text-emerald-600' : 'text-zinc-900 dark:text-white'}`}>
-                                                    {isReached ? 'Atingido!' : `${item.missing} Cotas`}
-                                                </p>
-                                            </div>
+                                        <div className="flex justify-between items-end bg-zinc-50 dark:bg-zinc-950/50 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800/50">
+                                            {!isReached ? (
+                                                <div>
+                                                    <p className="text-[9px] text-zinc-400 uppercase font-bold mb-0.5">Custo para Atingir</p>
+                                                    <p className="text-sm font-black text-zinc-900 dark:text-white">
+                                                        {formatBRL(item.costToReach, privacyMode)}
+                                                    </p>
+                                                    <p className="text-[9px] text-zinc-400 font-medium mt-0.5">Faltam {item.missing} cotas</p>
+                                                </div>
+                                            ) : (
+                                                <div>
+                                                    <p className="text-[9px] text-zinc-400 uppercase font-bold mb-0.5">Status</p>
+                                                    <p className="text-sm font-black text-amber-600 dark:text-amber-400">Autossustentável</p>
+                                                    <p className="text-[9px] text-zinc-400 font-medium mt-0.5">Renda compra novas cotas sozinha</p>
+                                                </div>
+                                            )}
+                                            
                                             <div className="text-right">
-                                                <p className="text-[9px] text-zinc-400 uppercase font-bold">Rend. Estimado</p>
+                                                <p className="text-[9px] text-zinc-400 uppercase font-bold mb-0.5">Rend. Estimado</p>
                                                 <p className="text-xs font-bold text-zinc-600 dark:text-zinc-300">~{formatBRL(item.estimatedDiv)}/mês</p>
                                             </div>
                                         </div>
@@ -632,7 +661,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
         {/* 4. OBJETIVOS (LEVEL SYSTEM + METAS CLARAS) */}
         <SwipeableModal isOpen={showGoals} onClose={() => setShowGoals(false)}>
-            <div className="p-6 pb-20 h-full flex flex-col anim-slide-up">
+            <div className="p-6 h-full flex flex-col anim-slide-up">
                 <div className="flex items-center gap-4 mb-8 shrink-0">
                     <div className="w-12 h-12 rounded-2xl bg-rose-100 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 flex items-center justify-center">
                         <Trophy className="w-6 h-6" />
@@ -643,9 +672,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto min-h-0">
+                <div className="flex-1 overflow-y-auto min-h-0 pb-32">
                     {/* Level Card */}
-                    <div className="text-center mb-10 relative">
+                    <div className="text-center mb-8 relative">
                         <div className="inline-block p-1 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-rose-500 shadow-xl shadow-indigo-500/20 mb-4">
                             <div className="w-24 h-24 rounded-full bg-white dark:bg-zinc-900 flex flex-col items-center justify-center border-4 border-transparent">
                                 <span className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-br from-indigo-600 to-purple-600">{goalsData.currentLevel.level}</span>
@@ -663,6 +692,26 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                             <p className="text-[10px] text-zinc-400 mt-2 font-bold uppercase tracking-widest">
                                 {goalsData.progress.toFixed(0)}% para {goalsData.nextLevel.name}
                             </p>
+                        </div>
+                    </div>
+
+                    {/* Freedom Metrics */}
+                    <div className="grid grid-cols-2 gap-3 mb-6">
+                        <div className="bg-zinc-50 dark:bg-zinc-800 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-700/50">
+                            <div className="flex items-center gap-2 mb-2">
+                                <Anchor className="w-4 h-4 text-sky-500" />
+                                <span className="text-[9px] font-bold uppercase text-zinc-400 tracking-wider">Liberdade</span>
+                            </div>
+                            <p className="text-2xl font-black text-zinc-900 dark:text-white">{goalsData.freedom.pct.toFixed(1)}%</p>
+                            <p className="text-[9px] text-zinc-500 mt-1">de 1 Salário Mínimo</p>
+                        </div>
+                        <div className="bg-zinc-50 dark:bg-zinc-800 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-700/50">
+                            <div className="flex items-center gap-2 mb-2">
+                                <Calculator className="w-4 h-4 text-emerald-500" />
+                                <span className="text-[9px] font-bold uppercase text-zinc-400 tracking-wider">Projeção</span>
+                            </div>
+                            <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(goalsData.income.current * 12, privacyMode)}</p>
+                            <p className="text-[9px] text-zinc-500 mt-1">Renda Anual Estimada</p>
                         </div>
                     </div>
 

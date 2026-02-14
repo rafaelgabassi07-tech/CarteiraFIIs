@@ -71,16 +71,16 @@ const UserProfileCard: React.FC<{ email: string }> = ({ email }) => {
     );
 };
 
-const QuickAction = ({ icon: Icon, label, onClick, colorClass, delay }: any) => (
+const QuickAction = ({ icon: Icon, label, onClick, colorClass, delay, isActive }: any) => (
     <button 
         onClick={onClick}
-        className={`flex flex-col items-center justify-center p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 shadow-sm press-effect anim-scale-in h-28 w-full`}
+        className={`flex flex-col items-center justify-center p-4 rounded-2xl bg-white dark:bg-zinc-900 border transition-all shadow-sm press-effect anim-scale-in h-28 w-full ${isActive ? 'border-indigo-500 dark:border-indigo-500 ring-1 ring-indigo-500' : 'border-zinc-100 dark:border-zinc-800'}`}
         style={{ animationDelay: `${delay}ms` }}
     >
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${colorClass}`}>
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${colorClass} ${isActive ? 'ring-2 ring-offset-2 ring-indigo-500 ring-offset-white dark:ring-offset-zinc-900' : ''}`}>
             <Icon className="w-5 h-5" strokeWidth={2} />
         </div>
-        <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">{label}</span>
+        <span className={`text-xs font-bold ${isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-700 dark:text-zinc-300'}`}>{label}</span>
     </button>
 );
 
@@ -230,16 +230,18 @@ export const Settings: React.FC<SettingsProps> = ({
                         />
                         <QuickAction 
                             icon={privacyMode ? EyeOff : Eye} 
-                            label={`Privacidade: ${privacyMode ? 'On' : 'Off'}`}
+                            label={`Privacidade`}
                             colorClass={privacyMode ? "bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500"} 
                             onClick={() => onSetPrivacyMode(!privacyMode)}
+                            isActive={privacyMode}
                             delay={100}
                         />
                         <QuickAction 
                             icon={Bell} 
-                            label={pushEnabled ? "Notificações: On" : "Notificações: Off"}
+                            label={pushEnabled ? "Notificações" : "Silencioso"}
                             colorClass={pushEnabled ? "bg-sky-100 dark:bg-sky-900/20 text-sky-600" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500"}
                             onClick={onRequestPushPermission}
+                            isActive={pushEnabled}
                             delay={150}
                         />
                     </div>
