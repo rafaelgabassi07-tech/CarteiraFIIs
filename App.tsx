@@ -117,7 +117,7 @@ const App: React.FC = () => {
   
   const [dividends, setDividends] = useState<DividendReceipt[]>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.DIVS); return s ? JSON.parse(s) : []; } catch { return []; } });
   
-  // CORREÇÃO: Usando a interface MarketIndicators correta e lógica de migração
+  // CORREÇÃO: Usando a interface MarketIndicators correta e lógica de migração robusta
   const [marketIndicators, setMarketIndicators] = useState<MarketIndicators>(() => { 
       try { 
           const s = localStorage.getItem(STORAGE_KEYS.INDICATORS); 
@@ -125,9 +125,10 @@ const App: React.FC = () => {
           
           if (parsed) {
               // Migração de dados antigos se necessário
+              // Força o tipo number/string para garantir conformidade
               return { 
-                  ipca_cumulative: parsed.ipca_cumulative ?? parsed.ipca ?? 4.62, 
-                  start_date_used: parsed.start_date_used ?? parsed.startDate ?? '' 
+                  ipca_cumulative: Number(parsed.ipca_cumulative ?? parsed.ipca ?? 4.62), 
+                  start_date_used: String(parsed.start_date_used ?? parsed.startDate ?? '') 
               }; 
           }
           return { ipca_cumulative: 4.62, start_date_used: '' }; 
