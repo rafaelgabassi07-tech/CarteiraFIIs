@@ -91,7 +91,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
             {/* FIIs Section */}
             {fiis.length > 0 && (
                 <div className="mb-6 anim-fade-in">
-                    <div className="flex items-center gap-2 mb-3 px-1">
+                    <div className="flex items-center gap-1.5 mb-3 px-1">
                         <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Fundos Imobiliários</h3>
                         <InfoTooltip title="FIIs" text="Cotações com delay de ~15 minutos. Valores baseados no último preço de mercado disponível." />
                     </div>
@@ -104,7 +104,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
             {/* Stocks Section */}
             {stocks.length > 0 && (
                 <div className="mb-6 anim-fade-in">
-                    <div className="flex items-center gap-2 mb-3 px-1">
+                    <div className="flex items-center gap-1.5 mb-3 px-1">
                         <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Ações</h3>
                         <InfoTooltip title="Ações" text="Cotações com delay de ~15 minutos. Valores baseados no último preço de mercado disponível." />
                     </div>

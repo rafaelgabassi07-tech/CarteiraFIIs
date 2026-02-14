@@ -42,7 +42,7 @@ const TransactionsSummary = ({ transactions, privacyMode }: { transactions: Tran
                 </div>
                 <div className="relative z-10">
                     <div className="flex justify-between items-start mb-2">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
                              <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Fluxo Líquido</span>
                              <InfoTooltip title="Fluxo Líquido" text="Diferença entre o total comprado e o total vendido. Indica quanto dinheiro 'novo' saiu do seu bolso para aportes." />
                         </div>

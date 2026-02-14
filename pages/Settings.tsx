@@ -2,9 +2,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   ChevronRight, ArrowLeft, Bell, Sun, Moon, Monitor, RefreshCw, 
-  Eye, EyeOff, Palette, Database, ShieldAlert, Info, 
+  Palette, Database, ShieldAlert, Info, 
   LogOut, Check, Activity, Terminal, Trash2, FileSpreadsheet, FileJson, 
-  Smartphone, Github, Globe, CreditCard, LayoutGrid, Zap, Download, Upload, Server, Wifi, Cloud
+  Smartphone, Github, Globe, CreditCard, LayoutGrid, Zap, Download, Upload, Server, Wifi, Cloud,
+  Calculator, TrendingUp, DollarSign, Calendar, Target, RotateCcw
 } from 'lucide-react';
 import { Transaction, DividendReceipt, ServiceMetric, LogEntry, ThemeType } from '../types';
 import { logger } from '../services/logger';
@@ -109,6 +110,171 @@ const SettingsRow = ({ icon: Icon, label, value, onClick, isDestructive = false,
     </button>
 );
 
+// --- CALCULADORAS INTERNAS ---
+
+const CompoundInterestCalc = () => {
+    const [initial, setInitial] = useState('');
+    const [monthly, setMonthly] = useState('');
+    const [rate, setRate] = useState('');
+    const [years, setYears] = useState('');
+    const [result, setResult] = useState<{ total: number, invested: number, interest: number } | null>(null);
+
+    const calculate = () => {
+        const p = parseFloat(initial) || 0;
+        const pm = parseFloat(monthly) || 0;
+        const r = (parseFloat(rate) || 0) / 100 / 12; // Taxa mensal
+        const n = (parseFloat(years) || 0) * 12;
+
+        if (n <= 0) return;
+
+        let futureValue = 0;
+        if (r === 0) {
+            futureValue = p + (pm * n);
+        } else {
+            futureValue = (p * Math.pow(1 + r, n)) + (pm * (Math.pow(1 + r, n) - 1)) / r;
+        }
+
+        const totalInvested = p + (pm * n);
+        setResult({
+            total: futureValue,
+            invested: totalInvested,
+            interest: futureValue - totalInvested
+        });
+    };
+
+    return (
+        <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+                <div>
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Inicial (R$)</label>
+                    <input type="number" value={initial} onChange={e => setInitial(e.target.value)} className="input-field" placeholder="0,00" />
+                </div>
+                <div>
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Mensal (R$)</label>
+                    <input type="number" value={monthly} onChange={e => setMonthly(e.target.value)} className="input-field" placeholder="0,00" />
+                </div>
+                <div>
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Taxa Anual (%)</label>
+                    <input type="number" value={rate} onChange={e => setRate(e.target.value)} className="input-field" placeholder="10" />
+                </div>
+                <div>
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Anos</label>
+                    <input type="number" value={years} onChange={e => setYears(e.target.value)} className="input-field" placeholder="10" />
+                </div>
+            </div>
+            
+            <button onClick={calculate} className="w-full py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-bold text-xs uppercase tracking-widest press-effect shadow-lg">
+                Calcular Futuro
+            </button>
+
+            {result && (
+                <div className="mt-4 p-4 bg-zinc-100 dark:bg-zinc-800 rounded-2xl border border-zinc-200 dark:border-zinc-700 anim-scale-in">
+                    <p className="text-[10px] text-zinc-400 uppercase font-bold tracking-widest text-center mb-2">Resultado Estimado</p>
+                    <div className="text-center mb-4">
+                        <span className="text-3xl font-black text-zinc-900 dark:text-white">
+                            {result.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </span>
+                    </div>
+                    <div className="flex justify-between text-xs font-medium text-zinc-500 px-2">
+                        <span>Investido: {result.invested.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                        <span className="text-emerald-500">Juros: {result.interest.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+const CeilingPriceCalc = () => {
+    const [dividend, setDividend] = useState('');
+    const [yieldTarget, setYieldTarget] = useState('');
+    const [result, setResult] = useState<number | null>(null);
+
+    const calculate = () => {
+        const d = parseFloat(dividend) || 0;
+        const y = parseFloat(yieldTarget) || 0;
+        if (y > 0) setResult((d / y) * 100);
+    };
+
+    return (
+        <div className="space-y-4">
+            <p className="text-xs text-zinc-500 leading-relaxed">
+                Descubra o preço máximo a pagar por uma ação ou FII para garantir um retorno (Yield) mínimo desejado.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+                <div>
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Div. Projetado (Anual)</label>
+                    <input type="number" value={dividend} onChange={e => setDividend(e.target.value)} className="input-field" placeholder="R$ 1,20" />
+                </div>
+                <div>
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Yield Desejado (%)</label>
+                    <input type="number" value={yieldTarget} onChange={e => setYieldTarget(e.target.value)} className="input-field" placeholder="6" />
+                </div>
+            </div>
+            
+            <button onClick={calculate} className="w-full py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-bold text-xs uppercase tracking-widest press-effect shadow-lg">
+                Calcular Teto
+            </button>
+
+            {result !== null && (
+                <div className="mt-4 p-4 bg-emerald-50 dark:bg-emerald-900/10 rounded-2xl border border-emerald-100 dark:border-emerald-900/30 anim-scale-in text-center">
+                    <p className="text-[10px] text-emerald-600 dark:text-emerald-400 uppercase font-bold tracking-widest mb-1">Preço Teto</p>
+                    <p className="text-3xl font-black text-emerald-700 dark:text-emerald-400">
+                        {result.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </p>
+                </div>
+            )}
+        </div>
+    );
+};
+
+const FireCalc = () => {
+    const [monthlyIncome, setMonthlyIncome] = useState('');
+    const [yieldRate, setYieldRate] = useState(''); // Taxa de retirada segura ou yield da carteira
+    const [patrimony, setPatrimony] = useState<number | null>(null);
+
+    const calculate = () => {
+        const income = parseFloat(monthlyIncome) || 0;
+        const rate = parseFloat(yieldRate) || 0;
+        if (rate > 0) {
+            // Renda Anual / Taxa Decimal
+            const anualIncome = income * 12;
+            setPatrimony(anualIncome / (rate / 100));
+        }
+    };
+
+    return (
+        <div className="space-y-4">
+            <p className="text-xs text-zinc-500 leading-relaxed">
+                Estime o patrimônio necessário para viver de renda passiva (Independência Financeira).
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+                <div>
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Renda Mensal (R$)</label>
+                    <input type="number" value={monthlyIncome} onChange={e => setMonthlyIncome(e.target.value)} className="input-field" placeholder="5.000" />
+                </div>
+                <div>
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Yield Anual (%)</label>
+                    <input type="number" value={yieldRate} onChange={e => setYieldRate(e.target.value)} className="input-field" placeholder="8" />
+                </div>
+            </div>
+            
+            <button onClick={calculate} className="w-full py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-bold text-xs uppercase tracking-widest press-effect shadow-lg">
+                Calcular Meta
+            </button>
+
+            {patrimony !== null && (
+                <div className="mt-4 p-4 bg-indigo-50 dark:bg-indigo-900/10 rounded-2xl border border-indigo-100 dark:border-indigo-900/30 anim-scale-in text-center">
+                    <p className="text-[10px] text-indigo-600 dark:text-indigo-400 uppercase font-bold tracking-widest mb-1">Patrimônio Necessário</p>
+                    <p className="text-2xl font-black text-indigo-700 dark:text-indigo-400 break-all">
+                        {patrimony.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </p>
+                </div>
+            )}
+        </div>
+    );
+};
+
 export const Settings: React.FC<SettingsProps> = ({ 
   user, onLogout, transactions, onImportTransactions, dividends, 
   onImportDividends, onResetApp, theme, onSetTheme, privacyMode, 
@@ -117,7 +283,9 @@ export const Settings: React.FC<SettingsProps> = ({
   onSyncAll, currentVersionDate, accentColor, onSetAccentColor,
   services, onCheckConnection, isCheckingConnection
 }) => {
-  const [activeSection, setActiveSection] = useState<'menu' | 'appearance' | 'data' | 'about'>('menu');
+  const [activeSection, setActiveSection] = useState<'menu' | 'appearance' | 'data' | 'about' | 'calculators'>('menu');
+  const [activeCalculator, setActiveCalculator] = useState<'compound' | 'ceiling' | 'fire' | null>(null);
+  
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [showLogs, setShowLogs] = useState(false);
@@ -195,7 +363,10 @@ export const Settings: React.FC<SettingsProps> = ({
     <div className="space-y-4">
         {activeSection !== 'menu' && (
             <div className="flex items-center gap-3 mb-2 anim-slide-in-right sticky top-0 bg-primary-light dark:bg-primary-dark z-20 py-2">
-              <button onClick={() => setActiveSection('menu')} className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-zinc-900 dark:text-white shadow-sm press-effect transition-transform">
+              <button onClick={() => {
+                  if (activeCalculator) setActiveCalculator(null);
+                  else setActiveSection('menu');
+              }} className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-zinc-900 dark:text-white shadow-sm press-effect transition-transform">
                 <ArrowLeft className="w-5 h-5" />
               </button>
               <div>
@@ -203,6 +374,10 @@ export const Settings: React.FC<SettingsProps> = ({
                   {activeSection === 'appearance' && 'Personalização'}
                   {activeSection === 'data' && 'Gerenciar Dados'}
                   {activeSection === 'about' && 'Sobre o App'}
+                  {activeSection === 'calculators' && (activeCalculator ? (
+                      activeCalculator === 'compound' ? 'Juros Compostos' : 
+                      activeCalculator === 'ceiling' ? 'Preço Teto' : 'Indep. Financeira'
+                  ) : 'Simuladores')}
                 </h2>
               </div>
             </div>
@@ -229,12 +404,12 @@ export const Settings: React.FC<SettingsProps> = ({
                             onClick={() => setActiveSection('data')}
                             delay={50}
                         />
+                        {/* Botão de Calculadoras substitui Privacidade */}
                         <QuickAction 
-                            icon={privacyMode ? EyeOff : Eye} 
-                            label={`Privacidade`}
-                            colorClass={privacyMode ? "bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500"} 
-                            onClick={() => onSetPrivacyMode(!privacyMode)}
-                            isActive={privacyMode}
+                            icon={Calculator} 
+                            label="Calculadoras"
+                            colorClass="bg-amber-100 dark:bg-amber-900/20 text-amber-600"
+                            onClick={() => setActiveSection('calculators')}
                             delay={100}
                         />
                         <QuickAction 
@@ -277,6 +452,51 @@ export const Settings: React.FC<SettingsProps> = ({
                     </div>
                     
                     <p className="text-center text-[10px] text-zinc-400 font-mono mt-8">Build: {currentVersionDate || 'Dev'}</p>
+                </div>
+            )}
+
+            {/* SEÇÃO DE CALCULADORAS */}
+            {activeSection === 'calculators' && (
+                <div className="space-y-4 anim-slide-up">
+                    {!activeCalculator ? (
+                        <div className="grid gap-3">
+                            <button onClick={() => setActiveCalculator('compound')} className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm press-effect text-left flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                                    <TrendingUp className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-zinc-900 dark:text-white">Juros Compostos</h3>
+                                    <p className="text-xs text-zinc-500">Simule o crescimento do seu patrimônio a longo prazo.</p>
+                                </div>
+                            </button>
+
+                            <button onClick={() => setActiveCalculator('ceiling')} className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm press-effect text-left flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-xl bg-indigo-100 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                                    <Target className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-zinc-900 dark:text-white">Preço Teto</h3>
+                                    <p className="text-xs text-zinc-500">Calcule o preço máximo baseado no Yield esperado.</p>
+                                </div>
+                            </button>
+
+                            <button onClick={() => setActiveCalculator('fire')} className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm press-effect text-left flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-xl bg-sky-100 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 flex items-center justify-center">
+                                    <DollarSign className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-zinc-900 dark:text-white">Independência Financeira</h3>
+                                    <p className="text-xs text-zinc-500">Quanto você precisa acumular para viver de renda?</p>
+                                </div>
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-xl anim-fade-in">
+                            {activeCalculator === 'compound' && <CompoundInterestCalc />}
+                            {activeCalculator === 'ceiling' && <CeilingPriceCalc />}
+                            {activeCalculator === 'fire' && <FireCalc />}
+                        </div>
+                    )}
                 </div>
             )}
 

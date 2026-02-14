@@ -37,10 +37,11 @@ export const InfoTooltip = ({ title, text }: { title: string, text: React.ReactN
         <>
             <button 
                 onClick={(e) => { e.stopPropagation(); setIsOpen(true); }} 
-                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors p-1 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                className="text-zinc-400/70 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors p-0.5 rounded-full hover:bg-indigo-50 dark:hover:bg-indigo-900/20 active:scale-95 flex items-center justify-center shrink-0"
                 aria-label="Informação"
+                style={{ marginTop: '-1px' }} // Micro ajuste visual
             >
-                <CircleHelp className="w-3.5 h-3.5" />
+                <CircleHelp className="w-3.5 h-3.5" strokeWidth={2} />
             </button>
             
             {isOpen && createPortal(

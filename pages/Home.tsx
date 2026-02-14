@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
-import { CircleDollarSign, CalendarClock, PieChart as PieIcon, TrendingUp, TrendingDown, ArrowUpRight, Wallet, ArrowRight, Zap, Target, Layers, LayoutGrid, Coins, Sparkles, CheckCircle2, Lock, Calendar, Trophy, Medal, Star, ListFilter, TrendingUp as GrowthIcon, Anchor, Calculator, Repeat, ChevronRight, Hourglass, Landmark, Crown, LockKeyhole, Info, Footprints } from 'lucide-react';
+import { CircleDollarSign, CalendarClock, PieChart as PieIcon, TrendingUp, TrendingDown, ArrowUpRight, Wallet, ArrowRight, Zap, Target, Layers, LayoutGrid, Coins, Sparkles, CheckCircle2, Lock, Calendar, Trophy, Medal, Star, ListFilter, TrendingUp as GrowthIcon, Anchor, Calculator, Repeat, ChevronRight, Hourglass, Landmark, Crown, LockKeyhole, Info, Footprints, BarChart3, LineChart } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area } from 'recharts';
 
@@ -58,7 +58,7 @@ const BentoCard = ({ title, value, subtext, icon: Icon, colorClass, onClick, cla
             </div>
         </div>
         <div className="relative z-10 w-full">
-            <div className="flex justify-between items-center mb-1">
+            <div className="flex items-center gap-1.5 mb-1">
                 <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">{title}</h3>
                 {info && <InfoTooltip title={title} text={info} />}
             </div>
@@ -379,7 +379,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             <div className="p-8 relative z-10">
                 <div className="flex justify-between items-start mb-8">
                     <div>
-                        <div className="flex items-center gap-2 mb-3">
+                        <div className="flex items-center gap-1.5 mb-3">
                             <p className="text-zinc-400 text-[10px] font-bold uppercase tracking-[0.2em]">Patrimônio Total</p>
                             <InfoTooltip title="Patrimônio Total" text="Soma do valor atual de mercado de todos os seus ativos (Cotação Atual × Quantidade). Atualizado com delay de ~15min." />
                         </div>
@@ -394,7 +394,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
                 <div className="grid grid-cols-2 gap-4">
                     <div className="rounded-2xl p-4 bg-zinc-950/50 border border-white/5 backdrop-blur-sm">
-                        <div className="flex justify-between items-center mb-1.5">
+                        <div className="flex items-center gap-1.5 mb-1.5">
                             <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Retorno</p>
                             <InfoTooltip title="Retorno" text="Lucro total estimado: (Valorização das Cotas + Proventos Recebidos) - (Valor Total Investido)." />
                         </div>
@@ -406,7 +406,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
 
                     <div className="rounded-2xl p-4 bg-zinc-950/50 border border-white/5 backdrop-blur-sm">
-                        <div className="flex justify-between items-center mb-1.5">
+                        <div className="flex items-center gap-1.5 mb-1.5">
                              <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Proventos</p>
                              <InfoTooltip title="Total Proventos" text="Soma histórica de todos os dividendos e JCP já recebidos na carteira desde o início." />
                         </div>
@@ -468,7 +468,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                             <PieIcon className="w-6 h-6" />
                         </div>
                         <div className="text-left">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5">
                                 <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Alocação</h3>
                                 <InfoTooltip title="Alocação" text="Distribuição atual do seu patrimônio por classe de ativo (FIIs vs Ações)." />
                             </div>
@@ -578,7 +578,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
         </SwipeableModal>
 
-        {/* 2. RENDA (Aprimorada - Total Histórico + YoC) */}
+        {/* 2. RENDA (Reformulada) */}
         <SwipeableModal isOpen={showProventos} onClose={() => setShowProventos(false)}>
             <div className="p-6 h-full flex flex-col anim-slide-up">
                 <div className="flex items-center gap-4 mb-6 shrink-0">
@@ -593,37 +593,57 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
                 <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar">
                     
-                    {/* Novos Cards de Resumo Aprimorados */}
-                    <div className="grid grid-cols-2 gap-3 mb-6">
-                        <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-4 rounded-2xl text-white shadow-lg shadow-emerald-500/20 col-span-2">
-                            <div className="flex justify-between items-start mb-2">
-                                <span className="text-[10px] font-bold uppercase tracking-widest opacity-80">Total Recebido (Histórico)</span>
-                                <Landmark className="w-4 h-4 opacity-80" />
+                    {/* DASHBOARD CARD PRINCIPAL */}
+                    <div className="mb-6 space-y-3">
+                        <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-6 rounded-[2rem] text-white shadow-xl shadow-emerald-500/20 relative overflow-hidden">
+                            {/* Decorative */}
+                            <div className="absolute top-0 right-0 p-6 opacity-10 pointer-events-none">
+                                <Landmark className="w-24 h-24" />
                             </div>
-                            <p className="text-3xl font-black tracking-tight mb-2">{formatBRL(totalDividendsReceived, privacyMode)}</p>
-                            <div className="flex items-center gap-2 text-[10px] font-medium opacity-90 bg-white/10 w-fit px-2 py-1 rounded-lg">
-                                <span>Yield on Cost:</span>
-                                <span className="font-bold text-white">{yieldOnCost.toFixed(2)}%</span>
+                            
+                            <div className="relative z-10">
+                                <div className="flex justify-between items-start mb-2">
+                                    <span className="text-xs font-bold uppercase tracking-widest opacity-80">Total Histórico</span>
+                                    <div className="flex items-center gap-2 bg-white/10 px-2 py-1 rounded-lg backdrop-blur-sm border border-white/10">
+                                        <span className="text-[10px] font-bold opacity-80">YoC</span>
+                                        <span className="text-xs font-black">{yieldOnCost.toFixed(2)}%</span>
+                                    </div>
+                                </div>
+                                <div className="flex items-baseline gap-1">
+                                    <span className="text-4xl font-black tracking-tight">{formatBRL(totalDividendsReceived, privacyMode)}</span>
+                                </div>
+                                <p className="text-[10px] opacity-70 mt-2 font-medium">Soma de todos os dividendos e JCP já recebidos.</p>
                             </div>
                         </div>
 
-                        <div className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-700/50">
-                            <p className="text-[9px] text-zinc-500 uppercase font-bold mb-1">Média Mensal (12m)</p>
-                            <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(incomeData.average, privacyMode)}</p>
-                        </div>
-                        <div className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-700/50">
-                            <p className="text-[9px] text-zinc-500 uppercase font-bold mb-1">Maior Recebimento</p>
-                            <div className="flex items-center gap-1">
-                                <Trophy className="w-3 h-3 text-amber-500" />
-                                <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(incomeData.max, privacyMode)}</p>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+                                    <BarChart3 className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Média Mensal</p>
+                                    <p className="text-sm font-black text-zinc-900 dark:text-white leading-tight">{formatBRL(incomeData.average, privacyMode)}</p>
+                                </div>
+                            </div>
+
+                            <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
+                                    <Trophy className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Maior Mês</p>
+                                    <p className="text-sm font-black text-zinc-900 dark:text-white leading-tight">{formatBRL(incomeData.max, privacyMode)}</p>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Gráfico com Visual Aprimorado */}
-                    <div className="h-48 w-full mb-8 shrink-0 bg-zinc-50/50 dark:bg-zinc-900/50 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 p-2">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={incomeData.chartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                    {/* Gráfico */}
+                    <div className="h-48 w-full mb-8 shrink-0 bg-white dark:bg-zinc-900 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 p-4 shadow-sm">
+                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-4">Tendência (6 Meses)</p>
+                        <ResponsiveContainer width="100%" height="85%">
+                            <AreaChart data={incomeData.chartData} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
@@ -631,7 +651,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                     </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
-                                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#71717a' }} dy={10} />
+                                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#71717a', fontWeight: 600 }} dy={10} />
                                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#71717a' }} tickFormatter={(val) => `R$${val}`} />
                                 <RechartsTooltip 
                                     contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: '#18181b', color: '#fff', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
@@ -655,7 +675,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                     return (
                                         <div key={monthKey} className="mb-6">
                                             {/* Header do Mês com Total */}
-                                            <div className="sticky top-0 bg-white dark:bg-zinc-900 py-2 z-10 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center mb-2">
+                                            <div className="sticky top-0 bg-white dark:bg-zinc-900 py-3 z-10 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center mb-2">
                                                 <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
                                                     {getMonthName(monthKey + '-01')}
                                                 </h3>
