@@ -11,7 +11,6 @@ export const useUpdateManager = (currentAppVersion: string) => {
   const [showChangelog, setShowChangelog] = useState(false);
   const [currentVersionDate, setCurrentVersionDate] = useState<string | null>(null);
 
-  // Compara versões semânticas (ex: 8.9.0 > 8.8.1)
   const isNewerVersion = (newVer: string, currentVer: string) => {
     const n = newVer.split('.').map(Number);
     const c = currentVer.split('.').map(Number);
@@ -22,14 +21,9 @@ export const useUpdateManager = (currentAppVersion: string) => {
     return false;
   };
 
-  const checkVersionMetadata = useCallback(async (manual = false) => {
+  const checkVersionMetadata = useCallback(async () => {
     try {
-      // Cache busting agressivo com timestamp
-      const response = await fetch(`./version.json?t=${Date.now()}`, { 
-        cache: 'no-store',
-        headers: { 'Cache-Control': 'no-cache' }
-      });
-      
+      const response = await fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' });
       if (!response.ok) return false;
       
       const data: VersionData = await response.json();
@@ -39,11 +33,7 @@ export const useUpdateManager = (currentAppVersion: string) => {
         setReleaseNotes(data.notes || []);
         if (data.date) setCurrentVersionDate(data.date);
         setIsUpdateAvailable(true);
-        if (manual) setShowChangelog(true);
         return true;
-      } else if (manual) {
-        // Se for manual e não tiver update, garante que os dados locais estão syncados
-        setCurrentVersionDate(data.date);
       }
     } catch (error) {
       console.warn('Erro ao verificar version.json:', error);
@@ -52,70 +42,97 @@ export const useUpdateManager = (currentAppVersion: string) => {
   }, [currentAppVersion]);
 
   const checkForUpdates = useCallback(async () => {
-    const hasJsonUpdate = await checkVersionMetadata(true);
-    
-    // Força atualização do SW se existir
+    const hasJsonUpdate = await checkVersionMetadata();
     if ('serviceWorker' in navigator) {
       try {
         const registration = await navigator.serviceWorker.ready;
         await registration.update();
       } catch (e) {
-        console.warn('SW Update Warning:', e);
+        console.warn('Erro ao atualizar SW (pode ser restrição de ambiente):', e);
       }
     }
     return hasJsonUpdate;
   }, [checkVersionMetadata]);
 
-  // Estratégia "Nuclear" de Atualização
+  // Estratégia de Atualização "Nuclear" (Limpa tudo para garantir funcionamento)
   const startUpdateProcess = useCallback(async () => {
     setIsUpdating(true);
     setUpdateProgress(10);
 
     const forceCleanReload = async () => {
-        setUpdateProgress(70);
+        setUpdateProgress(90);
         
         // 1. Remove Service Workers
         if ('serviceWorker' in navigator) {
-            const regs = await navigator.serviceWorker.getRegistrations();
-            for (const reg of regs) {
-                await reg.unregister();
-            }
+            try {
+                const regs = await navigator.serviceWorker.getRegistrations();
+                for (const reg of regs) {
+                    await reg.unregister();
+                }
+            } catch (e) { console.warn('Falha ao remover SWs:', e); }
         }
         
-        // 2. Limpa Cache Storage (Assets)
+        // 2. Limpa Caches de Arquivos (Não localStorage)
         if ('caches' in window) {
-            const keys = await caches.keys();
-            await Promise.all(keys.map(key => caches.delete(key)));
+            try {
+                const keys = await caches.keys();
+                await Promise.all(keys.map(key => caches.delete(key)));
+            } catch (e) { console.warn('Falha ao limpar caches:', e); }
         }
 
-        setUpdateProgress(100);
-        // 3. Reload Hard
+        // 3. Reload Forçado
         window.location.reload();
     };
 
-    // Tenta via mensagem primeiro
+    // Tenta atualização suave primeiro
     if ('serviceWorker' in navigator) {
-      const reg = await navigator.serviceWorker.getRegistration();
-      if (reg && reg.waiting) {
-          setUpdateProgress(50);
-          reg.waiting.postMessage({ type: 'INVESTFIIS_SKIP_WAITING' });
-          // Espera um pouco para o SW ativar, senão recarrega forçado
-          setTimeout(() => window.location.reload(), 500);
-          return;
+      try {
+          const reg = await navigator.serviceWorker.getRegistration();
+          if (reg) {
+            if (reg.waiting) {
+                setUpdateProgress(50);
+                reg.waiting.postMessage({ type: 'INVESTFIIS_SKIP_WAITING' });
+                return;
+            }
+            setUpdateProgress(30);
+            try {
+                await reg.update();
+            } catch {}
+          }
+      } catch (e) {
+          console.warn('Falha ao obter registro SW:', e);
       }
     }
 
-    // Se não houver SW waiting ou falhar, força limpeza
-    setTimeout(forceCleanReload, 1000);
+    // Se não funcionar em 2s, detona tudo
+    setTimeout(forceCleanReload, 2000);
 
   }, []);
 
-  // Check automático ao montar
   useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      try {
+          navigator.serviceWorker.getRegistration().then(reg => {
+              if (reg?.waiting) {
+                  setIsUpdateAvailable(true);
+                  checkVersionMetadata();
+              }
+          }).catch(err => {
+              console.warn("SW getRegistration failed:", err);
+          });
+
+          let refreshing = false;
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+              if (!refreshing) {
+                  refreshing = true;
+                  window.location.reload();
+              }
+          });
+      } catch (e) {
+          console.warn("Service Worker not supported or restricted:", e);
+      }
+    }
     checkVersionMetadata();
-    // Check periódico a cada 1 hora
-    const interval = setInterval(() => checkVersionMetadata(), 3600000);
-    return () => clearInterval(interval);
   }, [checkVersionMetadata]);
 
   return {
