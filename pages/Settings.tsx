@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { User, LogOut, Moon, Sun, Monitor, Shield, Smartphone, Bell, RefreshCw, Database, Download, Upload, FileJson, Trash2, Info, ChevronRight, Check, X, Loader2, Search, Server, Activity, Globe, Wifi, WifiOff, Calculator, Palette, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
+import { User, LogOut, Moon, Sun, Monitor, Shield, Bell, RefreshCw, Upload, Trash2, ChevronRight, Check, Loader2, Search, Calculator, Palette, ChevronDown, ChevronUp, Download } from 'lucide-react';
 import { triggerScraperUpdate } from '../services/dataService';
-import { ConfirmationModal, InfoTooltip } from '../components/Layout';
+import { ConfirmationModal } from '../components/Layout';
 import { ThemeType, ServiceMetric, Transaction, DividendReceipt } from '../types';
 import { parseB3Excel } from '../services/excelService';
 
