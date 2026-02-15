@@ -5,7 +5,7 @@ import {
   Palette, Database, ShieldAlert, Info, 
   LogOut, Check, Activity, Terminal, Trash2, FileSpreadsheet, FileJson, 
   Smartphone, Github, Globe, CreditCard, LayoutGrid, Zap, Download, Upload, Server, Wifi, Cloud,
-  Calculator, TrendingUp, DollarSign, Calendar, Target, RotateCcw, ArrowDown, Search, Loader2, User, Crown
+  Calculator, TrendingUp, DollarSign, Calendar, Target, RotateCcw, ArrowDown, Search, Loader2
 } from 'lucide-react';
 import { Transaction, DividendReceipt, ServiceMetric, LogEntry, ThemeType } from '../types';
 import { logger } from '../services/logger';
@@ -53,37 +53,22 @@ const ACCENT_COLORS = [
   { hex: '#10b981', name: 'Emerald' },
 ];
 
-const UserProfileCard: React.FC<{ email: string, txCount: number }> = ({ email, txCount }) => {
+const UserProfileCard: React.FC<{ email: string }> = ({ email }) => {
     const initials = email.substring(0, 2).toUpperCase();
     return (
-        <div className="relative overflow-hidden rounded-[2rem] bg-zinc-900 border border-zinc-800 shadow-xl p-6 mb-6 group transition-all">
-            {/* Background Gradient & Effects */}
-            <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/40 via-purple-900/10 to-transparent pointer-events-none"></div>
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none group-hover:bg-white/10 transition-colors duration-500"></div>
+        <div className="bg-zinc-900 text-white p-5 rounded-[2rem] border border-zinc-800 flex items-center gap-4 mb-6 shadow-xl relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none group-hover:bg-white/10 transition-colors"></div>
             
-            <div className="relative z-10 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 border border-white/10 backdrop-blur-md flex items-center justify-center text-white font-black text-lg shadow-lg">
-                        {initials}
-                    </div>
-                    <div>
-                        <div className="flex items-center gap-2 mb-1">
-                            <p className="text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-md uppercase tracking-widest border border-emerald-400/20">Pro Member</p>
-                        </div>
-                        <p className="text-base font-bold text-white truncate max-w-[200px]">{email}</p>
-                    </div>
-                </div>
-                <div className="text-right">
-                    <Crown className="w-6 h-6 text-amber-400 drop-shadow-md ml-auto mb-1" strokeWidth={1.5} fill="currentColor" fillOpacity={0.3} />
-                </div>
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black text-lg shadow-lg relative z-10">
+                {initials}
             </div>
-
-            <div className="relative z-10 mt-6 pt-4 border-t border-white/10 flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)] animate-pulse"></div>
-                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Sincronização Ativa</span>
+            <div className="flex-1 min-w-0 relative z-10">
+                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Conta Conectada</p>
+                <p className="text-base font-bold text-white truncate">{email}</p>
+                <div className="flex items-center gap-1.5 mt-1.5">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <span className="text-[10px] font-medium text-zinc-400">Sincronização Ativa</span>
                 </div>
-                <p className="text-[10px] font-medium text-zinc-500">{txCount} ordens registradas</p>
             </div>
         </div>
     );
@@ -653,7 +638,7 @@ export const Settings: React.FC<SettingsProps> = ({
         <div className="pb-10">
             {activeSection === 'menu' && (
                 <div className="anim-fade-in">
-                    {user && <UserProfileCard email={user.email} txCount={transactions.length} />}
+                    {user && <UserProfileCard email={user.email} />}
 
                     {/* Quick Grid */}
                     <div className="grid grid-cols-2 gap-3 mb-6">
