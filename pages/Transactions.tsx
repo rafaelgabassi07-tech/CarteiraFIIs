@@ -34,27 +34,39 @@ const TransactionsSummary = ({ transactions, privacyMode }: { transactions: Tran
     }, [transactions]);
 
     return (
-        <div className="space-y-3 mb-6">
-            {/* Hero Card: Resultado Líquido */}
-            <div className="relative overflow-hidden bg-white dark:bg-zinc-900 p-5 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 shadow-xl shadow-zinc-200/50 dark:shadow-black/50">
-                <div className="absolute top-0 right-0 p-4 opacity-10">
-                    <Wallet className="w-16 h-16 text-zinc-500" />
-                </div>
-                <div className="relative z-10">
-                    <div className="flex justify-between items-start mb-2">
-                        <div className="flex items-center gap-1.5">
-                             <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Fluxo Líquido</span>
-                             <InfoTooltip title="Fluxo Líquido" text="Diferença entre o total comprado e o total vendido. Indica quanto dinheiro 'novo' saiu do seu bolso para aportes." />
-                        </div>
-                        <span className="text-[10px] font-bold bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full text-zinc-500 border border-zinc-200 dark:border-zinc-700">{count} Ordens</span>
+        <div className="mb-5 px-1">
+            <div className="bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-100 dark:border-zinc-800 rounded-2xl p-4 flex items-center justify-between">
+                
+                {/* Lado Esquerdo: Valor Principal */}
+                <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${netFlow >= 0 ? 'bg-emerald-50 border-emerald-100 text-emerald-600 dark:bg-emerald-900/10 dark:border-emerald-900/30 dark:text-emerald-400' : 'bg-rose-50 border-rose-100 text-rose-600 dark:bg-rose-900/10 dark:border-rose-900/30 dark:text-rose-400'}`}>
+                        <Wallet className="w-5 h-5" strokeWidth={2} />
                     </div>
-                    <div className="flex items-baseline gap-2">
-                        <h2 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tight">
-                            {formatBRL(Math.abs(netFlow), privacyMode)}
-                        </h2>
-                        <span className={`text-xs font-black px-1.5 py-0.5 rounded-md ${netFlow >= 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'}`}>
-                            {netFlow >= 0 ? 'ENTRADA' : 'SAÍDA'}
-                        </span>
+                    <div>
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Fluxo Líquido</span>
+                            <InfoTooltip title="Fluxo Líquido" text="Diferença entre o total comprado e o total vendido. Representa o capital efetivamente alocado." />
+                        </div>
+                        <div className="flex items-baseline gap-1.5">
+                            <span className="text-lg font-black text-zinc-900 dark:text-white tracking-tight">
+                                {formatBRL(Math.abs(netFlow), privacyMode)}
+                            </span>
+                            <span className={`text-[9px] font-bold uppercase tracking-wider ${netFlow >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                {netFlow >= 0 ? 'Entrada' : 'Saída'}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Lado Direito: Métricas Secundárias (Discretas) */}
+                <div className="flex flex-col items-end gap-1">
+                    <div className="flex items-center gap-1.5 text-[10px] font-medium text-zinc-500">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                        <span>Buy: {formatBRL(totalInvested, true)}</span> 
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[10px] font-medium text-zinc-500">
+                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                        <span>Sell: {formatBRL(totalSold, true)}</span>
                     </div>
                 </div>
             </div>
