@@ -138,8 +138,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       });
 
       const byClass = [
-          { name: 'FIIs', value: fiis, color: '#6366f1' }, 
-          { name: 'Ações', value: stocks, color: '#0ea5e9' }
+          { name: 'FIIs', value: fiis, color: '#6366f1', percent: (fiis / totalBalance) * 100 }, 
+          { name: 'Ações', value: stocks, color: '#0ea5e9', percent: (stocks / totalBalance) * 100 }
       ].filter(d => d.value > 0);
 
       const byAsset = assetList.sort((a,b) => b.value - a.value).slice(0, 15);
