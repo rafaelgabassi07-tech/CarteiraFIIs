@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { User, LogOut, Moon, Sun, Monitor, Shield, Bell, RefreshCw, Upload, Trash2, ChevronRight, Check, Loader2, Search, Calculator, Palette, ChevronDown, ChevronUp, Download } from 'lucide-react';
+import { User, LogOut, Moon, Sun, Monitor, Shield, Bell, RefreshCw, Upload, Trash2, ChevronRight, Check, Loader2, Search, Calculator, Palette, ChevronDown, ChevronUp, Download, Info, History, Wifi, Activity, Database, Globe, Smartphone, FileText, Zap } from 'lucide-react';
 import { triggerScraperUpdate } from '../services/dataService';
 import { ConfirmationModal } from '../components/Layout';
 import { ThemeType, ServiceMetric, Transaction, DividendReceipt } from '../types';
@@ -217,14 +217,14 @@ const SettingGroup = ({ title, children }: any) => (
 );
 
 // Componente: Item de Configuração
-const SettingItem = ({ icon: Icon, label, value, onClick, color = "text-zinc-500", rightElement, danger = false, description }: any) => (
+const SettingItem = ({ icon: Icon, label, value, onClick, color = "text-zinc-500", rightElement, danger = false, description, highlight = false }: any) => (
     <button 
         onClick={onClick}
         className={`w-full flex items-center justify-between p-4 transition-colors group ${danger ? 'hover:bg-rose-50 dark:hover:bg-rose-900/10' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50'}`}
     >
         <div className="flex items-center gap-3.5">
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${danger ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-500' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 group-hover:bg-white dark:group-hover:bg-zinc-700 border border-zinc-100 dark:border-zinc-700/50'}`}>
-                <Icon className={`w-5 h-5 ${danger ? 'text-rose-500' : color}`} />
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${danger ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-500' : highlight ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 group-hover:bg-white dark:group-hover:bg-zinc-700 border border-zinc-100 dark:border-zinc-700/50'}`}>
+                <Icon className={`w-5 h-5 ${danger ? 'text-rose-500' : highlight ? 'text-indigo-600 dark:text-indigo-400' : color}`} />
             </div>
             <div className="text-left">
                 <span className={`text-sm font-bold block ${danger ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-900 dark:text-white'}`}>{label}</span>
@@ -328,8 +328,8 @@ export const Settings: React.FC<SettingsProps> = ({
                 </div>
             </div>
 
-            {/* Aparência */}
-            <SettingGroup title="Aparência">
+            {/* SEÇÃO 1: PERSONALIZAÇÃO & PREFERÊNCIAS */}
+            <SettingGroup title="Personalização">
                 {/* Theme Selector */}
                 <div className="p-4 flex items-center justify-between">
                     <div className="flex items-center gap-3.5">
@@ -371,32 +371,33 @@ export const Settings: React.FC<SettingsProps> = ({
                         ))}
                     </div>
                 </div>
+
+                <div className="border-t border-zinc-100 dark:border-zinc-800">
+                    <SettingItem 
+                        icon={Shield} 
+                        label="Modo Privacidade" 
+                        description="Oculta valores na interface"
+                        rightElement={<Switch checked={privacyMode} onChange={() => onSetPrivacyMode(!privacyMode)} />}
+                    />
+                </div>
+                <div className="border-t border-zinc-100 dark:border-zinc-800">
+                    <SettingItem 
+                        icon={Bell} 
+                        label="Notificações"
+                        description="Alertas de proventos e datas"
+                        rightElement={<Switch checked={pushEnabled} onChange={onRequestPushPermission} />}
+                    />
+                </div>
             </SettingGroup>
 
-            {/* Preferências */}
-            <SettingGroup title="Preferências">
-                <SettingItem 
-                    icon={Shield} 
-                    label="Modo Privacidade" 
-                    description="Oculta valores monetários na interface"
-                    rightElement={<Switch checked={privacyMode} onChange={() => onSetPrivacyMode(!privacyMode)} />}
-                />
-                <SettingItem 
-                    icon={Bell} 
-                    label="Notificações"
-                    description="Alertas de proventos e datas com"
-                    rightElement={<Switch checked={pushEnabled} onChange={onRequestPushPermission} />}
-                />
-            </SettingGroup>
-
-            {/* Ferramentas */}
+            {/* SEÇÃO 2: FERRAMENTAS */}
             <div className="mb-6">
                 <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-3 ml-4">Ferramentas</h3>
                 <CeilingPriceCalc />
             </div>
 
-            {/* Dados */}
-            <SettingGroup title="Gerenciamento de Dados">
+            {/* SEÇÃO 3: DADOS */}
+            <SettingGroup title="Dados e Sincronização">
                 <SettingItem 
                     icon={Upload} 
                     label="Importar Excel (B3)" 
@@ -411,67 +412,78 @@ export const Settings: React.FC<SettingsProps> = ({
                     description="Forçar atualização dos dados"
                     onClick={() => onSyncAll(true)} 
                 />
+            </SettingGroup>
+
+            {/* SEÇÃO 4: SISTEMA E INFORMAÇÕES */}
+            <SettingGroup title="Sistema">
+                {/* Diagnóstico (Widget) */}
+                <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50">
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                            <Activity className="w-4 h-4 text-zinc-400" />
+                            <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Status dos Serviços</span>
+                        </div>
+                        <button onClick={onCheckConnection} disabled={isCheckingConnection} className="text-zinc-400 hover:text-indigo-500 transition-colors p-1">
+                            <RefreshCw className={`w-3.5 h-3.5 ${isCheckingConnection ? 'animate-spin' : ''}`} />
+                        </button>
+                    </div>
+                    <div className="space-y-2">
+                        {services.map(s => (
+                            <div key={s.id} className="flex items-center justify-between py-1 px-2 bg-white dark:bg-zinc-800 rounded-lg border border-zinc-100 dark:border-zinc-700/50">
+                                <div className="flex items-center gap-2.5">
+                                    <div className={`w-2 h-2 rounded-full ${s.status === 'operational' ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.4)]' : s.status === 'checking' ? 'bg-zinc-300 animate-pulse' : 'bg-rose-500'}`}></div>
+                                    <span className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">{s.label}</span>
+                                </div>
+                                <span className={`text-[9px] font-mono font-bold ${s.latency && s.latency < 200 ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-400'}`}>
+                                    {s.latency ? `${s.latency}ms` : s.status === 'checking' ? '...' : '-'}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="border-t border-zinc-100 dark:border-zinc-800">
+                    <SettingItem 
+                        icon={Download} 
+                        label="Buscar Atualização" 
+                        description={updateAvailable ? "Nova versão disponível!" : `Versão instalada: ${appVersion}`}
+                        onClick={onForceUpdate}
+                        highlight={updateAvailable}
+                    />
+                </div>
                 
+                <div className="border-t border-zinc-100 dark:border-zinc-800">
+                    <SettingItem 
+                        icon={History} 
+                        label="O que há de novo?" 
+                        description="Histórico de versões e mudanças"
+                        onClick={onShowChangelog}
+                    />
+                </div>
+            </SettingGroup>
+
+            {/* SEÇÃO 5: ZONA DE PERIGO */}
+            <SettingGroup title="Zona de Perigo">
                 <SettingItem 
                     icon={Trash2} 
                     label="Resetar Aplicativo" 
-                    description="Limpar cache local e sair"
+                    description="Limpar cache local e sair da conta"
                     danger
                     onClick={() => setConfirmReset(true)}
                 />
             </SettingGroup>
 
-            {/* Status do Sistema */}
-            <SettingGroup title="Diagnóstico">
-                <div className="p-4 space-y-3">
-                    <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Serviços Conectados</span>
-                        <button onClick={onCheckConnection} disabled={isCheckingConnection} className="text-zinc-400 hover:text-indigo-500 transition-colors p-1">
-                            <RefreshCw className={`w-3.5 h-3.5 ${isCheckingConnection ? 'animate-spin' : ''}`} />
-                        </button>
-                    </div>
-                    {services.map(s => (
-                        <div key={s.id} className="flex items-center justify-between py-1.5">
-                            <div className="flex items-center gap-2.5">
-                                <div className={`w-2 h-2 rounded-full ${s.status === 'operational' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : s.status === 'checking' ? 'bg-zinc-300 animate-pulse' : 'bg-rose-500'}`}></div>
-                                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">{s.label}</span>
-                            </div>
-                            <span className={`text-[10px] font-mono font-medium ${s.latency && s.latency < 200 ? 'text-emerald-500' : 'text-zinc-400'}`}>
-                                {s.latency ? `${s.latency}ms` : s.status === 'checking' ? '...' : '-'}
-                            </span>
-                        </div>
-                    ))}
-                </div>
-            </SettingGroup>
-
-            {/* Footer */}
-            <div className="text-center py-8">
-                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em] mb-4">InvestFIIs Cloud v{appVersion}</p>
-                
-                <div className="flex justify-center gap-3">
-                    <button onClick={onShowChangelog} className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 rounded-lg text-xs font-bold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">
-                        O que há de novo?
-                    </button>
-                    <button onClick={onForceUpdate} className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 rounded-lg text-xs font-bold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">
-                        Buscar Atualização
-                    </button>
-                </div>
-
-                {updateAvailable && (
-                    <div 
-                        onClick={onForceUpdate}
-                        className="mt-6 mx-auto inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-500 text-white rounded-full text-xs font-bold shadow-lg shadow-indigo-500/30 anim-bounce-in cursor-pointer hover:bg-indigo-600 transition-colors"
-                    >
-                        <Download className="w-3.5 h-3.5" /> 
-                        Nova versão disponível
-                    </div>
-                )}
+            {/* Footer Text */}
+            <div className="text-center pt-4 pb-8">
+                <p className="text-[9px] font-bold text-zinc-300 dark:text-zinc-700 uppercase tracking-widest">
+                    InvestFIIs Cloud v{appVersion} • {currentVersionDate || 'Latest'}
+                </p>
             </div>
 
             <ConfirmationModal 
                 isOpen={confirmReset} 
                 title="Resetar tudo?" 
-                message="Isso apagará todos os dados locais e fará logout. Dados na nuvem não serão perdidos." 
+                message="Isso apagará todos os dados locais e fará logout. Dados salvos na nuvem não serão perdidos." 
                 onConfirm={() => { setConfirmReset(false); onResetApp(); }} 
                 onCancel={() => setConfirmReset(false)} 
             />
