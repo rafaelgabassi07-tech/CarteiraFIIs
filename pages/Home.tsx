@@ -384,48 +384,56 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   return (
     <div className="space-y-5 pb-8">
         
-        {/* HERO CARD - Visual mais limpo e imponente */}
-        <div className="relative overflow-hidden rounded-[2.5rem] bg-zinc-900 border border-zinc-800 shadow-xl anim-fade-in group">
-            {/* Ambient Background */}
-            <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-gradient-to-br from-indigo-500/10 to-purple-500/10 rounded-full blur-[80px] pointer-events-none -mt-20 -mr-20"></div>
-            
-            <div className="p-8 relative z-10">
-                <div className="flex justify-between items-start mb-8">
-                    <div>
-                        <div className="flex items-center gap-1.5 mb-3">
-                            <p className="text-zinc-400 text-[10px] font-bold uppercase tracking-[0.2em]">Patrimônio Total</p>
-                            <InfoTooltip title="Patrimônio Total" text="Soma do valor atual de mercado de todos os seus ativos (Cotação Atual × Quantidade). Atualizado com delay de ~15min." />
-                        </div>
-                        <h1 className="text-[2.75rem] font-bold text-white tracking-tighter tabular-nums leading-none">
-                            {formatBRL(balance, privacyMode)}
-                        </h1>
-                    </div>
-                    <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10 backdrop-blur-md">
-                        <Wallet className="w-6 h-6 text-zinc-300" strokeWidth={1.5} />
+        {/* HERO CARD - PREMIUM FINTECH STYLE */}
+        <div className="relative w-full h-auto min-h-[220px] rounded-[2.2rem] bg-zinc-950 border border-zinc-800/80 overflow-hidden shadow-2xl group anim-fade-in">
+            {/* Ambient Lighting Effects - NEUTRAL GRAYSCALE */}
+            <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 bg-zinc-600/10 blur-[80px] rounded-full pointer-events-none"></div>
+            <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-64 h-64 bg-white/5 blur-[80px] rounded-full pointer-events-none"></div>
+
+            <div className="relative z-10 p-7 flex flex-col justify-between h-full">
+                {/* Top Row: Label & Privacy */}
+                <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/5 backdrop-blur-md">
+                        <Wallet className="w-3.5 h-3.5 text-zinc-400" strokeWidth={2.5} />
+                        <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-widest">Patrimônio Total</span>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="rounded-2xl p-4 bg-zinc-950/50 border border-white/5 backdrop-blur-sm">
+                {/* Middle: Big Value */}
+                <div className="mt-6 mb-8">
+                    <h1 className="text-[3rem] sm:text-[3.5rem] font-black text-white leading-none tracking-tighter tabular-nums drop-shadow-sm select-none">
+                        {formatBRL(balance, privacyMode)}
+                    </h1>
+                </div>
+
+                {/* Bottom: Metrics Row */}
+                <div className="grid grid-cols-2 gap-6 pt-6 border-t border-white/5">
+                    
+                    {/* Rentabilidade */}
+                    <div>
                         <div className="flex items-center gap-1.5 mb-1.5">
-                            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Retorno</p>
-                            <InfoTooltip title="Retorno" text="Lucro total estimado: (Valorização das Cotas + Proventos Recebidos) - (Valor Total Investido)." />
+                            <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Rentabilidade</span>
                         </div>
-                        <div className="flex items-baseline gap-2">
-                            <span className={`text-lg font-bold tabular-nums ${totalReturn >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        <div className="flex items-center gap-2">
+                            <span className={`text-lg font-bold tabular-nums tracking-tight ${totalReturn >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                                 {totalReturn >= 0 ? '+' : ''}{formatBRL(totalReturn, privacyMode)}
+                            </span>
+                            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded uppercase tracking-wide ${totalReturn >= 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
+                                {totalReturnPercent.toFixed(2)}%
                             </span>
                         </div>
                     </div>
 
-                    <div className="rounded-2xl p-4 bg-zinc-950/50 border border-white/5 backdrop-blur-sm">
+                    {/* Proventos */}
+                    <div className="pl-6 border-l border-white/5">
                         <div className="flex items-center gap-1.5 mb-1.5">
-                             <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Proventos</p>
-                             <InfoTooltip title="Total Proventos" text="Soma histórica de todos os dividendos e JCP já recebidos na carteira desde o início." />
+                            <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Proventos Totais</span>
                         </div>
-                        <p className="text-lg font-bold text-zinc-200 tabular-nums">
-                            +{formatBRL(totalDividendsReceived, privacyMode)}
-                        </p>
+                        <div className="flex items-center gap-2">
+                             <span className="text-lg font-bold text-zinc-200 tabular-nums tracking-tight">
+                                {formatBRL(totalDividendsReceived, privacyMode)}
+                             </span>
+                        </div>
                     </div>
                 </div>
             </div>
