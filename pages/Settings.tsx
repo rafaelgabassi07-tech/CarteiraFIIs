@@ -271,7 +271,7 @@ const CeilingPriceCalc = () => {
         const d = parseFloat(cleanDiv) || 0;
         const y = parseFloat(cleanYield) || 0;
         
-        if (y > 0) setResult((d / y) * 100);
+        if (y > 0) setResult((d / (y / 100)));
         else setResult(null);
     };
 
@@ -297,21 +297,21 @@ const CeilingPriceCalc = () => {
                 let dyPercent = data.details?.dy || 0;
                 let calculatedDiv = 0;
 
-                // Estratégia Híbrida:
-                // 1. Se tem DY anual, usa ele.
-                if (dyPercent > 0 && price > 0) {
-                    calculatedDiv = price * (dyPercent / 100);
-                }
-                // 2. Se não tem DY mas tem rawFundamentals (fallback scraper)
-                else if (data.rawFundamentals) {
+                // Tenta extrair último rendimento ou projetar via DY
+                if (data.rawFundamentals) {
                     const lastDiv = typeof data.rawFundamentals.ultimo_rendimento === 'number' 
                         ? data.rawFundamentals.ultimo_rendimento 
-                        : parseFloat(data.rawFundamentals.ultimo_rendimento);
+                        : parseFloat(String(data.rawFundamentals.ultimo_rendimento).replace(',', '.'));
                         
                     if (!isNaN(lastDiv) && lastDiv > 0) {
                         // Estima anualizado x12 (Simplificado para FIIs)
                         calculatedDiv = lastDiv * 12;
-                        if (price > 0) dyPercent = (calculatedDiv / price) * 100;
+                        if (price > 0 && dyPercent <= 0) {
+                            dyPercent = (calculatedDiv / price) * 100;
+                        }
+                    } else if (dyPercent > 0 && price > 0) {
+                        // Fallback: Se tem DY mas não achou ultimo rendimento, usa DY pra achar div anual
+                        calculatedDiv = price * (dyPercent / 100);
                     }
                 }
 
@@ -321,8 +321,7 @@ const CeilingPriceCalc = () => {
                     if (calculatedDiv > 0) {
                         setDividend(calculatedDiv.toFixed(2).replace('.', ','));
                     } else {
-                        // Tem preço mas não achou dividendos
-                        setSearchError('Preço encontrado, mas sem histórico de dividendos.');
+                        setSearchError('Preço encontrado, mas sem histórico de dividendos claro.');
                     }
                 } else {
                     setSearchError('Ativo não encontrado ou sem liquidez.');
@@ -439,7 +438,7 @@ const CeilingPriceCalc = () => {
                         {[6, 8, 10].map(y => {
                             // Helper para calcular rapidamente
                             const cleanDiv = dividend.replace(/\./g, '').replace(',', '.');
-                            const val = ((parseFloat(cleanDiv) || 0) / y) * 100;
+                            const val = (parseFloat(cleanDiv) || 0) / (y / 100);
                             const isSelected = parseFloat(yieldTarget.replace(',', '.')) === y;
                             return (
                                 <button 
