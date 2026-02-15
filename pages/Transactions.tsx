@@ -33,24 +33,30 @@ const TransactionsSummary = ({ transactions, privacyMode }: { transactions: Tran
         return { totalInvested: invested, totalSold: sold, netFlow: invested - sold, count: transactions.length };
     }, [transactions]);
 
-    // Design Discreto e Funcional
     return (
-        <div className="mb-4 bg-zinc-50 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-3 flex items-center justify-between shadow-sm">
-            <div className="flex items-center gap-3">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${netFlow >= 0 ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-500' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-500'}`}>
-                    <ArrowRightLeft className="w-4 h-4" />
+        <div className="space-y-3 mb-6">
+            {/* Hero Card: Resultado Líquido */}
+            <div className="relative overflow-hidden bg-white dark:bg-zinc-900 p-5 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 shadow-xl shadow-zinc-200/50 dark:shadow-black/50">
+                <div className="absolute top-0 right-0 p-4 opacity-10">
+                    <Wallet className="w-16 h-16 text-zinc-500" />
                 </div>
-                <div>
-                     <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Fluxo Líquido</p>
-                     <p className={`text-sm font-black tracking-tight ${netFlow < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-900 dark:text-white'}`}>
-                        {formatBRL(Math.abs(netFlow), privacyMode)}
-                        <span className="text-[9px] font-bold text-zinc-400 ml-1 uppercase">{netFlow >= 0 ? 'Entrada' : 'Saída'}</span>
-                     </p>
+                <div className="relative z-10">
+                    <div className="flex justify-between items-start mb-2">
+                        <div className="flex items-center gap-1.5">
+                             <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Fluxo Líquido</span>
+                             <InfoTooltip title="Fluxo Líquido" text="Diferença entre o total comprado e o total vendido. Indica quanto dinheiro 'novo' saiu do seu bolso para aportes." />
+                        </div>
+                        <span className="text-[10px] font-bold bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full text-zinc-500 border border-zinc-200 dark:border-zinc-700">{count} Ordens</span>
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                        <h2 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tight">
+                            {formatBRL(Math.abs(netFlow), privacyMode)}
+                        </h2>
+                        <span className={`text-xs font-black px-1.5 py-0.5 rounded-md ${netFlow >= 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'}`}>
+                            {netFlow >= 0 ? 'ENTRADA' : 'SAÍDA'}
+                        </span>
+                    </div>
                 </div>
-            </div>
-            <div className="text-right border-l border-zinc-200 dark:border-zinc-800 pl-4">
-                 <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Ordens</p>
-                 <p className="text-sm font-black text-zinc-900 dark:text-white">{count}</p>
             </div>
         </div>
     );
