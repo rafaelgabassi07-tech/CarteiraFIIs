@@ -18,7 +18,7 @@ const ACCENT_COLORS = [
 ];
 
 // Componente de Seção (Wrapper)
-const SettingsSection = ({ title, children }: { title?: string, children: React.ReactNode }) => (
+const SettingsSection = ({ title, children }: { title?: string, children?: React.ReactNode }) => (
     <div className="mb-8">
         {title && <h3 className="px-4 mb-3 text-xs font-black text-zinc-400 uppercase tracking-widest">{title}</h3>}
         <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-sm divide-y divide-zinc-100 dark:divide-zinc-800">
