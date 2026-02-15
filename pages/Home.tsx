@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
-import { CircleDollarSign, CalendarClock, PieChart as PieIcon, TrendingUp, TrendingDown, ArrowUpRight, Wallet, ArrowRight, Zap, Target, Layers, LayoutGrid, Coins, Sparkles, CheckCircle2, Lock, Calendar, Trophy, Medal, Star, ListFilter, TrendingUp as GrowthIcon, Anchor, Calculator, Repeat, ChevronRight, Hourglass, Landmark, Crown, LockKeyhole, Info, Footprints, BarChart3, LineChart } from 'lucide-react';
+import { CircleDollarSign, CalendarClock, PieChart as PieIcon, TrendingUp, TrendingDown, ArrowUpRight, Wallet, ArrowRight, Zap, Target, Layers, LayoutGrid, Coins, Sparkles, CheckCircle2, Lock, Calendar, Trophy, Medal, Star, ListFilter, TrendingUp as GrowthIcon, Anchor, Calculator, Repeat, ChevronRight, Hourglass, Landmark, Crown, LockKeyhole, Info, Footprints, BarChart3, LineChart, History } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area } from 'recharts';
 
@@ -186,7 +186,13 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       const groups: Record<string, number> = {};
       const todayStr = new Date().toISOString().split('T')[0];
       
-      // Pega ultimos 12 meses
+      // Data para cálculo de 12 meses
+      const now = new Date();
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(now.getFullYear() - 1);
+      oneYearAgo.setDate(now.getDate() - 1); // Margem de segurança
+
+      // Pega ultimos 12 meses para o GRÁFICO (Visualização de 6 meses é padrão, mas calculamos tudo)
       for (let i = 5; i >= 0; i--) {
           const d = new Date();
           d.setMonth(d.getMonth() - i);
@@ -195,10 +201,17 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       }
 
       const receivedList: DividendReceipt[] = [];
+      let last12mTotal = 0;
 
       dividendReceipts.forEach(d => {
           if (!d.paymentDate || d.paymentDate > todayStr) return; // Apenas pagos
           
+          // Cálculo 12 Meses (TTM)
+          const pDate = new Date(d.paymentDate + 'T12:00:00');
+          if (pDate >= oneYearAgo && pDate <= now) {
+              last12mTotal += d.totalReceived;
+          }
+
           const monthKey = d.paymentDate.substring(0, 7);
           if (groups[monthKey] !== undefined) {
               groups[monthKey] += d.totalReceived;
@@ -236,7 +249,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           groupedHistory[k].push(d);
       });
 
-      return { chartData, average, max, history, groupedHistory };
+      return { chartData, average, max, last12mTotal, history, groupedHistory };
   }, [dividendReceipts]);
 
   const currentMonthIncome = incomeData.chartData[incomeData.chartData.length - 1]?.value || 0;
@@ -578,10 +591,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
         </SwipeableModal>
 
-        {/* 2. RENDA (Reformulada) */}
+        {/* 2. RENDA (Reformulada - COMPACTA) */}
         <SwipeableModal isOpen={showProventos} onClose={() => setShowProventos(false)}>
             <div className="p-6 h-full flex flex-col anim-slide-up">
-                <div className="flex items-center gap-4 mb-6 shrink-0">
+                <div className="flex items-center gap-4 mb-4 shrink-0">
                     <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
                         <CircleDollarSign className="w-6 h-6" />
                     </div>
@@ -593,72 +606,57 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
                 <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar">
                     
-                    {/* DASHBOARD CARD PRINCIPAL */}
+                    {/* DASHBOARD COMPACTO */}
                     <div className="mb-6 space-y-3">
-                        <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-6 rounded-[2rem] text-white shadow-xl shadow-emerald-500/20 relative overflow-hidden">
-                            {/* Decorative */}
-                            <div className="absolute top-0 right-0 p-6 opacity-10 pointer-events-none">
-                                <Landmark className="w-24 h-24" />
+                        {/* Header Total e YoC */}
+                        <div className="bg-gradient-to-r from-emerald-500 to-teal-600 p-4 rounded-2xl text-white shadow-lg shadow-emerald-500/10 flex justify-between items-center">
+                            <div>
+                                <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-0.5">Total Recebido</p>
+                                <p className="text-2xl font-black tracking-tight leading-none">{formatBRL(totalDividendsReceived, privacyMode)}</p>
                             </div>
-                            
-                            <div className="relative z-10">
-                                <div className="flex justify-between items-start mb-2">
-                                    <span className="text-xs font-bold uppercase tracking-widest opacity-80">Total Histórico</span>
-                                    <div className="flex items-center gap-2 bg-white/10 px-2 py-1 rounded-lg backdrop-blur-sm border border-white/10">
-                                        <span className="text-[10px] font-bold opacity-80">YoC</span>
-                                        <span className="text-xs font-black">{yieldOnCost.toFixed(2)}%</span>
-                                    </div>
-                                </div>
-                                <div className="flex items-baseline gap-1">
-                                    <span className="text-4xl font-black tracking-tight">{formatBRL(totalDividendsReceived, privacyMode)}</span>
-                                </div>
-                                <p className="text-[10px] opacity-70 mt-2 font-medium">Soma de todos os dividendos e JCP já recebidos.</p>
+                            <div className="text-right bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 backdrop-blur-md">
+                                <p className="text-[9px] font-bold opacity-80 uppercase">Yield on Cost</p>
+                                <p className="text-sm font-black">{yieldOnCost.toFixed(2)}%</p>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
-                                    <BarChart3 className="w-5 h-5" />
-                                </div>
-                                <div>
-                                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Média Mensal</p>
-                                    <p className="text-sm font-black text-zinc-900 dark:text-white leading-tight">{formatBRL(incomeData.average, privacyMode)}</p>
-                                </div>
+                        {/* Grid de Métricas (3 Colunas) */}
+                        <div className="grid grid-cols-3 gap-2">
+                            <div className="bg-zinc-50 dark:bg-zinc-800 p-2.5 rounded-xl border border-zinc-100 dark:border-zinc-700/50 flex flex-col justify-center min-h-[60px]">
+                                <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-wide truncate mb-0.5">Últimos 12m</p>
+                                <p className="text-xs font-black text-zinc-900 dark:text-white leading-tight">{formatBRL(incomeData.last12mTotal, privacyMode)}</p>
                             </div>
-
-                            <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
-                                    <Trophy className="w-5 h-5" />
-                                </div>
-                                <div>
-                                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Maior Mês</p>
-                                    <p className="text-sm font-black text-zinc-900 dark:text-white leading-tight">{formatBRL(incomeData.max, privacyMode)}</p>
-                                </div>
+                            <div className="bg-zinc-50 dark:bg-zinc-800 p-2.5 rounded-xl border border-zinc-100 dark:border-zinc-700/50 flex flex-col justify-center min-h-[60px]">
+                                <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-wide truncate mb-0.5">Média Mensal</p>
+                                <p className="text-xs font-black text-zinc-900 dark:text-white leading-tight">{formatBRL(incomeData.average, privacyMode)}</p>
+                            </div>
+                            <div className="bg-zinc-50 dark:bg-zinc-800 p-2.5 rounded-xl border border-zinc-100 dark:border-zinc-700/50 flex flex-col justify-center min-h-[60px]">
+                                <p className="text-[9px] text-amber-500 font-bold uppercase tracking-wide truncate mb-0.5 flex items-center gap-1"><Trophy className="w-2.5 h-2.5" /> Recorde</p>
+                                <p className="text-xs font-black text-zinc-900 dark:text-white leading-tight">{formatBRL(incomeData.max, privacyMode)}</p>
                             </div>
                         </div>
                     </div>
 
-                    {/* Gráfico */}
-                    <div className="h-48 w-full mb-8 shrink-0 bg-white dark:bg-zinc-900 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 p-4 shadow-sm">
-                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-4">Tendência (6 Meses)</p>
-                        <ResponsiveContainer width="100%" height="85%">
-                            <AreaChart data={incomeData.chartData} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
+                    {/* Gráfico Reduzido (Mais sutil) */}
+                    <div className="h-32 w-full mb-6 shrink-0 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-2 relative overflow-hidden">
+                        <p className="absolute top-3 left-3 text-[9px] font-bold text-zinc-400 uppercase tracking-widest z-10">Tendência (6 Meses)</p>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={incomeData.chartData} margin={{ top: 20, right: 0, left: -25, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
                                         <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                                     </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
-                                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#71717a', fontWeight: 600 }} dy={10} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#71717a' }} tickFormatter={(val) => `R$${val}`} />
+                                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 600 }} dy={5} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a' }} tickFormatter={(val) => `R$${val}`} />
                                 <RechartsTooltip 
-                                    contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: '#18181b', color: '#fff', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
-                                    labelStyle={{ color: '#a1a1aa', marginBottom: '4px', fontSize: '10px', textTransform: 'uppercase' }}
-                                    formatter={(value: number) => [formatBRL(value), 'Renda']}
+                                    contentStyle={{ borderRadius: '8px', border: 'none', backgroundColor: '#18181b', color: '#fff', fontSize: '10px', padding: '8px' }}
+                                    formatter={(value: number) => [formatBRL(value), '']}
+                                    labelStyle={{ display: 'none' }}
                                 />
-                                <Area type="monotone" dataKey="value" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorIncome)" />
+                                <Area type="monotone" dataKey="value" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorIncome)" />
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
@@ -712,7 +710,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
         </SwipeableModal>
 
-        {/* 3. NÚMERO MÁGICO (COMPACTADO E OTIMIZADO) */}
+        {/* 3. NÚMERO MÁGICO */}
         <SwipeableModal isOpen={showMagicNumber} onClose={() => setShowMagicNumber(false)}>
             <div className="p-6 h-full flex flex-col anim-slide-up">
                 <div className="flex items-center gap-4 mb-6 shrink-0">
@@ -720,218 +718,110 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         <Sparkles className="w-6 h-6" />
                     </div>
                     <div>
-                        <h2 className="text-2xl font-bold text-zinc-900 dark:text-white leading-none">Magic Number</h2>
-                        <p className="text-xs text-zinc-500 font-medium mt-1">Onde a renda compra novas cotas</p>
+                        <h2 className="text-2xl font-bold text-zinc-900 dark:text-white leading-none">Bola de Neve</h2>
+                        <p className="text-xs text-zinc-500 font-medium mt-1">{magicReachedCount} ativos atingiram o Nº Mágico</p>
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar">
-                    {magicNumberData.length > 0 ? (
-                        <div className="space-y-2.5">
-                            {magicNumberData.map((item) => {
-                                const isReached = item.missing === 0;
-                                return (
-                                    <div key={item.ticker} className={`p-3 rounded-2xl border transition-all ${isReached ? 'bg-gradient-to-br from-amber-50 to-white dark:from-amber-900/10 dark:to-zinc-900 border-amber-200 dark:border-amber-900/30' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 shadow-sm'}`}>
-                                        
-                                        {/* Header Compacto */}
-                                        <div className="flex justify-between items-center mb-2">
-                                            <div className="flex items-center gap-2.5">
-                                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black ${isReached ? 'bg-amber-500 text-white shadow-md' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'}`}>
-                                                    {item.ticker.substring(0,2)}
-                                                </div>
-                                                <div>
-                                                    <div className="flex items-center gap-1.5">
-                                                        <h4 className="font-bold text-sm text-zinc-900 dark:text-white leading-tight">{item.ticker}</h4>
-                                                        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded uppercase ${item.type === AssetType.FII ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' : 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400'}`}>
-                                                            {item.type === AssetType.FII ? 'FII' : 'Ação'}
-                                                        </span>
-                                                    </div>
-                                                    <p className="text-[9px] text-zinc-400 font-medium">Preço: {formatBRL(item.price)}</p>
-                                                </div>
-                                            </div>
-                                            <div className="text-right">
-                                                {isReached ? (
-                                                    <span className="inline-flex items-center gap-1 text-[9px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-wide bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-md">
-                                                        <Sparkles className="w-2.5 h-2.5" /> Atingido
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-xs font-black text-zinc-900 dark:text-white">{item.progress.toFixed(0)}%</span>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {/* Barra Compacta */}
-                                        <div className="h-1.5 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden mb-3">
-                                            <div 
-                                                className={`h-full rounded-full transition-all duration-1000 ${isReached ? 'bg-amber-500' : 'bg-zinc-300 dark:bg-zinc-600'}`} 
-                                                style={{ width: `${item.progress}%` }}
-                                            ></div>
-                                        </div>
-
-                                        {/* Grid de Informações Densas */}
-                                        <div className="grid grid-cols-2 gap-2 bg-zinc-50 dark:bg-zinc-950/50 p-2 rounded-xl border border-zinc-100 dark:border-zinc-800/50">
-                                            {!isReached ? (
-                                                <div className="flex flex-col">
-                                                    <span className="text-[8px] text-zinc-400 uppercase font-bold tracking-wider">Custo p/ Meta</span>
-                                                    <span className="text-xs font-bold text-zinc-900 dark:text-white leading-tight">
-                                                        {formatBRL(item.costToReach, privacyMode)}
-                                                        <span className="text-[9px] text-zinc-400 font-normal ml-1">({item.missing} cotas)</span>
-                                                    </span>
-                                                </div>
-                                            ) : (
-                                                <div className="flex flex-col">
-                                                    <span className="text-[8px] text-zinc-400 uppercase font-bold tracking-wider">Status</span>
-                                                    <span className="text-xs font-bold text-amber-600 dark:text-amber-400 leading-tight">Bola de Neve Ativa</span>
-                                                </div>
-                                            )}
-                                            
-                                            <div className="flex flex-col text-right border-l border-zinc-200 dark:border-zinc-800 pl-2">
-                                                <span className="text-[8px] text-zinc-400 uppercase font-bold tracking-wider">{isReached ? 'Potencial' : 'Recompra Atual'}</span>
-                                                <div className="flex items-center justify-end gap-1">
-                                                    <span className="text-xs font-bold text-zinc-900 dark:text-white leading-tight">
-                                                        {item.repurchasePower.toFixed(2)} <span className="text-[9px] text-zinc-400 font-normal">cotas/mês</span>
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
+                <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar space-y-4">
+                    {magicNumberData.map((item: any) => (
+                        <div key={item.ticker} className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700/50">
+                            <div className="flex justify-between items-start mb-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-700 flex items-center justify-center text-xs font-black shadow-sm">
+                                        {item.ticker.substring(0, 2)}
                                     </div>
-                                );
-                            })}
+                                    <div>
+                                        <h4 className="font-bold text-sm text-zinc-900 dark:text-white">{item.ticker}</h4>
+                                        <p className="text-[10px] text-zinc-500 font-medium">Cota: {formatBRL(item.price, privacyMode)}</p>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    {item.missing === 0 ? (
+                                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[10px] font-bold uppercase">
+                                            <Sparkles className="w-3 h-3" /> Atingido
+                                        </span>
+                                    ) : (
+                                        <span className="text-[10px] font-bold text-zinc-400 uppercase">Faltam {item.missing}</span>
+                                    )}
+                                </div>
+                            </div>
+                            
+                            <div className="mb-2">
+                                <div className="flex justify-between text-[10px] font-bold text-zinc-500 mb-1">
+                                    <span>Progresso</span>
+                                    <span>{item.progress.toFixed(0)}%</span>
+                                </div>
+                                <div className="h-2 w-full bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
+                                    <div className="h-full bg-amber-500 rounded-full transition-all duration-1000" style={{ width: `${item.progress}%` }}></div>
+                                </div>
+                            </div>
+
+                            <div className="flex justify-between items-center pt-2 border-t border-zinc-200 dark:border-zinc-700/50">
+                                <div>
+                                    <p className="text-[9px] font-bold text-zinc-400 uppercase">Renda Gerada</p>
+                                    <p className="text-xs font-bold text-zinc-900 dark:text-white">{formatBRL(item.current * item.estimatedDiv, privacyMode)}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-[9px] font-bold text-zinc-400 uppercase">Poder de Recompra</p>
+                                    <p className="text-xs font-bold text-emerald-500">{item.repurchasePower.toFixed(2)} cotas/mês</p>
+                                </div>
+                            </div>
                         </div>
-                    ) : (
-                        <div className="text-center py-10 opacity-50">
-                            <Sparkles className="w-12 h-12 mx-auto mb-3 text-zinc-300" />
-                            <p className="text-sm font-bold text-zinc-500">Dados insuficientes.</p>
-                        </div>
-                    )}
+                    ))}
                 </div>
             </div>
         </SwipeableModal>
 
-        {/* 4. OBJETIVOS (SEM SCROLL + LAYOUT OTIMIZADO) */}
+        {/* 4. GOALS */}
         <SwipeableModal isOpen={showGoals} onClose={() => setShowGoals(false)}>
             <div className="p-6 h-full flex flex-col anim-slide-up">
-                <div className="flex items-center gap-4 mb-4 shrink-0">
+                <div className="flex items-center gap-4 mb-6 shrink-0">
                     <div className="w-12 h-12 rounded-2xl bg-rose-100 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 flex items-center justify-center">
                         <Trophy className="w-6 h-6" />
                     </div>
                     <div>
-                        <h2 className="text-2xl font-bold text-zinc-900 dark:text-white leading-none">Minha Jornada</h2>
-                        <p className="text-xs text-zinc-500 font-medium mt-1">Conquiste sua liberdade financeira</p>
+                        <h2 className="text-2xl font-bold text-zinc-900 dark:text-white leading-none">Objetivos</h2>
+                        <p className="text-xs text-zinc-500 font-medium mt-1">Nível Atual: {goalsData.currentLevel.name}</p>
                     </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar">
-                    
-                    {/* Bloco Explicativo */}
-                    <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-2xl mb-6 text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed border border-zinc-100 dark:border-zinc-800">
-                       <div className="flex items-start gap-3">
-                           <Info className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
-                           <p className="text-xs">
-                             Sua jornada é calculada com base no seu <strong>Patrimônio Total</strong> e <strong>Proventos Mensais</strong>. 
-                             O objetivo final é cobrir 100% de um Salário Mínimo com renda passiva.
-                           </p>
-                       </div>
-                    </div>
-
-                    {/* Card de Nível Horizontal (Economiza Espaço Vertical) */}
-                    <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 to-purple-700 rounded-3xl p-5 mb-6 text-white shadow-xl shadow-indigo-900/20">
-                        <div className="relative z-10 flex items-center gap-5">
-                            <div className="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-md flex flex-col items-center justify-center border border-white/20 shrink-0">
-                                <span className="text-3xl font-black leading-none">{goalsData.currentLevel.level}</span>
-                                <span className="text-[8px] font-bold uppercase tracking-widest opacity-80">Nível</span>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <h3 className="text-xl font-bold mb-1 truncate">{goalsData.currentLevel.name}</h3>
-                                <div className="flex items-center justify-between text-[10px] font-medium opacity-80 mb-1.5">
-                                    <span>Progresso para Nível {goalsData.currentLevel.level + 1}</span>
-                                    <span>{goalsData.progress.toFixed(0)}%</span>
-                                </div>
-                                <div className="h-1.5 w-full bg-black/20 rounded-full overflow-hidden mb-2">
-                                    <div 
-                                        className="h-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.5)] transition-all duration-1000"
-                                        style={{ width: `${goalsData.progress}%` }}
-                                    ></div>
-                                </div>
-                                <p className="text-[10px] font-bold opacity-90 bg-white/10 inline-block px-2 py-0.5 rounded">
-                                    Próximo Nível: {formatBRL(goalsData.nextLevel.target, privacyMode)}
-                                </p>
+                    {/* Level Progress */}
+                    <div className="mb-8 text-center">
+                        <div className="relative w-32 h-32 mx-auto mb-4 flex items-center justify-center">
+                            <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                                <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e4e4e7" strokeWidth="3" className="dark:stroke-zinc-800" />
+                                <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#f43f5e" strokeWidth="3" strokeDasharray={`${goalsData.progress}, 100`} className="transition-all duration-1000 ease-out" />
+                            </svg>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                <span className="text-3xl font-black text-zinc-900 dark:text-white">{goalsData.currentLevel.level}</span>
+                                <span className="text-[9px] font-bold text-zinc-400 uppercase">Nível</span>
                             </div>
                         </div>
-                        {/* Decorative BG */}
-                        <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-3xl"></div>
-                        <div className="absolute -bottom-10 -left-10 w-24 h-24 bg-purple-500/20 rounded-full blur-2xl"></div>
+                        <p className="text-sm font-medium text-zinc-500 px-8">
+                            Faltam <span className="text-rose-500 font-bold">{formatBRL(goalsData.nextLevel.target - (balance || 0), privacyMode)}</span> para atingir o nível <span className="text-zinc-900 dark:text-white font-bold">{goalsData.nextLevel.name}</span>.
+                        </p>
                     </div>
 
-                    {/* Métricas Explicadas */}
-                    <div className="space-y-3 mb-6">
-                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center gap-4">
-                             <div className="w-10 h-10 rounded-xl bg-sky-100 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
-                                 <Anchor className="w-5 h-5" />
-                             </div>
-                             <div>
-                                 <p className="text-[10px] font-bold uppercase text-zinc-400 tracking-wider mb-0.5">Independência Financeira</p>
-                                 <p className="text-lg font-black text-zinc-900 dark:text-white leading-none mb-1">{goalsData.freedom.pct.toFixed(1)}%</p>
-                                 <p className="text-xs text-zinc-500 leading-tight">
-                                     Seus dividendos cobrem <strong>{goalsData.freedom.pct.toFixed(1)}%</strong> de um salário mínimo (R$ 1.412).
-                                 </p>
-                             </div>
-                        </div>
-
-                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center gap-4">
-                             <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-                                 <Coins className="w-5 h-5" />
-                             </div>
-                             <div>
-                                 <p className="text-[10px] font-bold uppercase text-zinc-400 tracking-wider mb-0.5">Renda Passiva Diária</p>
-                                 <p className="text-lg font-black text-zinc-900 dark:text-white leading-none mb-1">{formatBRL(goalsData.dailyIncome, privacyMode)}</p>
-                                 <p className="text-xs text-zinc-500 leading-tight">
-                                     Se você parasse hoje, receberia em média <strong>{formatBRL(goalsData.dailyIncome, privacyMode)}</strong> por dia sem trabalhar.
-                                 </p>
-                             </div>
-                        </div>
+                    {/* Metas Financeiras */}
+                    <div className="space-y-6 mb-8">
+                        <ProgressBar current={goalsData.income.current} target={goalsData.income.target} label="Meta de Renda Mensal" colorClass="bg-emerald-500" privacyMode={privacyMode} />
+                        <ProgressBar current={goalsData.patrimony.current} target={goalsData.patrimony.target} label="Meta de Patrimônio" colorClass="bg-indigo-500" privacyMode={privacyMode} />
+                        <ProgressBar current={goalsData.freedom.current} target={goalsData.freedom.target} label="Liberdade Financeira (Salário Mínimo)" colorClass="bg-amber-500" privacyMode={privacyMode} />
                     </div>
 
-                    {/* Metas Concretas (Compacto) */}
-                    <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm mb-6">
-                        <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                             <Footprints className="w-3 h-3" /> Próximos Marcos
-                        </h3>
-                        
-                        <ProgressBar 
-                            label="Patrimônio Acumulado" 
-                            current={goalsData.patrimony.current} 
-                            target={goalsData.patrimony.target} 
-                            colorClass="bg-gradient-to-r from-blue-500 to-indigo-600"
-                            privacyMode={privacyMode}
-                        />
-                        
-                        <ProgressBar 
-                            label="Renda Mensal Recorrente" 
-                            current={goalsData.income.current} 
-                            target={goalsData.income.target} 
-                            colorClass="bg-gradient-to-r from-emerald-400 to-emerald-600"
-                            privacyMode={privacyMode}
-                        />
-                    </div>
-
-                    {/* NOVA SEÇÃO: Galeria de Conquistas */}
-                    <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Galeria de Conquistas</h3>
-                            <span className="text-[9px] font-bold bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded text-zinc-500">
-                                {goalsData.unlockedCount}/{goalsData.achievements.length}
-                            </span>
-                        </div>
-                        
-                        <div className="grid grid-cols-3 gap-3">
-                            {goalsData.achievements.map((item) => (
-                                <div key={item.id} className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-all ${item.unlocked ? `bg-opacity-50 ${item.color.replace('text-', 'border-').split(' ')[0]} border-opacity-20` : 'bg-zinc-50 dark:bg-zinc-800/50 border-transparent opacity-50 grayscale'}`}>
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${item.unlocked ? item.color : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-400'}`}>
-                                        {item.unlocked ? <item.icon className="w-5 h-5" strokeWidth={2} /> : <LockKeyhole className="w-4 h-4" />}
+                    {/* Conquistas */}
+                    <div>
+                        <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4">Conquistas ({goalsData.unlockedCount}/{goalsData.achievements.length})</h3>
+                        <div className="grid grid-cols-2 gap-3">
+                            {goalsData.achievements.map((achievement: any) => (
+                                <div key={achievement.id} className={`p-3 rounded-2xl border ${achievement.unlocked ? 'bg-white dark:bg-zinc-800 border-zinc-100 dark:border-zinc-700' : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 opacity-50'}`}>
+                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${achievement.unlocked ? achievement.color : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-400'}`}>
+                                        <achievement.icon className="w-4 h-4" />
                                     </div>
-                                    <p className="text-[10px] font-bold text-center text-zinc-900 dark:text-white leading-tight mb-0.5">{item.label}</p>
-                                    <p className="text-[8px] text-center text-zinc-400">{item.sub}</p>
+                                    <h4 className="text-xs font-bold text-zinc-900 dark:text-white">{achievement.label}</h4>
+                                    <p className="text-[10px] text-zinc-500">{achievement.sub}</p>
                                 </div>
                             ))}
                         </div>
@@ -940,101 +830,75 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
         </SwipeableModal>
 
-        {/* 5. ALOCAÇÃO (COM LISTA DE ATIVOS APRIMORADA) */}
+        {/* 5. ALLOCATION */}
         <SwipeableModal isOpen={showAllocation} onClose={() => setShowAllocation(false)}>
-             <div className="p-6 h-full flex flex-col anim-slide-up">
+            <div className="p-6 h-full flex flex-col anim-slide-up">
                 <div className="flex items-center gap-4 mb-6 shrink-0">
                     <div className="w-12 h-12 rounded-2xl bg-sky-100 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 flex items-center justify-center">
                         <PieIcon className="w-6 h-6" />
                     </div>
-                    <h2 className="text-2xl font-bold dark:text-white">Diversificação</h2>
-                </div>
-
-                {/* Tabs */}
-                <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl mb-4 shrink-0">
-                    <button 
-                        onClick={() => setAllocationView('CLASS')}
-                        className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${allocationView === 'CLASS' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}
-                    >
-                        Por Classe
-                    </button>
-                    <button 
-                        onClick={() => setAllocationView('ASSET')}
-                        className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${allocationView === 'ASSET' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}
-                    >
-                        Por Ativo
-                    </button>
-                </div>
-                
-                {/* Gráfico fixo com altura controlada */}
-                <div className="flex-1 w-full min-h-[220px] max-h-[35%] relative mb-4 anim-scale-in shrink-0">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                            <Pie 
-                                data={allocationView === 'CLASS' ? allocationData.byClass : allocationData.byAsset} 
-                                innerRadius="60%" 
-                                outerRadius="80%" 
-                                paddingAngle={4} 
-                                dataKey="value" 
-                                cornerRadius={6}
-                                cy="50%"
-                            >
-                                {(allocationView === 'CLASS' ? allocationData.byClass : allocationData.byAsset).map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
-                                ))}
-                            </Pie>
-                            <RechartsTooltip />
-                        </PieChart>
-                    </ResponsiveContainer>
-                    
-                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                        <span className="text-xs text-zinc-400 font-medium uppercase tracking-widest">Total</span>
-                        <span className="text-xl font-bold text-zinc-900 dark:text-white mt-1">100%</span>
+                    <div>
+                        <h2 className="text-2xl font-bold text-zinc-900 dark:text-white leading-none">Alocação</h2>
+                        <p className="text-xs text-zinc-500 font-medium mt-1">Diversificação da Carteira</p>
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto pb-24 shrink-0 no-scrollbar">
-                    {allocationView === 'CLASS' ? (
-                        <div className="grid grid-cols-2 gap-3">
-                            {allocationData.byClass.map((entry) => (
-                                <div key={entry.name} className="flex items-center gap-3 p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl">
-                                    <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: entry.color }}></div>
-                                    <div className="min-w-0">
-                                        <p className="text-xs font-bold text-zinc-900 dark:text-white truncate">{entry.name}</p>
-                                        <p className="text-[10px] text-zinc-500">{((entry.value / (balance || 1)) * 100).toFixed(1)}%</p>
-                                    </div>
-                                </div>
-                            ))}
+                {/* Toggle View */}
+                <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl mb-6 shrink-0">
+                    <button onClick={() => setAllocationView('CLASS')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${allocationView === 'CLASS' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500'}`}>Por Classe</button>
+                    <button onClick={() => setAllocationView('ASSET')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${allocationView === 'ASSET' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500'}`}>Por Ativo</button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar">
+                    {/* Chart */}
+                    <div className="h-64 w-full relative mb-6">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={allocationView === 'CLASS' ? allocationData.byClass : allocationData.byAsset}
+                                    innerRadius={60}
+                                    outerRadius={80}
+                                    paddingAngle={5}
+                                    dataKey="value"
+                                >
+                                    {(allocationView === 'CLASS' ? allocationData.byClass : allocationData.byAsset).map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
+                                    ))}
+                                </Pie>
+                                <RechartsTooltip 
+                                    formatter={(value: number) => formatBRL(value, privacyMode)}
+                                    contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: '#18181b', color: '#fff', fontSize: '12px' }}
+                                />
+                            </PieChart>
+                        </ResponsiveContainer>
+                        {/* Center Info */}
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                            <span className="text-[10px] font-bold text-zinc-400 uppercase">Total</span>
+                            <span className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(balance, privacyMode)}</span>
                         </div>
-                    ) : (
-                        <div className="space-y-3 pr-2">
-                            {allocationData.byAsset.map((entry, idx) => (
-                                <div key={entry.name} className="flex items-center justify-between anim-slide-up" style={{ animationDelay: `${idx * 30}ms`, opacity: 0 }}>
-                                    <div className="flex-1">
-                                        <div className="flex justify-between items-center mb-1">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }}></div>
-                                                <span className="text-xs font-bold text-zinc-900 dark:text-white">{entry.name}</span>
-                                            </div>
-                                            <span className="text-xs font-black text-zinc-900 dark:text-white">{entry.percent.toFixed(1)}%</span>
-                                        </div>
-                                        
-                                        <div className="h-1.5 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden mb-1">
-                                            <div className="h-full rounded-full" style={{ width: `${entry.percent}%`, backgroundColor: entry.color }}></div>
-                                        </div>
-                                        
-                                        <div className="flex justify-between text-[9px] text-zinc-400 font-medium">
-                                            <span>{formatBRL(entry.value, privacyMode)}</span>
-                                            <span>PM: {formatBRL(entry.pm)} • Atual: {formatBRL(entry.current)}</span>
-                                        </div>
-                                    </div>
+                    </div>
+
+                    {/* List */}
+                    <div className="space-y-3">
+                        {(allocationView === 'CLASS' ? allocationData.byClass : allocationData.byAsset).map((item, idx) => (
+                            <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: item.color }}></div>
+                                    <span className="text-sm font-bold text-zinc-900 dark:text-white">{item.name}</span>
                                 </div>
-                            ))}
-                        </div>
-                    )}
+                                <div className="text-right">
+                                    <p className="text-sm font-bold text-zinc-900 dark:text-white">{formatBRL(item.value, privacyMode)}</p>
+                                    <p className="text-[10px] font-medium text-zinc-500">
+                                        {(item as any).percent?.toFixed(1) || 0}%
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
         </SwipeableModal>
+
     </div>
   );
 };

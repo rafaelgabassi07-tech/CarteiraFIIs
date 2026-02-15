@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, Wallet, TrendingUp, TrendingDown, RefreshCw, X, Calculator, Scale, Activity, BarChart3, PieChart, Coins } from 'lucide-react';
+import { Search, Wallet, TrendingUp, TrendingDown, RefreshCw, X, Calculator, Scale, Activity, BarChart3, PieChart, Coins, Target, AlertCircle } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 
 const formatBRL = (val: any, privacy = false) => {
@@ -26,6 +26,35 @@ const MetricCard = ({ label, value, highlight = false, colorClass = "text-zinc-9
         <span className={`text-sm font-black truncate ${colorClass}`}>{value}</span>
     </div>
 );
+
+// Componente auxiliar para Cards de Valuation
+const ValuationCard = ({ title, price, currentPrice, method, subtext, icon: Icon }: any) => {
+    const margin = price > 0 ? ((price - currentPrice) / currentPrice) * 100 : 0;
+    const isSafe = margin > 0;
+    
+    return (
+        <div className={`relative overflow-hidden p-4 rounded-2xl border flex flex-col justify-between min-h-[110px] ${isSafe ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-900/30' : 'bg-amber-50/50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-900/30'}`}>
+            <div>
+                <div className="flex justify-between items-start mb-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">{title}</span>
+                    {Icon && <Icon className={`w-3.5 h-3.5 ${isSafe ? 'text-emerald-500' : 'text-amber-500'}`} />}
+                </div>
+                <div className="flex items-baseline gap-1">
+                    <span className={`text-2xl font-black tracking-tight ${isSafe ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'}`}>
+                        {formatBRL(price)}
+                    </span>
+                </div>
+            </div>
+            
+            <div className="mt-2 pt-2 border-t border-zinc-200/50 dark:border-zinc-700/50 flex justify-between items-center">
+                <span className="text-[9px] font-medium text-zinc-400">{method}</span>
+                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${isSafe ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300' : 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'}`}>
+                    {margin > 0 ? `Upside +${margin.toFixed(0)}%` : `${margin.toFixed(0)}% Margem`}
+                </span>
+            </div>
+        </div>
+    );
+};
 
 interface AssetListItemProps {
   asset: AssetPosition;
@@ -85,48 +114,46 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
     const fiis = filtered.filter(p => p.assetType === AssetType.FII);
     const stocks = filtered.filter(p => p.assetType === AssetType.STOCK);
 
-    // --- LÓGICA DE VALUATION (GRAHAM) ---
+    // --- LÓGICA DE VALUATION (GRAHAM & BAZIN) ---
     const valuationData = useMemo(() => {
         if (!selectedAsset) return null;
 
         const currentPrice = selectedAsset.currentPrice || 0;
+        let fairPrice = 0;
+        let fairMethod = '';
+        
+        let ceilingPrice = 0; // Bazin
+        
+        // 1. CÁLCULO PREÇO TETO (BAZIN - YIELD 6%)
+        // Usa DY anualizado para estimar dividendo pago
+        if (selectedAsset.dy_12m && selectedAsset.dy_12m > 0 && currentPrice > 0) {
+            const annualDividend = currentPrice * (selectedAsset.dy_12m / 100);
+            ceilingPrice = annualDividend / 0.06; // Alvo de 6% ao ano
+        }
 
-        // AÇÕES: Fórmula de Graham (Raiz de 22.5 * LPA * VPA)
+        // 2. CÁLCULO PREÇO JUSTO (GRAHAM ou VP)
         if (selectedAsset.assetType === AssetType.STOCK) {
             const lpa = selectedAsset.lpa;
             const vpa = selectedAsset.vpa;
 
             if (lpa && vpa && lpa > 0 && vpa > 0) {
-                const grahamPrice = Math.sqrt(22.5 * lpa * vpa);
-                const upside = ((grahamPrice - currentPrice) / currentPrice) * 100;
-                
-                return {
-                    method: 'Graham',
-                    fairPrice: grahamPrice,
-                    upside: upside,
-                    details: { LPA: lpa, VPA: vpa, Constant: 22.5 }
-                };
+                fairPrice = Math.sqrt(22.5 * lpa * vpa);
+                fairMethod = 'Graham';
             }
-        }
-        
-        // FIIs: Valor Patrimonial (P/VP) como referência
-        if (selectedAsset.assetType === AssetType.FII) {
+        } else if (selectedAsset.assetType === AssetType.FII) {
             const pvp = selectedAsset.p_vp;
-            // Se temos P/VP e Preço, podemos deduzir o VP (Valor Justo Teórico para FIIs de Papel/Indefinidos)
             if (pvp && pvp > 0 && currentPrice > 0) {
-                const fairPriceVP = currentPrice / pvp; // VP = P / (P/VP)
-                const upside = ((fairPriceVP - currentPrice) / currentPrice) * 100;
-
-                return {
-                    method: 'Valor Patrimonial',
-                    fairPrice: fairPriceVP,
-                    upside: upside,
-                    details: { 'P/VP': pvp, 'VP/Cota': fairPriceVP }
-                };
+                fairPrice = currentPrice / pvp; // Valor Patrimonial
+                fairMethod = 'V. Patrimonial';
             }
         }
 
-        return null;
+        return {
+            fairPrice,
+            fairMethod,
+            ceilingPrice,
+            currentPrice
+        };
     }, [selectedAsset]);
 
     return (
@@ -195,43 +222,32 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                                 <h2 className="text-3xl font-black text-zinc-900 dark:text-white mb-1 tracking-tight">{selectedAsset.ticker}</h2>
                                 <p className="text-sm font-medium text-zinc-500">{selectedAsset.segment}</p>
                                 
-                                {/* 1. VALUATION CARD (GRAHAM / VP) */}
-                                {valuationData && (
-                                    <div className="mt-6 mb-4 p-5 rounded-[2rem] bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-xl shadow-violet-500/20 relative overflow-hidden text-left">
-                                        <div className="absolute top-0 right-0 p-4 opacity-10">
-                                            <Scale className="w-16 h-16" />
+                                {/* 1. VALUATION CONTAINER (GRAHAM vs BAZIN) */}
+                                {valuationData && (valuationData.fairPrice > 0 || valuationData.ceilingPrice > 0) && (
+                                    <div className="mt-6 mb-6">
+                                        <div className="flex items-center gap-2 mb-3 px-1">
+                                            <Scale className="w-4 h-4 text-indigo-500" />
+                                            <h3 className="text-xs font-black text-zinc-900 dark:text-white uppercase tracking-widest">Análise de Valor</h3>
                                         </div>
                                         
-                                        <div className="relative z-10">
-                                            <div className="flex justify-between items-start mb-4">
-                                                <div>
-                                                    <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-1">Preço Justo ({valuationData.method})</p>
-                                                    <p className="text-3xl font-black tracking-tight">{formatBRL(valuationData.fairPrice)}</p>
-                                                </div>
-                                                <div className={`px-3 py-1.5 rounded-xl backdrop-blur-md border border-white/20 flex flex-col items-center ${valuationData.upside > 0 ? 'bg-emerald-500/20' : 'bg-rose-500/20'}`}>
-                                                    <span className="text-[9px] font-bold uppercase">Potencial</span>
-                                                    <span className="text-sm font-black">{valuationData.upside > 0 ? '+' : ''}{valuationData.upside.toFixed(1)}%</span>
-                                                </div>
-                                            </div>
+                                        <div className="grid grid-cols-2 gap-3 text-left">
+                                            {/* Card Preço Justo (Graham ou VP) */}
+                                            <ValuationCard 
+                                                title={selectedAsset.assetType === AssetType.FII ? "Valor Patrimonial" : "Preço Justo"}
+                                                price={valuationData.fairPrice}
+                                                currentPrice={valuationData.currentPrice}
+                                                method={valuationData.fairMethod}
+                                                icon={Scale}
+                                            />
 
-                                            {/* Dados de Entrada */}
-                                            <div className="flex gap-4 pt-4 border-t border-white/10">
-                                                {Object.entries(valuationData.details).map(([key, val]) => (
-                                                    typeof val === 'number' && key !== 'Constant' && (
-                                                        <div key={key}>
-                                                            <p className="text-[9px] font-bold opacity-70 uppercase">{key}</p>
-                                                            <p className="text-sm font-bold">{key.includes('P/VP') ? val.toFixed(2) : formatBRL(val)}</p>
-                                                        </div>
-                                                    )
-                                                ))}
-                                                {selectedAsset.assetType === AssetType.STOCK && (
-                                                    <div className="ml-auto flex items-end">
-                                                        <p className="text-[8px] opacity-60 max-w-[120px] text-right leading-tight">
-                                                            Fórmula de Benjamin Graham: <br/> √(22.5 x LPA x VPA)
-                                                        </p>
-                                                    </div>
-                                                )}
-                                            </div>
+                                            {/* Card Preço Teto (Bazin) */}
+                                            <ValuationCard 
+                                                title="Preço Teto"
+                                                price={valuationData.ceilingPrice}
+                                                currentPrice={valuationData.currentPrice}
+                                                method="Bazin (6% Yield)"
+                                                icon={Target}
+                                            />
                                         </div>
                                     </div>
                                 )}
