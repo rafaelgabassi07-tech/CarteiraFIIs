@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, Wallet, TrendingUp, TrendingDown, RefreshCw, X } from 'lucide-react';
+import { Search, Wallet, TrendingUp, TrendingDown, RefreshCw, X, Calculator, Scale } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 
 const formatBRL = (val: any, privacy = false) => {
@@ -66,6 +66,50 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
 
     const fiis = filtered.filter(p => p.assetType === AssetType.FII);
     const stocks = filtered.filter(p => p.assetType === AssetType.STOCK);
+
+    // --- LÓGICA DE VALUATION (GRAHAM) ---
+    const valuationData = useMemo(() => {
+        if (!selectedAsset) return null;
+
+        const currentPrice = selectedAsset.currentPrice || 0;
+
+        // AÇÕES: Fórmula de Graham (Raiz de 22.5 * LPA * VPA)
+        if (selectedAsset.assetType === AssetType.STOCK) {
+            const lpa = selectedAsset.lpa;
+            const vpa = selectedAsset.vpa;
+
+            if (lpa && vpa && lpa > 0 && vpa > 0) {
+                const grahamPrice = Math.sqrt(22.5 * lpa * vpa);
+                const upside = ((grahamPrice - currentPrice) / currentPrice) * 100;
+                
+                return {
+                    method: 'Graham',
+                    fairPrice: grahamPrice,
+                    upside: upside,
+                    details: { LPA: lpa, VPA: vpa, Constant: 22.5 }
+                };
+            }
+        }
+        
+        // FIIs: Valor Patrimonial (P/VP) como referência
+        if (selectedAsset.assetType === AssetType.FII) {
+            const pvp = selectedAsset.p_vp;
+            // Se temos P/VP e Preço, podemos deduzir o VP (Valor Justo Teórico para FIIs de Papel/Indefinidos)
+            if (pvp && pvp > 0 && currentPrice > 0) {
+                const fairPriceVP = currentPrice / pvp; // VP = P / (P/VP)
+                const upside = ((fairPriceVP - currentPrice) / currentPrice) * 100;
+
+                return {
+                    method: 'Valor Patrimonial',
+                    fairPrice: fairPriceVP,
+                    upside: upside,
+                    details: { 'P/VP': pvp, 'VP/Cota': fairPriceVP }
+                };
+            }
+        }
+
+        return null;
+    }, [selectedAsset]);
 
     return (
         <div className="pb-32">
@@ -132,7 +176,48 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                                 <h2 className="text-3xl font-black text-zinc-900 dark:text-white mb-1 tracking-tight">{selectedAsset.ticker}</h2>
                                 <p className="text-sm font-medium text-zinc-500">{selectedAsset.segment}</p>
                                 
-                                <div className="mt-8 grid grid-cols-2 gap-4">
+                                {/* VALUATION CARD (GRAHAM / VP) */}
+                                {valuationData && (
+                                    <div className="mt-6 mb-6 p-5 rounded-[2rem] bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-xl shadow-violet-500/20 relative overflow-hidden">
+                                        <div className="absolute top-0 right-0 p-4 opacity-10">
+                                            <Scale className="w-16 h-16" />
+                                        </div>
+                                        
+                                        <div className="relative z-10">
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div>
+                                                    <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-1">Preço Justo ({valuationData.method})</p>
+                                                    <p className="text-3xl font-black tracking-tight">{formatBRL(valuationData.fairPrice)}</p>
+                                                </div>
+                                                <div className={`px-3 py-1.5 rounded-xl backdrop-blur-md border border-white/20 flex flex-col items-center ${valuationData.upside > 0 ? 'bg-emerald-500/20' : 'bg-rose-500/20'}`}>
+                                                    <span className="text-[9px] font-bold uppercase">Potencial</span>
+                                                    <span className="text-sm font-black">{valuationData.upside > 0 ? '+' : ''}{valuationData.upside.toFixed(1)}%</span>
+                                                </div>
+                                            </div>
+
+                                            {/* Dados de Entrada */}
+                                            <div className="flex gap-4 pt-4 border-t border-white/10">
+                                                {Object.entries(valuationData.details).map(([key, val]) => (
+                                                    typeof val === 'number' && key !== 'Constant' && (
+                                                        <div key={key}>
+                                                            <p className="text-[9px] font-bold opacity-70 uppercase">{key}</p>
+                                                            <p className="text-sm font-bold">{key.includes('P/VP') ? val.toFixed(2) : formatBRL(val)}</p>
+                                                        </div>
+                                                    )
+                                                ))}
+                                                {selectedAsset.assetType === AssetType.STOCK && (
+                                                    <div className="ml-auto flex items-end">
+                                                        <p className="text-[8px] opacity-60 max-w-[120px] text-right leading-tight">
+                                                            Fórmula de Benjamin Graham: <br/> √(22.5 x LPA x VPA)
+                                                        </p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="grid grid-cols-2 gap-4">
                                     <div className="p-5 bg-zinc-50 dark:bg-zinc-800 rounded-2xl border border-zinc-100 dark:border-zinc-700/50">
                                         <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Preço Médio</p>
                                         <p className="text-xl font-bold text-zinc-900 dark:text-white">{formatBRL(selectedAsset.averagePrice, privacyMode)}</p>
