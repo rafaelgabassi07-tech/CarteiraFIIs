@@ -215,16 +215,26 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                     {selectedAsset && (
                         <div className="flex-1 overflow-y-auto no-scrollbar pb-24">
                             <div className="text-center">
-                                {/* Header do Ativo */}
-                                <div className="w-20 h-20 rounded-3xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mx-auto mb-6 text-2xl font-black text-zinc-400 shadow-inner">
-                                    {selectedAsset.ticker.substring(0,2)}
+                                {/* Header do Ativo - Otimizado para ocupar menos espaço vertical */}
+                                <div className="flex items-center justify-between mb-4 pb-4 border-b border-zinc-100 dark:border-zinc-800">
+                                    <div className="flex items-center gap-4 text-left">
+                                        <div className="w-14 h-14 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-lg font-black text-zinc-400 shadow-inner">
+                                            {selectedAsset.ticker.substring(0,2)}
+                                        </div>
+                                        <div>
+                                            <h2 className="text-2xl font-black text-zinc-900 dark:text-white leading-none">{selectedAsset.ticker}</h2>
+                                            <p className="text-xs font-medium text-zinc-500 mt-1 truncate max-w-[150px]">{selectedAsset.segment}</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Preço Atual</p>
+                                        <p className="text-xl font-black text-zinc-900 dark:text-white">{formatBRL(selectedAsset.currentPrice, privacyMode)}</p>
+                                    </div>
                                 </div>
-                                <h2 className="text-3xl font-black text-zinc-900 dark:text-white mb-1 tracking-tight">{selectedAsset.ticker}</h2>
-                                <p className="text-sm font-medium text-zinc-500">{selectedAsset.segment}</p>
                                 
                                 {/* 1. VALUATION CONTAINER (GRAHAM vs BAZIN) */}
                                 {valuationData && (valuationData.fairPrice > 0 || valuationData.ceilingPrice > 0) && (
-                                    <div className="mt-6 mb-6">
+                                    <div className="mb-6">
                                         <div className="flex items-center gap-2 mb-3 px-1">
                                             <Scale className="w-4 h-4 text-indigo-500" />
                                             <h3 className="text-xs font-black text-zinc-900 dark:text-white uppercase tracking-widest">Análise de Valor</h3>
@@ -253,14 +263,14 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                                 )}
 
                                 {/* 2. PREÇOS (Cards Grandes) */}
-                                <div className="grid grid-cols-2 gap-4 mb-6">
-                                    <div className="p-5 bg-zinc-50 dark:bg-zinc-800 rounded-2xl border border-zinc-100 dark:border-zinc-700/50 text-left">
+                                <div className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl border border-zinc-100 dark:border-zinc-700/50 text-left mb-6 flex justify-between items-center">
+                                    <div>
                                         <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Preço Médio</p>
-                                        <p className="text-xl font-bold text-zinc-900 dark:text-white">{formatBRL(selectedAsset.averagePrice, privacyMode)}</p>
+                                        <p className="text-lg font-bold text-zinc-900 dark:text-white">{formatBRL(selectedAsset.averagePrice, privacyMode)}</p>
                                     </div>
-                                    <div className="p-5 bg-zinc-50 dark:bg-zinc-800 rounded-2xl border border-zinc-100 dark:border-zinc-700/50 text-left">
-                                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Preço Atual</p>
-                                        <p className="text-xl font-bold text-zinc-900 dark:text-white">{formatBRL(selectedAsset.currentPrice, privacyMode)}</p>
+                                    <div className="text-right">
+                                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Posição Total</p>
+                                        <p className="text-lg font-bold text-zinc-900 dark:text-white">{formatBRL(selectedAsset.averagePrice * selectedAsset.quantity, privacyMode)}</p>
                                     </div>
                                 </div>
 

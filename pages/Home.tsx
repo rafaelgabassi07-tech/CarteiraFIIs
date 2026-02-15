@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
-import { CircleDollarSign, CalendarClock, PieChart as PieIcon, TrendingUp, TrendingDown, ArrowUpRight, Wallet, ArrowRight, Zap, Target, Layers, LayoutGrid, Coins, Sparkles, CheckCircle2, Lock, Calendar, Trophy, Medal, Star, ListFilter, TrendingUp as GrowthIcon, Anchor, Calculator, Repeat, ChevronRight, Hourglass, Landmark, Crown, LockKeyhole, Info, Footprints, BarChart3, LineChart, History } from 'lucide-react';
+import { CircleDollarSign, CalendarClock, PieChart as PieIcon, TrendingUp, TrendingDown, ArrowUpRight, Wallet, ArrowRight, Zap, Target, Layers, LayoutGrid, Coins, Sparkles, CheckCircle2, Lock, Calendar, Trophy, Medal, Star, ListFilter, TrendingUp as GrowthIcon, Anchor, Calculator, Repeat, ChevronRight, Hourglass, Landmark, Crown, LockKeyhole, Info, Footprints, BarChart3, LineChart, History, Building2, Briefcase } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area } from 'recharts';
 
@@ -113,6 +113,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [showGoals, setShowGoals] = useState(false);
 
   // --- CALCS ---
+  // Ajuste fino: totalAppreciation já considera (Valor Atual - Custo Total).
+  // Total Return = (Valorização Latente + Lucro Realizado Vendas + Dividendos)
   const totalReturn = (totalAppreciation + salesGain) + totalDividendsReceived;
   const totalReturnPercent = invested > 0 ? (totalReturn / invested) * 100 : 0;
   
@@ -356,14 +358,25 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       // Calculo Renda Passiva Diária
       const dailyPassiveIncome = safeIncome / 30;
 
-      // --- CONQUISTAS (Achievements) ---
+      // --- CONQUISTAS (Achievements) EXPANDIDAS ---
       const achievements = [
+          // Níveis Básicos
           { id: 'first_step', label: 'Primeiro Aporte', sub: 'Patrimônio > 0', icon: Wallet, unlocked: safeBalance > 0, color: 'text-emerald-500 bg-emerald-100 dark:bg-emerald-900/20' },
-          { id: 'income_start', label: 'Primeira Renda', sub: 'Recebeu proventos', icon: CircleDollarSign, unlocked: safeIncome > 0, color: 'text-violet-500 bg-violet-100 dark:bg-violet-900/20' },
+          { id: 'income_start', label: 'Primeira Renda', sub: 'Recebeu proventos', icon: CircleDollarSign, unlocked: totalDividendsReceived > 0, color: 'text-violet-500 bg-violet-100 dark:bg-violet-900/20' },
           { id: '10k_club', label: 'Clube dos 10k', sub: 'Patrimônio 10k', icon: Coins, unlocked: safeBalance >= 10000, color: 'text-amber-500 bg-amber-100 dark:bg-amber-900/20' },
-          { id: 'half_wage', label: 'Meio Salário', sub: 'Renda > R$700', icon: Anchor, unlocked: safeIncome >= 706, color: 'text-sky-500 bg-sky-100 dark:bg-sky-900/20' },
-          { id: '100k_club', label: 'Clube dos 100k', sub: 'Patrimônio Sólido', icon: Trophy, unlocked: safeBalance >= 100000, color: 'text-rose-500 bg-rose-100 dark:bg-rose-900/20' },
+          
+          // Diversificação
+          { id: 'diversifier', label: 'Diversificador', sub: '5+ Ativos', icon: Layers, unlocked: portfolio.length >= 5, color: 'text-sky-500 bg-sky-100 dark:bg-sky-900/20' },
+          { id: 'fii_king', label: 'Rei dos FIIs', sub: '3+ FIIs', icon: Building2, unlocked: portfolio.filter(p => p.assetType === AssetType.FII).length >= 3, color: 'text-indigo-500 bg-indigo-100 dark:bg-indigo-900/20' },
+          { id: 'stock_partner', label: 'Sócio de Empresas', sub: '3+ Ações', icon: Briefcase, unlocked: portfolio.filter(p => p.assetType === AssetType.STOCK).length >= 3, color: 'text-blue-500 bg-blue-100 dark:bg-blue-900/20' },
+
+          // Renda
+          { id: 'half_wage', label: 'Meio Salário', sub: 'Renda > R$706', icon: Anchor, unlocked: safeIncome >= 706, color: 'text-cyan-500 bg-cyan-100 dark:bg-cyan-900/20' },
           { id: 'full_wage', label: 'Salário Mínimo', sub: 'Liberdade Nv.1', icon: Crown, unlocked: safeIncome >= 1412, color: 'text-yellow-500 bg-yellow-100 dark:bg-yellow-900/20' },
+          
+          // Elite
+          { id: '100k_club', label: 'Clube dos 100k', sub: 'Patrimônio Sólido', icon: Trophy, unlocked: safeBalance >= 100000, color: 'text-rose-500 bg-rose-100 dark:bg-rose-900/20' },
+          { id: 'magic_maker', label: 'Feiticeiro', sub: '3+ N° Mágicos', icon: Sparkles, unlocked: magicReachedCount >= 3, color: 'text-purple-500 bg-purple-100 dark:bg-purple-900/20' }
       ];
 
       const unlockedCount = achievements.filter(a => a.unlocked).length;
@@ -379,12 +392,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           achievements,
           unlockedCount
       };
-  }, [balance, currentMonthIncome]);
+  }, [balance, currentMonthIncome, portfolio, totalDividendsReceived, magicReachedCount]);
 
   return (
     <div className="space-y-5 pb-8">
         
-        {/* HERO CARD - Visual mais limpo e imponente */}
+        {/* HERO CARD - Visual Aprimorado com Breakdown de Retorno */}
         <div className="relative overflow-hidden rounded-[2.5rem] bg-zinc-900 border border-zinc-800 shadow-xl anim-fade-in group">
             {/* Ambient Background */}
             <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-gradient-to-br from-indigo-500/10 to-purple-500/10 rounded-full blur-[80px] pointer-events-none -mt-20 -mr-20"></div>
@@ -405,27 +418,42 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="rounded-2xl p-4 bg-zinc-950/50 border border-white/5 backdrop-blur-sm">
-                        <div className="flex items-center gap-1.5 mb-1.5">
-                            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Retorno</p>
-                            <InfoTooltip title="Retorno" text="Lucro total estimado: (Valorização das Cotas + Proventos Recebidos) - (Valor Total Investido)." />
-                        </div>
-                        <div className="flex items-baseline gap-2">
-                            <span className={`text-lg font-bold tabular-nums ${totalReturn >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                {totalReturn >= 0 ? '+' : ''}{formatBRL(totalReturn, privacyMode)}
-                            </span>
+                <div className="bg-zinc-950/50 rounded-3xl p-5 border border-white/5 backdrop-blur-sm">
+                    <div className="flex justify-between items-start mb-4">
+                        <div>
+                            <div className="flex items-center gap-1.5 mb-1">
+                                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Retorno Total</p>
+                                <InfoTooltip title="Retorno Total" text="Soma da Valorização de Cotas + Proventos Recebidos." />
+                            </div>
+                            <div className="flex items-baseline gap-2">
+                                <span className={`text-xl font-bold tabular-nums ${totalReturn >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                    {totalReturn >= 0 ? '+' : ''}{formatBRL(totalReturn, privacyMode)}
+                                </span>
+                                <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${totalReturn >= 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
+                                    {totalReturnPercent.toFixed(2)}%
+                                </span>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="rounded-2xl p-4 bg-zinc-950/50 border border-white/5 backdrop-blur-sm">
-                        <div className="flex items-center gap-1.5 mb-1.5">
-                             <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Proventos</p>
-                             <InfoTooltip title="Total Proventos" text="Soma histórica de todos os dividendos e JCP já recebidos na carteira desde o início." />
+                    {/* Breakdown do Retorno: Valorização vs Proventos */}
+                    <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/5">
+                        <div>
+                            <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                <GrowthIcon className="w-3 h-3" /> Valorização
+                            </p>
+                            <p className={`text-sm font-bold tabular-nums ${(totalAppreciation + salesGain) >= 0 ? 'text-zinc-300' : 'text-rose-400'}`}>
+                                {(totalAppreciation + salesGain) >= 0 ? '+' : ''}{formatBRL(totalAppreciation + salesGain, privacyMode)}
+                            </p>
                         </div>
-                        <p className="text-lg font-bold text-zinc-200 tabular-nums">
-                            +{formatBRL(totalDividendsReceived, privacyMode)}
-                        </p>
+                        <div className="text-right">
+                            <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider mb-1 flex items-center justify-end gap-1">
+                                <Coins className="w-3 h-3" /> Proventos
+                            </p>
+                            <p className="text-sm font-bold text-emerald-400 tabular-nums">
+                                +{formatBRL(totalDividendsReceived, privacyMode)}
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -811,17 +839,27 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         <ProgressBar current={goalsData.freedom.current} target={goalsData.freedom.target} label="Liberdade Financeira (Salário Mínimo)" colorClass="bg-amber-500" privacyMode={privacyMode} />
                     </div>
 
-                    {/* Conquistas */}
+                    {/* Conquistas - Galeria Aprimorada */}
                     <div>
                         <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4">Conquistas ({goalsData.unlockedCount}/{goalsData.achievements.length})</h3>
                         <div className="grid grid-cols-2 gap-3">
-                            {goalsData.achievements.map((achievement: any) => (
-                                <div key={achievement.id} className={`p-3 rounded-2xl border ${achievement.unlocked ? 'bg-white dark:bg-zinc-800 border-zinc-100 dark:border-zinc-700' : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 opacity-50'}`}>
-                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${achievement.unlocked ? achievement.color : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-400'}`}>
-                                        <achievement.icon className="w-4 h-4" />
+                            {goalsData.achievements.map((achievement: any, index: number) => (
+                                <div 
+                                    key={achievement.id} 
+                                    className={`p-4 rounded-2xl border transition-all duration-500 ${achievement.unlocked ? 'bg-white dark:bg-zinc-800 border-zinc-100 dark:border-zinc-700 shadow-sm' : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 opacity-60'} anim-slide-up`}
+                                    style={{ animationDelay: `${index * 50}ms` }}
+                                >
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${achievement.unlocked ? achievement.color : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-400'}`}>
+                                        <achievement.icon className="w-5 h-5" strokeWidth={2} />
                                     </div>
                                     <h4 className="text-xs font-bold text-zinc-900 dark:text-white">{achievement.label}</h4>
-                                    <p className="text-[10px] text-zinc-500">{achievement.sub}</p>
+                                    <p className="text-[10px] text-zinc-500 font-medium mt-0.5">{achievement.sub}</p>
+                                    
+                                    {achievement.unlocked && (
+                                        <div className="mt-2 text-[9px] font-bold text-emerald-500 uppercase flex items-center gap-1">
+                                            <CheckCircle2 className="w-3 h-3" /> Desbloqueado
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
