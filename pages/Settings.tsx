@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { User, LogOut, Moon, Sun, Monitor, Shield, Bell, RefreshCw, Upload, Trash2, ChevronRight, Check, Loader2, Search, Calculator, Palette, ChevronDown, ChevronUp, Download, History, Activity, Sparkles, Smartphone, FileSpreadsheet, Database, CloudCog, Zap, LayoutGrid, Power, Fingerprint, Globe } from 'lucide-react';
+import { User, LogOut, Moon, Sun, Monitor, Shield, Bell, RefreshCw, Upload, Trash2, ChevronRight, Check, Loader2, Search, Calculator, Palette, ChevronDown, ChevronUp, Download, History, Activity, Sparkles, Smartphone, FileSpreadsheet, Database, CloudCog, Zap, LayoutGrid, Power, Fingerprint, Globe, KeyRound } from 'lucide-react';
 import { triggerScraperUpdate } from '../services/dataService';
 import { ConfirmationModal } from '../components/Layout';
 import { ThemeType, ServiceMetric, Transaction, DividendReceipt } from '../types';
@@ -23,7 +23,7 @@ const ActionTile = ({ icon: Icon, label, value, isActive, onClick, colorClass, l
     <button 
         onClick={onClick}
         disabled={loading}
-        className={`relative overflow-hidden p-3.5 rounded-2xl border transition-all duration-300 flex flex-col justify-between h-[90px] w-full group active:scale-[0.96] shadow-sm ${
+        className={`relative overflow-hidden p-3 rounded-2xl border transition-all duration-300 flex flex-col justify-between h-[85px] w-full group active:scale-[0.96] shadow-[0_2px_8px_rgb(0,0,0,0.04)] dark:shadow-none ${
             isActive 
             ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 ring-1 ring-offset-2 ring-offset-zinc-50 dark:ring-offset-black ring-zinc-200 dark:ring-zinc-800' 
             : 'bg-white dark:bg-zinc-900 text-zinc-500 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
@@ -36,7 +36,7 @@ const ActionTile = ({ icon: Icon, label, value, isActive, onClick, colorClass, l
         </div>
         
         <div className="text-left w-full">
-            <span className={`text-[10px] font-bold uppercase tracking-widest block mb-0.5 opacity-60`}>{label}</span>
+            <span className={`text-[9px] font-bold uppercase tracking-widest block mb-0.5 opacity-60`}>{label}</span>
             <span className="text-xs font-black tracking-tight truncate w-full block">{value}</span>
         </div>
     </button>
@@ -45,9 +45,9 @@ const ActionTile = ({ icon: Icon, label, value, isActive, onClick, colorClass, l
 const SettingsRow = ({ icon: Icon, label, description, onClick, rightElement, isDanger, className, compact = false }: any) => (
     <div 
         onClick={onClick}
-        className={`flex items-center justify-between px-4 py-3.5 transition-colors ${onClick ? 'cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50' : ''} ${className}`}
+        className={`flex items-center justify-between px-4 py-3 transition-colors ${onClick ? 'cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50' : ''} ${className}`}
     >
-        <div className="flex items-center gap-3.5">
+        <div className="flex items-center gap-3">
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isDanger ? 'bg-rose-50 text-rose-500 dark:bg-rose-900/20' : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'}`}>
                 <Icon className="w-4 h-4" strokeWidth={2} />
             </div>
@@ -112,13 +112,13 @@ const CalculatorWidget = () => {
     }, [dividend, yieldTarget]);
 
     return (
-        <div className={`bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden transition-all duration-300 ${isOpen ? 'ring-2 ring-amber-500/10' : ''}`}>
+        <div className={`bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden transition-all duration-300 ${isOpen ? 'ring-2 ring-indigo-500/10' : ''}`}>
             <button 
                 onClick={() => setIsOpen(!isOpen)}
                 className="w-full px-4 py-3 flex items-center justify-between bg-gradient-to-br from-white to-zinc-50 dark:from-zinc-900 dark:to-zinc-950 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
             >
                 <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isOpen ? 'bg-amber-500 text-white' : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'}`}>
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isOpen ? 'bg-indigo-500 text-white' : 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'}`}>
                         <Calculator className="w-4 h-4" strokeWidth={2} />
                     </div>
                     <div className="text-left">
@@ -133,7 +133,7 @@ const CalculatorWidget = () => {
                     <div className="flex gap-2 mb-3">
                         <input 
                             type="text" 
-                            className="flex-1 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3 py-2 text-xs font-bold uppercase outline-none focus:border-amber-500 transition-all text-center placeholder:font-medium"
+                            className="flex-1 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3 py-2 text-xs font-bold uppercase outline-none focus:border-indigo-500 transition-all text-center placeholder:font-medium"
                             placeholder="TICKER"
                             value={ticker}
                             onChange={e => setTicker(e.target.value.toUpperCase())}
@@ -149,16 +149,16 @@ const CalculatorWidget = () => {
                     <div className="flex gap-2 mb-3">
                         <div className="flex-1 relative">
                             <span className="absolute left-2 top-1.5 text-[8px] font-bold text-zinc-400 uppercase">Div. (12m)</span>
-                            <input type="text" className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-2 pt-4 pb-1 text-xs font-bold outline-none focus:border-amber-500 text-center" value={dividend} onChange={e => setDividend(e.target.value)} placeholder="0,00" />
+                            <input type="text" className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-2 pt-4 pb-1 text-xs font-bold outline-none focus:border-indigo-500 text-center" value={dividend} onChange={e => setDividend(e.target.value)} placeholder="0,00" />
                         </div>
                         <div className="flex-1 relative">
                             <span className="absolute left-2 top-1.5 text-[8px] font-bold text-zinc-400 uppercase">Yield (%)</span>
-                            <input type="number" className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-2 pt-4 pb-1 text-xs font-bold outline-none focus:border-amber-500 text-center" value={yieldTarget} onChange={e => setYieldTarget(e.target.value)} placeholder="6" />
+                            <input type="number" className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-2 pt-4 pb-1 text-xs font-bold outline-none focus:border-indigo-500 text-center" value={yieldTarget} onChange={e => setYieldTarget(e.target.value)} placeholder="6" />
                         </div>
                     </div>
 
                     {result !== null && (
-                        <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl p-3 shadow-md shadow-amber-500/20 flex items-center justify-between">
+                        <div className="bg-gradient-to-r from-indigo-500 to-violet-600 text-white rounded-xl p-3 shadow-md shadow-indigo-500/20 flex items-center justify-between">
                             <div>
                                 <p className="text-[9px] font-bold uppercase tracking-widest opacity-90">Preço Teto</p>
                                 <p className="text-lg font-black">{formatCurrency(result)}</p>
@@ -243,8 +243,7 @@ export const Settings: React.FC<SettingsProps> = ({
             
             {/* 1. PROFILE HEADER (Slim & Premium) */}
             <div className="bg-zinc-900 dark:bg-zinc-950 rounded-[1.5rem] p-4 flex items-center justify-between shadow-xl shadow-zinc-900/10 mb-6 relative overflow-hidden">
-                {/* Decoration */}
-                <div className="absolute -top-10 -right-10 w-32 h-32 bg-indigo-500/20 rounded-full blur-3xl"></div>
+                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -mr-8 -mt-8 pointer-events-none"></div>
                 
                 <div className="flex items-center gap-4 relative z-10">
                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-zinc-700 to-zinc-800 border-2 border-zinc-600 flex items-center justify-center text-white shadow-lg">
@@ -265,7 +264,7 @@ export const Settings: React.FC<SettingsProps> = ({
                 </button>
             </div>
 
-            {/* 2. GRID AÇÕES RÁPIDAS */}
+            {/* 2. GRID AÇÕES RÁPIDAS (Control Center) */}
             <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-2 mb-3">Acesso Rápido</h3>
             <div className="grid grid-cols-2 gap-2.5 mb-6">
                 <ActionTile 
@@ -294,8 +293,8 @@ export const Settings: React.FC<SettingsProps> = ({
                 />
                 <ActionTile 
                     icon={CloudCog}
-                    label="Sincronização"
-                    value={syncState === 'syncing' ? '...' : 'Nuvem'}
+                    label="Nuvem"
+                    value={syncState === 'syncing' ? '...' : 'Sincronizar'}
                     isActive={syncState === 'syncing'}
                     loading={syncState === 'syncing'}
                     colorClass="text-sky-500"
@@ -379,7 +378,7 @@ export const Settings: React.FC<SettingsProps> = ({
                     <Trash2 className="w-3.5 h-3.5" /> Limpar dados locais
                 </button>
                 <p className="text-[10px] text-zinc-300 font-medium uppercase tracking-widest pb-6">
-                    Build {currentVersionDate || 'Stable'}
+                    InvestFIIs Cloud • {currentVersionDate || 'Stable Build'}
                 </p>
             </div>
 

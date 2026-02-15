@@ -1,27 +1,23 @@
 
 import { BrapiQuote } from '../types';
 
-// Função segura para obter o Token
+// Função segura para obter o Token com fallback
 const getBrapiToken = () => {
-    try {
-        if (typeof process !== 'undefined' && process.env && process.env.BRAPI_TOKEN) {
-            return process.env.BRAPI_TOKEN;
-        }
-        if ((import.meta as any).env?.VITE_BRAPI_TOKEN) {
-            return (import.meta as any).env.VITE_BRAPI_TOKEN;
-        }
-    } catch {
-        return undefined;
+    // Tenta via injeção do Vite (Define)
+    if (typeof process !== 'undefined' && process.env && process.env.BRAPI_TOKEN) {
+        return process.env.BRAPI_TOKEN.replace(/"/g, ''); // Remove aspas extras se houver
     }
-    return undefined;
+    // Tenta via import.meta (Vite nativo)
+    if ((import.meta as any).env?.VITE_BRAPI_TOKEN) {
+        return (import.meta as any).env.VITE_BRAPI_TOKEN;
+    }
+    return '';
 };
 
 const BRAPI_TOKEN = getBrapiToken();
 
 /**
  * Busca cotações de ativos na API da Brapi.
- * Lógica: Requisições individuais em paralelo (Promise.all) para evitar que erro em um ticker trave o lote todo.
- * Mantém cache: 'no-store' para garantir dados frescos.
  */
 export const getQuotes = async (tickers: string[]): Promise<{ quotes: BrapiQuote[], error?: string }> => {
   if (!tickers || tickers.length === 0) {
@@ -29,11 +25,11 @@ export const getQuotes = async (tickers: string[]): Promise<{ quotes: BrapiQuote
   }
   
   if (!BRAPI_TOKEN) {
-    console.warn("Brapi token missing. Verifique suas variáveis de ambiente (VITE_BRAPI_TOKEN).");
-    return { quotes: [], error: "Token de cotação não configurado" };
+    console.warn("Brapi token not found. Cotações em tempo real indisponíveis.");
+    // Não retorna erro fatal para permitir que o app funcione com dados cacheados ou manuais
+    return { quotes: [], error: "Token não configurado" };
   }
 
-  // Remove duplicatas e limpa espaços
   const uniqueTickers = Array.from(new Set(tickers.map(t => t.trim().toUpperCase())));
   
   try {
@@ -44,8 +40,9 @@ export const getQuotes = async (tickers: string[]): Promise<{ quotes: BrapiQuote
             });
             
             if (!response.ok) {
+                // Silently fail for 404 to avoid spamming logs for bad tickers
                 if (response.status !== 404) {
-                    console.warn(`Brapi error for ${ticker}: ${response.status}`);
+                    console.warn(`Brapi: ${ticker} -> ${response.status}`);
                 }
                 return null;
             }
@@ -57,7 +54,6 @@ export const getQuotes = async (tickers: string[]): Promise<{ quotes: BrapiQuote
             }
             return null;
         } catch (innerError) {
-            console.warn(`Falha na requisição individual para ${ticker}`, innerError);
             return null;
         }
     });
@@ -69,6 +65,6 @@ export const getQuotes = async (tickers: string[]): Promise<{ quotes: BrapiQuote
 
   } catch (e: any) {
     console.error("Brapi Service Error:", e);
-    return { quotes: [], error: "Erro ao processar fila de cotações" };
+    return { quotes: [], error: "Erro de conexão API" };
   }
 };
