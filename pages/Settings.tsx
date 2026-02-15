@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { User, LogOut, Moon, Sun, Monitor, Shield, Smartphone, Bell, RefreshCw, Database, Download, Upload, FileJson, Trash2, Info, ChevronRight, Check, X, Loader2, Search, Server, Activity, Globe, Wifi, WifiOff, Calculator } from 'lucide-react';
+import { User, LogOut, Moon, Sun, Monitor, Shield, Smartphone, Bell, RefreshCw, Database, Download, Upload, FileJson, Trash2, Info, ChevronRight, Check, X, Loader2, Search, Server, Activity, Globe, Wifi, WifiOff, Calculator, Palette, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 import { triggerScraperUpdate } from '../services/dataService';
 import { ConfirmationModal, InfoTooltip } from '../components/Layout';
 import { ThemeType, ServiceMetric, Transaction, DividendReceipt } from '../types';
@@ -8,7 +8,17 @@ import { parseB3Excel } from '../services/excelService';
 
 const formatCurrency = (value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+const ACCENT_COLORS = [
+    { hex: '#0ea5e9', name: 'Sky' },
+    { hex: '#10b981', name: 'Emerald' },
+    { hex: '#6366f1', name: 'Indigo' },
+    { hex: '#8b5cf6', name: 'Violet' },
+    { hex: '#f43f5e', name: 'Rose' },
+    { hex: '#f59e0b', name: 'Amber' },
+];
+
 const CeilingPriceCalc = () => {
+    const [isOpen, setIsOpen] = useState(false);
     const [ticker, setTicker] = useState('');
     const [isLoadingTicker, setIsLoadingTicker] = useState(false);
     const [assetData, setAssetData] = useState<{ price: number, dy: number, method?: string } | null>(null);
@@ -29,9 +39,7 @@ const CeilingPriceCalc = () => {
         else setResult(null);
     };
 
-    useEffect(() => {
-        calculate();
-    }, [dividend, yieldTarget]);
+    useEffect(() => { calculate(); }, [dividend, yieldTarget]);
 
     const handleFetchTicker = async () => {
         const cleanTicker = ticker.trim().toUpperCase();
@@ -60,7 +68,6 @@ const CeilingPriceCalc = () => {
                     data.dividendsFound.forEach((d: any) => {
                         const dateStr = d.paymentDate || d.payment_date || d.dateCom || d.date_com;
                         if (!dateStr) return;
-                        
                         const dDate = new Date(dateStr);
                         if (dDate >= oneYearAgo && dDate <= now) {
                             const val = typeof d.rate === 'number' ? d.rate : parseFloat(d.rate);
@@ -71,41 +78,36 @@ const CeilingPriceCalc = () => {
 
                 if (sum12m > 0) {
                     calculatedDiv = sum12m;
-                    calculationMethod = 'Soma 12m (Scraper)';
+                    calculationMethod = 'Soma 12m';
                     if (price > 0 && dyPercent === 0) dyPercent = (sum12m / price) * 100;
                 }
                 else if (dyPercent > 0 && price > 0) {
                     calculatedDiv = price * (dyPercent / 100);
-                    calculationMethod = 'DY Anual (Indicador)';
+                    calculationMethod = 'DY Anual';
                 }
                 else if (data.rawFundamentals) {
                     const lastDiv = typeof data.rawFundamentals.ultimo_rendimento === 'number' 
                         ? data.rawFundamentals.ultimo_rendimento 
                         : parseFloat(data.rawFundamentals.ultimo_rendimento);
-                        
                     if (!isNaN(lastDiv) && lastDiv > 0) {
                         calculatedDiv = lastDiv * 12;
                         if (price > 0) dyPercent = (calculatedDiv / price) * 100;
-                        calculationMethod = 'Último x12 (Estimado)';
+                        calculationMethod = 'Run Rate (x12)';
                     }
                 }
 
                 if (price > 0) {
                     setAssetData({ price, dy: dyPercent, method: calculationMethod });
-                    
-                    if (calculatedDiv > 0) {
-                        setDividend(calculatedDiv.toFixed(2).replace('.', ','));
-                    } else {
-                        setSearchError('Preço encontrado, mas sem histórico de dividendos.');
-                    }
+                    if (calculatedDiv > 0) setDividend(calculatedDiv.toFixed(2).replace('.', ','));
+                    else setSearchError('Sem histórico de proventos.');
                 } else {
-                    setSearchError('Ativo não encontrado ou sem liquidez.');
+                    setSearchError('Ativo não encontrado.');
                 }
             } else {
-                setSearchError('Falha ao buscar dados do ativo.');
+                setSearchError('Falha ao buscar.');
             }
         } catch (e) {
-            console.error('Error fetching ticker for calc', e);
+            console.error(e);
             setSearchError('Erro de conexão.');
         } finally {
             setIsLoadingTicker(false);
@@ -113,123 +115,125 @@ const CeilingPriceCalc = () => {
     };
 
     return (
-        <div className="space-y-4">
-            <div className={`p-3 rounded-2xl border transition-colors ${searchError ? 'bg-rose-50 dark:bg-rose-900/10 border-rose-200 dark:border-rose-800' : 'bg-zinc-50 dark:bg-zinc-800/50 border-zinc-100 dark:border-zinc-800'}`}>
-                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2 block ml-1">Buscar Automático</label>
-                <div className="relative flex gap-2">
-                    <input 
-                        type="text" 
-                        value={ticker} 
-                        onChange={e => setTicker(e.target.value.toUpperCase())}
-                        onKeyDown={e => e.key === 'Enter' && handleFetchTicker()}
-                        placeholder="Ex: MXRF11" 
-                        className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm font-bold outline-none focus:border-indigo-500 transition-all uppercase placeholder:normal-case" 
-                    />
-                    <button 
-                        onClick={handleFetchTicker}
-                        disabled={isLoadingTicker || ticker.length < 3}
-                        className="bg-indigo-500 text-white rounded-xl px-3 flex items-center justify-center press-effect disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {isLoadingTicker ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-                    </button>
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+            <button 
+                onClick={() => setIsOpen(!isOpen)}
+                className="w-full flex items-center justify-between p-4 bg-zinc-50/50 dark:bg-zinc-800/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            >
+                <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                        <Calculator className="w-4 h-4" />
+                    </div>
+                    <div className="text-left">
+                        <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Calculadora Preço Teto</h3>
+                        <p className="text-[10px] text-zinc-500">Método Bazin</p>
+                    </div>
                 </div>
-                
-                {searchError && (
-                    <p className="text-[10px] text-rose-500 font-bold mt-2 ml-1">{searchError}</p>
-                )}
+                {isOpen ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
+            </button>
 
-                {assetData && (
-                    <div className="mt-3 flex flex-wrap gap-3 px-1 border-t border-zinc-200 dark:border-zinc-700 pt-2">
-                        <span className="text-[10px] text-zinc-500 font-medium">Preço: <strong className="text-zinc-900 dark:text-white">{formatCurrency(assetData.price)}</strong></span>
-                        <span className="text-[10px] text-zinc-500 font-medium">DY: <strong className="text-zinc-900 dark:text-white">{assetData.dy.toFixed(2)}%</strong></span>
-                        {assetData.method && <span className="text-[10px] text-indigo-500 font-bold bg-indigo-50 dark:bg-indigo-900/20 px-1.5 rounded">{assetData.method}</span>}
+            {isOpen && (
+                <div className="p-4 border-t border-zinc-100 dark:border-zinc-800 anim-slide-up">
+                    {/* Search Bar */}
+                    <div className="flex gap-2 mb-4">
+                        <div className="relative flex-1">
+                            <input 
+                                type="text" 
+                                value={ticker} 
+                                onChange={e => setTicker(e.target.value.toUpperCase())}
+                                onKeyDown={e => e.key === 'Enter' && handleFetchTicker()}
+                                placeholder="Buscar Ativo (ex: MXRF11)" 
+                                className="w-full bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-xl pl-3 pr-3 py-2 text-xs font-bold outline-none focus:border-indigo-500 transition-all uppercase" 
+                            />
+                        </div>
+                        <button 
+                            onClick={handleFetchTicker}
+                            disabled={isLoadingTicker || ticker.length < 3}
+                            className="bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl px-3 flex items-center justify-center disabled:opacity-50"
+                        >
+                            {isLoadingTicker ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
+                        </button>
                     </div>
-                )}
-            </div>
 
-            <div className="grid grid-cols-2 gap-3">
-                <div>
-                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Div. Projetado (Anual)</label>
-                    <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-zinc-400">R$</span>
-                        <input 
-                            type="text"
-                            inputMode="decimal"
-                            value={dividend} 
-                            onChange={e => {
-                                const val = e.target.value.replace(/[^0-9,.]/g, '');
-                                setDividend(val);
-                            }} 
-                            className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl pl-8 pr-4 py-2.5 text-sm font-bold outline-none focus:border-indigo-500 transition-all" 
-                            placeholder="0,00" 
-                        />
+                    {searchError && <p className="text-[10px] text-rose-500 font-bold mb-3 text-center">{searchError}</p>}
+
+                    {assetData && (
+                        <div className="flex justify-between items-center bg-zinc-50 dark:bg-zinc-800/50 p-2 rounded-lg mb-4 text-[10px] border border-zinc-100 dark:border-zinc-700">
+                            <span>Preço: <strong>{formatCurrency(assetData.price)}</strong></span>
+                            <span>DY: <strong>{assetData.dy.toFixed(2)}%</strong></span>
+                            <span className="text-indigo-500">{assetData.method}</span>
+                        </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                        <div>
+                            <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Div. Anual (R$)</label>
+                            <input 
+                                type="text"
+                                inputMode="decimal"
+                                value={dividend} 
+                                onChange={e => setDividend(e.target.value.replace(/[^0-9,.]/g, ''))} 
+                                className="w-full bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:border-indigo-500" 
+                                placeholder="0,00" 
+                            />
+                        </div>
+                        <div>
+                            <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Yield Alvo (%)</label>
+                            <input 
+                                type="number" 
+                                value={yieldTarget} 
+                                onChange={e => setYieldTarget(e.target.value)} 
+                                className="w-full bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:border-indigo-500" 
+                                placeholder="6" 
+                            />
+                        </div>
                     </div>
-                </div>
-                <div>
-                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1 block">Yield Alvo (%)</label>
-                    <div className="relative">
-                        <input 
-                            type="number" 
-                            value={yieldTarget} 
-                            onChange={e => setYieldTarget(e.target.value)} 
-                            className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm font-bold outline-none focus:border-indigo-500 transition-all" 
-                            placeholder="6" 
-                        />
-                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-zinc-400">%</span>
-                    </div>
-                </div>
-            </div>
-            
-            {result !== null && result > 0 && (
-                <div className="mt-4 anim-scale-in space-y-3">
-                    <div className="p-5 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl text-white text-center shadow-lg shadow-indigo-500/20 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10"></div>
-                        
-                        <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-1 relative z-10">Preço Teto ({yieldTarget}%)</p>
-                        <div className="flex flex-col items-center justify-center gap-1 relative z-10">
-                            <p className="text-3xl font-black tracking-tight">{formatCurrency(result)}</p>
-                            
+
+                    {result !== null && result > 0 && (
+                        <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-3 text-center border border-indigo-100 dark:border-indigo-900/30">
+                            <p className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest mb-0.5">Preço Teto</p>
+                            <p className="text-xl font-black text-indigo-600 dark:text-indigo-300">{formatCurrency(result)}</p>
                             {assetData && (
-                                <div className={`flex items-center gap-1.5 px-2 py-1 rounded-lg backdrop-blur-sm border border-white/20 ${assetData.price <= result ? 'bg-emerald-400/20 text-emerald-50' : 'bg-rose-400/20 text-rose-50'}`}>
-                                    <span className="text-[10px] font-bold uppercase tracking-wider">
-                                        {assetData.price <= result ? 'Abaixo do Teto' : 'Acima do Teto'}
-                                    </span>
-                                </div>
+                                <p className={`text-[9px] font-bold mt-1 ${assetData.price <= result ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                    {assetData.price <= result ? 'Abaixo do Teto (Compra)' : 'Acima do Teto (Aguardar)'}
+                                </p>
                             )}
                         </div>
-                        
-                        {assetData && (
-                            <div className="mt-3 pt-3 border-t border-white/10 flex justify-between text-[10px] opacity-90 relative z-10">
-                                <span>Margem: {((1 - (assetData.price / result)) * 100).toFixed(1)}%</span>
-                                <span>Cotação: {formatCurrency(assetData.price)}</span>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2">
-                        {[6, 8, 10].map(y => {
-                            const cleanDiv = dividend.replace(/\./g, '').replace(',', '.');
-                            const val = ((parseFloat(cleanDiv) || 0) / y) * 100;
-                            const isSelected = parseFloat(yieldTarget.replace(',', '.')) === y;
-                            return (
-                                <button 
-                                    key={y} 
-                                    onClick={() => setYieldTarget(String(y))} 
-                                    className={`p-2 rounded-xl border text-center transition-all active:scale-95 ${isSelected ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800 ring-1 ring-indigo-500/20' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'}`}
-                                >
-                                    <p className="text-[9px] text-zinc-400 font-bold uppercase">{y}% Yield</p>
-                                    <p className={`text-xs font-bold ${isSelected ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-700 dark:text-zinc-300'}`}>
-                                        {val > 0 ? formatCurrency(val) : '-'}
-                                    </p>
-                                </button>
-                            )
-                        })}
-                    </div>
+                    )}
                 </div>
             )}
         </div>
     );
 };
+
+// Componente de Item de Configuração Genérico
+const SettingItem = ({ icon: Icon, label, value, onClick, color = "text-zinc-500", rightElement, danger = false }: any) => (
+    <button 
+        onClick={onClick}
+        className={`w-full flex items-center justify-between p-4 transition-colors ${danger ? 'hover:bg-rose-50 dark:hover:bg-rose-900/10' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50'}`}
+    >
+        <div className="flex items-center gap-3">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${danger ? 'bg-rose-100 dark:bg-rose-900/20 text-rose-500' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'}`}>
+                <Icon className={`w-4 h-4 ${danger ? 'text-rose-500' : color}`} />
+            </div>
+            <span className={`text-sm font-medium ${danger ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-900 dark:text-white'}`}>{label}</span>
+        </div>
+        <div className="flex items-center gap-2">
+            {value && <span className="text-xs text-zinc-400 font-medium">{value}</span>}
+            {rightElement}
+            {!rightElement && <ChevronRight className="w-4 h-4 text-zinc-300" />}
+        </div>
+    </button>
+);
+
+const SettingGroup = ({ title, children }: any) => (
+    <div className="mb-6">
+        {title && <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-2 ml-4">{title}</h3>}
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden divide-y divide-zinc-100 dark:divide-zinc-800">
+            {children}
+        </div>
+    </div>
+);
 
 interface SettingsProps {
   onLogout: () => void;
@@ -284,14 +288,14 @@ export const Settings: React.FC<SettingsProps> = ({
     };
 
     return (
-        <div className="pb-32 anim-fade-in space-y-6">
+        <div className="pb-32 anim-fade-in">
             
             {/* Header Profile */}
-            <div className="bg-white dark:bg-zinc-900 rounded-[2rem] p-6 border border-zinc-100 dark:border-zinc-800 shadow-sm relative overflow-hidden">
+            <div className="bg-white dark:bg-zinc-900 rounded-[2rem] p-6 border border-zinc-200 dark:border-zinc-800 shadow-sm relative overflow-hidden mb-6">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl -mr-10 -mt-10"></div>
                 <div className="relative z-10 flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-400">
+                        <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-400 border border-zinc-200 dark:border-zinc-700">
                             <User className="w-8 h-8" strokeWidth={1.5} />
                         </div>
                         <div>
@@ -304,140 +308,129 @@ export const Settings: React.FC<SettingsProps> = ({
                             </div>
                         </div>
                     </div>
-                    <button onClick={onLogout} className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 text-zinc-500 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all">
+                    <button onClick={onLogout} className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 text-zinc-500 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all border border-transparent hover:border-rose-200 dark:hover:border-rose-900/30">
                         <LogOut className="w-5 h-5" />
                     </button>
                 </div>
             </div>
 
-            {/* Tools Section (Calculadora) */}
-            <div className="bg-white dark:bg-zinc-900 rounded-[2rem] p-6 border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
-                        <Calculator className="w-5 h-5" />
+            {/* Aparência */}
+            <SettingGroup title="Personalização">
+                <div className="p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500">
+                            {theme === 'dark' ? <Moon className="w-4 h-4" /> : theme === 'light' ? <Sun className="w-4 h-4" /> : <Monitor className="w-4 h-4" />}
+                        </div>
+                        <span className="text-sm font-medium text-zinc-900 dark:text-white">Tema</span>
                     </div>
-                    <div>
-                        <h3 className="text-base font-bold text-zinc-900 dark:text-white">Calculadora Preço Teto</h3>
-                        <p className="text-xs text-zinc-500">Estime o preço máximo a pagar (Bazin)</p>
+                    <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl">
+                        {(['light', 'system', 'dark'] as ThemeType[]).map((t) => (
+                            <button 
+                                key={t}
+                                onClick={() => onSetTheme(t)}
+                                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${theme === t ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}
+                            >
+                                {t === 'light' ? 'Claro' : t === 'dark' ? 'Escuro' : 'Auto'}
+                            </button>
+                        ))}
                     </div>
                 </div>
+                
+                {/* Seletor de Cor de Destaque Restaurado */}
+                <div className="p-4 flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500">
+                            <Palette className="w-4 h-4" />
+                        </div>
+                        <span className="text-sm font-medium text-zinc-900 dark:text-white">Destaque</span>
+                    </div>
+                    <div className="flex gap-2">
+                        {ACCENT_COLORS.map(c => (
+                            <button
+                                key={c.hex}
+                                onClick={() => onSetAccentColor(c.hex)}
+                                className={`w-6 h-6 rounded-full border-2 transition-all ${accentColor === c.hex ? 'border-zinc-400 scale-110' : 'border-transparent hover:scale-105'}`}
+                                style={{ backgroundColor: c.hex }}
+                                aria-label={c.name}
+                            />
+                        ))}
+                    </div>
+                </div>
+            </SettingGroup>
+
+            {/* Preferências */}
+            <SettingGroup title="Geral">
+                <SettingItem 
+                    icon={Shield} 
+                    label="Modo Privacidade" 
+                    rightElement={
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onSetPrivacyMode(!privacyMode); }}
+                            className={`w-10 h-6 rounded-full transition-colors relative ${privacyMode ? 'bg-emerald-500' : 'bg-zinc-200 dark:bg-zinc-700'}`}
+                        >
+                            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform shadow-sm ${privacyMode ? 'left-[calc(100%-1.25rem)]' : 'left-[4px]'}`}></div>
+                        </button>
+                    }
+                />
+                <SettingItem 
+                    icon={Bell} 
+                    label="Notificações"
+                    value={pushEnabled ? 'Ativado' : 'Desativado'}
+                    onClick={onRequestPushPermission}
+                />
+            </SettingGroup>
+
+            {/* Ferramentas */}
+            <div className="mb-6">
+                <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-2 ml-4">Ferramentas</h3>
                 <CeilingPriceCalc />
             </div>
 
-            {/* Preferences */}
-            <div className="bg-white dark:bg-zinc-900 rounded-[2rem] p-6 border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-6 ml-1">Preferências</h3>
+            {/* Dados */}
+            <SettingGroup title="Dados">
+                <SettingItem 
+                    icon={Upload} 
+                    label="Importar Excel (B3)" 
+                    onClick={() => fileInputRef.current?.click()} 
+                />
+                <input type="file" ref={fileInputRef} onChange={handleImport} accept=".xlsx,.xls" className="hidden" />
                 
-                <div className="space-y-6">
-                    {/* Theme */}
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500">
-                                {theme === 'dark' ? <Moon className="w-4 h-4" /> : theme === 'light' ? <Sun className="w-4 h-4" /> : <Monitor className="w-4 h-4" />}
-                            </div>
-                            <span className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Tema</span>
-                        </div>
-                        <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl">
-                            {(['light', 'system', 'dark'] as ThemeType[]).map((t) => (
-                                <button 
-                                    key={t}
-                                    onClick={() => onSetTheme(t)}
-                                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${theme === t ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}
-                                >
-                                    {t === 'light' ? 'Claro' : t === 'dark' ? 'Escuro' : 'Auto'}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
+                <SettingItem 
+                    icon={RefreshCw} 
+                    label="Sincronizar Nuvem" 
+                    onClick={() => onSyncAll(true)} 
+                />
+                
+                <SettingItem 
+                    icon={Trash2} 
+                    label="Resetar Aplicativo" 
+                    danger
+                    onClick={() => setConfirmReset(true)}
+                />
+            </SettingGroup>
 
-                    {/* Privacy */}
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500">
-                                <Shield className="w-4 h-4" />
-                            </div>
-                            <span className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Modo Privacidade</span>
-                        </div>
-                        <button 
-                            onClick={() => onSetPrivacyMode(!privacyMode)}
-                            className={`w-12 h-7 rounded-full transition-colors relative ${privacyMode ? 'bg-emerald-500' : 'bg-zinc-200 dark:bg-zinc-700'}`}
-                        >
-                            <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-transform shadow-sm ${privacyMode ? 'left-[calc(100%-1.25rem-2px)]' : 'left-[2px]'}`}></div>
+            {/* Status do Sistema */}
+            <SettingGroup title="Sistema">
+                <div className="p-4 space-y-3">
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-bold text-zinc-500">Status dos Serviços</span>
+                        <button onClick={onCheckConnection} disabled={isCheckingConnection} className="text-zinc-400 hover:text-indigo-500 transition-colors">
+                            <RefreshCw className={`w-3.5 h-3.5 ${isCheckingConnection ? 'animate-spin' : ''}`} />
                         </button>
                     </div>
-
-                    {/* Notifications */}
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500">
-                                <Bell className="w-4 h-4" />
-                            </div>
-                            <span className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Notificações</span>
-                        </div>
-                        <button 
-                            onClick={onRequestPushPermission}
-                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all border ${pushEnabled ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30' : 'bg-zinc-50 dark:bg-zinc-800 text-zinc-400 border-zinc-100 dark:border-zinc-700'}`}
-                        >
-                            {pushEnabled ? 'Ativado' : 'Ativar'}
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            {/* Data Management */}
-            <div className="bg-white dark:bg-zinc-900 rounded-[2rem] p-6 border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-6 ml-1">Dados</h3>
-                
-                <div className="grid grid-cols-2 gap-3">
-                    <button onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700/50 transition-colors">
-                        <Upload className="w-5 h-5 text-zinc-500" />
-                        <span className="text-xs font-bold text-zinc-600 dark:text-zinc-300">Importar Excel (B3)</span>
-                    </button>
-                    <input type="file" ref={fileInputRef} onChange={handleImport} accept=".xlsx,.xls" className="hidden" />
-
-                    <button onClick={() => onSyncAll(true)} className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700/50 transition-colors">
-                        <RefreshCw className="w-5 h-5 text-zinc-500" />
-                        <span className="text-xs font-bold text-zinc-600 dark:text-zinc-300">Sincronizar Nuvem</span>
-                    </button>
-                </div>
-
-                <div className="mt-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
-                    <button onClick={() => setConfirmReset(true)} className="w-full flex items-center justify-center gap-2 p-3 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-colors text-xs font-bold uppercase tracking-wider">
-                        <Trash2 className="w-4 h-4" /> Resetar Aplicativo
-                    </button>
-                </div>
-            </div>
-
-            {/* System Status */}
-            <div className="bg-white dark:bg-zinc-900 rounded-[2rem] p-6 border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest ml-1">Status do Sistema</h3>
-                    <button onClick={onCheckConnection} disabled={isCheckingConnection} className="text-zinc-400 hover:text-indigo-500 transition-colors">
-                        <RefreshCw className={`w-4 h-4 ${isCheckingConnection ? 'animate-spin' : ''}`} />
-                    </button>
-                </div>
-                
-                <div className="space-y-3">
                     {services.map(s => (
-                        <div key={s.id} className="flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800">
-                            <div className="flex items-center gap-3">
-                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${s.status === 'operational' ? 'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-500' : s.status === 'checking' ? 'bg-zinc-200 dark:bg-zinc-700 text-zinc-500' : 'bg-rose-100 dark:bg-rose-900/20 text-rose-500'}`}>
-                                    <s.icon className="w-4 h-4" />
-                                </div>
-                                <div>
-                                    <p className="text-xs font-bold text-zinc-700 dark:text-zinc-300">{s.label}</p>
-                                    <p className="text-[10px] text-zinc-400">{s.message || (s.status === 'operational' ? 'Operacional' : 'Falha')}</p>
-                                </div>
+                        <div key={s.id} className="flex items-center justify-between py-1">
+                            <div className="flex items-center gap-2">
+                                <div className={`w-2 h-2 rounded-full ${s.status === 'operational' ? 'bg-emerald-500' : s.status === 'checking' ? 'bg-zinc-300 animate-pulse' : 'bg-rose-500'}`}></div>
+                                <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">{s.label}</span>
                             </div>
-                            <div className="text-right">
-                                {s.latency !== null && <p className="text-[10px] font-mono text-zinc-400">{s.latency}ms</p>}
-                            </div>
+                            <span className="text-[10px] font-mono text-zinc-400">{s.latency ? `${s.latency}ms` : s.status === 'checking' ? '...' : '-'}</span>
                         </div>
                     ))}
                 </div>
-            </div>
+            </SettingGroup>
 
-            {/* About */}
+            {/* About Footer */}
             <div className="text-center py-6">
                 <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">InvestFIIs Cloud v{appVersion}</p>
                 <div className="flex items-center justify-center gap-4 mt-3">
@@ -446,8 +439,8 @@ export const Settings: React.FC<SettingsProps> = ({
                     <button onClick={onForceUpdate} className="text-[10px] font-medium text-indigo-500 hover:underline">Buscar Atualização</button>
                 </div>
                 {updateAvailable && (
-                    <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-500 text-white rounded-full text-xs font-bold shadow-lg shadow-indigo-500/30 anim-bounce-in">
-                        <Download className="w-4 h-4" /> Nova versão disponível
+                    <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-500 text-white rounded-full text-xs font-bold shadow-lg shadow-indigo-500/30 anim-bounce-in cursor-pointer" onClick={onForceUpdate}>
+                        <Download className="w-3 h-3" /> Nova versão disponível
                     </div>
                 )}
             </div>
