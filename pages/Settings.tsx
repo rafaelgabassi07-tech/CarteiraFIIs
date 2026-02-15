@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { User, LogOut, Moon, Sun, Monitor, Shield, Bell, RefreshCw, Upload, Trash2, ChevronRight, Check, Loader2, Search, Calculator, Palette, ChevronDown, ChevronUp, Download, Info, History, Wifi, Activity, Database, Globe, Smartphone, FileText, Zap } from 'lucide-react';
+import { User, LogOut, Moon, Sun, Monitor, Shield, Bell, RefreshCw, Upload, Trash2, ChevronRight, Check, Loader2, Search, Calculator, Palette, ChevronDown, ChevronUp, Download, Info, History, Wifi, Activity, Database, Globe, Smartphone, FileText, Zap, LayoutTemplate } from 'lucide-react';
 import { triggerScraperUpdate } from '../services/dataService';
 import { ConfirmationModal } from '../components/Layout';
 import { ThemeType, ServiceMetric, Transaction, DividendReceipt } from '../types';
@@ -115,18 +115,18 @@ const CeilingPriceCalc = () => {
     };
 
     return (
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-sm">
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-sm transition-all duration-300">
             <button 
                 onClick={() => setIsOpen(!isOpen)}
                 className="w-full flex items-center justify-between p-4 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
             >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3.5">
                     <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-100 dark:border-indigo-900/30">
                         <Calculator className="w-5 h-5" />
                     </div>
                     <div className="text-left">
                         <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Calculadora Preço Teto</h3>
-                        <p className="text-[10px] text-zinc-500 font-medium">Método Bazin</p>
+                        <p className="text-[10px] text-zinc-500 font-medium">Método Bazin (6%)</p>
                     </div>
                 </div>
                 {isOpen ? <ChevronUp className="w-5 h-5 text-zinc-400" /> : <ChevronDown className="w-5 h-5 text-zinc-400" />}
@@ -223,7 +223,7 @@ const SettingItem = ({ icon: Icon, label, value, onClick, color = "text-zinc-500
         className={`w-full flex items-center justify-between p-4 transition-colors group ${danger ? 'hover:bg-rose-50 dark:hover:bg-rose-900/10' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50'}`}
     >
         <div className="flex items-center gap-3.5">
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${danger ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-500' : highlight ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 group-hover:bg-white dark:group-hover:bg-zinc-700 border border-zinc-100 dark:border-zinc-700/50'}`}>
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${danger ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-500' : highlight ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 group-hover:bg-white dark:group-hover:bg-zinc-700 border border-zinc-100 dark:border-zinc-700/50'}`}>
                 <Icon className={`w-5 h-5 ${danger ? 'text-rose-500' : highlight ? 'text-indigo-600 dark:text-indigo-400' : color}`} />
             </div>
             <div className="text-left">
@@ -328,15 +328,15 @@ export const Settings: React.FC<SettingsProps> = ({
                 </div>
             </div>
 
-            {/* SEÇÃO 1: PERSONALIZAÇÃO & PREFERÊNCIAS */}
-            <SettingGroup title="Personalização">
+            {/* SEÇÃO 1: APARÊNCIA */}
+            <SettingGroup title="Visual & Tema">
                 {/* Theme Selector */}
                 <div className="p-4 flex items-center justify-between">
                     <div className="flex items-center gap-3.5">
                         <div className="w-9 h-9 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 border border-zinc-100 dark:border-zinc-700/50">
                             {theme === 'dark' ? <Moon className="w-5 h-5" /> : theme === 'light' ? <Sun className="w-5 h-5" /> : <Monitor className="w-5 h-5" />}
                         </div>
-                        <span className="text-sm font-bold text-zinc-900 dark:text-white">Tema</span>
+                        <span className="text-sm font-bold text-zinc-900 dark:text-white">Tema do App</span>
                     </div>
                     <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl">
                         {(['light', 'system', 'dark'] as ThemeType[]).map((t) => (
@@ -357,7 +357,7 @@ export const Settings: React.FC<SettingsProps> = ({
                         <div className="w-9 h-9 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 border border-zinc-100 dark:border-zinc-700/50">
                             <Palette className="w-5 h-5" />
                         </div>
-                        <span className="text-sm font-bold text-zinc-900 dark:text-white">Destaque</span>
+                        <span className="text-sm font-bold text-zinc-900 dark:text-white">Cor de Destaque</span>
                     </div>
                     <div className="flex gap-2">
                         {ACCENT_COLORS.map(c => (
@@ -371,15 +371,16 @@ export const Settings: React.FC<SettingsProps> = ({
                         ))}
                     </div>
                 </div>
+            </SettingGroup>
 
-                <div className="border-t border-zinc-100 dark:border-zinc-800">
-                    <SettingItem 
-                        icon={Shield} 
-                        label="Modo Privacidade" 
-                        description="Oculta valores na interface"
-                        rightElement={<Switch checked={privacyMode} onChange={() => onSetPrivacyMode(!privacyMode)} />}
-                    />
-                </div>
+            {/* SEÇÃO 2: PREFERÊNCIAS */}
+            <SettingGroup title="Preferências de Uso">
+                <SettingItem 
+                    icon={Shield} 
+                    label="Modo Privacidade" 
+                    description="Oculta valores na interface"
+                    rightElement={<Switch checked={privacyMode} onChange={() => onSetPrivacyMode(!privacyMode)} />}
+                />
                 <div className="border-t border-zinc-100 dark:border-zinc-800">
                     <SettingItem 
                         icon={Bell} 
@@ -390,14 +391,14 @@ export const Settings: React.FC<SettingsProps> = ({
                 </div>
             </SettingGroup>
 
-            {/* SEÇÃO 2: FERRAMENTAS */}
+            {/* SEÇÃO 3: FERRAMENTAS */}
             <div className="mb-6">
-                <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-3 ml-4">Ferramentas</h3>
+                <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-3 ml-4">Ferramentas do Investidor</h3>
                 <CeilingPriceCalc />
             </div>
 
-            {/* SEÇÃO 3: DADOS */}
-            <SettingGroup title="Dados e Sincronização">
+            {/* SEÇÃO 4: DADOS */}
+            <SettingGroup title="Dados & Backup">
                 <SettingItem 
                     icon={Upload} 
                     label="Importar Excel (B3)" 
@@ -406,22 +407,24 @@ export const Settings: React.FC<SettingsProps> = ({
                 />
                 <input type="file" ref={fileInputRef} onChange={handleImport} accept=".xlsx,.xls" className="hidden" />
                 
-                <SettingItem 
-                    icon={RefreshCw} 
-                    label="Sincronizar Nuvem" 
-                    description="Forçar atualização dos dados"
-                    onClick={() => onSyncAll(true)} 
-                />
+                <div className="border-t border-zinc-100 dark:border-zinc-800">
+                    <SettingItem 
+                        icon={RefreshCw} 
+                        label="Sincronizar Nuvem" 
+                        description="Forçar atualização dos dados"
+                        onClick={() => onSyncAll(true)} 
+                    />
+                </div>
             </SettingGroup>
 
-            {/* SEÇÃO 4: SISTEMA E INFORMAÇÕES */}
-            <SettingGroup title="Sistema">
+            {/* SEÇÃO 5: SISTEMA */}
+            <SettingGroup title="Status do Sistema">
                 {/* Diagnóstico (Widget) */}
                 <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50">
                     <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
                             <Activity className="w-4 h-4 text-zinc-400" />
-                            <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Status dos Serviços</span>
+                            <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Conectividade</span>
                         </div>
                         <button onClick={onCheckConnection} disabled={isCheckingConnection} className="text-zinc-400 hover:text-indigo-500 transition-colors p-1">
                             <RefreshCw className={`w-3.5 h-3.5 ${isCheckingConnection ? 'animate-spin' : ''}`} />
@@ -429,7 +432,7 @@ export const Settings: React.FC<SettingsProps> = ({
                     </div>
                     <div className="space-y-2">
                         {services.map(s => (
-                            <div key={s.id} className="flex items-center justify-between py-1 px-2 bg-white dark:bg-zinc-800 rounded-lg border border-zinc-100 dark:border-zinc-700/50">
+                            <div key={s.id} className="flex items-center justify-between py-1.5 px-2 bg-white dark:bg-zinc-800 rounded-lg border border-zinc-100 dark:border-zinc-700/50">
                                 <div className="flex items-center gap-2.5">
                                     <div className={`w-2 h-2 rounded-full ${s.status === 'operational' ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.4)]' : s.status === 'checking' ? 'bg-zinc-300 animate-pulse' : 'bg-rose-500'}`}></div>
                                     <span className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">{s.label}</span>
@@ -462,8 +465,8 @@ export const Settings: React.FC<SettingsProps> = ({
                 </div>
             </SettingGroup>
 
-            {/* SEÇÃO 5: ZONA DE PERIGO */}
-            <SettingGroup title="Zona de Perigo">
+            {/* SEÇÃO 6: CONTA */}
+            <SettingGroup title="Ações da Conta">
                 <SettingItem 
                     icon={Trash2} 
                     label="Resetar Aplicativo" 
