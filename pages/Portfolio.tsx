@@ -87,7 +87,9 @@ const AssetListItem: React.FC<AssetListItemProps> = ({ asset, onOpenDetails, pri
              target = asset.vpa || 0;
              method = 'VP';
         } else {
-             if (asset.lpa > 0 && asset.vpa > 0) target = Math.sqrt(22.5 * asset.lpa * asset.vpa);
+             const lpa = asset.lpa || 0;
+             const vpa = asset.vpa || 0;
+             if (lpa > 0 && vpa > 0) target = Math.sqrt(22.5 * lpa * vpa);
              method = 'Graham';
         }
 
