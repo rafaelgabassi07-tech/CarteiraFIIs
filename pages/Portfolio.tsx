@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, Wallet, TrendingUp, TrendingDown, RefreshCw, X, Calculator, Scale, Activity, BarChart3, PieChart, Coins, Target, AlertCircle, ChevronDown, ChevronUp, ExternalLink, ArrowRight, DollarSign, Percent, Briefcase } from 'lucide-react';
+import { Search, Wallet, TrendingUp, TrendingDown, RefreshCw, X, Calculator, Scale, Activity, BarChart3, PieChart, Coins, Target, AlertCircle, ChevronDown, ChevronUp, ExternalLink, ArrowRight, DollarSign, Percent, Briefcase, Building2, Users, FileText } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 
 // --- FORMATTERS ---
@@ -41,10 +41,11 @@ const DetailBox = ({ label, value, subValue, valueColor, icon: Icon }: any) => (
 );
 
 // Componente auxiliar para exibir métricas no modal
-const MetricCard = ({ label, value, highlight = false, colorClass = "text-zinc-900 dark:text-white" }: any) => (
-    <div className={`p-3 rounded-xl border flex flex-col justify-center min-h-[60px] ${highlight ? 'bg-indigo-50 dark:bg-indigo-900/10 border-indigo-100 dark:border-indigo-900/30' : 'bg-zinc-50 dark:bg-zinc-800/50 border-zinc-100 dark:border-zinc-800'}`}>
+const MetricCard = ({ label, value, highlight = false, colorClass = "text-zinc-900 dark:text-white", subtext }: any) => (
+    <div className={`p-3 rounded-xl border flex flex-col justify-center min-h-[64px] ${highlight ? 'bg-indigo-50 dark:bg-indigo-900/10 border-indigo-100 dark:border-indigo-900/30' : 'bg-zinc-50 dark:bg-zinc-800/50 border-zinc-100 dark:border-zinc-800'}`}>
         <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1 truncate">{label}</span>
         <span className={`text-xs sm:text-sm font-black truncate ${colorClass}`}>{value}</span>
+        {subtext && <span className="text-[9px] text-zinc-400 mt-0.5">{subtext}</span>}
     </div>
 );
 
@@ -137,55 +138,47 @@ const AssetListItem: React.FC<AssetListItemProps> = ({ asset, onOpenDetails, pri
                 </div>
             </button>
 
-            {/* Área Expandida (Detalhes Organizados) */}
+            {/* Área Expandida - Layout Limpo e Tabular */}
             <div className={`transition-all duration-500 ease-out-mola overflow-hidden ${isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
                 <div className="p-4 pt-0">
                     
-                    {/* Grid de Métricas Principais */}
-                    <div className="grid grid-cols-2 gap-2 mb-3">
-                        <div className="bg-white dark:bg-zinc-800/50 p-3 rounded-xl border border-zinc-100 dark:border-zinc-700/50">
-                            <div className="flex justify-between items-center mb-1">
-                                <span className="text-[9px] font-bold text-zinc-400 uppercase">Preço Médio</span>
-                                <span className="text-[9px] font-bold text-zinc-400 uppercase">Atual</span>
+                    <div className="bg-white dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-700/50 overflow-hidden mb-3">
+                        {/* Linha 1: Preços */}
+                        <div className="flex border-b border-zinc-100 dark:border-zinc-700/50">
+                            <div className="flex-1 p-3 border-r border-zinc-100 dark:border-zinc-700/50">
+                                <span className="text-[9px] font-bold text-zinc-400 uppercase block mb-1">Preço Médio</span>
+                                <span className="text-sm font-bold text-zinc-700 dark:text-zinc-300 block">{formatBRL(asset.averagePrice, privacyMode)}</span>
                             </div>
-                            <div className="flex justify-between items-end">
-                                <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400">{formatBRL(asset.averagePrice, privacyMode)}</span>
-                                <span className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(asset.currentPrice, privacyMode)}</span>
+                            <div className="flex-1 p-3">
+                                <span className="text-[9px] font-bold text-zinc-400 uppercase block mb-1">Preço Atual</span>
+                                <span className="text-sm font-black text-zinc-900 dark:text-white block">{formatBRL(asset.currentPrice, privacyMode)}</span>
                             </div>
                         </div>
-
-                        <div className="bg-white dark:bg-zinc-800/50 p-3 rounded-xl border border-zinc-100 dark:border-zinc-700/50">
-                            <div className="flex justify-between items-center mb-1">
-                                <span className="text-[9px] font-bold text-zinc-400 uppercase">Retorno</span>
-                                <span className={`text-[9px] font-black uppercase ${isProfit ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                    {profitPercent > 0 ? '+' : ''}{profitPercent.toFixed(1)}%
-                                </span>
-                            </div>
-                            <div className="flex justify-between items-end">
-                                <span className={`text-sm font-black ${isProfit ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                        
+                        {/* Linha 2: Retornos */}
+                        <div className="flex">
+                            <div className="flex-1 p-3 border-r border-zinc-100 dark:border-zinc-700/50">
+                                <span className="text-[9px] font-bold text-zinc-400 uppercase block mb-1">Resultado (R$)</span>
+                                <span className={`text-sm font-black block ${isProfit ? 'text-emerald-600' : 'text-rose-600'}`}>
                                     {profitValue > 0 ? '+' : ''}{formatBRL(profitValue, privacyMode)}
                                 </span>
                             </div>
-                        </div>
-                    </div>
-
-                    {/* Linha de Proventos e Botão */}
-                    <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-indigo-50 dark:bg-indigo-900/10 p-2.5 rounded-xl border border-indigo-100 dark:border-indigo-900/30 flex items-center justify-between px-3">
-                            <div className="flex items-center gap-2">
-                                <Coins className="w-3.5 h-3.5 text-indigo-500" />
-                                <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-300 uppercase">Proventos</span>
+                            <div className="flex-1 p-3">
+                                <span className="text-[9px] font-bold text-zinc-400 uppercase block mb-1">Variação (%)</span>
+                                <span className={`text-sm font-black block ${isProfit ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                    {profitPercent > 0 ? '+' : ''}{profitPercent.toFixed(2)}%
+                                </span>
                             </div>
-                            <span className="text-xs font-black text-indigo-700 dark:text-indigo-400">{formatBRL(asset.totalDividends || 0, privacyMode)}</span>
                         </div>
-
-                        <button 
-                            onClick={(e) => { e.stopPropagation(); onOpenDetails(); }}
-                            className="h-full px-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl text-[10px] font-black uppercase tracking-widest hover:opacity-90 transition-opacity flex items-center gap-2 press-effect shadow-md"
-                        >
-                            Ver Mais <ArrowRight className="w-3 h-3" />
-                        </button>
                     </div>
+
+                    {/* Botão de Detalhes Completo */}
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onOpenDetails(); }}
+                        className="w-full h-10 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-2 press-effect border border-indigo-100 dark:border-indigo-900/30"
+                    >
+                        Ver Detalhes e Valuation <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
 
                 </div>
             </div>
@@ -234,19 +227,18 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
         let ceilingMethod = 'Bazin (6%)';
         
         // 1. CÁLCULO PREÇO TETO (BAZIN - YIELD 6%)
+        // Lógica conservadora: Para Ações, usa estritamente DY 12m. Para FIIs, aceita projeção mensal se DY faltar.
         let annualDividend = 0;
         
         if (selectedAsset.dy_12m && selectedAsset.dy_12m > 0 && currentPrice > 0) {
             // Cenário Ideal: Temos o Yield anual exato
             annualDividend = currentPrice * (selectedAsset.dy_12m / 100);
         } else if (selectedAsset.assetType === AssetType.FII && selectedAsset.last_dividend && selectedAsset.last_dividend > 0) {
-            // Fallback FIIs: Projeção Mensal (x12)
-            // Seguro para FIIs pois pagam mensalmente
+            // Fallback seguro APENAS para FIIs (pagamento mensal recorrente)
             annualDividend = selectedAsset.last_dividend * 12;
             ceilingMethod = 'Bazin (Proj. Mensal)';
-        } else if (selectedAsset.assetType === AssetType.STOCK) {
-             // Ações: NÃO projetar x12 se faltar DY, pois ações pagam trimestral/semestral.
-             // Evita valor teto absurdo. Se não tem DY, não calcula Bazin.
+        } else {
+             // Ações sem DY: Não projeta.
              annualDividend = 0; 
         }
 
@@ -259,7 +251,8 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
             const lpa = selectedAsset.lpa || 0;
             const vpa = selectedAsset.vpa || 0;
 
-            // Graham só funciona se a empresa tem lucro e valor patrimonial positivo
+            // Graham clássico: sqrt(22.5 * LPA * VPA)
+            // Requer LPA e VPA positivos para fazer sentido matemático e fundamentalista
             if (lpa > 0 && vpa > 0) {
                 fairPrice = Math.sqrt(22.5 * lpa * vpa);
                 fairMethod = 'Graham (Clássico)';
@@ -268,7 +261,6 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
             }
         } else {
             // FIIs: Valor Justo = Valor Patrimonial (VPA)
-            // Se VPA não vier da API, calculamos reverso: P / (P/VP) = VP
             const vpa = selectedAsset.vpa;
             const pvp = selectedAsset.p_vp;
 
@@ -276,6 +268,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                 fairPrice = vpa;
                 fairMethod = 'Valor Patrimonial';
             } else if (pvp && pvp > 0 && currentPrice > 0) {
+                // Se VPA não veio direto, deriva do P/VP: VPA = Preço / (P/VP)
                 fairPrice = currentPrice / pvp; 
                 fairMethod = 'VP (Implícito)';
             } else {
@@ -437,7 +430,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                                 </div>
                             )}
 
-                            {/* 4. FUNDAMENTOS (Grids Melhorados) */}
+                            {/* 4. FUNDAMENTOS (Dados Expandidos) */}
                             <div className="space-y-4">
                                 <h3 className="text-xs font-black text-zinc-900 dark:text-white uppercase tracking-widest text-left flex items-center gap-2 mb-3 px-1">
                                     <Activity className="w-4 h-4 text-amber-500" /> Indicadores de Mercado
@@ -450,10 +443,10 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                                         <MetricCard label="ROE" value={formatPercent(selectedAsset.roe)} highlight />
                                         <MetricCard label="Div.Líq/EBITDA" value={formatNumber(selectedAsset.net_debt_ebitda)} />
                                         <MetricCard label="Margem Líq." value={formatPercent(selectedAsset.net_margin)} />
+                                        <MetricCard label="Payout" value={formatPercent(selectedAsset.payout)} />
                                         <MetricCard label="LPA" value={formatNumber(selectedAsset.lpa)} />
                                         <MetricCard label="VPA" value={formatNumber(selectedAsset.vpa)} />
-                                        <MetricCard label="CAGR Lucros" value={formatPercent(selectedAsset.cagr_profits)} />
-                                        <MetricCard label="EV/EBITDA" value={formatNumber(selectedAsset.ev_ebitda)} />
+                                        <MetricCard label="CAGR Rec. (5a)" value={formatPercent(selectedAsset.cagr_revenue)} />
                                     </div>
                                 ) : (
                                     <div className="grid grid-cols-3 gap-2 text-left">
@@ -461,25 +454,34 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                                         <MetricCard label="P/VP" value={formatNumber(selectedAsset.p_vp)} highlight />
                                         <MetricCard label="Últ. Rendim." value={formatBRL(selectedAsset.last_dividend)} />
                                         <MetricCard label="Vacância" value={formatPercent(selectedAsset.vacancy)} colorClass={selectedAsset.vacancy && selectedAsset.vacancy > 10 ? 'text-rose-500' : 'text-zinc-900 dark:text-white'} />
-                                        <MetricCard label="Val. Patrim." value={selectedAsset.assets_value || '-'} />
+                                        <MetricCard label="VP por Cota" value={formatNumber(selectedAsset.vpa)} />
                                         <MetricCard label="Nº Cotistas" value={formatNumber(selectedAsset.properties_count, 0)} />
                                     </div>
                                 )}
 
                                 {/* Infos Gerais */}
-                                <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800 text-left mt-2">
-                                    <div className="flex justify-between items-center mb-2 pb-2 border-b border-zinc-200 dark:border-zinc-700/50">
-                                        <span className="text-[10px] font-bold text-zinc-400 uppercase">Liquidez Diária</span>
-                                        <span className="text-xs font-bold text-zinc-900 dark:text-white">{selectedAsset.liquidity || '-'}</span>
+                                <div className="space-y-2 mt-2">
+                                    <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800 text-left">
+                                        <div className="flex justify-between items-center mb-2 pb-2 border-b border-zinc-200 dark:border-zinc-700/50">
+                                            <span className="text-[10px] font-bold text-zinc-400 uppercase">Liquidez Diária</span>
+                                            <span className="text-xs font-bold text-zinc-900 dark:text-white">{selectedAsset.liquidity || '-'}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-[10px] font-bold text-zinc-400 uppercase">Valor de Mercado</span>
+                                            <span className="text-xs font-bold text-zinc-900 dark:text-white">{selectedAsset.market_cap || '-'}</span>
+                                        </div>
                                     </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-[10px] font-bold text-zinc-400 uppercase">Valor de Mercado</span>
-                                        <span className="text-xs font-bold text-zinc-900 dark:text-white">{selectedAsset.market_cap || '-'}</span>
-                                    </div>
+                                    
+                                    {selectedAsset.assetType === AssetType.FII && selectedAsset.management_fee && (
+                                        <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800 text-left">
+                                            <span className="text-[9px] font-bold text-zinc-400 uppercase block mb-1">Taxa de Administração</span>
+                                            <span className="text-xs font-medium text-zinc-600 dark:text-zinc-300 leading-tight">{selectedAsset.management_fee}</span>
+                                        </div>
+                                    )}
                                 </div>
                                 
                                 <p className="text-[9px] text-zinc-400 text-center pt-6 opacity-60">
-                                    Dados de mercado fornecidos por fontes públicas. Podem conter atrasos.
+                                    Dados fornecidos por Investidor10. Podem conter atrasos.
                                 </p>
                             </div>
                         </div>
