@@ -50,7 +50,7 @@ const MetricCard = ({ label, value, highlight = false, colorClass = "text-zinc-9
 
 // Componente auxiliar para Cards de Valuation
 const ValuationCard = ({ title, price, currentPrice, method, subtext, icon: Icon }: any) => {
-    const isValid = price > 0;
+    const isValid = price > 0 && price !== Infinity;
     const margin = isValid && currentPrice > 0 ? ((price - currentPrice) / currentPrice) * 100 : 0;
     const isSafe = margin > 0;
     
@@ -223,7 +223,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
         setExpandedAssetTicker(prev => prev === ticker ? null : ticker);
     };
 
-    // --- LÓGICA DE VALUATION ---
+    // --- LÓGICA DE VALUATION APRIMORADA ---
     const valuationData = useMemo(() => {
         if (!selectedAsset) return null;
 
@@ -231,13 +231,16 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
         let fairPrice = 0;
         let fairMethod = '';
         let ceilingPrice = 0; // Bazin
+        let ceilingMethod = 'Bazin (6%)';
         
         // 1. CÁLCULO PREÇO TETO (BAZIN - YIELD 6%)
+        // Prioriza DY anualizado para evitar distorções sazonais de um único mês
         let annualDividend = 0;
         
         if (selectedAsset.dy_12m && selectedAsset.dy_12m > 0 && currentPrice > 0) {
             annualDividend = currentPrice * (selectedAsset.dy_12m / 100);
-        } else if (selectedAsset.assetType === AssetType.FII && selectedAsset.last_dividend) {
+        } else if (selectedAsset.last_dividend && selectedAsset.last_dividend > 0) {
+            // Fallback: Projeção linear do último dividendo (menos preciso)
             annualDividend = selectedAsset.last_dividend * 12;
         }
 
@@ -247,22 +250,30 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
 
         // 2. CÁLCULO PREÇO JUSTO
         if (selectedAsset.assetType === AssetType.STOCK) {
-            const lpa = selectedAsset.lpa;
-            const vpa = selectedAsset.vpa;
+            const lpa = selectedAsset.lpa || 0;
+            const vpa = selectedAsset.vpa || 0;
 
-            if (lpa && vpa && lpa > 0 && vpa > 0) {
+            // Graham só funciona se a empresa tem lucro e valor patrimonial positivo
+            if (lpa > 0 && vpa > 0) {
                 fairPrice = Math.sqrt(22.5 * lpa * vpa);
-                fairMethod = 'Graham';
+                fairMethod = 'Graham (Clássico)';
             } else {
                  fairMethod = 'Graham (Inaplicável)';
             }
         } else {
-            if (selectedAsset.vpa && selectedAsset.vpa > 0) {
-                fairPrice = selectedAsset.vpa;
-                fairMethod = 'V. Patrimonial';
-            } else if (selectedAsset.p_vp && selectedAsset.p_vp > 0 && currentPrice > 0) {
-                fairPrice = currentPrice / selectedAsset.p_vp; 
-                fairMethod = 'VP (Estimado)';
+            // FIIs: Valor Justo = Valor Patrimonial (VPA)
+            // Se VPA não vier da API, calculamos reverso: P / (P/VP) = VP
+            const vpa = selectedAsset.vpa;
+            const pvp = selectedAsset.p_vp;
+
+            if (vpa && vpa > 0) {
+                fairPrice = vpa;
+                fairMethod = 'Valor Patrimonial';
+            } else if (pvp && pvp > 0 && currentPrice > 0) {
+                fairPrice = currentPrice / pvp; 
+                fairMethod = 'VP (Implícito)';
+            } else {
+                fairMethod = 'Valor Patrimonial';
             }
         }
 
@@ -270,6 +281,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
             fairPrice,
             fairMethod,
             ceilingPrice,
+            ceilingMethod,
             currentPrice
         };
     }, [selectedAsset]);
@@ -402,7 +414,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                                     
                                     <div className="grid grid-cols-2 gap-3 text-left">
                                         <ValuationCard 
-                                            title={selectedAsset.assetType === AssetType.FII ? "Valor Patrimonial" : "Preço Justo"}
+                                            title={selectedAsset.assetType === AssetType.FII ? "Valor Justo (VP)" : "Preço Justo (Graham)"}
                                             price={valuationData.fairPrice}
                                             currentPrice={valuationData.currentPrice}
                                             method={valuationData.fairMethod}
@@ -412,7 +424,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                                             title="Preço Teto"
                                             price={valuationData.ceilingPrice}
                                             currentPrice={valuationData.currentPrice}
-                                            method="Bazin (6% Yield)"
+                                            method={valuationData.ceilingMethod}
                                             icon={Target}
                                         />
                                     </div>
