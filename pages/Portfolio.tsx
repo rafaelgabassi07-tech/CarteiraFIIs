@@ -234,14 +234,20 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
         let ceilingMethod = 'Bazin (6%)';
         
         // 1. CÁLCULO PREÇO TETO (BAZIN - YIELD 6%)
-        // Prioriza DY anualizado para evitar distorções sazonais de um único mês
         let annualDividend = 0;
         
         if (selectedAsset.dy_12m && selectedAsset.dy_12m > 0 && currentPrice > 0) {
+            // Cenário Ideal: Temos o Yield anual exato
             annualDividend = currentPrice * (selectedAsset.dy_12m / 100);
-        } else if (selectedAsset.last_dividend && selectedAsset.last_dividend > 0) {
-            // Fallback: Projeção linear do último dividendo (menos preciso)
+        } else if (selectedAsset.assetType === AssetType.FII && selectedAsset.last_dividend && selectedAsset.last_dividend > 0) {
+            // Fallback FIIs: Projeção Mensal (x12)
+            // Seguro para FIIs pois pagam mensalmente
             annualDividend = selectedAsset.last_dividend * 12;
+            ceilingMethod = 'Bazin (Proj. Mensal)';
+        } else if (selectedAsset.assetType === AssetType.STOCK) {
+             // Ações: NÃO projetar x12 se faltar DY, pois ações pagam trimestral/semestral.
+             // Evita valor teto absurdo. Se não tem DY, não calcula Bazin.
+             annualDividend = 0; 
         }
 
         if (annualDividend > 0) {
