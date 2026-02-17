@@ -28,11 +28,11 @@ const formatNumber = (val: number | undefined, decimals = 2) => {
 // Componente para Informações Gerais (Lista)
 const InfoRow = ({ label, value, icon: Icon }: any) => (
     <div className="flex items-center justify-between py-3 border-b border-zinc-100 dark:border-zinc-800 last:border-0">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 shrink-0">
             {Icon && <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-400"><Icon className="w-4 h-4" /></div>}
             <span className="text-xs font-medium text-zinc-500">{label}</span>
         </div>
-        <span className="text-xs font-bold text-zinc-900 dark:text-white text-right max-w-[180px] break-words">{value || '-'}</span>
+        <span className="text-xs font-bold text-zinc-900 dark:text-white text-right max-w-[50%] break-words leading-tight">{value || '-'}</span>
     </div>
 );
 
@@ -323,25 +323,28 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                                 </div>
                             </div>
 
-                            {/* Tabs Navigation */}
-                            <div className="flex p-1 bg-zinc-100 dark:bg-zinc-800 rounded-xl overflow-x-auto no-scrollbar">
+                            {/* Tabs Navigation (Modern Sliding Style) */}
+                            <div className="relative flex p-1 bg-zinc-100 dark:bg-zinc-800 rounded-xl overflow-x-auto no-scrollbar">
                                 {[
                                     { id: 'VISAO_GERAL', label: 'Visão Geral' },
                                     { id: 'RENTABILIDADE', label: 'Rentabilidade' },
                                     { id: 'DADOS', label: 'Dados' },
                                     { id: 'PROVENTOS', label: 'Proventos' },
                                     { id: 'IMOVEIS', label: 'Imóveis', hide: !selectedAsset.properties || selectedAsset.properties.length === 0 }
-                                ].map(tab => {
+                                ].map((tab) => {
                                     if (tab.hide) return null;
                                     return (
                                         <button
                                             key={tab.id}
                                             onClick={() => setActiveTab(tab.id as any)}
-                                            className={`flex-1 min-w-[80px] py-2.5 px-3 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-white dark:bg-zinc-700 text-indigo-600 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                                            className={`relative z-10 flex-1 min-w-[80px] py-2.5 px-3 rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors whitespace-nowrap ${activeTab === tab.id ? 'text-zinc-900 dark:text-white' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                                         >
                                             {tab.label}
+                                            {activeTab === tab.id && (
+                                                <span className="absolute inset-0 bg-white dark:bg-zinc-700 rounded-lg shadow-sm -z-10 anim-scale-in"></span>
+                                            )}
                                         </button>
-                                    )
+                                    );
                                 })}
                             </div>
                         </div>

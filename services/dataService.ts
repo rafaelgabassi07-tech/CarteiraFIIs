@@ -20,7 +20,7 @@ export interface FutureDividendPrediction {
     quantity: number;
     type: string;
     daysToDateCom: number;
-    status: 'CONFIRMED'; // Agora sempre confirmado
+    status: 'CONFIRMED'; 
     reasoning?: string;
 }
 
@@ -39,11 +39,9 @@ const parseNumberSafe = (val: any): number | undefined => {
     if (typeof val === 'number') return val;
     if (val === undefined || val === null || val === '') return undefined;
     
-    // Remove R$, %, espaços
     let str = String(val).replace(/[^\d.,-]/g, '').trim();
     if (!str || str === '-') return undefined;
 
-    // Lógica robusta de parsing
     const hasComma = str.includes(',');
     const hasDot = str.includes('.');
 
@@ -62,6 +60,7 @@ const parseNumberSafe = (val: any): number | undefined => {
 };
 
 export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
+    // Helper para buscar chaves variadas
     const getVal = (...keys: string[]): any => {
         for (const k of keys) {
             if (m[k] !== undefined && m[k] !== null && m[k] !== '' && m[k] !== 'N/A') return m[k];
@@ -78,7 +77,7 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         p_l: parseNumberSafe(getVal('pl', 'p_l')),
         roe: parseNumberSafe(getVal('roe')),
         
-        // Rentabilidade Scraper
+        // Rentabilidade
         profitability_month: parseNumberSafe(getVal('profitability_month')),
         profitability_real_month: parseNumberSafe(getVal('profitability_real_month')),
         profitability_3m: parseNumberSafe(getVal('profitability_3m')),
@@ -94,8 +93,8 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         benchmark_ibov_12m: parseNumberSafe(getVal('benchmark_ibov_12m')),
 
         // Metadados
-        liquidity: getVal('liquidez', 'liquidez_media_diaria') || '', 
-        market_cap: getVal('val_mercado', 'valor_mercado', 'market_cap') || undefined, 
+        liquidity: getVal('liquidez', 'liquidez_media_diaria'), // Pode ser string "R$ 1.2M"
+        market_cap: getVal('val_mercado', 'valor_mercado', 'market_cap'), 
         
         // FII Específicos
         target_audience: getVal('target_audience'),
@@ -105,12 +104,12 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         duration: getVal('duration'),
         num_quotas: getVal('num_quotas'),
         
-        assets_value: getVal('patrimonio_liquido', 'patrimonio', 'assets_value') || undefined, 
-        manager_type: getVal('tipo_gestao', 'gestao', 'manager_type') || undefined,
-        management_fee: getVal('taxa_adm', 'taxa_administracao', 'management_fee') || undefined,
-        vacancy: parseNumberSafe(getVal('vacancia', 'vacancia_fisica')),
-        last_dividend: parseNumberSafe(getVal('ultimo_rendimento')),
-        properties_count: parseNumberSafe(getVal('num_cotistas', 'cotistas')),
+        assets_value: getVal('assets_value', 'patrimonio_liquido', 'patrimonio'), 
+        manager_type: getVal('manager_type', 'tipo_gestao', 'gestao'),
+        management_fee: getVal('management_fee', 'taxa_adm', 'taxa_administracao'),
+        vacancy: parseNumberSafe(getVal('vacancy', 'vacancia', 'vacancia_fisica')),
+        last_dividend: parseNumberSafe(getVal('last_dividend', 'ultimo_rendimento')),
+        properties_count: parseNumberSafe(getVal('num_cotistas', 'cotistas')), // Adaptado, as vezes cotistas vem numérico
         properties: m.properties || [], 
         
         // Ações (Stocks)
@@ -121,7 +120,7 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         net_debt_ebitda: parseNumberSafe(getVal('divida_liquida_ebitda', 'div_liq_ebitda', 'dividaliquida_ebitda')),
         ev_ebitda: parseNumberSafe(getVal('ev_ebitda')),
         lpa: parseNumberSafe(getVal('lpa')),
-        vpa: parseNumberSafe(getVal('vp_cota', 'vpa', 'valor_patrimonial_acao', 'valorpatrimonialcota')),
+        vpa: parseNumberSafe(getVal('vpa', 'vp_cota', 'valor_patrimonial_acao', 'valorpatrimonialcota')),
         
         updated_at: m.updated_at,
         sentiment: 'Neutro',
