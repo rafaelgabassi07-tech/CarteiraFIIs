@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, Activity, BarChart3, PieChart, Coins, AlertCircle, ChevronDown, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, Scale, SquareStack, Calendar, Map as MapIcon, ChevronRight, Share2 } from 'lucide-react';
+import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, Activity, BarChart3, PieChart, Coins, AlertCircle, ChevronDown, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, Scale, SquareStack, Calendar, Map as MapIcon, ChevronRight, Share2, MousePointerClick } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, ReferenceLine, ComposedChart, CartesianGrid, Legend, AreaChart, Area, YAxis, PieChart as RePieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { formatBRL, formatPercent, formatNumber, formatDateShort } from '../utils/formatters';
@@ -36,73 +36,30 @@ const MetricCard = ({ label, value, highlight = false, colorClass = "text-zinc-9
     </div>
 );
 
-// Novo Componente: Gráfico Comparativo (Asset vs Benchmark)
-const ComparativeHistoryChart = ({ ticker, type }: { ticker: string, type: AssetType }) => {
-    const [data, setData] = useState<any[]>([]);
-    const [range, setRange] = useState('1Y');
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(false);
+// Componente 1: Gráfico de Preço (Cotação Histórica) - MANTIDO
+const PriceHistoryChart = ({ data, loading, error, ticker, range, setRange }: any) => {
+    // Calcula variação simples para cor do gráfico
+    const variation = useMemo(() => {
+        if (!data || data.length < 2) return 0;
+        const first = data[0].price;
+        const last = data[data.length - 1].price;
+        return ((last - first) / first) * 100;
+    }, [data]);
 
-    // Define benchmark based on type
-    // Stock -> ^BVSP (Ibovespa)
-    // FII -> IFIX (Proxied via Yahoo often fails, using fallback or generic index if needed)
-    // Yahoo Finance Tickers: ^BVSP (Ibov). IFIX.SA often doesn't have history in public API.
-    // We will use ^BVSP for comparison as standard market proxy.
-    const benchmarkTicker = '^BVSP';
-    const benchmarkLabel = 'IBOV';
-
-    useEffect(() => {
-        let isMounted = true;
-        const fetchHistory = async () => {
-            setLoading(true);
-            setError(false);
-            try {
-                // Fetch comparative data
-                const res = await fetch(`/api/history?ticker=${ticker}&benchmark=${benchmarkTicker}&range=${range}`);
-                if (!res.ok) throw new Error('Falha');
-                const json = await res.json();
-                
-                if (isMounted && json.points) {
-                    setData(json.points);
-                }
-            } catch (e) {
-                if (isMounted) setError(true);
-            } finally {
-                if (isMounted) setLoading(false);
-            }
-        };
-        fetchHistory();
-        return () => { isMounted = false; };
-    }, [ticker, range]);
-
-    // Calculate final variation for display
-    const assetReturn = useMemo(() => data.length > 0 ? data[data.length - 1].assetPct : 0, [data]);
-    const benchReturn = useMemo(() => data.length > 0 ? data[data.length - 1].benchPct : 0, [data]);
+    const isPositive = variation >= 0;
 
     return (
         <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 p-5 shadow-sm mb-6 relative overflow-hidden">
-            <div className="flex justify-between items-start mb-6">
-                <div>
-                    <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2 mb-1">
-                        <Activity className="w-3 h-3" /> Rentabilidade Histórica
-                    </h4>
-                    <div className="flex items-center gap-4 text-xs font-bold">
-                        <span className="flex items-center gap-1.5 text-indigo-500">
-                            <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-                            {ticker} ({assetReturn > 0 ? '+' : ''}{assetReturn.toFixed(1)}%)
-                        </span>
-                        <span className="flex items-center gap-1.5 text-zinc-400">
-                            <span className="w-2 h-2 rounded-full bg-zinc-400"></span>
-                            {benchmarkLabel} ({benchReturn > 0 ? '+' : ''}{benchReturn.toFixed(1)}%)
-                        </span>
-                    </div>
-                </div>
+            <div className="flex justify-between items-center mb-4">
+                <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                    <Activity className="w-3 h-3" /> Cotação ({ticker})
+                </h4>
                 <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5">
-                    {['6M', '1Y', '2Y', '5Y'].map((r) => (
+                    {['1M', '6M', '1Y', '5Y'].map((r) => (
                         <button 
                             key={r} 
                             onClick={() => setRange(r)}
-                            className={`px-2.5 py-1 text-[9px] font-bold rounded-md transition-all ${range === r ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                            className={`px-2 py-1 text-[9px] font-bold rounded-md transition-all ${range === r ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                         >
                             {r}
                         </button>
@@ -110,13 +67,102 @@ const ComparativeHistoryChart = ({ ticker, type }: { ticker: string, type: Asset
                 </div>
             </div>
 
-            <div className="h-64 w-full relative">
+            <div className="h-56 w-full relative">
                 {loading ? (
                     <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm z-10">
-                        <div className="animate-pulse text-xs font-bold text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-3 py-1.5 rounded-full">Carregando gráfico...</div>
+                        <div className="animate-pulse text-xs font-bold text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-3 py-1.5 rounded-full">Carregando...</div>
                     </div>
-                ) : error || data.length === 0 ? (
+                ) : error || !data || data.length === 0 ? (
                     <div className="absolute inset-0 flex items-center justify-center text-xs text-zinc-400">Dados indisponíveis</div>
+                ) : (
+                    <>
+                        <div className="absolute top-0 left-0 z-10 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm px-2 py-1 rounded-br-xl border-r border-b border-zinc-100 dark:border-zinc-800">
+                            <span className={`text-xs font-black ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                {isPositive ? '+' : ''}{variation.toFixed(2)}%
+                            </span>
+                        </div>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={data}>
+                                <defs>
+                                    <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor={isPositive ? '#10b981' : '#f43f5e'} stopOpacity={0.2}/>
+                                        <stop offset="95%" stopColor={isPositive ? '#10b981' : '#f43f5e'} stopOpacity={0}/>
+                                    </linearGradient>
+                                </defs>
+                                <XAxis 
+                                    dataKey="date" 
+                                    hide={false} 
+                                    axisLine={false} 
+                                    tickLine={false} 
+                                    tick={{fontSize: 9, fill: '#71717a'}} 
+                                    tickFormatter={(val) => formatDateShort(val)} 
+                                    minTickGap={30}
+                                />
+                                <YAxis 
+                                    domain={['auto', 'auto']} 
+                                    hide={false} 
+                                    orientation="right" 
+                                    axisLine={false} 
+                                    tickLine={false} 
+                                    tick={{fontSize: 9, fill: '#71717a'}} 
+                                    width={35}
+                                    tickFormatter={(val) => `R$${val.toFixed(0)}`}
+                                />
+                                <Tooltip 
+                                    contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '11px', padding: '8px 12px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)' }}
+                                    labelFormatter={(label) => new Date(label).toLocaleDateString('pt-BR')}
+                                    formatter={(value: number) => [formatBRL(value), 'Preço']}
+                                />
+                                <Area 
+                                    type="monotone" 
+                                    dataKey="price" 
+                                    stroke={isPositive ? '#10b981' : '#f43f5e'} 
+                                    strokeWidth={2} 
+                                    fillOpacity={1} 
+                                    fill="url(#colorPrice)" 
+                                />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </>
+                )}
+            </div>
+        </div>
+    );
+};
+
+// Componente 2: Gráfico Comparativo (Benchmark) - NOVO
+const ComparativeHistoryChart = ({ data, loading, ticker, type }: any) => {
+    // Benchmarks labels
+    const benchmarkLabel = 'IBOV'; // Usamos IBOV como proxy geral do mercado na API Yahoo
+
+    const assetReturn = useMemo(() => data && data.length > 0 ? data[data.length - 1].assetPct : 0, [data]);
+    const benchReturn = useMemo(() => data && data.length > 0 ? data[data.length - 1].benchPct : 0, [data]);
+
+    return (
+        <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 p-5 shadow-sm mb-6 relative overflow-hidden">
+            <div className="mb-6">
+                <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2 mb-2">
+                    <TrendingUp className="w-3 h-3" /> Comparativo com Mercado
+                </h4>
+                <div className="flex items-center gap-4 text-xs font-bold">
+                    <span className="flex items-center gap-1.5 text-indigo-500">
+                        <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+                        {ticker} ({assetReturn > 0 ? '+' : ''}{assetReturn?.toFixed(1)}%)
+                    </span>
+                    <span className="flex items-center gap-1.5 text-zinc-400">
+                        <span className="w-2 h-2 rounded-full bg-zinc-400"></span>
+                        {benchmarkLabel} ({benchReturn > 0 ? '+' : ''}{benchReturn?.toFixed(1)}%)
+                    </span>
+                </div>
+            </div>
+
+            <div className="h-48 w-full relative">
+                {loading ? (
+                    <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm z-10">
+                        <div className="animate-pulse text-xs font-bold text-zinc-400">Carregando comparativo...</div>
+                    </div>
+                ) : !data || data.length === 0 ? (
+                    <div className="absolute inset-0 flex items-center justify-center text-xs text-zinc-400">Dados insuficientes</div>
                 ) : (
                     <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
@@ -168,6 +214,57 @@ const ComparativeHistoryChart = ({ ticker, type }: { ticker: string, type: Asset
         </div>
     );
 };
+
+// Container para gerenciar dados dos gráficos
+const ChartsContainer = ({ ticker, type }: { ticker: string, type: AssetType }) => {
+    const [data, setData] = useState<any[]>([]);
+    const [range, setRange] = useState('1Y');
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
+
+    useEffect(() => {
+        let isMounted = true;
+        const fetchHistory = async () => {
+            setLoading(true);
+            setError(false);
+            try {
+                // Fetch comparative data (returns price AND percentages)
+                const res = await fetch(`/api/history?ticker=${ticker}&benchmark=^BVSP&range=${range}`);
+                if (!res.ok) throw new Error('Falha');
+                const json = await res.json();
+                
+                if (isMounted && json.points) {
+                    setData(json.points);
+                }
+            } catch (e) {
+                if (isMounted) setError(true);
+            } finally {
+                if (isMounted) setLoading(false);
+            }
+        };
+        fetchHistory();
+        return () => { isMounted = false; };
+    }, [ticker, range]);
+
+    return (
+        <>
+            <PriceHistoryChart 
+                data={data} 
+                loading={loading} 
+                error={error} 
+                ticker={ticker} 
+                range={range} 
+                setRange={setRange} 
+            />
+            <ComparativeHistoryChart 
+                data={data} 
+                loading={loading} 
+                ticker={ticker} 
+                type={type} 
+            />
+        </>
+    );
+}
 
 // Card de Resumo da Posição do Usuário (Redesenhado)
 const PositionSummaryCard = ({ asset, privacyMode }: { asset: AssetPosition, privacyMode: boolean }) => {
@@ -226,7 +323,7 @@ const MarketPerformanceCard = ({ asset }: { asset: AssetPosition }) => {
     return (
         <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 p-5 shadow-sm mb-6">
             <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                <TrendingUp className="w-3 h-3" /> Performance (12 Meses)
+                <TrendingUp className="w-3 h-3" /> Rentabilidade (12 Meses)
             </h4>
             
             <div className="space-y-4">
@@ -802,8 +899,8 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                                 <div className="space-y-6 anim-fade-in">
                                     <PositionSummaryCard asset={selectedAsset} privacyMode={privacyMode} />
                                     
-                                    {/* Gráfico Comparativo (Investidor10 Style) */}
-                                    <ComparativeHistoryChart ticker={selectedAsset.ticker} type={selectedAsset.assetType} />
+                                    {/* Gráficos Gerenciados pelo Container */}
+                                    <ChartsContainer ticker={selectedAsset.ticker} type={selectedAsset.assetType} />
                                     
                                     <MarketPerformanceCard asset={selectedAsset} />
 
