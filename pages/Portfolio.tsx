@@ -1,6 +1,7 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, Activity, BarChart3, PieChart, Coins, AlertCircle, ChevronDown, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, Scale, SquareStack, Calendar, Map as MapIcon, ChevronRight, Share2, MousePointerClick, CandlestickChart, LineChart as LineChartIcon, SlidersHorizontal, Layers, Award, HelpCircle, Edit3, RefreshCw } from 'lucide-react';
+import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, Activity, BarChart3, PieChart, Coins, AlertCircle, ChevronDown, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, Scale, SquareStack, Calendar, Map as MapIcon, ChevronRight, Share2, MousePointerClick, CandlestickChart, LineChart as LineChartIcon, SlidersHorizontal, Layers, Award, HelpCircle, Edit3, RefreshCw, Banknote } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, ReferenceLine, ComposedChart, CartesianGrid, Legend, AreaChart, Area, YAxis, PieChart as RePieChart, Pie, Cell, LineChart, Line, ErrorBar, Label } from 'recharts';
 import { formatBRL, formatPercent, formatNumber, formatDateShort } from '../utils/formatters';
@@ -321,29 +322,61 @@ const ComparativeChart = ({ data, loading, ticker, type, range, setRange }: any)
 };
 
 // --- COMPONENT 3: SimulatorCard (R$) ---
-const SimulatorCard = ({ data, ticker }: any) => {
+const SimulatorCard = ({ data, ticker, dividends = [] }: any) => {
     const [amount, setAmount] = useState(1000);
+    
     const result = useMemo(() => {
         if (!data || data.length === 0) return null;
+        
+        // 1. Encontrar ponto inicial e final
+        const first = data[0];
         const last = data[data.length - 1];
         
-        // Percentuais acumulados no período (já normalizados pelo backend ou processChartData)
-        const assetGrowth = (last.assetPct || 0) / 100;
-        const cdiGrowth = (last.cdiPct || 0) / 100;
-        const savingsGrowth = cdiGrowth * 0.7; // Estimativa poupança
+        const startPrice = first.price || first.close;
+        const endPrice = last.price || last.close;
+        const startDate = new Date(first.date);
+        
+        if (!startPrice) return null;
 
-        const finalAsset = amount * (1 + assetGrowth);
+        // 2. Simular compra
+        const sharesPurchased = Math.floor(amount / startPrice);
+        const leftoverCash = amount - (sharesPurchased * startPrice);
+        
+        // 3. Calcular valor final da posição (Capital Gain)
+        const finalEquity = (sharesPurchased * endPrice) + leftoverCash;
+        
+        // 4. Calcular Dividendos Recebidos no período (Total Return)
+        let totalDividends = 0;
+        if (dividends && dividends.length > 0) {
+            dividends.forEach((div: DividendReceipt) => {
+                const payDate = new Date(div.paymentDate || div.dateCom);
+                // Soma apenas se o dividendo ocorreu APÓS a compra simulada
+                if (payDate >= startDate) {
+                    totalDividends += (sharesPurchased * div.rate);
+                }
+            });
+        }
+
+        const finalTotal = finalEquity + totalDividends;
+        
+        // Benchmarks
+        const cdiGrowth = (last.cdiPct || 0) / 100;
         const finalCDI = amount * (1 + cdiGrowth);
-        const finalSavings = amount * (1 + savingsGrowth);
+        
+        // Income Estimation (Mensal baseado nos últimos dividendos)
+        const estimatedMonthly = (totalDividends / Math.max(1, data.length / 21)); // Aprox dias úteis
 
         return {
-            asset: finalAsset,
+            shares: sharesPurchased,
+            equity: finalEquity,
+            dividends: totalDividends,
+            total: finalTotal,
+            profit: finalTotal - amount,
             cdi: finalCDI,
-            savings: finalSavings,
-            profit: finalAsset - amount,
-            diffCDI: finalAsset - finalCDI
+            roi: ((finalTotal - amount) / amount) * 100,
+            estimatedMonthly
         };
-    }, [data, amount]);
+    }, [data, amount, dividends]);
 
     return (
         <div className="bg-gradient-to-br from-zinc-50 to-white dark:from-zinc-900 dark:to-zinc-950 rounded-3xl border border-zinc-200 dark:border-zinc-800 p-5 shadow-sm mb-6">
@@ -365,31 +398,42 @@ const SimulatorCard = ({ data, ticker }: any) => {
             </div>
 
             <div className="mb-4">
-                <p className="text-[10px] text-zinc-400 mb-1">Se você tivesse investido <strong>{formatBRL(amount)}</strong> neste período:</p>
+                <p className="text-[10px] text-zinc-400 mb-1">Com <strong>{formatBRL(amount)}</strong> no início do período, você teria:</p>
                 <div className="flex items-baseline gap-2">
                     <span className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter">
-                        {result ? formatBRL(result.asset) : '...'}
+                        {result ? formatBRL(result.total) : '...'}
                     </span>
                     {result && (
                         <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${result.profit >= 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400'}`}>
-                            {result.profit > 0 ? '+' : ''}{formatBRL(result.profit)}
+                            {result.profit > 0 ? '+' : ''}{result.roi.toFixed(1)}%
                         </span>
                     )}
                 </div>
             </div>
 
             {result && (
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="bg-white dark:bg-zinc-800/50 p-2 rounded-xl border border-zinc-100 dark:border-zinc-800">
-                        <span className="text-[9px] font-bold text-zinc-400 uppercase block">vs CDI (100%)</span>
-                        <span className="font-bold text-zinc-600 dark:text-zinc-300">{formatBRL(result.cdi)}</span>
-                        <span className={`block text-[9px] font-bold ${result.diffCDI >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                            {result.diffCDI >= 0 ? '+' : ''}{formatBRL(result.diffCDI)}
-                        </span>
+                <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="bg-white dark:bg-zinc-800/50 p-2 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                            <span className="text-[9px] font-bold text-zinc-400 uppercase block mb-0.5">Cotas Compradas</span>
+                            <span className="font-bold text-zinc-900 dark:text-white block">{result.shares} un</span>
+                        </div>
+                        <div className="bg-white dark:bg-zinc-800/50 p-2 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                            <span className="text-[9px] font-bold text-zinc-400 uppercase block mb-0.5">Proventos Recebidos</span>
+                            <span className="font-bold text-emerald-600 dark:text-emerald-400 block">+{formatBRL(result.dividends)}</span>
+                        </div>
                     </div>
-                    <div className="bg-white dark:bg-zinc-800/50 p-2 rounded-xl border border-zinc-100 dark:border-zinc-800">
-                        <span className="text-[9px] font-bold text-zinc-400 uppercase block">vs Poupança (Est.)</span>
-                        <span className="font-bold text-zinc-600 dark:text-zinc-300">{formatBRL(result.savings)}</span>
+                    
+                    <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/50">
+                        <div className="flex justify-between items-center text-xs">
+                            <span className="text-zinc-500 font-medium">Comparativo CDI</span>
+                            <div className="flex items-center gap-2">
+                                <span className="text-zinc-400 line-through decoration-zinc-300 dark:decoration-zinc-700">{formatBRL(result.cdi)}</span>
+                                <span className={`font-bold ${result.total >= result.cdi ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                    {result.total >= result.cdi ? 'Superou' : 'Perdeu'}
+                                </span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
@@ -397,7 +441,7 @@ const SimulatorCard = ({ data, ticker }: any) => {
     );
 };
 
-const ChartsContainer = ({ ticker, type, asset }: { ticker: string, type: AssetType, asset: AssetPosition }) => {
+const ChartsContainer = ({ ticker, type, asset, marketDividends = [] }: { ticker: string, type: AssetType, asset: AssetPosition, marketDividends?: DividendReceipt[] }) => {
     const [range, setRange] = useState('1Y');
     const [historyData, setHistoryData] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -441,7 +485,7 @@ const ChartsContainer = ({ ticker, type, asset }: { ticker: string, type: AssetT
                 setRange={setRange}
             />
 
-            <SimulatorCard data={historyData} ticker={ticker} />
+            <SimulatorCard data={historyData} ticker={ticker} dividends={marketDividends} />
         </>
     );
 };
@@ -555,7 +599,7 @@ const DetailedInfoBlock = ({ asset }: { asset: AssetPosition }) => (
     </div>
 );
 
-const IncomeAnalysisSection = ({ asset, chartData, history }: { asset: AssetPosition, chartData: { data: any[], average: number, activeTypes: string[] }, history: DividendReceipt[] }) => {
+const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: { asset: AssetPosition, chartData: { data: any[], average: number, activeTypes: string[] }, marketHistory: DividendReceipt[] }) => {
     const totalInvested = asset.quantity * asset.averagePrice;
     const yoc = totalInvested > 0 ? (asset.totalDividends || 0) / totalInvested * 100 : 0;
     const currentPrice = asset.currentPrice || 0;
@@ -565,19 +609,30 @@ const IncomeAnalysisSection = ({ asset, chartData, history }: { asset: AssetPosi
     const missingForMagic = Math.max(0, magicNumber - asset.quantity);
     const paybackYears = monthlyReturn > 0 ? (currentPrice / (monthlyReturn * 12)) : 0;
 
+    // Chart Data baseada no HISTÓRICO DE MERCADO (Investidor10 Raw Data)
     const perShareChartData = useMemo(() => {
-        if (!history || history.length === 0) return [];
+        if (!marketHistory || marketHistory.length === 0) return [];
         const grouped: Record<string, { month: string, fullDate: string, DIV: number, JCP: number, REND: number, OUTROS: number }> = {};
         const today = new Date();
+        
+        // Garante últimas 12 barras vazias se não houver dados, para manter escala
         for (let i = 11; i >= 0; i--) {
             const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
             const key = d.toISOString().substring(0, 7);
             grouped[key] = { month: getMonthLabel(key), fullDate: key, DIV: 0, JCP: 0, REND: 0, OUTROS: 0 };
         }
-        history.forEach(d => {
+
+        marketHistory.forEach(d => {
             const dateRef = d.paymentDate || d.dateCom;
             if (!dateRef) return;
             const key = dateRef.substring(0, 7);
+            
+            // Só adiciona se estiver dentro do range de 12 meses visualizado ou se for histórico relevante
+            // Aqui vamos permitir histórico mais longo se disponível, ordenado depois
+            if (!grouped[key]) {
+                 grouped[key] = { month: getMonthLabel(key), fullDate: key, DIV: 0, JCP: 0, REND: 0, OUTROS: 0 };
+            }
+
             if (grouped[key]) {
                 let type = d.type || 'OUTROS';
                 if (type.includes('REND')) type = 'REND';
@@ -585,11 +640,19 @@ const IncomeAnalysisSection = ({ asset, chartData, history }: { asset: AssetPosi
                 else if (type.includes('JCP') || type.includes('JURO')) type = 'JCP';
                 else type = 'OUTROS';
                 if (asset.assetType === AssetType.FII) type = 'REND';
+                
+                // Soma a TAXA UNITÁRIA (Rate) pois é valor por cota
                 grouped[key][type as 'DIV' | 'JCP' | 'REND' | 'OUTROS'] += d.rate;
             }
         });
-        return Object.values(grouped).sort((a, b) => a.fullDate.localeCompare(b.fullDate));
-    }, [history, asset.assetType]);
+        
+        // Filtra apenas os últimos 12 meses para o gráfico ou mostra tudo? 
+        // O padrão geralmente é 12m, mas histórico é legal. Vamos pegar os últimos 12 meses com dados + os vazios até hoje.
+        const allKeys = Object.keys(grouped).sort();
+        const last12Keys = allKeys.slice(-12);
+        
+        return last12Keys.map(k => grouped[k]);
+    }, [marketHistory, asset.assetType]);
 
     return (
         <div className="space-y-6">
@@ -651,7 +714,7 @@ const IncomeAnalysisSection = ({ asset, chartData, history }: { asset: AssetPosi
             <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
                 <div className="p-5 border-b border-zinc-100 dark:border-zinc-800 flex items-center gap-2">
                     <Coins className="w-4 h-4 text-emerald-500" />
-                    <h4 className="text-[10px] font-bold text-zinc-400 uppercase">Valor Pago por Cota (R$)</h4>
+                    <h4 className="text-[10px] font-bold text-zinc-400 uppercase">Valor Pago por Cota (Histórico)</h4>
                 </div>
                 <div className="h-56 w-full p-2 pt-4">
                     <ResponsiveContainer width="100%" height="100%">
@@ -800,9 +863,10 @@ interface PortfolioProps {
   headerVisible?: boolean;
   targetAsset?: string | null;
   onClearTarget?: () => void;
+  marketDividends?: DividendReceipt[]; // Novo: Dados brutos de mercado
 }
 
-const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [], privacyMode = false }) => {
+const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [], privacyMode = false, marketDividends = [] }) => {
     const [search, setSearch] = useState('');
     const [selectedAsset, setSelectedAsset] = useState<AssetPosition | null>(null);
     const [expandedAssetTicker, setExpandedAssetTicker] = useState<string | null>(null);
@@ -883,6 +947,12 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
         if (!selectedAsset) return [];
         return dividends.filter(d => d.ticker === selectedAsset.ticker);
     }, [selectedAsset, dividends]);
+
+    // Filtra histórico de mercado específico para o ativo selecionado
+    const assetMarketHistory = useMemo(() => {
+        if (!selectedAsset || !marketDividends) return [];
+        return marketDividends.filter(d => d.ticker === selectedAsset.ticker);
+    }, [selectedAsset, marketDividends]);
 
     const propertiesByState = useMemo(() => {
         if (!selectedAsset || !selectedAsset.properties) return [];
@@ -965,14 +1035,18 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                         <div className="flex-1 overflow-y-auto p-4 sm:p-6 pb-24">
                             {activeTab === 'RESUMO' && (
                                 <div className="space-y-6 anim-fade-in">
-                                    <PositionSummaryCard asset={selectedAsset} privacyMode={privacyMode} />
-                                    <ChartsContainer ticker={selectedAsset.ticker} type={selectedAsset.assetType} asset={selectedAsset} />
+                                    {/* Indicadores no topo */}
                                     <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-2"><Activity className="w-3 h-3" /> Indicadores Chave</h4>
                                     <div className="grid grid-cols-3 gap-3 mb-4">
                                         <MetricCard label="DY (12m)" value={formatPercent(selectedAsset.dy_12m)} highlight colorClass="text-emerald-600 dark:text-emerald-400" />
                                         <MetricCard label="P/VP" value={formatNumber(selectedAsset.p_vp)} />
                                         {selectedAsset.assetType !== AssetType.FII ? <MetricCard label="P/L" value={formatNumber(selectedAsset.p_l)} /> : <MetricCard label="VP/Cota" value={selectedAsset.vpa ? formatBRL(selectedAsset.vpa) : '-'} />}
                                     </div>
+
+                                    <PositionSummaryCard asset={selectedAsset} privacyMode={privacyMode} />
+                                    
+                                    <ChartsContainer ticker={selectedAsset.ticker} type={selectedAsset.assetType} asset={selectedAsset} marketDividends={assetMarketHistory} />
+                                    
                                     {selectedAsset.vacancy !== undefined && selectedAsset.vacancy > 10 && (
                                         <div className={`p-4 rounded-xl border flex items-center justify-between bg-rose-50 border-rose-100 dark:bg-rose-900/10 dark:border-rose-900/30`}>
                                             <div className="flex items-center gap-3">
@@ -987,7 +1061,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                                     )}
                                 </div>
                             )}
-                            {activeTab === 'RENDA' && <div className="anim-fade-in"><IncomeAnalysisSection asset={selectedAsset} chartData={assetDividendChartData} history={assetHistory} /></div>}
+                            {activeTab === 'RENDA' && <div className="anim-fade-in"><IncomeAnalysisSection asset={selectedAsset} chartData={assetDividendChartData} marketHistory={assetMarketHistory} /></div>}
                             {activeTab === 'ANÁLISE' && <div className="anim-fade-in"><ValuationCard asset={selectedAsset} /><DetailedInfoBlock asset={selectedAsset} />{selectedAsset.assetType === AssetType.STOCK && (<div className="mt-6"><h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-2"><BarChart3 className="w-3 h-3" /> Eficiência & Crescimento</h4><div className="grid grid-cols-2 gap-3"><MetricCard label="ROE" value={formatPercent(selectedAsset.roe)} highlight /><MetricCard label="Margem Líq." value={formatPercent(selectedAsset.net_margin)} /><MetricCard label="Margem Bruta" value={formatPercent(selectedAsset.gross_margin)} /><MetricCard label="Margem EBIT" value={formatPercent(selectedAsset.ebit_margin)} /><MetricCard label="CAGR Rec. (5a)" value={formatPercent(selectedAsset.cagr_revenue)} /><MetricCard label="CAGR Lucro (5a)" value={formatPercent(selectedAsset.cagr_profits)} /><MetricCard label="EV/EBITDA" value={formatNumber(selectedAsset.ev_ebitda)} /><MetricCard label="Dív.Líq/EBITDA" value={formatNumber(selectedAsset.net_debt_ebitda)} /><MetricCard label="Dív.Líq/PL" value={formatNumber(selectedAsset.net_debt_equity)} /><MetricCard label="LPA" value={formatBRL(selectedAsset.lpa)} /></div></div>)}</div>}
                             {activeTab === 'IMOVEIS' && selectedAsset.properties && (
                                 <div className="anim-fade-in space-y-6">

@@ -700,6 +700,7 @@ const App: React.FC = () => {
                       <Portfolio 
                           portfolio={memoizedPortfolioData.portfolio} 
                           dividends={memoizedPortfolioData.dividendReceipts} 
+                          marketDividends={dividends} // Passa dados brutos para o gráfico de histórico
                           privacyMode={privacyMode} 
                           onAssetRefresh={refreshSingleAsset} 
                           headerVisible={isHeaderVisible} 
