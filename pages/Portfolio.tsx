@@ -1,10 +1,29 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, Activity, BarChart3, PieChart, Coins, AlertCircle, ChevronDown, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, Scale } from 'lucide-react';
+import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, Activity, BarChart3, PieChart, Coins, AlertCircle, ChevronDown, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, Scale, SquareStack } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
-import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, ReferenceLine, ComposedChart, CartesianGrid } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, ReferenceLine, ComposedChart, CartesianGrid, Legend } from 'recharts';
 import { formatBRL, formatPercent, formatNumber } from '../utils/formatters';
+
+// --- CONSTANTS ---
+const TYPE_COLORS: Record<string, string> = {
+    'DIV': '#10b981',   // Emerald 500 (Dividendos)
+    'REND': '#10b981',  // Emerald 500 (Rendimentos FII)
+    'JCP': '#0ea5e9',   // Sky 500 (Juros sobre Capital)
+    'AMORT': '#f59e0b', // Amber 500 (Amortização)
+    'REST': '#f59e0b',  // Amber 500 (Restituição)
+    'OUTROS': '#6366f1' // Indigo 500 (Fallback)
+};
+
+const TYPE_LABELS: Record<string, string> = {
+    'DIV': 'Dividendos',
+    'REND': 'Rendimentos',
+    'JCP': 'JCP',
+    'AMORT': 'Amortização',
+    'REST': 'Restituição',
+    'OUTROS': 'Outros'
+};
 
 // --- SUB-COMPONENTS ---
 
@@ -218,7 +237,7 @@ const DetailedInfoBlock = ({ asset }: { asset: AssetPosition }) => {
     );
 };
 
-const IncomeAnalysisSection = ({ asset, chartData }: { asset: AssetPosition, chartData: { data: any[], average: number }, history: DividendReceipt[] }) => {
+const IncomeAnalysisSection = ({ asset, chartData }: { asset: AssetPosition, chartData: { data: any[], average: number, activeTypes: string[] }, history: DividendReceipt[] }) => {
     const totalInvested = asset.quantity * asset.averagePrice;
     const yoc = totalInvested > 0 ? (asset.totalDividends || 0) / totalInvested * 100 : 0;
     
@@ -262,28 +281,36 @@ const IncomeAnalysisSection = ({ asset, chartData }: { asset: AssetPosition, cha
                     </span>
                 </div>
                 
-                <div className="h-48 w-full p-2 pt-4">
-                    {chartData.data.some(d => d.value > 0) ? (
+                <div className="h-64 w-full p-2 pt-4">
+                    {chartData.data.some(d => d.total > 0) ? (
                         <ResponsiveContainer width="100%" height="100%">
-                            <ComposedChart data={chartData.data}>
-                                <defs>
-                                    <linearGradient id="colorBar" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
-                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0.4}/>
-                                    </linearGradient>
-                                </defs>
+                            <BarChart data={chartData.data}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
                                 <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 700 }} dy={5} interval={0} />
                                 <Tooltip 
                                     cursor={{fill: 'transparent'}}
                                     contentStyle={{ borderRadius: '8px', border: '1px solid #27272a', backgroundColor: '#18181b', color: '#fff', fontSize: '10px', padding: '8px' }}
-                                    formatter={(value: number) => [formatBRL(value), 'Recebido']}
+                                    formatter={(value: number, name: string) => [formatBRL(value), TYPE_LABELS[name] || name]}
                                 />
-                                <Bar dataKey="value" fill="url(#colorBar)" radius={[4, 4, 0, 0]} maxBarSize={28} />
+                                {chartData.activeTypes.map(type => (
+                                    <Bar 
+                                        key={type} 
+                                        dataKey={type} 
+                                        stackId="a" 
+                                        fill={TYPE_COLORS[type] || TYPE_COLORS['OUTROS']} 
+                                        radius={[2, 2, 0, 0]} 
+                                        maxBarSize={28} 
+                                    />
+                                ))}
                                 {chartData.average > 0 && (
                                     <ReferenceLine y={chartData.average} stroke="#f59e0b" strokeDasharray="3 3" strokeOpacity={0.6} />
                                 )}
-                            </ComposedChart>
+                                <Legend 
+                                    iconType="circle" 
+                                    iconSize={6}
+                                    formatter={(value) => <span className="text-[9px] font-bold text-zinc-500 uppercase">{TYPE_LABELS[value] || value}</span>}
+                                />
+                            </BarChart>
                         </ResponsiveContainer>
                     ) : (
                         <div className="h-full flex items-center justify-center text-xs text-zinc-400 font-medium bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-700">
@@ -467,34 +494,77 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
     const stocks = filtered.filter(p => p.assetType === AssetType.STOCK);
 
     const assetDividendChartData = useMemo(() => {
-        if (!selectedAsset) return { data: [], average: 0 };
+        if (!selectedAsset) return { data: [], average: 0, activeTypes: [] };
+        
+        // Data de início para o gráfico (últimos 12 meses)
         const today = new Date();
         const start = new Date(today.getFullYear(), today.getMonth() - 11, 1); 
         
+        // Pega todos os proventos PAGOS ou CONFIRMADOS no período
+        // O `totalReceived` já vem calculado corretamente no App.tsx > portfolioRules (qtdeOwned * rate)
         const history = dividends
-            .filter(d => d.ticker === selectedAsset.ticker && new Date(d.paymentDate || d.dateCom) >= start)
+            .filter(d => 
+                d.ticker === selectedAsset.ticker && 
+                new Date(d.paymentDate || d.dateCom) >= start
+            )
             .sort((a, b) => (a.paymentDate || a.dateCom).localeCompare(b.paymentDate || b.dateCom));
 
-        const grouped: Record<string, number> = {};
+        // Agrupamento por Mês (YYYY-MM) e por Tipo (DIV, JCP, etc)
+        const grouped: Record<string, Record<string, number>> = {};
+        const typesFound = new Set<string>();
+
         history.forEach(d => {
-            const key = (d.paymentDate || d.dateCom).substring(0, 7); 
-            grouped[key] = (grouped[key] || 0) + d.rate;
+            const dateRef = d.paymentDate || d.dateCom;
+            const key = dateRef.substring(0, 7); // Chave "YYYY-MM"
+            
+            if (!grouped[key]) grouped[key] = { total: 0 };
+            
+            // Normaliza tipos para exibição
+            let type = d.type || 'OUTROS';
+            if (type.includes('REND')) type = 'REND';
+            else if (type.includes('DIV')) type = 'DIV';
+            else if (type.includes('JCP') || type.includes('JURO')) type = 'JCP';
+            else if (type.includes('AMORT')) type = 'AMORT';
+            
+            typesFound.add(type);
+            
+            // Soma o valor total recebido (já calculado)
+            const amount = Number(d.totalReceived) || 0;
+            
+            grouped[key][type] = (grouped[key][type] || 0) + amount;
+            grouped[key].total += amount;
         });
 
         const result = [];
-        let total = 0;
+        let grandTotal = 0;
         let count = 0;
 
+        // Preenche os últimos 12 meses (mesmo os zerados) para o gráfico ficar contínuo
         for (let i = 0; i < 12; i++) {
             const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
             const key = d.toISOString().substring(0, 7);
             const monthLabel = d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
-            const val = grouped[key] || 0;
-            if (val > 0) { total += val; count++; }
-            result.push({ month: monthLabel, fullDate: key, value: val });
+            
+            const monthData = grouped[key] || { total: 0 };
+            
+            if (monthData.total > 0) {
+                grandTotal += monthData.total;
+                count++;
+            }
+
+            result.push({ 
+                month: monthLabel, 
+                fullDate: key, 
+                ...monthData, // Espalha as propriedades dinâmicas (DIV: 100, JCP: 50...)
+                total: monthData.total
+            });
         }
         
-        return { data: result, average: count > 0 ? total / count : 0 };
+        return { 
+            data: result, 
+            average: count > 0 ? grandTotal / count : 0,
+            activeTypes: Array.from(typesFound)
+        };
     }, [selectedAsset, dividends]);
 
     const assetHistory = useMemo(() => {
@@ -567,7 +637,9 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
 
                             <div className="flex p-1 bg-zinc-100 dark:bg-zinc-800 rounded-xl overflow-x-auto no-scrollbar">
                                 {['RESUMO', 'RENDA', 'ANÁLISE', 'IMOVEIS'].map(tab => {
+                                    // Só mostra a aba IMÓVEIS se tiver propriedades
                                     if (tab === 'IMOVEIS' && (!selectedAsset.properties || selectedAsset.properties.length === 0)) return null;
+                                    
                                     return (
                                         <button key={tab} onClick={() => setActiveTab(tab as any)} className={`flex-1 min-w-[80px] py-2.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${activeTab === tab ? 'bg-white dark:bg-zinc-700 text-indigo-600 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>{tab}</button>
                                     )

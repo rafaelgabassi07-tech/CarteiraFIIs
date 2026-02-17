@@ -336,16 +336,29 @@ async function scrapeInvestidor10(ticker: string) {
                 });
             }
 
-            // --- 5. IMÓVEIS ---
+            // --- 5. IMÓVEIS (Mais robusto) ---
+            const extractedProps: any[] = [];
+            
+            // Tenta seletor específico primeiro
             $('#properties-section .card-propertie').each((i, el) => {
-                const nome  = $(el).find('h3').text().trim();
+                const nome = $(el).find('h3').text().trim();
                 let location = '';
                 $(el).find('small').each((j, small) => {
                     const t = $(small).text().trim();
                     if (t.includes('Estado:')) location = t.replace('Estado:', '').trim();
                 });
-                if (nome) realEstateProperties.push({ name: nome, location });
+                if (nome) extractedProps.push({ name: nome, location });
             });
+
+            // Fallback genérico se o seletor específico falhar (layout antigo ou mobile)
+            if (extractedProps.length === 0) {
+                $('.card-propertie').each((i, el) => {
+                    const nome = $(el).find('h3').text().trim() || $(el).find('.title').text().trim();
+                    if (nome) extractedProps.push({ name: nome, location: 'Brasil' });
+                });
+            }
+            
+            if (extractedProps.length > 0) realEstateProperties = extractedProps;
 
             if ((!dados.dy || dados.dy === 'N/A') && dados.ultimo_rendimento && dados.cotacao_atual) {
                 const ultRend = parseValue(dados.ultimo_rendimento);
