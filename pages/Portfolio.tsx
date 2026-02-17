@@ -438,7 +438,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                                 {/* Gráfico de Dividendos */}
                                 <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm mb-4">
                                     <div className="flex justify-between items-center mb-4">
-                                        <h4 className="text-[10px] font-bold text-zinc-400 uppercase">Dividendos (12 Meses)</h4>
+                                        <h4 className="text-[10px] font-bold text-zinc-400 uppercase">Distribuição nos últimos 12M</h4>
                                         <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
                                             Média: {formatBRL(averageDividend)}
                                         </span>
@@ -465,44 +465,12 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                                     </div>
                                 </div>
 
-                                {/* Rentabilidade e Comparação */}
-                                <div className="grid grid-cols-2 gap-3 mb-4">
-                                    <div className="bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800 flex flex-col justify-between">
-                                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Rentab. 12 Meses</span>
-                                        <div className="flex items-baseline gap-1 mt-1">
-                                            {selectedAsset.profitability_12m !== undefined && selectedAsset.profitability_12m !== null ? (
-                                                <>
-                                                    <span className={`text-lg font-black ${selectedAsset.profitability_12m >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                                                        {selectedAsset.profitability_12m > 0 ? '+' : ''}{selectedAsset.profitability_12m.toFixed(2)}%
-                                                    </span>
-                                                </>
-                                            ) : (
-                                                <span className="text-sm font-bold text-zinc-400">-</span>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div className="bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800 flex flex-col justify-between">
-                                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Rentab. Mês Atual</span>
-                                        <div className="flex items-baseline gap-1 mt-1">
-                                            {selectedAsset.profitability_month !== undefined && selectedAsset.profitability_month !== null ? (
-                                                <>
-                                                    <span className={`text-lg font-black ${selectedAsset.profitability_month >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                                                        {selectedAsset.profitability_month > 0 ? '+' : ''}{selectedAsset.profitability_month.toFixed(2)}%
-                                                    </span>
-                                                </>
-                                            ) : (
-                                                <span className="text-sm font-bold text-zinc-400">-</span>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-
                                 {/* TABELA DE COMPARAÇÃO DE ÍNDICES */}
                                 {selectedAsset.benchmarks && selectedAsset.benchmarks.length > 0 && (
-                                    <div className="bg-zinc-50 dark:bg-zinc-800/30 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-4">
+                                    <div className="bg-zinc-50 dark:bg-zinc-800/30 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-4 mb-4">
                                         <div className="flex items-center gap-2 mb-3">
                                             <ArrowLeftRight className="w-4 h-4 text-sky-500" />
-                                            <h4 className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Comparativo de Rentabilidade</h4>
+                                            <h4 className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Gráfico de comparação de índices</h4>
                                         </div>
                                         <div className="overflow-x-auto">
                                             <table className="w-full text-xs">
@@ -592,7 +560,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                                         <div className="flex items-center gap-2 mb-3 px-1">
                                             <Building2 className="w-4 h-4 text-sky-500" />
                                             <h3 className="text-xs font-black text-zinc-900 dark:text-white uppercase tracking-widest">
-                                                Portfólio Imobiliário ({selectedAsset.properties.length})
+                                                Lista de Imóveis ({selectedAsset.properties.length})
                                             </h3>
                                         </div>
                                         <div className="bg-zinc-50 dark:bg-zinc-800/30 rounded-2xl border border-zinc-100 dark:border-zinc-800 overflow-hidden divide-y divide-zinc-100 dark:divide-zinc-800">

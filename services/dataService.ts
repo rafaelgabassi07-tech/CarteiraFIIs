@@ -78,8 +78,8 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         profitability_12m: parseNumberSafe(getVal('rentabilidade_12m', 'rentabilidade12m')),
         profitability_month: parseNumberSafe(getVal('rentabilidade_mes', 'rentabilidademes')),
         
-        // Comparativo (Novo)
-        benchmarks: m.benchmarks || [],
+        // Comparativo (Novo) - Garante array
+        benchmarks: Array.isArray(m.benchmarks) ? m.benchmarks : [],
 
         // Metadados
         liquidity: getVal('liquidez', 'liquidez_media_diaria') || '', 
@@ -92,7 +92,8 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         vacancy: parseNumberSafe(getVal('vacancia', 'vacancia_fisica')),
         last_dividend: parseNumberSafe(getVal('ultimo_rendimento')),
         properties_count: parseNumberSafe(getVal('num_cotistas', 'cotistas')),
-        properties: m.properties || [], 
+        // Garante array de propriedades
+        properties: Array.isArray(m.properties) ? m.properties : [], 
         
         // Ações (Stocks)
         net_margin: parseNumberSafe(getVal('margem_liquida', 'margemliquida')),
