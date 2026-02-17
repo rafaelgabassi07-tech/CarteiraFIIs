@@ -21,7 +21,8 @@ const httpsAgent = new https.Agent({
 const USER_AGENTS = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36 Edg/123.0.0.0'
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36 Edg/123.0.0.0',
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
 ];
 
 const getRandomAgent = () => USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
@@ -39,7 +40,7 @@ const client = axios.create({
     maxRedirects: 5
 });
 
-// --- HELPERS ---
+// --- HELPERS TÉCNICOS ---
 const REGEX_NORMALIZE = /[\u0300-\u036f]/g;
 
 function normalize(str: string) {
@@ -47,7 +48,6 @@ function normalize(str: string) {
     return str.normalize("NFD").replace(REGEX_NORMALIZE, "").toLowerCase().trim();
 }
 
-// Parse numérico estrito (retorna null se não for número)
 function parseValue(valueStr: any): number | null {
     if (valueStr === undefined || valueStr === null) return null;
     if (typeof valueStr === 'number') return valueStr;
@@ -89,7 +89,6 @@ function parseValue(valueStr: any): number | null {
     return isNaN(result) ? null : result * multiplier;
 }
 
-// Parse de data
 function parseDate(dateStr: string) {
     if (!dateStr || dateStr === '-' || dateStr.length < 8) return null;
     try {
@@ -103,43 +102,35 @@ function parseDate(dateStr: string) {
     } catch { return null; }
 }
 
-// Mapeamento expandido
+// Mapeador expandido para capturar campos do screenshot
 function mapLabelToKey(label: string): string | null {
     const norm = normalize(label);
     if (!norm) return null;
     
+    // Identificação de chaves baseadas no texto
     if (norm === 'cotacao' || norm.includes('valor atual')) return 'cotacao_atual';
     if (norm.includes('razao social')) return 'company_name';
     if (norm.includes('cnpj')) return 'cnpj';
-    if (norm.includes('publico')) return 'target_audience';
+    if (norm.includes('publico') && norm.includes('alvo')) return 'target_audience';
     if (norm.includes('mandato')) return 'mandate';
-    if (norm.includes('segmento')) return 'segment_secondary';
+    if (norm.includes('segmento')) return 'segmento';
     if (norm.includes('tipo de fundo')) return 'fund_type';
     if (norm.includes('prazo')) return 'duration';
-    if (norm.includes('tipo de gestao') || norm === 'gestao') return 'manager_type';
-    if (norm.includes('taxa de admin')) return 'management_fee';
+    if (norm.includes('tipo de gestao')) return 'manager_type';
+    if (norm.includes('taxa de administracao')) return 'management_fee';
     if (norm.includes('vacancia') && !norm.includes('financeira')) return 'vacancia';
-    if (norm.includes('numero de cotistas') || norm.includes('num cotistas')) return 'num_cotistas';
+    if (norm.includes('numero de cotistas')) return 'num_cotistas';
     if (norm.includes('cotas emitidas')) return 'num_quotas';
-    if (norm.includes('valor patrimonial p/ cota') || norm === 'vp/cota' || norm === 'vp cota') return 'vpa';
-    if (norm === 'valor patrimonial' || norm === 'patrimonio liquido') return 'assets_value';
-    if (norm.includes('ultimo rendimento')) return 'last_dividend';
-    if (norm === 'p/vp' || norm === 'pvp') return 'pvp';
+    if (norm.includes('valor patrimonial p/ cota') || norm === 'vp/cota') return 'vpa';
+    if (norm === 'valor patrimonial') return 'patrimonio_liquido';
+    if (norm.includes('ultimo rendimento')) return 'ultimo_rendimento';
+    if (norm === 'p/vp') return 'pvp';
     if (norm === 'liquidez diaria') return 'liquidez';
     if (norm.includes('dy') && norm.includes('12m')) return 'dy';
     if (norm.includes('valor de mercado')) return 'val_mercado';
-    if (norm === 'p/l') return 'pl';
-    if (norm === 'roe') return 'roe';
 
     return null;
 }
-
-// Lista de chaves que DEVEM ser tratadas como texto (não tentar parse numérico)
-const STRING_KEYS = [
-    'company_name', 'cnpj', 'target_audience', 'mandate', 'segment_secondary', 
-    'fund_type', 'duration', 'manager_type', 'management_fee', 'liquidez', 
-    'val_mercado', 'assets_value', 'num_quotas'
-];
 
 async function scrapeInvestidor10(ticker: string) {
     const tickerLower = ticker.toLowerCase();
@@ -147,9 +138,10 @@ async function scrapeInvestidor10(ticker: string) {
     
     const urlFii = `https://investidor10.com.br/fiis/${tickerLower}/`;
     const urlAcao = `https://investidor10.com.br/acoes/${tickerLower}/`;
-    
-    // Tenta primeiro a URL mais provável
-    const urls = isLikelyFii ? [urlFii, urlAcao] : [urlAcao, urlFii];
+    const urlFiagro = `https://investidor10.com.br/fiagros/${tickerLower}/`;
+    const urlBdr = `https://investidor10.com.br/bdrs/${tickerLower}/`;
+
+    const urls = isLikelyFii ? [urlFii, urlFiagro, urlAcao, urlBdr] : [urlAcao, urlFii, urlFiagro, urlBdr];
 
     let finalData: any = null;
     let finalDividends: any[] = [];
@@ -157,138 +149,161 @@ async function scrapeInvestidor10(ticker: string) {
 
     for (const url of urls) {
         try {
-            const res = await client.get(url, { headers: { 'User-Agent': getRandomAgent() } });
+            const res = await client.get(url, {
+                headers: { 'User-Agent': getRandomAgent() }
+            });
+            
             if (res.data.length < 5000) continue;
 
             const $ = cheerio.load(res.data);
             
-            // Validação simples se página carregou
+            let type = 'ACAO';
+            if (url.includes('/fiis/')) type = 'FII';
+            else if (url.includes('/fiagros/')) type = 'FII';
+            else if (url.includes('/bdrs/')) type = 'BDR';
+
+            // =================================================================
+            // 1. HEADER INFO (Cotação e Nome)
+            // =================================================================
             const headerContainer = $('#header_action');
-            if (headerContainer.length === 0) continue;
-
-            let type = url.includes('/fiis/') ? 'FII' : 'ACAO';
-
-            // --- 1. HEADER (Preço, Nome) ---
+            const headerPriceStr = headerContainer.find('div._card-body span.value').text().trim();
+            const headerName = headerContainer.find('h2.name-ticker').text().trim();
+            
             const dados: any = {
                 ticker: ticker.toUpperCase(),
                 type: type,
                 updated_at: new Date().toISOString(),
-                // Inicializa nulos para garantir estrutura
-                dy: null, pvp: null, pl: null, vacancia: null,
-                profitability_month: null, profitability_12m: null,
-                // Strings nulas
-                company_name: null, cnpj: null, segment_secondary: null
+                // Inicialização nula para evitar undefined
+                dy: null, pvp: null, pl: null, liquidez: null, val_mercado: null,
+                segmento: null, roe: null, margem_liquida: null, margem_bruta: null,
+                cagr_receita_5a: null, cagr_lucros_5a: null, divida_liquida_ebitda: null,
+                ev_ebitda: null, lpa: null, vpa: null, vacancia: null,
+                ultimo_rendimento: null, num_cotistas: null, patrimonio_liquido: null,
+                taxa_adm: null, tipo_gestao: null,
+                // Novos campos
+                company_name: null, cnpj: null, target_audience: null, mandate: null,
+                fund_type: null, duration: null, num_quotas: null,
+                // Rentabilidade
+                profitability_month: null, profitability_real_month: null,
+                profitability_3m: null, profitability_real_3m: null,
+                profitability_12m: null, profitability_real_12m: null,
+                profitability_2y: null, profitability_real_2y: null,
+                benchmark_cdi_12m: null, benchmark_ifix_12m: null, benchmark_ibov_12m: null
             };
 
-            const headerPriceStr = headerContainer.find('div._card-body span.value').text().trim();
-            const headerName = headerContainer.find('h2.name-ticker').text().trim();
-            
-            if (headerPriceStr) dados.cotacao_atual = parseValue(headerPriceStr);
+            if (headerPriceStr) {
+                const p = parseValue(headerPriceStr);
+                if (p !== null) dados.cotacao_atual = p;
+            }
             if (headerName) dados.name = headerName;
 
-            // --- 2. CARDS DO TOPO (Indicadores Principais) ---
-            $('#cards-ticker div._card').each((_, el) => {
+            // =================================================================
+            // 2. INDICADORES (Cards no Topo)
+            // =================================================================
+            $('#cards-ticker').find('div._card').each((_, el) => {
                 const label = $(el).find('div._card-header span').first().text().trim();
                 const value = $(el).find('div._card-body span').first().text().trim();
                 if (label && value) {
                     const key = mapLabelToKey(label);
-                    if (key) dados[key] = parseValue(value);
-                }
-            });
-
-            // --- 3. INFORMAÇÕES GERAIS (Estratégia Múltipla) ---
-            // Tenta container padrão .cell (Investidor10 Desktop)
-            let foundInfo = false;
-            
-            const extractInfo = (label: string, value: string) => {
-                if (!label || !value) return;
-                const key = mapLabelToKey(label);
-                if (key) {
-                    if (STRING_KEYS.includes(key)) {
-                        dados[key] = value.replace(/\s+/g, ' ').trim();
-                    } else {
-                        dados[key] = parseValue(value);
+                    if (key) {
+                        const parsed = parseValue(value);
+                        if (parsed !== null) dados[key] = parsed;
                     }
-                    foundInfo = true;
                 }
-            };
-
-            // Método A: Container #table-general-data (Estrutura Grid)
-            $('#table-general-data .cell').each((_, el) => {
-                const label = $(el).find('.name span').first().text().trim() || $(el).find('.name').text().trim();
-                const value = $(el).find('.value span').first().text().trim() || $(el).find('.value').text().trim();
-                extractInfo(label, value);
             });
 
-            // Método B: Se falhar A, tenta buscar tabela genérica próxima ao título "Informações sobre..."
-            if (!foundInfo) {
-                $('h2, h3, h4').each((_, h) => {
-                    if ($(h).text().toLowerCase().includes('informações sobre')) {
-                        // Procura tabela ou lista próxima
-                        const container = $(h).nextAll('div, table').first();
-                        container.find('.cell, tr').each((_, row) => {
-                            const label = $(row).find('.name, td:first-child').text().trim();
-                            const value = $(row).find('.value, td:last-child').text().trim();
-                            extractInfo(label, value);
-                        });
+            // =================================================================
+            // 3. INFORMAÇÕES GERAIS (Bloco "Informações sobre [Ticker]")
+            // =================================================================
+            // Geralmente é uma div com várias células dentro (classes .cell .name .value)
+            const generalInfoContainer = $('#table-general-data, .basic-info, #informations-section');
+            if (generalInfoContainer.length > 0) {
+                generalInfoContainer.find('.cell').each((_, el) => {
+                    const label = $(el).find('.name, span:first-child').text().trim();
+                    const value = $(el).find('.value, span:last-child').text().trim(); // Mantém texto original para CNPJ/Taxas
+                    
+                    if (label && value) {
+                        const key = mapLabelToKey(label);
+                        if (key) {
+                            // Campos que devem ser mantidos como string
+                            if (['cnpj', 'company_name', 'target_audience', 'mandate', 'segmento', 'fund_type', 'duration', 'manager_type', 'management_fee', 'liquidez', 'val_mercado', 'patrimonio_liquido', 'num_quotas'].includes(key)) {
+                                dados[key] = value;
+                            } else {
+                                const parsed = parseValue(value);
+                                if (parsed !== null) dados[key] = parsed;
+                            }
+                        }
                     }
                 });
             }
 
-            // --- 4. RENTABILIDADE (Tabela Específica) ---
-            const rentabTable = $('table.table-rentabilidade, #table-rentabilidade');
+            // =================================================================
+            // 4. TABELA DE RENTABILIDADE (Nominal e Real)
+            // =================================================================
+            const rentabTable = $('#table-rentabilidade, .table-rentabilidade');
             if (rentabTable.length > 0) {
-                const colMap: Record<number, string> = {};
+                // Mapeia índices das colunas (1 mês, 3 meses, 1 ano, 2 anos)
+                const headerMap: Record<number, string> = {};
                 rentabTable.find('thead th').each((idx, th) => {
-                    const txt = $(th).text().toLowerCase().trim();
-                    if (txt.includes('1 m')) colMap[idx] = 'month';
-                    else if (txt.includes('3 m')) colMap[idx] = '3m';
-                    else if (txt.includes('1 a') || txt.includes('12 m')) colMap[idx] = '12m';
-                    else if (txt.includes('2 a')) colMap[idx] = '2y';
+                    const txt = $(th).text().toLowerCase();
+                    if (txt.includes('1 mês') || txt.includes('1 mes')) headerMap[idx] = 'month';
+                    else if (txt.includes('3 meses')) headerMap[idx] = '3m';
+                    else if (txt.includes('1 ano') || txt.includes('12 meses')) headerMap[idx] = '12m';
+                    else if (txt.includes('2 anos')) headerMap[idx] = '2y';
                 });
 
+                // Itera linhas (Rentabilidade e Rentabilidade Real)
                 rentabTable.find('tbody tr').each((_, tr) => {
                     const rowLabel = $(tr).find('td').first().text().trim().toLowerCase();
                     const isReal = rowLabel.includes('real');
                     
-                    if (rowLabel.includes('rentabilidade')) {
-                        $(tr).find('td').each((idx, td) => {
-                            const period = colMap[idx];
-                            if (period) {
-                                const valStr = $(td).text().trim();
-                                const val = parseValue(valStr);
-                                if (val !== null) {
-                                    const key = isReal ? `profitability_real_${period}` : `profitability_${period}`;
-                                    dados[key] = val;
-                                }
+                    $(tr).find('td').each((idx, td) => {
+                        const period = headerMap[idx];
+                        if (period) {
+                            const val = parseValue($(td).text());
+                            if (val !== null) {
+                                const key = isReal ? `profitability_real_${period}` : `profitability_${period}`;
+                                dados[key] = val;
                             }
-                        });
-                    }
+                        }
+                    });
                 });
             }
 
-            // --- 5. DIVIDENDOS (Histórico) ---
-            $('#table-dividends-history tbody tr').each((_, tr) => {
-                const cols = $(tr).find('td');
-                if (cols.length >= 3) {
-                    let type = 'DIV';
+            // =================================================================
+            // 5. DIVIDENDOS 12M (Tabela Histórica)
+            // =================================================================
+            const dividends: any[] = [];
+            const divTable = $('#table-dividends-history');
+            
+            if (divTable.length > 0) {
+                divTable.find('tbody tr').each((i, tr) => {
+                    const cols = $(tr).find('td');
+                    if (cols.length < 3) return;
+
+                    let typeDiv = 'DIV';
                     let dateComStr = '';
                     let datePayStr = '';
                     let valStr = '';
 
-                    cols.each((_, td) => {
-                        const txt = $(td).text().trim();
-                        const norm = normalize(txt);
-                        if (norm.includes('jcp')) type = 'JCP';
-                        else if (norm.includes('rendimento')) type = 'REND';
-                        else if (norm.includes('amortiza')) type = 'AMORT';
+                    cols.each((idx, td) => {
+                        const text = $(td).text().trim();
+                        const normText = normalize(text);
 
-                        if (txt.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
-                            if (!dateComStr) dateComStr = txt;
-                            else if (!datePayStr) datePayStr = txt;
+                        if (normText.includes('jcp') || normText.includes('juros')) typeDiv = 'JCP';
+                        else if (normText.includes('rendimento')) typeDiv = 'REND';
+                        else if (normText.includes('dividendo')) typeDiv = 'DIV';
+                        else if (normText.includes('amortiza')) typeDiv = 'AMORT';
+
+                        if (text.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+                            if (!dateComStr) dateComStr = text;
+                            else if (!datePayStr) datePayStr = text;
                         }
-                        if (txt.includes(',') && !txt.includes('%')) {
-                            if (!valStr && !txt.includes('/')) valStr = txt;
+
+                        if ((text.includes(',') || text.includes('.')) && !text.includes('%') && !text.includes('/')) {
+                            if (!text.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+                                if (!valStr) valStr = text;
+                            }
                         }
                     });
 
@@ -297,43 +312,65 @@ async function scrapeInvestidor10(ticker: string) {
                     const paymentDate = parseDate(datePayStr);
 
                     if (dateCom && rate !== null && rate > 0) {
-                        finalDividends.push({
-                            ticker: ticker.toUpperCase(),
-                            type,
-                            date_com: dateCom,
-                            payment_date: paymentDate || null,
-                            rate
-                        });
-                    }
-                }
-            });
-
-            // --- 6. IMÓVEIS ---
-            if (type === 'FII') {
-                const propContainer = $('#sc_properties, #properties-section, .properties-list');
-                propContainer.find('.card, .property-card, .item').each((_, el) => {
-                    let name = $(el).find('h4, h3, .title, .name').first().text().trim();
-                    let location = $(el).find('.address, .location, .sub-title, p').not('.name').first().text().trim();
-                    
-                    if (name && name.length > 3 && !name.includes('%')) {
-                        realEstateProperties.push({
-                            name: name.replace(/\s+/g, ' '),
-                            location: location ? location.replace(/\s+/g, ' ') : 'Localização não informada',
-                            type: 'Imóvel'
+                        dividends.push({ 
+                            ticker: ticker.toUpperCase(), 
+                            type: typeDiv, 
+                            date_com: dateCom, 
+                            payment_date: paymentDate || null, 
+                            rate 
                         });
                     }
                 });
             }
 
-            // Cálculos finais
-            if ((dados.dy === null || dados.dy === 0) && dados.last_dividend && dados.cotacao_atual) {
-                dados.dy = (dados.last_dividend / dados.cotacao_atual) * 100 * 12;
-            }
-            if (dados.vpa === null && dados.pvp > 0 && dados.cotacao_atual > 0) {
-                dados.vpa = dados.cotacao_atual / dados.pvp;
+            // =================================================================
+            // 6. LISTA DE IMÓVEIS (FIIs)
+            // =================================================================
+            if (type === 'FII') {
+                let propertiesContainer = $('#sc_properties');
+                if (propertiesContainer.length === 0) {
+                    $('h2, h3, h4').each((_, el) => {
+                        const txt = $(el).text().trim().toUpperCase();
+                        if (txt.includes('PORTFÓLIO') || txt.includes('IMÓVEIS')) {
+                            propertiesContainer = $(el).parent();
+                            if (propertiesContainer.children().length <= 1) {
+                                propertiesContainer = $(el).next(); 
+                            }
+                            return false;
+                        }
+                    });
+                }
+
+                if (propertiesContainer.length > 0) {
+                    propertiesContainer.find('.card, .property-card, .carousel-cell, .splide__slide, .item').each((_, el) => {
+                        let name = $(el).find('h4, h3, strong, .title, .name').first().text().trim();
+                        if (!name) name = $(el).find('span').first().text().trim();
+                        let location = $(el).find('.address, .location, .sub-title, p').not('.name').not('h4').first().text().trim();
+                        
+                        if (name && name.length > 3 && !name.includes('%') && !name.toUpperCase().includes('TOTAL')) {
+                            realEstateProperties.push({
+                                name: name.replace(/\s+/g, ' '),
+                                location: location ? location.replace(/\s+/g, ' ') : 'Localização não informada',
+                                type: 'Imóvel'
+                            });
+                        }
+                    });
+                }
             }
 
-            // Remove chaves nulas para não sobrescrever DB com null
+            // =================================================================
+            // FINALIZAÇÃO
+            // =================================================================
+            
+            if ((dados.dy === null || dados.dy === 0) && dados.ultimo_rendimento && dados.cotacao_atual) {
+                dados.dy = (dados.ultimo_rendimento / dados.cotacao_atual) * 100 * 12; 
+            }
+
+            if (dados.vpa === null && dados.pvp > 0 && dados.cotacao_atual > 0) {
+                 dados.vpa = dados.cotacao_atual / dados.pvp;
+            }
+
+            // Remove nulos/undefined
             Object.keys(dados).forEach(k => {
                 if (dados[k] === null || dados[k] === undefined || dados[k] === '') delete dados[k];
             });
@@ -342,16 +379,19 @@ async function scrapeInvestidor10(ticker: string) {
                 ...dados,
                 dy_12m: dados.dy,
                 current_price: dados.cotacao_atual,
-                properties: realEstateProperties
+                properties: realEstateProperties 
             };
+            finalDividends = dividends;
             
-            break; // Sucesso na URL
+            break; 
+
         } catch (e) {
-            continue; // Tenta próxima URL
+            continue; 
         }
     }
 
-    if (!finalData) return null;
+    if (!finalData) return null; 
+
     return { metadata: finalData, dividends: finalDividends };
 }
 
@@ -367,11 +407,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     try {
         if (!force) {
-            const { data: existing } = await supabase.from('ativos_metadata').select('*').eq('ticker', ticker).single();
+            const { data: existing } = await supabase
+                .from('ativos_metadata')
+                .select('*')
+                .eq('ticker', ticker)
+                .single();
+            
             if (existing && existing.updated_at) {
                 const age = Date.now() - new Date(existing.updated_at).getTime();
-                if (age < 10800000) { // 3h Cache
-                     const { data: divs } = await supabase.from('market_dividends').select('*').eq('ticker', ticker);
+                const cacheTime = existing.dy_12m === 0 ? 3600000 : 10800000;
+                
+                if (age < cacheTime) {
+                     const { data: divs } = await supabase
+                        .from('market_dividends')
+                        .select('*')
+                        .eq('ticker', ticker);
                     return res.status(200).json({ success: true, data: existing, dividends: divs || [], cached: true });
                 }
             }
@@ -387,20 +437,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         if (metadata) {
             const dbPayload = { ...metadata };
-            delete dbPayload.dy; 
-            delete dbPayload.cotacao_atual; 
-            await supabase.from('ativos_metadata').upsert(dbPayload, { onConflict: 'ticker' });
+            delete dbPayload.dy;
+            delete dbPayload.cotacao_atual;
+            
+            const { error } = await supabase.from('ativos_metadata').upsert(dbPayload, { onConflict: 'ticker' });
+            if (error) console.error('Error saving metadata:', error);
         }
 
         if (dividends.length > 0) {
              const today = new Date().toISOString().split('T')[0];
-             await supabase.from('market_dividends').delete().eq('ticker', ticker).gte('payment_date', today);
+             const { error: delError } = await supabase.from('market_dividends')
+                .delete()
+                .eq('ticker', ticker.toUpperCase())
+                .gte('payment_date', today);
              
+             if (delError) console.warn('Clean up error (ignorable):', delError);
+
              const uniqueDivs = Array.from(new Map(dividends.map(item => [
                 `${item.type}-${item.date_com}-${item.rate}`, item
             ])).values());
             
-            await supabase.from('market_dividends').upsert(uniqueDivs, { onConflict: 'ticker,type,date_com,rate' });
+            const { error } = await supabase.from('market_dividends').upsert(uniqueDivs, { onConflict: 'ticker,type,date_com,rate' });
+            if (error) console.error('Error saving dividends:', error);
         }
 
         return res.status(200).json({ success: true, data: metadata, dividends });
