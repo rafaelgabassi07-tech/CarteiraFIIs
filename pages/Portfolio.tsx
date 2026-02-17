@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
 import { Search, Wallet, TrendingUp, TrendingDown, RefreshCw, X, Calculator, Scale, Activity, BarChart3, PieChart, Coins, Target, AlertCircle, ChevronDown, ChevronUp, ExternalLink, ArrowRight, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle } from 'lucide-react';
@@ -248,7 +249,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
     const [search, setSearch] = useState('');
     const [selectedAsset, setSelectedAsset] = useState<AssetPosition | null>(null);
     const [expandedAssetTicker, setExpandedAssetTicker] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<'RESUMO' | 'DADOS' | 'RENTABILIDADE' | 'PROVENTOS' | 'IMOVEIS'>('RESUMO');
+    const [activeTab, setActiveTab] = useState<'RESUMO' | 'DADOS' | 'RENTABILIDADE' | 'IMOVEIS'>('RESUMO');
 
     const filtered = useMemo(() => {
         if (!search) return portfolio;
