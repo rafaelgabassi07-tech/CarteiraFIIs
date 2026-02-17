@@ -198,7 +198,7 @@ async function scrapeInvestidor10(ticker: string) {
                 taxa_adm: null, tipo_gestao: null,
                 cnpj: null, mandato: null, publico_alvo: null, tipo_fundo: null, prazo: null,
                 razao_social: null, num_cotas: null,
-                rentabilidade_12m: null, rentabilidade_mes: null,
+                rentabilidade_12m: null, rentabilidade_mes: null, rentabilidade_2y: null,
                 benchmark_cdi_12m: null, benchmark_ifix_12m: null, benchmark_ibov_12m: null
             };
 
@@ -209,13 +209,10 @@ async function scrapeInvestidor10(ticker: string) {
             if (headerName) dados.name = headerName;
 
             // --- 2. INDICADORES ---
-            // Varredura Genérica (Cards, Tabelas Específicas)
             $('#cards-ticker div._card, #table-indicators .cell, #table-general-data .cell, .indicator-box').each((_, el) => {
-                // Tenta encontrar o label em várias estruturas possíveis
                 let label = $(el).find('div._card-header, .name, .title, span:first-child, h3').first().text().trim();
                 let value = $(el).find('div._card-body, .value, .data, span:last-child, .desc').last().text().trim();
 
-                // Fallback para tabelas sem classes específicas
                 if (!label && $(el).find('span').length >= 2) {
                     label = $(el).find('span').first().text().trim();
                     value = $(el).find('span').last().text().trim();
@@ -224,7 +221,6 @@ async function scrapeInvestidor10(ticker: string) {
                 if (label && value) {
                     const key = mapLabelToKey(label);
                     if (key) {
-                        // Campos de texto vs Numéricos
                         if (['segmento', 'tipo_gestao', 'taxa_adm', 'cnpj', 'mandato', 'publico_alvo', 'tipo_fundo', 'prazo', 'razao_social'].includes(key)) {
                             dados[key] = value;
                         } else {
@@ -235,7 +231,6 @@ async function scrapeInvestidor10(ticker: string) {
                 }
             });
 
-            // Extração de Segmento Específica (Breadcrumbs costumam ser mais confiáveis)
             if (!dados.segmento || dados.segmento === 'Geral') {
                 $('#breadcrumbs li, .breadcrumbs li').each((_, el) => {
                     const txt = $(el).text().trim();
@@ -250,9 +245,8 @@ async function scrapeInvestidor10(ticker: string) {
                      dados.vpa = dados.cotacao_atual / dados.pvp;
                 }
 
-                // --- 3. LISTA DE IMÓVEIS ---
+                // --- 3. IMÓVEIS (FIIs) ---
                 if (type === 'FII') {
-                    // Busca genérica por containers de propriedades
                     const propContainers = ['#sc_properties', '#properties-section', '.properties-list'];
                     let propertiesContainer: any = null;
 
@@ -263,22 +257,11 @@ async function scrapeInvestidor10(ticker: string) {
                         }
                     }
 
-                    if (!propertiesContainer) {
-                        $('h2, h3, h4').each((_, el) => {
-                            const txt = $(el).text().trim().toUpperCase();
-                            if (txt.includes('LISTA DE IMÓVEIS') || txt.includes('PORTFÓLIO')) {
-                                propertiesContainer = $(el).parent();
-                                return false;
-                            }
-                        });
-                    }
-
                     if (propertiesContainer) {
                         $(propertiesContainer).find('.card, .property-card, .carousel-cell, .splide__slide, .item').each((_, el) => {
                             let name = $(el).find('h4, h3, strong, .title, .name').first().text().trim();
                             let location = $(el).find('.address, .location, .sub-title, p').not('.name').first().text().trim();
-                            
-                            if (name && name.length > 3 && !name.includes('%') && !name.toUpperCase().includes('TOTAL')) {
+                            if (name && name.length > 3) {
                                 realEstateProperties.push({
                                     name: name.replace(/\s+/g, ' '),
                                     location: location ? location.replace(/\s+/g, ' ') : 'Localização não informada',
@@ -289,16 +272,15 @@ async function scrapeInvestidor10(ticker: string) {
                     }
                 }
 
-                // --- 4. COMPARAÇÃO COM ÍNDICES (Rentabilidade) ---
-                // Varredura mais agressiva por tabelas de rentabilidade
-                $('table').each((i, table) => {
-                    const headerText = $(table).find('thead').text().toLowerCase() || $(table).find('tr:first-child').text().toLowerCase();
-                    
-                    if (headerText.includes('rentabilidade') || headerText.includes('variação') || headerText.includes('valorização')) {
+                // --- 4. RENTABILIDADE (Busca Genérica em Tabelas) ---
+                $('table').each((_, table) => {
+                    const headerText = $(table).text().toLowerCase();
+                    // Detecta se é uma tabela de rentabilidade ou comparação
+                    if (headerText.includes('período') || headerText.includes('periodo') || headerText.includes('variação') || headerText.includes('rentabilidade')) {
                         
                         let idxCDI = -1, idxIndex = -1; 
                         
-                        // Encontra índices das colunas
+                        // Mapeia colunas
                         $(table).find('thead th, tr:first-child td, tr:first-child th').each((idx, th) => {
                             const txt = $(th).text().toUpperCase();
                             if (txt.includes('CDI')) idxCDI = idx;
@@ -309,37 +291,34 @@ async function scrapeInvestidor10(ticker: string) {
                             const rowLabel = $(tr).find('td').first().text().trim().toLowerCase();
                             const cols = $(tr).find('td');
 
-                            // Rentabilidade do Mês
-                            if (rowLabel.includes('mês') || rowLabel.includes('atual') || rowLabel.includes('último')) {
-                                const rentMes = parseValue($(cols[1]).text());
-                                if (rentMes !== null && rentMes !== 0) dados.rentabilidade_mes = rentMes;
+                            if (!rowLabel) return;
+
+                            // Valores da linha
+                            // Index 1 assume ser a do ativo principal
+                            const rentAtivo = parseValue($(cols[1]).text());
+                            const rentCDI = idxCDI > -1 ? parseValue($(cols[idxCDI]).text()) : null;
+                            const rentIndex = idxIndex > -1 ? parseValue($(cols[idxIndex]).text()) : null;
+
+                            // 1 Mês
+                            if (rowLabel === '1 mês' || rowLabel === 'mês atual' || rowLabel.includes('último mês')) {
+                                if (rentAtivo !== null) dados.rentabilidade_mes = rentAtivo;
                             }
-
-                            // Rentabilidade 12 Meses / Ano
-                            if (rowLabel.includes('12 meses') || rowLabel.includes('ano') || rowLabel.includes('1 ano')) {
-                                // Tenta pegar da coluna do ativo (geralmente index 1)
-                                const rentAtivo = parseValue($(cols[1]).text());
-                                if (rentAtivo !== null && rentAtivo !== 0) dados.rentabilidade_12m = rentAtivo;
-
-                                if (idxCDI > -1) dados.benchmark_cdi_12m = parseValue($(cols[idxCDI]).text());
-                                if (idxIndex > -1) {
-                                    const val = parseValue($(cols[idxIndex]).text());
-                                    if (type === 'FII') dados.benchmark_ifix_12m = val;
-                                    else dados.benchmark_ibov_12m = val;
+                            // 12 Meses
+                            else if (rowLabel === '12 meses' || rowLabel === '1 ano') {
+                                if (rentAtivo !== null) dados.rentabilidade_12m = rentAtivo;
+                                if (rentCDI !== null) dados.benchmark_cdi_12m = rentCDI;
+                                if (rentIndex !== null) {
+                                    if (type === 'FII') dados.benchmark_ifix_12m = rentIndex;
+                                    else dados.benchmark_ibov_12m = rentIndex;
                                 }
+                            }
+                            // 24 Meses / 2 Anos
+                            else if (rowLabel === '24 meses' || rowLabel === '2 anos') {
+                                if (rentAtivo !== null) dados.rentabilidade_2y = rentAtivo;
                             }
                         });
                     }
                 });
-
-                // Fallback para ID específico se a varredura falhar
-                if (!dados.rentabilidade_12m) {
-                    const historySection = $('#history-section, #rentabilidade-table');
-                    if (historySection.length > 0) {
-                        const table = historySection.find('table').first();
-                        // ... (Lógica antiga mantida como fallback)
-                    }
-                }
 
                 // --- 5. DIVIDENDOS ---
                 const dividends: any[] = [];

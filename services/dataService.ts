@@ -79,6 +79,7 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         // Rentabilidade Scraper
         profitability_12m: parseNumberSafe(getVal('rentabilidade_12m', 'rentabilidade12m')),
         profitability_month: parseNumberSafe(getVal('rentabilidade_mes', 'rentabilidademes')),
+        profitability_2y: parseNumberSafe(getVal('rentabilidade_2y', 'rentabilidade2y')), // Mapeamento Adicionado
         benchmark_cdi_12m: parseNumberSafe(getVal('benchmark_cdi_12m')),
         benchmark_ifix_12m: parseNumberSafe(getVal('benchmark_ifix_12m')),
         benchmark_ibov_12m: parseNumberSafe(getVal('benchmark_ibov_12m')),

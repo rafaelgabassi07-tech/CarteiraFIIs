@@ -612,8 +612,8 @@ const App: React.FC = () => {
 
   // --- CÁLCULOS DE PORTFÓLIO (Delegado para Serviço) ---
   const memoizedPortfolioData = useMemo(() => {
-      return processPortfolio(transactions, dividends, quotes, assetsMetadata);
-  }, [transactions, quotes, dividends, assetsMetadata]);
+      return processPortfolio(transactions, dividends, quotes, assetsMetadata, marketIndicators.ipca);
+  }, [transactions, quotes, dividends, assetsMetadata, marketIndicators]);
 
   // Determine header visibility logic
   // CRITICAL FIX: Force header visible in Settings to prevent flicker

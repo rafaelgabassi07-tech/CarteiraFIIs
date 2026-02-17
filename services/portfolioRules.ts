@@ -113,7 +113,8 @@ export const processPortfolio = (
     transactions: Transaction[],
     dividends: DividendReceipt[],
     quotes: Record<string, BrapiQuote>,
-    assetsMetadata: Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }>
+    assetsMetadata: Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }>,
+    ipca12m: number = 0 // Parâmetro opcional de inflação
 ): PortfolioCalcResult => {
     const todayStr = new Date().toISOString().split('T')[0];
     
@@ -226,10 +227,40 @@ export const processPortfolio = (
 
             // Cálculos Finais do Ativo
             const equity = preciseMul(p.quantity, currentPrice);
-            const cost = p.totalCost; // Use o totalCost acumulado que é mais preciso que qty * PM arredondado
+            const cost = p.totalCost; 
 
             totalInvested = preciseAdd(totalInvested, cost);
             totalBalance = preciseAdd(totalBalance, equity);
+
+            // Fundamentos Básicos
+            const fundamentals = meta?.fundamentals || {};
+
+            // --- CÁLCULO DE RENTABILIDADE REAL (IPCA+) ---
+            // Fórmula: ((1 + Nominal) / (1 + Inflação) - 1)
+            let profitability_real_12m: number | undefined = undefined;
+            let profitability_real_month: number | undefined = undefined;
+            let profitability_real_2y: number | undefined = undefined;
+
+            if (ipca12m > 0) {
+                // 12 Meses
+                if (fundamentals.profitability_12m !== undefined && fundamentals.profitability_12m !== null) {
+                    profitability_real_12m = ((1 + (fundamentals.profitability_12m / 100)) / (1 + (ipca12m / 100)) - 1) * 100;
+                }
+                
+                // Mês (Estima inflação mensal linear = ipca12m / 12)
+                if (fundamentals.profitability_month !== undefined && fundamentals.profitability_month !== null) {
+                    const estimatedMonthlyInflation = ipca12m / 12;
+                    profitability_real_month = ((1 + (fundamentals.profitability_month / 100)) / (1 + (estimatedMonthlyInflation / 100)) - 1) * 100;
+                }
+
+                // 24 Meses (Estima inflação acumulada 2 anos = (1+ipca)^2 - 1)
+                // OBS: O scraper retorna 'profitability_2y' se encontrar.
+                const rent2y = (fundamentals as any).profitability_2y; // Cast temporário, adicionar no type se preciso
+                if (rent2y !== undefined && rent2y !== null) {
+                    const inflation2y = ((1 + ipca12m/100) ** 2 - 1) * 100;
+                    profitability_real_2y = ((1 + (rent2y / 100)) / (1 + (inflation2y / 100)) - 1) * 100;
+                }
+            }
 
             return { 
                 ...p, 
@@ -239,8 +270,12 @@ export const processPortfolio = (
                 dailyChange: quote?.regularMarketChangePercent || 0, 
                 logoUrl: quote?.logourl, 
                 assetType: meta?.type || p.assetType, 
-                // Fundamentos vindos do JSON/Scraper
-                ...(meta?.fundamentals || {}) 
+                ...fundamentals,
+                // Injeta cálculos reais
+                profitability_real_12m,
+                profitability_real_month,
+                profitability_real_2y: profitability_real_2y,
+                profitability_2y: (fundamentals as any).profitability_2y // Garante repasse
             };
         });
 
