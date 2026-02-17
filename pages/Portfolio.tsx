@@ -1,9 +1,8 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
 import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, Activity, BarChart3, PieChart, Coins, AlertCircle, ChevronDown, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, Scale, SquareStack, Calendar } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
-import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, ReferenceLine, ComposedChart, CartesianGrid, Legend, AreaChart, Area, YAxis } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, ReferenceLine, ComposedChart, CartesianGrid, Legend, AreaChart, Area, YAxis, PieChart as RePieChart, Pie, Cell } from 'recharts';
 import { formatBRL, formatPercent, formatNumber, formatDateShort } from '../utils/formatters';
 
 // --- CONSTANTS ---
@@ -24,6 +23,8 @@ const TYPE_LABELS: Record<string, string> = {
     'REST': 'Restituição',
     'OUTROS': 'Outros'
 };
+
+const CHART_COLORS = ['#0ea5e9', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6', '#6366f1', '#ec4899', '#14b8a6'];
 
 // --- SUB-COMPONENTS ---
 
@@ -843,23 +844,81 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
 
                             {/* ABA IMÓVEIS: Lista de Ativos Físicos com ABL */}
                             {activeTab === 'IMOVEIS' && selectedAsset.properties && (
-                                <div className="anim-fade-in space-y-3">
-                                    {selectedAsset.properties.map((prop, idx) => (
-                                        <div key={idx} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex items-start gap-3 shadow-sm">
-                                            <div className="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
-                                                <MapPin className="w-5 h-5" />
-                                            </div>
-                                            <div className="flex-1">
-                                                <h4 className="text-sm font-bold text-zinc-900 dark:text-white leading-tight">{prop.name}</h4>
-                                                <p className="text-xs text-zinc-500 mt-1">{prop.location}</p>
-                                                {prop.abl && (
-                                                    <div className="mt-2 inline-flex items-center gap-1 px-2 py-1 rounded bg-zinc-100 dark:bg-zinc-800 text-[10px] font-bold text-zinc-500">
-                                                        <SquareStack className="w-3 h-3" /> ABL: {prop.abl}
-                                                    </div>
-                                                )}
-                                            </div>
+                                <div className="anim-fade-in space-y-6">
+                                    {/* Distribuição Gráfica */}
+                                    <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 shadow-sm">
+                                        <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                            <RePieChart className="w-3 h-3" /> Distribuição Geográfica
+                                        </h4>
+                                        <div className="h-56 w-full relative">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <RePieChart>
+                                                    <Pie
+                                                        data={Object.entries(selectedAsset.properties.reduce((acc, curr) => {
+                                                            const loc = curr.location ? curr.location.split('-')[0].trim() : 'N/A'; // Simple normalization
+                                                            acc[loc] = (acc[loc] || 0) + 1;
+                                                            return acc;
+                                                        }, {} as Record<string, number>)).map(([name, value]) => ({ name, value })).sort((a: any, b: any) => b.value - a.value)}
+                                                        cx="50%"
+                                                        cy="50%"
+                                                        innerRadius={50}
+                                                        outerRadius={70}
+                                                        paddingAngle={4}
+                                                        dataKey="value"
+                                                        stroke="none"
+                                                    >
+                                                        {Object.entries(selectedAsset.properties.reduce((acc, curr) => {
+                                                            const loc = curr.location ? curr.location.split('-')[0].trim() : 'N/A';
+                                                            acc[loc] = (acc[loc] || 0) + 1;
+                                                            return acc;
+                                                        }, {} as Record<string, number>)).map((entry, index) => (
+                                                            <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} strokeWidth={0} />
+                                                        ))}
+                                                    </Pie>
+                                                    <Tooltip contentStyle={{backgroundColor: '#18181b', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '11px'}} itemStyle={{color:'#fff'}} />
+                                                    <Legend verticalAlign="middle" align="right" layout="vertical" iconType="circle" iconSize={8} wrapperStyle={{fontSize: '10px', fontWeight: 600, color: '#71717a'}} />
+                                                </RePieChart>
+                                            </ResponsiveContainer>
                                         </div>
-                                    ))}
+                                    </div>
+
+                                    {/* Lista Detalhada */}
+                                    <div>
+                                        <div className="flex items-center justify-between mb-3 px-1">
+                                            <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                                                <Building2 className="w-3 h-3" /> Portfólio Imobiliário
+                                            </h4>
+                                            <span className="text-[9px] font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-500 px-2 py-1 rounded-md">{selectedAsset.properties.length} Ativos</span>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-1 gap-3">
+                                            {selectedAsset.properties.map((prop, idx) => (
+                                                <div key={idx} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex items-start gap-4 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors">
+                                                    <div className="w-10 h-10 rounded-xl bg-zinc-50 dark:bg-zinc-800 text-zinc-400 flex items-center justify-center shrink-0 border border-zinc-100 dark:border-zinc-700">
+                                                        <MapPin className="w-5 h-5" />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <h4 className="text-xs font-bold text-zinc-900 dark:text-white leading-tight mb-1">{prop.name}</h4>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-zinc-500 bg-zinc-50 dark:bg-zinc-800 px-2 py-1 rounded-md border border-zinc-100 dark:border-zinc-700/50">
+                                                                {prop.location || 'Local n/d'}
+                                                            </span>
+                                                            {prop.abl && (
+                                                                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-zinc-500 bg-zinc-50 dark:bg-zinc-800 px-2 py-1 rounded-md border border-zinc-100 dark:border-zinc-700/50">
+                                                                    <SquareStack className="w-3 h-3" /> {prop.abl}
+                                                                </span>
+                                                            )}
+                                                            {prop.type && (
+                                                                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-zinc-500 bg-zinc-50 dark:bg-zinc-800 px-2 py-1 rounded-md border border-zinc-100 dark:border-zinc-700/50">
+                                                                    {prop.type}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
                                 </div>
                             )}
                         </div>
