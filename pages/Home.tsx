@@ -236,20 +236,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       const average = chartData.reduce((acc, cur) => acc + cur.value, 0) / (chartData.length || 1);
       const max = Math.max(...chartData.map(d => d.value));
 
-      // Últimos 50 pagamentos recebidos
-      const history = receivedList
-          .sort((a, b) => b.paymentDate.localeCompare(a.paymentDate))
-          .slice(0, 50);
-
-      // Agrupamento para lista
-      const groupedHistory: Record<string, DividendReceipt[]> = {};
-      history.forEach(d => {
-          const k = d.paymentDate.substring(0, 7);
-          if(!groupedHistory[k]) groupedHistory[k] = [];
-          groupedHistory[k].push(d);
-      });
-
-      return { chartData, average, max, last12mTotal, history, groupedHistory };
+      return { chartData, average, max, last12mTotal };
   }, [dividendReceipts]);
 
   const currentMonthIncome = incomeData.chartData[incomeData.chartData.length - 1]?.value || 0;
@@ -608,7 +595,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                     <div>
                         <h2 className="text-2xl font-bold text-zinc-900 dark:text-white leading-none">Evolução</h2>
-                        <p className="text-xs text-zinc-500 font-medium mt-1">Histórico de Proventos</p>
+                        <p className="text-xs text-zinc-500 font-medium mt-1">Visão Geral de Proventos</p>
                     </div>
                 </div>
 
@@ -646,7 +633,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
 
                     {/* Gráfico Reduzido (Mais sutil) */}
-                    <div className="h-32 w-full mb-6 shrink-0 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-2 relative overflow-hidden">
+                    <div className="h-48 w-full mb-6 shrink-0 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-2 relative overflow-hidden">
                         <p className="absolute top-3 left-3 text-[9px] font-bold text-zinc-400 uppercase tracking-widest z-10">Tendência (6 Meses)</p>
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={incomeData.chartData} margin={{ top: 20, right: 0, left: -25, bottom: 0 }}>
@@ -669,51 +656,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         </ResponsiveContainer>
                     </div>
 
-                    {/* Histórico Recente (Lista Agrupada com Total no Header) */}
-                    <div>
-                        {Object.keys(incomeData.groupedHistory).length > 0 ? (
-                            Object.entries(incomeData.groupedHistory)
-                                .sort((a,b) => b[0].localeCompare(a[0])) // Sort keys DESC (Newest month first)
-                                .map(([monthKey, items]) => {
-                                    // Calcula total do mês
-                                    const monthTotal = (items as DividendReceipt[]).reduce((acc, curr) => acc + curr.totalReceived, 0);
-                                    
-                                    return (
-                                        <div key={monthKey} className="mb-6">
-                                            {/* Header do Mês com Total */}
-                                            <div className="sticky top-0 bg-white dark:bg-zinc-900 py-3 z-10 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center mb-2">
-                                                <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
-                                                    {getMonthName(monthKey + '-01')}
-                                                </h3>
-                                                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded">
-                                                    +{formatBRL(monthTotal, privacyMode)}
-                                                </span>
-                                            </div>
-
-                                            <div className="space-y-3">
-                                                {(items as DividendReceipt[]).map((div, i) => (
-                                                    <div key={i} className="flex items-center justify-between">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="flex flex-col items-center justify-center w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
-                                                                <span className="text-[10px] font-bold text-zinc-400 uppercase">{new Date(div.paymentDate).toLocaleDateString('pt-BR', {month:'short'}).replace('.','')}</span>
-                                                                <span className="text-sm font-black text-zinc-900 dark:text-white leading-none">{new Date(div.paymentDate).getDate()}</span>
-                                                            </div>
-                                                            <div>
-                                                                <p className="text-xs font-bold text-zinc-900 dark:text-white">{div.ticker}</p>
-                                                                <p className="text-[10px] text-zinc-400 uppercase font-medium">{div.type}</p>
-                                                            </div>
-                                                        </div>
-                                                        <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">+{formatBRL(div.totalReceived, privacyMode)}</p>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    );
-                                })
-                        ) : (
-                            <p className="text-center text-xs text-zinc-400 py-4">Nenhum pagamento registrado.</p>
-                        )}
-                    </div>
+                    {/* Histórico Removido */}
                 </div>
             </div>
         </SwipeableModal>

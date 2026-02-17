@@ -183,7 +183,7 @@ const IncomeAnalysisSection = ({ asset, chartData, history }: { asset: AssetPosi
                 </div>
             </div>
 
-            {/* 2. Gráfico Aprimorado + Histórico */}
+            {/* 2. Gráfico Aprimorado (SEM HISTÓRICO LISTA) */}
             <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
                 <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
                     <h4 className="text-[10px] font-bold text-zinc-400 uppercase flex items-center gap-2">
@@ -224,39 +224,8 @@ const IncomeAnalysisSection = ({ asset, chartData, history }: { asset: AssetPosi
                         </div>
                     )}
                 </div>
-
-                {/* Lista de Últimos Pagamentos (Integrada) */}
-                <div className="bg-zinc-50 dark:bg-zinc-800/30">
-                    <h5 className="px-4 py-3 text-[9px] font-black text-zinc-400 uppercase tracking-widest border-t border-zinc-100 dark:border-zinc-800">
-                        Histórico Recente
-                    </h5>
-                    <div className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
-                        {history.slice(0, 4).map((h, i) => (
-                            <div key={h.id || i} className="px-4 py-3 flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-lg bg-white dark:bg-zinc-800 flex items-center justify-center border border-zinc-100 dark:border-zinc-700 text-zinc-400">
-                                        <CalendarCheck className="w-3.5 h-3.5" />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-bold text-zinc-900 dark:text-white">
-                                            {formatDateShort(h.paymentDate || h.dateCom)}
-                                        </p>
-                                        <p className="text-[9px] text-zinc-400 uppercase font-medium flex items-center gap-1">
-                                            {h.type} <span className="w-0.5 h-0.5 bg-zinc-400 rounded-full"></span> {h.paymentDate ? 'Pago' : 'Data Com'}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{formatBRL(h.totalReceived)}</p>
-                                    <p className="text-[9px] text-zinc-400">{formatBRL(h.rate)}/cota</p>
-                                </div>
-                            </div>
-                        ))}
-                        {history.length === 0 && (
-                            <p className="px-4 py-4 text-center text-xs text-zinc-400 italic">Nenhum registro encontrado.</p>
-                        )}
-                    </div>
-                </div>
+                
+                {/* Lista Removida */}
             </div>
 
             {/* 3. RAIO-X DE RENDA */}
