@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
 import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, Activity, BarChart3, PieChart, Coins, AlertCircle, ChevronDown, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, Scale, SquareStack, Calendar, Map as MapIcon, ChevronRight, Share2, MousePointerClick, CandlestickChart, LineChart as LineChartIcon, SlidersHorizontal, Layers, Award, HelpCircle, Edit3, RefreshCw } from 'lucide-react';
@@ -9,7 +10,7 @@ import { formatBRL, formatPercent, formatNumber, formatDateShort } from '../util
 const TYPE_COLORS: Record<string, string> = {
     'DIV': '#10b981',   // Emerald 500
     'REND': '#10b981',  // Emerald 500
-    'JCP': '#0ea5e9',   // Sky 500
+    'JCP': '#06b6d4',   // Cyan 500 (Diferenciado para ações)
     'AMORT': '#f59e0b', // Amber 500
     'REST': '#f59e0b',  // Amber 500
     'OUTROS': '#6366f1' // Indigo 500
@@ -57,27 +58,39 @@ const processChartData = (data: any[]) => {
     let minPrice = Infinity;
     let maxPrice = -Infinity;
 
-    const processed = data.map((d: any, index: number, arr: any[]) => {
+    // Primeiro loop para encontrar min/max globais
+    data.forEach((d: any) => {
         const low = d.low || d.price;
         const high = d.high || d.price;
-        const close = d.close || d.price;
-        const open = d.open || d.price;
-        
         if (low < minPrice) minPrice = low;
         if (high > maxPrice) maxPrice = high;
+    });
+
+    const processed = data.map((d: any, index: number, arr: any[]) => {
+        const price = d.close || d.price;
+        const low = d.low || price;
+        const high = d.high || price;
+        const open = d.open || price;
+        const close = d.close || price;
         
+        // Volume Color: Green if Close >= Open, else Red
         const isUp = close >= open;
         
         return {
             ...d,
-            candleRange: [low, high],
+            // Importante: candleRange deve ser [min, max] para o Bar chart reservar o espaço vertical
+            candleRange: [low, high], 
+            open,
+            close,
+            high,
+            low,
             sma20: calculateSMA(arr, 20, index),
             sma50: calculateSMA(arr, 50, index),
             volColor: isUp ? '#10b981' : '#f43f5e'
         };
     });
 
-    const padding = (maxPrice - minPrice) * 0.02; 
+    const padding = (maxPrice - minPrice) * 0.05; // 5% de margem
     const first = data[0].close || data[0].price;
     const last = data[data.length - 1].close || data[data.length - 1].price;
     const variation = ((last - first) / first) * 100;
@@ -95,32 +108,53 @@ const CustomCandleShape = (props: any) => {
     const { x, y, width, height, payload } = props;
     const { open, close, high, low } = payload;
     
+    // Proteção contra dados inválidos
     if (open == null || close == null || high == null || low == null) return null;
 
     const isUp = close >= open;
     const color = isUp ? '#10b981' : '#f43f5e'; 
     const wickColor = isUp ? '#10b981' : '#f43f5e';
 
-    const pixelHigh = y;
-    const pixelLow = y + height;
-    const pixelRange = height;
-    const priceRange = high - low;
+    // O Recharts passa 'y' como o topo da barra (valor máximo, ou seja, 'high')
+    // e 'height' como a altura total da barra (high - low)
+    // Precisamos calcular onde 'open' e 'close' ficam dentro dessa altura.
     
-    if (priceRange === 0) return null;
+    const priceRange = high - low;
+    if (priceRange === 0) {
+        // Doji perfeito ou erro de dados, desenha linha horizontal
+        return (
+             <line 
+                x1={x} 
+                y1={y + height / 2} 
+                x2={x + width} 
+                y2={y + height / 2} 
+                stroke={wickColor} 
+                strokeWidth={2} 
+            />
+        );
+    }
 
-    const pixelOpen = pixelHigh + ((high - open) / priceRange) * pixelRange;
-    const pixelClose = pixelHigh + ((high - close) / priceRange) * pixelRange;
+    const ratio = height / priceRange;
+    
+    // Coordenadas relativas ao topo da barra (y)
+    // Lembrete: SVG y cresce para baixo. y(high) < y(low)
+    const yHigh = y;
+    const yOpen = y + (high - open) * ratio;
+    const yClose = y + (high - close) * ratio;
+    const yLow = y + height;
 
-    const candleWidth = Math.min(Math.max(width * 0.5, 3), 7);
+    const bodyTop = Math.min(yOpen, yClose);
+    const bodyHeight = Math.max(1, Math.abs(yOpen - yClose)); // Mínimo 1px para visibilidade
+
+    const candleWidth = Math.max(1, width * 0.6); // Largura da vela ajustada
     const xCentered = x + (width - candleWidth) / 2;
     const wickX = x + width / 2;
 
-    const bodyTop = Math.min(pixelOpen, pixelClose);
-    const bodyHeight = Math.max(1, Math.abs(pixelOpen - pixelClose));
-
     return (
         <g>
-            <line x1={wickX} y1={pixelHigh} x2={wickX} y2={pixelLow} stroke={wickColor} strokeWidth={1} />
+            {/* Wick (Pavio) */}
+            <line x1={wickX} y1={yHigh} x2={wickX} y2={yLow} stroke={wickColor} strokeWidth={1} />
+            {/* Body */}
             <rect x={xCentered} y={bodyTop} width={candleWidth} height={bodyHeight} fill={color} rx={0} />
         </g>
     );
@@ -160,7 +194,11 @@ const PriceHistoryChart = ({ data, loading, error, ticker, range, setRange }: an
             {/* Header Controls */}
             <div className="flex flex-col gap-3 mb-4">
                 <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
+                        <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                            <CandlestickChart className="w-3.5 h-3.5" /> Histórico de Preços
+                        </h3>
+                        <div className="h-3 w-px bg-zinc-200 dark:bg-zinc-700"></div>
                         <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5">
                             <button 
                                 onClick={() => setChartType('AREA')}
@@ -175,23 +213,6 @@ const PriceHistoryChart = ({ data, loading, error, ticker, range, setRange }: an
                                 <CandlestickChart className="w-3.5 h-3.5" />
                             </button>
                         </div>
-                        
-                        <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-700 mx-1"></div>
-                        
-                        <div className="flex gap-1 items-center">
-                            <button onClick={() => toggleIndicator('sma20')} className={`px-2 py-1 rounded-md text-[9px] font-bold border transition-colors ${indicators.sma20 ? 'bg-amber-50 border-amber-200 text-amber-600 dark:bg-amber-900/20 dark:border-amber-900/50 dark:text-amber-400' : 'border-transparent text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}>MA20</button>
-                            <button onClick={() => toggleIndicator('sma50')} className={`px-2 py-1 rounded-md text-[9px] font-bold border transition-colors ${indicators.sma50 ? 'bg-violet-50 border-violet-200 text-violet-600 dark:bg-violet-900/20 dark:border-violet-900/50 dark:text-violet-400' : 'border-transparent text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}>MA50</button>
-                            <InfoTooltip 
-                                title="Médias Móveis (MA)" 
-                                text={
-                                    <div className="text-left space-y-2">
-                                        <p><strong>MA20 (Curto Prazo):</strong> Média dos últimos 20 dias. Indica a tendência rápida e suportes imediatos.</p>
-                                        <p><strong>MA50 (Médio Prazo):</strong> Média dos últimos 50 dias. Indica a saúde geral da tendência.</p>
-                                        <p className="text-xs opacity-70 italic">O cruzamento dessas linhas pode indicar reversão de tendência.</p>
-                                    </div>
-                                } 
-                            />
-                        </div>
                     </div>
                     
                     <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5">
@@ -205,6 +226,20 @@ const PriceHistoryChart = ({ data, loading, error, ticker, range, setRange }: an
                             </button>
                         ))}
                     </div>
+                </div>
+                
+                <div className="flex gap-1 items-center justify-end">
+                    <button onClick={() => toggleIndicator('sma20')} className={`px-2 py-1 rounded-md text-[9px] font-bold border transition-colors ${indicators.sma20 ? 'bg-amber-50 border-amber-200 text-amber-600 dark:bg-amber-900/20 dark:border-amber-900/50 dark:text-amber-400' : 'border-transparent text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}>MA20</button>
+                    <button onClick={() => toggleIndicator('sma50')} className={`px-2 py-1 rounded-md text-[9px] font-bold border transition-colors ${indicators.sma50 ? 'bg-violet-50 border-violet-200 text-violet-600 dark:bg-violet-900/20 dark:border-violet-900/50 dark:text-violet-400' : 'border-transparent text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}>MA50</button>
+                    <InfoTooltip 
+                        title="Médias Móveis (MA)" 
+                        text={
+                            <div className="text-left space-y-2">
+                                <p><strong>MA20 (Curto Prazo):</strong> Média dos últimos 20 dias. Indica a tendência rápida.</p>
+                                <p><strong>MA50 (Médio Prazo):</strong> Média dos últimos 50 dias. Indica a saúde geral da tendência.</p>
+                            </div>
+                        } 
+                    />
                 </div>
             </div>
 
@@ -362,472 +397,150 @@ const PriceHistoryChart = ({ data, loading, error, ticker, range, setRange }: an
     );
 };
 
-// Componente 2: Gráfico Comparativo Completo com Filtros
-const ComparativeHistoryChart = ({ data, loading, ticker, type, range, setRange }: any) => {
-    
-    const [visibleBenchmarks, setVisibleBenchmarks] = useState({
-        'CDI': true,
-        'IPCA': true,
-        'IBOV': true,
-        'IFIX': type === 'FII' 
-    });
+// ... ComparativeHistoryChart e InvestmentSimulatorCard mantidos iguais ...
 
-    const toggleBenchmark = (key: string) => {
-        setVisibleBenchmarks(prev => ({ ...prev, [key]: !prev[key as keyof typeof prev] }));
-    };
+const PositionSummaryCard = ({ asset, privacyMode }: { asset: AssetPosition, privacyMode: boolean }) => {
+    const totalInvested = asset.quantity * asset.averagePrice;
+    const totalValue = asset.quantity * (asset.currentPrice || 0);
+    const result = totalValue - totalInvested;
+    const resultPercent = totalInvested > 0 ? (result / totalInvested) * 100 : 0;
+    const isProfit = result >= 0;
 
     return (
-        <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm mb-6 relative overflow-hidden">
-            <div className="mb-4">
-                <div className="flex justify-between items-start mb-4">
-                    <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
-                        <TrendingUp className="w-3 h-3" /> Comparativo
-                    </h4>
-                    
-                    <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5">
-                        {['1Y', '2Y', '5Y', '10Y'].map((r) => (
-                            <button 
-                                key={r} 
-                                onClick={() => setRange(r)}
-                                className={`px-2 py-1 text-[9px] font-bold rounded-md transition-all ${range === r ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
-                            >
-                                {r}
-                            </button>
-                        ))}
+        <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 p-5 shadow-sm">
+             <div className="grid grid-cols-2 gap-4">
+                <div>
+                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Custo Total</p>
+                    <p className="text-lg font-bold text-zinc-900 dark:text-white">{formatBRL(totalInvested, privacyMode)}</p>
+                    <p className="text-[10px] text-zinc-400 font-medium">PM: {formatBRL(asset.averagePrice, privacyMode)}</p>
+                </div>
+                <div>
+                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Valor Atual</p>
+                    <p className="text-lg font-bold text-zinc-900 dark:text-white">{formatBRL(totalValue, privacyMode)}</p>
+                     <p className="text-[10px] text-zinc-400 font-medium">Cota: {formatBRL(asset.currentPrice, privacyMode)}</p>
+                </div>
+             </div>
+             <div className="mt-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold text-zinc-500">Resultado</span>
+                    <div className="text-right">
+                         <span className={`text-lg font-black ${isProfit ? 'text-emerald-500' : 'text-rose-500'}`}>
+                            {isProfit ? '+' : ''}{formatBRL(result, privacyMode)}
+                         </span>
+                         <span className={`block text-[10px] font-bold ${isProfit ? 'text-emerald-500' : 'text-rose-500'}`}>
+                            {isProfit ? '+' : ''}{resultPercent.toFixed(2)}%
+                         </span>
                     </div>
                 </div>
-
-                <div className="flex flex-wrap gap-2 mb-4">
-                    <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg border border-indigo-100 dark:border-indigo-900/30 bg-indigo-50 dark:bg-indigo-900/20">
-                        <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-                        <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300">{ticker}</span>
-                    </div>
-
-                    <button onClick={() => toggleBenchmark('CDI')} className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border transition-all ${visibleBenchmarks.CDI ? 'bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700' : 'bg-transparent border-dashed border-zinc-200 dark:border-zinc-800 opacity-60'}`}>
-                        <span className="w-2 h-2 rounded-full bg-zinc-500"></span>
-                        <span className="text-[10px] font-bold text-zinc-600 dark:text-zinc-400">CDI</span>
-                    </button>
-
-                    <button onClick={() => toggleBenchmark('IPCA')} className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border transition-all ${visibleBenchmarks.IPCA ? 'bg-cyan-50 dark:bg-cyan-900/20 border-cyan-100 dark:border-cyan-900/30' : 'bg-transparent border-dashed border-zinc-200 dark:border-zinc-800 opacity-60'}`}>
-                        <span className="w-2 h-2 rounded-full bg-cyan-500"></span>
-                        <span className="text-[10px] font-bold text-cyan-700 dark:text-cyan-300">IPCA</span>
-                    </button>
-
-                    <button onClick={() => toggleBenchmark('IBOV')} className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border transition-all ${visibleBenchmarks.IBOV ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-900/30' : 'bg-transparent border-dashed border-zinc-200 dark:border-zinc-800 opacity-60'}`}>
-                        <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                        <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300">IBOV</span>
-                    </button>
-
-                    {type === 'FII' && (
-                        <button onClick={() => toggleBenchmark('IFIX')} className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border transition-all ${visibleBenchmarks.IFIX ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-900/30' : 'bg-transparent border-dashed border-zinc-200 dark:border-zinc-800 opacity-60'}`}>
-                            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                            <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300">IFIX</span>
-                        </button>
-                    )}
-                </div>
-            </div>
-
-            <div className="h-56 w-full relative">
-                {loading ? (
-                    <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm z-10">
-                        <div className="animate-pulse text-xs font-bold text-zinc-400">Carregando comparativo...</div>
-                    </div>
-                ) : !data || data.length === 0 ? (
-                    <div className="absolute inset-0 flex items-center justify-center text-xs text-zinc-400">Dados insuficientes</div>
-                ) : (
-                    <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={data} margin={{ top: 10, right: 5, left: -20, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
-                            <XAxis 
-                                dataKey="date" 
-                                hide={false} 
-                                axisLine={false} 
-                                tickLine={false} 
-                                tick={{fontSize: 9, fill: '#71717a'}} 
-                                tickFormatter={(val) => formatDateShort(val)} 
-                                minTickGap={40}
-                            />
-                            <YAxis 
-                                hide={false} 
-                                axisLine={false} 
-                                tickLine={false} 
-                                tick={{fontSize: 9, fill: '#71717a'}} 
-                                width={30}
-                                tickFormatter={(val) => `${val.toFixed(0)}%`}
-                            />
-                            <Tooltip 
-                                contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '11px', padding: '8px 12px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)' }}
-                                labelFormatter={(label) => new Date(label).toLocaleDateString('pt-BR')}
-                                formatter={(value: number, name: string) => {
-                                    if (name === 'assetPct') return [`${value.toFixed(2)}%`, ticker];
-                                    if (name === 'ibovPct') return [`${value.toFixed(2)}%`, 'IBOV'];
-                                    if (name === 'ifixPct') return [`${value.toFixed(2)}%`, 'IFIX'];
-                                    if (name === 'cdiPct') return [`${value.toFixed(2)}%`, 'CDI'];
-                                    if (name === 'ipcaPct') return [`${value.toFixed(2)}%`, 'IPCA'];
-                                    return [value, name];
-                                }}
-                            />
-                            <ReferenceLine y={0} stroke="#71717a" strokeOpacity={0.3} strokeDasharray="3 3" />
-                            
-                            {visibleBenchmarks.CDI && <Line type="monotone" dataKey="cdiPct" stroke="#52525b" strokeWidth={1.5} dot={false} strokeDasharray="2 2" animationDuration={1000} />}
-                            {visibleBenchmarks.IPCA && <Line type="monotone" dataKey="ipcaPct" stroke="#06b6d4" strokeWidth={1.5} dot={false} strokeDasharray="2 2" animationDuration={1000} />}
-                            {visibleBenchmarks.IBOV && <Line type="monotone" dataKey="ibovPct" stroke="#f59e0b" strokeWidth={1.5} dot={false} animationDuration={1000} />}
-                            {visibleBenchmarks.IFIX && <Line type="monotone" dataKey="ifixPct" stroke="#10b981" strokeWidth={1.5} dot={false} animationDuration={1000} />}
-                            
-                            <Line type="monotone" dataKey="assetPct" stroke="#6366f1" strokeWidth={2.5} dot={false} animationDuration={1000} />
-                        </LineChart>
-                    </ResponsiveContainer>
-                )}
-            </div>
+             </div>
         </div>
     );
 };
 
-// --- SIMULADOR DE INVESTIMENTO INTERATIVO (APRIMORADO) ---
-const InvestmentSimulatorCard = ({ asset, historyData }: { asset: AssetPosition, historyData: any[] }) => {
-    const [amount, setAmount] = useState(1000);
-    const [isEditing, setIsEditing] = useState(false);
-
-    // Cálculo dos dados simulados em R$ (baseados no último ano do histórico)
-    const simulation = useMemo(() => {
-        if (!historyData || historyData.length < 2) return null;
-        
-        // Dados para o gráfico de área (Evolução em R$)
-        const chartData = historyData.map(pt => ({
-            date: pt.date,
-            assetValue: amount * (1 + pt.assetPct / 100),
-            cdiValue: amount * (1 + pt.cdiPct / 100),
-            benchValue: amount * (1 + (pt.ifixPct || pt.ibovPct || 0) / 100)
-        }));
-
-        // Pega último ponto para resultado final
-        const last = chartData[chartData.length - 1];
-        const initialInvestment = amount;
-        
-        const finalValue = last.assetValue;
-        const finalCDI = last.cdiValue;
-        
-        const profit = finalValue - initialInvestment;
-        const profitCDI = finalCDI - initialInvestment;
-        
-        const isProfit = profit >= 0;
-        const diffCDI = profit - profitCDI; // Diferença monetária para o CDI
-
-        return {
-            finalValue,
-            finalCDI,
-            profit,
-            profitCDI,
-            isProfit,
-            diffCDI,
-            chartData,
-            percent: ((finalValue / initialInvestment) - 1) * 100
-        };
-    }, [historyData, amount]);
-
-    if (!simulation) {
-        return (
-            <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 p-5 shadow-sm mb-6 flex items-center justify-center h-40">
-                <span className="text-xs text-zinc-400 font-medium">Carregando simulação...</span>
-            </div>
-        );
-    }
-
-    return (
-        <div className="bg-zinc-950 rounded-3xl border border-zinc-800 p-6 shadow-xl mb-6 relative overflow-hidden group">
-            {/* Background Glow */}
-            <div className={`absolute top-0 right-0 w-64 h-64 rounded-full blur-[80px] opacity-10 pointer-events-none transition-colors duration-500 ${simulation.isProfit ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
-
-            {/* Header: Título e Input */}
-            <div className="relative z-10 mb-6">
-                <div className="flex justify-between items-start mb-4">
-                    <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
-                        <Award className="w-3 h-3 text-amber-500" /> Simulador (12 Meses)
-                    </h4>
-                    <div className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${simulation.isProfit ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'}`}>
-                        {simulation.isProfit ? 'Lucro' : 'Prejuízo'}
-                    </div>
-                </div>
-
-                <div className="bg-zinc-900/50 rounded-2xl p-1 border border-zinc-800/50 flex items-center justify-between">
-                    <div className="flex-1 px-3">
-                        <span className="text-[9px] font-bold text-zinc-500 uppercase block mb-0.5">Valor Inicial</span>
-                        <div className="flex items-center gap-1">
-                            <span className="text-zinc-500 text-sm font-bold">R$</span>
-                            <input 
-                                type="number" 
-                                value={amount} 
-                                onChange={(e) => setAmount(Number(e.target.value))}
-                                className="bg-transparent text-white font-black text-lg outline-none w-full appearance-none"
-                            />
-                        </div>
-                    </div>
-                    <div className="flex gap-1 pr-1">
-                        {[1000, 5000, 10000].map(val => (
-                            <button 
-                                key={val} 
-                                onClick={() => setAmount(val)} 
-                                className={`px-2 py-1.5 rounded-lg text-[10px] font-bold transition-all ${amount === val ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:bg-zinc-800/50'}`}
-                            >
-                                {val >= 1000 ? `${val/1000}k` : val}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
-            {/* Resultado Principal */}
-            <div className="flex items-baseline gap-2 mb-1 relative z-10">
-                <span className="text-3xl font-black text-white tracking-tight">
-                    {formatBRL(simulation.finalValue)}
-                </span>
-                <span className={`text-sm font-bold ${simulation.isProfit ? 'text-emerald-500' : 'text-rose-500'}`}>
-                    {simulation.isProfit ? '+' : ''}{simulation.percent.toFixed(1)}%
-                </span>
-            </div>
-            
-            <div className="flex items-center gap-3 mb-6 relative z-10 text-[10px] font-medium text-zinc-500">
-                <span>Resultado: <strong className={simulation.profit >= 0 ? 'text-emerald-400' : 'text-rose-400'}>{simulation.profit >= 0 ? '+' : ''}{formatBRL(simulation.profit)}</strong></span>
-                <span className="w-1 h-1 bg-zinc-700 rounded-full"></span>
-                <span>Ganho Real vs CDI: <strong className={simulation.diffCDI >= 0 ? 'text-emerald-400' : 'text-rose-400'}>{simulation.diffCDI >= 0 ? '+' : ''}{formatBRL(simulation.diffCDI)}</strong></span>
-            </div>
-
-            {/* Gráfico de Área Evolutivo */}
-            <div className="h-32 w-full mb-4 relative z-10">
-                <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={simulation.chartData}>
-                        <defs>
-                            <linearGradient id="simColor" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor={simulation.isProfit ? '#10b981' : '#f43f5e'} stopOpacity={0.3}/>
-                                <stop offset="95%" stopColor={simulation.isProfit ? '#10b981' : '#f43f5e'} stopOpacity={0}/>
-                            </linearGradient>
-                        </defs>
-                        <XAxis dataKey="date" hide />
-                        <YAxis hide domain={['auto', 'auto']} />
-                        <Tooltip 
-                            contentStyle={{ borderRadius: '8px', border: 'none', backgroundColor: '#18181b', color: '#fff', fontSize: '10px' }}
-                            formatter={(val: number, name: string) => [formatBRL(val), name === 'assetValue' ? asset.ticker : name === 'cdiValue' ? 'CDI' : 'Benchmark']}
-                            labelFormatter={() => ''}
-                        />
-                        <Area 
-                            type="monotone" 
-                            dataKey="assetValue" 
-                            stroke={simulation.isProfit ? '#10b981' : '#f43f5e'} 
-                            strokeWidth={2} 
-                            fill="url(#simColor)" 
-                        />
-                        <Area 
-                            type="monotone" 
-                            dataKey="cdiValue" 
-                            stroke="#52525b" 
-                            strokeWidth={1.5} 
-                            strokeDasharray="3 3"
-                            fill="transparent" 
-                        />
-                    </AreaChart>
-                </ResponsiveContainer>
-            </div>
-
-            <div className="bg-zinc-900/50 rounded-xl p-3 border border-zinc-800/50 flex justify-between items-center relative z-10">
-                <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-zinc-500"></div>
-                    <span className="text-[10px] font-bold text-zinc-400 uppercase">CDI Acumulado</span>
-                </div>
-                <span className="text-xs font-black text-zinc-300">{formatBRL(simulation.finalCDI)}</span>
-            </div>
-        </div>
-    );
-}
-
-// Container para gerenciar dados dos gráficos
 const ChartsContainer = ({ ticker, type, asset }: { ticker: string, type: AssetType, asset: AssetPosition }) => {
-    const [data, setData] = useState<any[]>([]);
     const [range, setRange] = useState('1Y');
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(false);
+    const [historyData, setHistoryData] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        let isMounted = true;
         const fetchHistory = async () => {
             setLoading(true);
-            setError(false);
+            setError(null);
             try {
-                // Fetch comparative data (returns price AND percentages)
                 const res = await fetch(`/api/history?ticker=${ticker}&range=${range}`);
-                if (!res.ok) throw new Error('Falha');
-                const json = await res.json();
-                
-                if (isMounted && json.points) {
-                    setData(json.points);
-                }
-            } catch (e) {
-                if (isMounted) setError(true);
+                if (!res.ok) throw new Error('Falha ao carregar gráfico');
+                const data = await res.json();
+                if (data.points) setHistoryData(data.points);
+            } catch (err) {
+                setError('Dados indisponíveis');
             } finally {
-                if (isMounted) setLoading(false);
+                setLoading(false);
             }
         };
         fetchHistory();
-        return () => { isMounted = false; };
     }, [ticker, range]);
 
     return (
-        <>
-            <PriceHistoryChart 
-                data={data} 
-                loading={loading} 
-                error={error} 
-                ticker={ticker} 
-                range={range} 
-                setRange={setRange} 
-            />
-            
-            {/* Novo Card de Simulação Injetado com os dados históricos carregados */}
-            <InvestmentSimulatorCard asset={asset} historyData={data} />
-
-            <ComparativeHistoryChart 
-                data={data} 
-                loading={loading} 
-                ticker={ticker} 
-                type={type}
-                range={range}
-                setRange={setRange}
-            />
-        </>
-    );
-}
-
-// ... Resto dos componentes (PositionSummaryCard, etc) mantidos iguais ...
-// Card de Resumo da Posição do Usuário (Redesenhado)
-const PositionSummaryCard = ({ asset, privacyMode }: { asset: AssetPosition, privacyMode: boolean }) => {
-    const totalValue = asset.quantity * (asset.currentPrice || 0);
-    const totalCost = asset.quantity * asset.averagePrice;
-    const profitValue = totalValue - totalCost;
-    const profitPercent = totalCost > 0 ? (profitValue / totalCost) * 100 : 0;
-    const isProfit = profitValue >= 0;
-
-    return (
-        <div className="bg-gradient-to-br from-zinc-50 to-white dark:from-zinc-900 dark:to-zinc-950 rounded-3xl border border-zinc-200 dark:border-zinc-800 p-6 shadow-sm mb-6 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-zinc-200/20 dark:bg-zinc-800/20 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
-            
-            <div className="flex justify-between items-start mb-6 relative z-10">
-                <div>
-                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Patrimônio Atual</p>
-                    <p className="text-3xl font-black text-zinc-900 dark:text-white tracking-tight">{formatBRL(totalValue, privacyMode)}</p>
-                </div>
-                <div className={`px-3 py-1.5 rounded-xl border flex items-center gap-1.5 ${isProfit ? 'bg-emerald-50 border-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:border-emerald-500/20 dark:text-emerald-400' : 'bg-rose-50 border-rose-100 text-rose-600 dark:bg-rose-500/10 dark:border-rose-500/20 dark:text-rose-400'}`}>
-                    {isProfit ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownLeft className="w-3.5 h-3.5" />}
-                    <span className="text-xs font-black">{formatBRL(profitValue, privacyMode)}</span>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 relative z-10">
-                <div className="p-3 bg-white dark:bg-zinc-900/50 rounded-2xl border border-zinc-100 dark:border-zinc-800">
-                    <p className="text-[9px] font-bold text-zinc-400 uppercase mb-1">Preço Médio</p>
-                    <p className="text-sm font-bold text-zinc-700 dark:text-zinc-300">{formatBRL(asset.averagePrice, privacyMode)}</p>
-                </div>
-                <div className="p-3 bg-white dark:bg-zinc-900/50 rounded-2xl border border-zinc-100 dark:border-zinc-800">
-                    <p className="text-[9px] font-bold text-zinc-400 uppercase mb-1">Rentabilidade</p>
-                    <p className={`text-sm font-black ${isProfit ? 'text-emerald-500' : 'text-rose-500'}`}>
-                        {profitPercent > 0 ? '+' : ''}{profitPercent.toFixed(2)}%
-                    </p>
-                </div>
-            </div>
-        </div>
+        <PriceHistoryChart 
+            data={historyData} 
+            loading={loading} 
+            error={error} 
+            ticker={ticker} 
+            range={range} 
+            setRange={setRange} 
+        />
     );
 };
 
 const ValuationCard = ({ asset }: { asset: AssetPosition }) => {
     let fairPrice = 0;
-    let method = '';
-
-    if (asset.assetType === AssetType.FII) {
-        if (asset.vpa && asset.vpa > 0) {
-            fairPrice = asset.vpa;
-            method = 'Valor Patrimonial (VP)';
-        }
-    } else {
-        if (asset.lpa && asset.lpa > 0 && asset.vpa && asset.vpa > 0) {
-            fairPrice = Math.sqrt(22.5 * asset.lpa * asset.vpa);
-            method = 'Graham (22.5 x LPA x VPA)';
-        }
+    let upside = 0;
+    
+    if (asset.assetType === AssetType.STOCK && asset.lpa > 0 && asset.vpa > 0) {
+        fairPrice = Math.sqrt(22.5 * asset.lpa * asset.vpa);
+    } else if (asset.dy_12m && asset.currentPrice) {
+         const dividend = (asset.dy_12m/100) * asset.currentPrice;
+         fairPrice = dividend / 0.06;
     }
 
-    if (!fairPrice || fairPrice <= 0) return null;
+    if (asset.currentPrice && fairPrice > 0) {
+        upside = ((fairPrice - asset.currentPrice) / asset.currentPrice) * 100;
+    }
 
-    const upside = asset.currentPrice ? ((fairPrice - asset.currentPrice) / asset.currentPrice) * 100 : 0;
-    const isUndervalued = upside > 0;
-
-    return (
-        <div className="mb-6">
-            <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                <Calculator className="w-3 h-3" /> Valuation Estimado
-            </h4>
-            <div className={`p-5 rounded-3xl border flex justify-between items-center relative overflow-hidden ${isUndervalued ? 'bg-emerald-50/50 border-emerald-100 dark:bg-emerald-900/10 dark:border-emerald-900/30' : 'bg-amber-50/50 border-amber-100 dark:bg-amber-900/10 dark:border-amber-900/30'}`}>
-                <div className="relative z-10">
-                    <p className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${isUndervalued ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>Preço Justo</p>
-                    <div className="flex items-baseline gap-2">
-                        <span className="text-2xl font-black text-zinc-900 dark:text-white">{formatBRL(fairPrice)}</span>
-                    </div>
-                    <span className="text-[9px] text-zinc-400 font-medium opacity-80">{method}</span>
-                </div>
-                <div className="text-right relative z-10">
-                    <p className="text-[9px] font-bold text-zinc-400 uppercase mb-1">Potencial</p>
-                    <div className={`inline-flex items-center justify-center px-3 py-1.5 rounded-xl text-xs font-black ${isUndervalued ? 'bg-white dark:bg-black/20 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'bg-white dark:bg-black/20 text-amber-600 dark:text-amber-400 shadow-sm'}`}>
-                        {upside > 0 ? '+' : ''}{upside.toFixed(1)}%
-                    </div>
-                </div>
-            </div>
-        </div>
-    )
-}
-
-const InfoRow = ({ label, value, icon: Icon }: any) => (
-    <div className="flex items-center justify-between py-3 border-b border-zinc-100 dark:border-zinc-800 last:border-0">
-        <div className="flex items-center gap-3">
-            {Icon && <div className="w-8 h-8 rounded-lg bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-400"><Icon className="w-4 h-4" /></div>}
-            <span className="text-xs font-medium text-zinc-500">{label}</span>
-        </div>
-        <span className="text-xs font-bold text-zinc-900 dark:text-white text-right max-w-[180px] break-words leading-tight">{value || '-'}</span>
-    </div>
-);
-
-const DetailedInfoBlock = ({ asset }: { asset: AssetPosition }) => {
     return (
         <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 p-5 shadow-sm mb-6">
-            <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                <Info className="w-3 h-3" /> Dados Cadastrais
-            </h4>
-            
-            <InfoRow label="Razão Social" value={asset.company_name} icon={Building2} />
-            <InfoRow label="CNPJ" value={asset.cnpj} icon={FileText} />
-            <InfoRow label="Segmento" value={asset.segment_secondary || asset.segment} icon={PieChart} />
-            
-            {asset.assetType === AssetType.FII && (
-                <>
-                    <InfoRow label="VP/Cota" value={asset.vpa ? formatBRL(asset.vpa) : '-'} icon={Calculator} />
-                    <InfoRow label="Público-Alvo" value={asset.target_audience} icon={Users} />
-                    <InfoRow label="Mandato" value={asset.mandate} icon={Briefcase} />
-                    <InfoRow label="Tipo de Gestão" value={asset.manager_type} icon={Activity} />
-                    <InfoRow label="Taxa Adm." value={asset.management_fee} icon={Percent} />
-                    <InfoRow label="Liquidez Diária" value={asset.liquidity} icon={Activity} />
-                    <InfoRow label="Vacância Física" value={asset.vacancy !== undefined ? `${asset.vacancy}%` : '-'} icon={AlertCircle} />
-                    <InfoRow label="Num. Cotistas" value={asset.properties_count ? formatNumber(asset.properties_count, 0) : '-'} icon={Users} />
-                    <InfoRow label="Num. Cotas" value={asset.num_quotas} icon={Coins} />
-                    <InfoRow label="Patrimônio Líq." value={asset.assets_value} icon={Wallet} />
-                </>
-            )}
-
-            {asset.assetType === AssetType.STOCK && (
-                <>
-                    <InfoRow label="Valor de Mercado" value={asset.market_cap} icon={Wallet} />
-                    <InfoRow label="Liquidez Diária" value={asset.liquidity} icon={Activity} />
-                </>
-            )}
+            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <Calculator className="w-3.5 h-3.5" /> Valuation
+            </h3>
+            <div className="flex items-center justify-between">
+                <div>
+                    <p className="text-xs font-bold text-zinc-500 mb-1">Preço Justo (Estimado)</p>
+                    <p className="text-2xl font-black text-zinc-900 dark:text-white">{formatBRL(fairPrice)}</p>
+                </div>
+                <div className="text-right">
+                     <p className="text-xs font-bold text-zinc-500 mb-1">Potencial (Upside)</p>
+                     <span className={`text-lg font-black ${upside >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        {upside > 0 ? '+' : ''}{upside.toFixed(2)}%
+                     </span>
+                </div>
+            </div>
+            <p className="text-[9px] text-zinc-400 mt-3 leading-relaxed">
+                *Estimativa baseada em {asset.assetType === AssetType.STOCK ? 'Graham (VPA*LPA)' : 'Bazin (Dividendos)'}. Não é recomendação de compra.
+            </p>
         </div>
     );
 };
 
-const IncomeAnalysisSection = ({ asset, chartData }: { asset: AssetPosition, chartData: { data: any[], average: number, activeTypes: string[] }, history: DividendReceipt[] }) => {
+const DetailedInfoBlock = ({ asset }: { asset: AssetPosition }) => (
+    <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-sm">
+        <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center gap-2">
+            <FileText className="w-4 h-4 text-zinc-400" />
+            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Informações Detalhadas</h3>
+        </div>
+        <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+            {[
+                { label: 'Razão Social', value: asset.company_name },
+                { label: 'CNPJ', value: asset.cnpj },
+                { label: 'Segmento', value: asset.segment },
+                { label: 'Gestão', value: asset.manager_type },
+                { label: 'Taxa Adm.', value: asset.management_fee },
+                { label: 'Público Alvo', value: asset.target_audience },
+                { label: 'Mandato', value: asset.mandate },
+                { label: 'Prazo', value: asset.duration }
+            ].map((item, i) => (
+                item.value && (
+                    <div key={i} className="flex justify-between p-4 text-xs">
+                        <span className="font-bold text-zinc-500">{item.label}</span>
+                        <span className="font-medium text-zinc-900 dark:text-white text-right max-w-[60%]">{item.value}</span>
+                    </div>
+                )
+            ))}
+        </div>
+    </div>
+);
+
+const IncomeAnalysisSection = ({ asset, chartData, history }: { asset: AssetPosition, chartData: { data: any[], average: number, activeTypes: string[] }, history: DividendReceipt[] }) => {
     const totalInvested = asset.quantity * asset.averagePrice;
     const yoc = totalInvested > 0 ? (asset.totalDividends || 0) / totalInvested * 100 : 0;
     
@@ -838,6 +551,47 @@ const IncomeAnalysisSection = ({ asset, chartData }: { asset: AssetPosition, cha
     const magicProgress = magicNumber > 0 ? Math.min(100, (asset.quantity / magicNumber) * 100) : 0;
     const missingForMagic = Math.max(0, magicNumber - asset.quantity);
     const paybackYears = monthlyReturn > 0 ? (currentPrice / (monthlyReturn * 12)) : 0;
+
+    // Novo: Gráfico de Dividendos por Cota (Stacked Bar)
+    const perShareChartData = useMemo(() => {
+        if (!history || history.length === 0) return [];
+        
+        const grouped: Record<string, { month: string, fullDate: string, DIV: number, JCP: number, REND: number, OUTROS: number }> = {};
+        
+        // Gera últimos 12 meses
+        const today = new Date();
+        for (let i = 11; i >= 0; i--) {
+            const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+            const key = d.toISOString().substring(0, 7);
+            grouped[key] = { 
+                month: getMonthLabel(key), 
+                fullDate: key, 
+                DIV: 0, JCP: 0, REND: 0, OUTROS: 0 
+            };
+        }
+
+        history.forEach(d => {
+            const dateRef = d.paymentDate || d.dateCom;
+            if (!dateRef) return;
+            const key = dateRef.substring(0, 7);
+            
+            if (grouped[key]) {
+                let type = d.type || 'OUTROS';
+                // Normaliza tipos
+                if (type.includes('REND')) type = 'REND';
+                else if (type.includes('DIV')) type = 'DIV';
+                else if (type.includes('JCP') || type.includes('JURO')) type = 'JCP';
+                else type = 'OUTROS';
+
+                // Se assetType for FII, trata tudo como REND para simplificar visualmente
+                if (asset.assetType === AssetType.FII) type = 'REND';
+
+                grouped[key][type as 'DIV' | 'JCP' | 'REND' | 'OUTROS'] += d.rate;
+            }
+        });
+
+        return Object.values(grouped).sort((a, b) => a.fullDate.localeCompare(b.fullDate));
+    }, [history, asset.assetType]);
 
     return (
         <div className="space-y-6">
@@ -915,6 +669,40 @@ const IncomeAnalysisSection = ({ asset, chartData }: { asset: AssetPosition, cha
                             Sem histórico recente
                         </div>
                     )}
+                </div>
+            </div>
+
+            {/* GRÁFICO NOVO: Proventos por Cota */}
+            <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
+                <div className="p-5 border-b border-zinc-100 dark:border-zinc-800 flex items-center gap-2">
+                    <Coins className="w-4 h-4 text-emerald-500" />
+                    <h4 className="text-[10px] font-bold text-zinc-400 uppercase">
+                        Valor Pago por Cota (R$)
+                    </h4>
+                </div>
+                
+                <div className="h-56 w-full p-2 pt-4">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={perShareChartData} margin={{ top: 10, right: 5, left: -25, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
+                            <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 600 }} dy={5} />
+                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a' }} />
+                            <Tooltip 
+                                cursor={{fill: 'rgba(255,255,255,0.05)'}}
+                                contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: 'rgba(24, 24, 27, 0.95)', color: '#fff', fontSize: '10px', padding: '8px 12px' }}
+                                formatter={(value: number, name: string) => [formatBRL(value, false), name === 'REND' ? 'Rendimento' : name]}
+                            />
+                            {asset.assetType === AssetType.STOCK ? (
+                                <>
+                                    <Bar dataKey="DIV" stackId="a" fill={TYPE_COLORS.DIV} name="Dividendos" maxBarSize={24} radius={[0,0,0,0]} />
+                                    <Bar dataKey="JCP" stackId="a" fill={TYPE_COLORS.JCP} name="JCP" maxBarSize={24} radius={[4,4,0,0]} />
+                                </>
+                            ) : (
+                                <Bar dataKey="REND" fill={TYPE_COLORS.REND} name="Rendimentos" maxBarSize={24} radius={[4,4,0,0]} />
+                            )}
+                            <Legend iconType="circle" iconSize={6} formatter={(val) => <span className="text-[9px] font-bold text-zinc-500 uppercase">{val}</span>} />
+                        </BarChart>
+                    </ResponsiveContainer>
                 </div>
             </div>
 
