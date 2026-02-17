@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, Activity, BarChart3, PieChart, Coins, AlertCircle, ChevronDown, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, Scale, SquareStack, Calendar, Map as MapIcon, ChevronRight, Share2, MousePointerClick, CandlestickChart, LineChart as LineChartIcon, SlidersHorizontal, Layers, Award } from 'lucide-react';
+import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, Activity, BarChart3, PieChart, Coins, AlertCircle, ChevronDown, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, Scale, SquareStack, Calendar, Map as MapIcon, ChevronRight, Share2, MousePointerClick, CandlestickChart, LineChart as LineChartIcon, SlidersHorizontal, Layers, Award, HelpCircle } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, ReferenceLine, ComposedChart, CartesianGrid, Legend, AreaChart, Area, YAxis, PieChart as RePieChart, Pie, Cell, LineChart, Line, ErrorBar, Label } from 'recharts';
 import { formatBRL, formatPercent, formatNumber, formatDateShort } from '../utils/formatters';
@@ -26,7 +26,7 @@ const TYPE_LABELS: Record<string, string> = {
 
 const CHART_COLORS = ['#10b981', '#0ea5e9', '#f59e0b', '#f43f5e', '#8b5cf6', '#6366f1', '#ec4899', '#14b8a6', '#d946ef', '#84cc16'];
 
-// --- SUB-COMPONENTS ---
+// --- SUB-COMPONENTS & HELPERS (CHART SPECIFIC) ---
 
 const MetricCard = ({ label, value, highlight = false, colorClass = "text-zinc-900 dark:text-white", subtext }: any) => (
     <div className={`p-3 rounded-2xl border flex flex-col justify-center min-h-[72px] transition-all ${highlight ? 'bg-indigo-50/50 dark:bg-indigo-500/10 border-indigo-100 dark:border-indigo-500/20' : 'bg-white dark:bg-zinc-800/40 border-zinc-100 dark:border-zinc-700/50'}`}>
@@ -36,6 +36,68 @@ const MetricCard = ({ label, value, highlight = false, colorClass = "text-zinc-9
     </div>
 );
 
+/**
+ * Helper Matemático: Calcula Média Móvel Simples (SMA)
+ * @param arr Array de dados históricos
+ * @param period Número de dias (ex: 20 ou 50)
+ * @param idx Índice atual no loop
+ */
+const calculateSMA = (arr: any[], period: number, idx: number) => {
+    if (idx < period - 1) return null;
+    let sum = 0;
+    for (let i = 0; i < period; i++) {
+        sum += arr[idx - i].close || arr[idx - i].price;
+    }
+    return sum / period;
+};
+
+/**
+ * Processador de Dados do Gráfico
+ * Prepara o array final injetando médias móveis e cores de volume.
+ */
+const processChartData = (data: any[]) => {
+    if (!data || data.length === 0) return { processedData: [], yDomain: ['auto', 'auto'], variation: 0, lastPrice: 0 };
+
+    let minPrice = Infinity;
+    let maxPrice = -Infinity;
+
+    const processed = data.map((d: any, index: number, arr: any[]) => {
+        const low = d.low || d.price;
+        const high = d.high || d.price;
+        const close = d.close || d.price;
+        const open = d.open || d.price;
+        
+        if (low < minPrice) minPrice = low;
+        if (high > maxPrice) maxPrice = high;
+        
+        // Volume Color: Green if Close >= Open, else Red
+        const isUp = close >= open;
+        
+        return {
+            ...d,
+            candleRange: [low, high], // [Min, Max] para o CustomShape desenhar a vela inteira
+            sma20: calculateSMA(arr, 20, index),
+            sma50: calculateSMA(arr, 50, index),
+            volColor: isUp ? '#10b981' : '#f43f5e'
+        };
+    });
+
+    // Margem de 2% para não colar o gráfico no topo/fundo
+    const padding = (maxPrice - minPrice) * 0.02; 
+    
+    // Cálculo de variação simples
+    const first = data[0].close || data[0].price;
+    const last = data[data.length - 1].close || data[data.length - 1].price;
+    const variation = ((last - first) / first) * 100;
+
+    return { 
+        processedData: processed, 
+        yDomain: [minPrice - padding, maxPrice + padding],
+        variation,
+        lastPrice: last
+    };
+};
+
 // Custom Candle Shape Profissional
 const CustomCandleShape = (props: any) => {
     const { x, y, width, height, payload } = props;
@@ -44,8 +106,8 @@ const CustomCandleShape = (props: any) => {
     if (open == null || close == null || high == null || low == null) return null;
 
     const isUp = close >= open;
-    const color = isUp ? '#10b981' : '#f43f5e'; // Emerald / Rose
-    const wickColor = isUp ? '#10b981' : '#f43f5e'; // Mesma cor do corpo para consistência
+    const color = isUp ? '#10b981' : '#f43f5e'; 
+    const wickColor = isUp ? '#10b981' : '#f43f5e';
 
     const pixelHigh = y;
     const pixelLow = y + height;
@@ -57,8 +119,7 @@ const CustomCandleShape = (props: any) => {
     const pixelOpen = pixelHigh + ((high - open) / priceRange) * pixelRange;
     const pixelClose = pixelHigh + ((high - close) / priceRange) * pixelRange;
 
-    // Estética da Vela
-    const candleWidth = Math.min(Math.max(width * 0.5, 3), 7); // Largura: min 3px, max 7px
+    const candleWidth = Math.min(Math.max(width * 0.5, 3), 7);
     const xCentered = x + (width - candleWidth) / 2;
     const wickX = x + width / 2;
 
@@ -67,51 +128,19 @@ const CustomCandleShape = (props: any) => {
 
     return (
         <g>
-            {/* Pavio (Wick) */}
-            <line 
-                x1={wickX} 
-                y1={pixelHigh} 
-                x2={wickX} 
-                y2={pixelLow} 
-                stroke={wickColor} 
-                strokeWidth={1} 
-            />
-            {/* Corpo (Body) */}
-            <rect 
-                x={xCentered} 
-                y={bodyTop} 
-                width={candleWidth} 
-                height={bodyHeight} 
-                fill={color}
-                rx={0} 
-            />
+            <line x1={wickX} y1={pixelHigh} x2={wickX} y2={pixelLow} stroke={wickColor} strokeWidth={1} />
+            <rect x={xCentered} y={bodyTop} width={candleWidth} height={bodyHeight} fill={color} rx={0} />
         </g>
     );
 };
 
 // Tag de Preço no Eixo Y
-const CurrentPriceLabel = (props: any) => {
-    const { viewBox, value } = props;
+const CurrentPriceLabel = ({ viewBox, value }: any) => {
     const { y } = viewBox;
-    
     return (
         <g transform={`translate(${viewBox.width + 2}, ${y})`}>
-            {/* Fundo da Tag */}
-            <path 
-                d="M0,0 L5,-10 H42 A4,4 0 0 1 46,-6 V6 A4,4 0 0 1 42,10 H5 L0,0 Z" 
-                fill="#6366f1" 
-                transform="translate(0, 0)" 
-            />
-            {/* Texto do Preço */}
-            <text 
-                x={24} 
-                y={3} 
-                textAnchor="middle" 
-                fill="#fff" 
-                fontSize={9} 
-                fontWeight="bold"
-                fontFamily="Inter, sans-serif"
-            >
+            <path d="M0,0 L5,-10 H42 A4,4 0 0 1 46,-6 V6 A4,4 0 0 1 42,10 H5 L0,0 Z" fill="#6366f1" />
+            <text x={24} y={3} textAnchor="middle" fill="#fff" fontSize={9} fontWeight="bold" fontFamily="Inter, sans-serif">
                 {value.toFixed(2)}
             </text>
         </g>
@@ -123,62 +152,12 @@ const PriceHistoryChart = ({ data, loading, error, ticker, range, setRange }: an
     const [chartType, setChartType] = useState<'AREA' | 'CANDLE'>('AREA');
     const [indicators, setIndicators] = useState({ sma20: false, sma50: false, volume: true });
 
-    // Calcula variação simples para cor do gráfico
-    const variation = useMemo(() => {
-        if (!data || data.length < 2) return 0;
-        const first = data[0].close || data[0].price;
-        const last = data[data.length - 1].close || data[data.length - 1].price;
-        return ((last - first) / first) * 100;
-    }, [data]);
+    // Usa o helper processChartData para limpar o componente
+    const { processedData, yDomain, variation, lastPrice } = useMemo(() => 
+        processChartData(data), 
+    [data]);
 
-    const lastPrice = useMemo(() => data && data.length > 0 ? (data[data.length - 1].close || data[data.length - 1].price) : 0, [data]);
     const isPositive = variation >= 0;
-
-    // Processamento de Dados (SMA + Formatação)
-    const { processedData, yDomain } = useMemo(() => {
-        if (!data || data.length === 0) return { processedData: [], yDomain: ['auto', 'auto'] };
-        
-        let minPrice = Infinity;
-        let maxPrice = -Infinity;
-
-        // Função auxiliar de SMA
-        const calculateSMA = (arr: any[], period: number, idx: number) => {
-            if (idx < period - 1) return null;
-            let sum = 0;
-            for (let i = 0; i < period; i++) {
-                sum += arr[idx - i].close || arr[idx - i].price;
-            }
-            return sum / period;
-        };
-
-        const processed = data.map((d: any, index: number, arr: any[]) => {
-            const low = d.low || d.price;
-            const high = d.high || d.price;
-            const close = d.close || d.price;
-            const open = d.open || d.price;
-            
-            if (low < minPrice) minPrice = low;
-            if (high > maxPrice) maxPrice = high;
-            
-            // Volume Color: Green if Close >= Open, else Red
-            const isUp = close >= open;
-            
-            return {
-                ...d,
-                candleRange: [low, high], // [Min, Max] para o CustomShape desenhar a vela inteira
-                sma20: calculateSMA(arr, 20, index),
-                sma50: calculateSMA(arr, 50, index),
-                volColor: isUp ? '#10b981' : '#f43f5e'
-            };
-        });
-
-        // Margem reduzida para 2% para aproveitar melhor a altura
-        const padding = (maxPrice - minPrice) * 0.02; 
-        return { 
-            processedData: processed, 
-            yDomain: [minPrice - padding, maxPrice + padding] 
-        };
-    }, [data]);
 
     const toggleIndicator = (key: keyof typeof indicators) => {
         setIndicators(prev => ({ ...prev, [key]: !prev[key] }));
@@ -204,11 +183,22 @@ const PriceHistoryChart = ({ data, loading, error, ticker, range, setRange }: an
                                 <CandlestickChart className="w-3.5 h-3.5" />
                             </button>
                         </div>
+                        
                         <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-700 mx-1"></div>
-                        <div className="flex gap-1">
+                        
+                        <div className="flex gap-1 items-center">
                             <button onClick={() => toggleIndicator('sma20')} className={`px-2 py-1 rounded-md text-[9px] font-bold border transition-colors ${indicators.sma20 ? 'bg-amber-50 border-amber-200 text-amber-600 dark:bg-amber-900/20 dark:border-amber-900/50 dark:text-amber-400' : 'border-transparent text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}>MA20</button>
                             <button onClick={() => toggleIndicator('sma50')} className={`px-2 py-1 rounded-md text-[9px] font-bold border transition-colors ${indicators.sma50 ? 'bg-violet-50 border-violet-200 text-violet-600 dark:bg-violet-900/20 dark:border-violet-900/50 dark:text-violet-400' : 'border-transparent text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}>MA50</button>
-                            <button onClick={() => toggleIndicator('volume')} className={`px-2 py-1 rounded-md text-[9px] font-bold border transition-colors ${indicators.volume ? 'bg-zinc-100 border-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-300' : 'border-transparent text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}>VOL</button>
+                            <InfoTooltip 
+                                title="Médias Móveis (MA)" 
+                                text={
+                                    <div className="text-left space-y-2">
+                                        <p><strong>MA20 (Curto Prazo):</strong> Média dos últimos 20 dias. Indica a tendência rápida e suportes imediatos.</p>
+                                        <p><strong>MA50 (Médio Prazo):</strong> Média dos últimos 50 dias. Indica a saúde geral da tendência.</p>
+                                        <p className="text-xs opacity-70 italic">O cruzamento dessas linhas pode indicar reversão de tendência.</p>
+                                    </div>
+                                } 
+                            />
                         </div>
                     </div>
                     
