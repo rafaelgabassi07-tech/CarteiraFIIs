@@ -71,14 +71,23 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
 
     return {
         // Indicadores Gerais
+        company_name: getVal('company_name', 'razao_social'),
+        cnpj: getVal('cnpj'),
         p_vp: parseNumberSafe(getVal('pvp', 'p_vp', 'vp')),
         dy_12m: parseNumberSafe(getVal('dy_12m', 'dy', 'dividend_yield', 'dividendyield')), 
         p_l: parseNumberSafe(getVal('pl', 'p_l')),
         roe: parseNumberSafe(getVal('roe')),
         
         // Rentabilidade Scraper
-        profitability_12m: parseNumberSafe(getVal('rentabilidade_12m', 'rentabilidade12m')),
-        profitability_month: parseNumberSafe(getVal('rentabilidade_mes', 'rentabilidademes')),
+        profitability_month: parseNumberSafe(getVal('profitability_month')),
+        profitability_real_month: parseNumberSafe(getVal('profitability_real_month')),
+        profitability_3m: parseNumberSafe(getVal('profitability_3m')),
+        profitability_real_3m: parseNumberSafe(getVal('profitability_real_3m')),
+        profitability_12m: parseNumberSafe(getVal('profitability_12m', 'rentabilidade_12m')),
+        profitability_real_12m: parseNumberSafe(getVal('profitability_real_12m')),
+        profitability_2y: parseNumberSafe(getVal('profitability_2y')),
+        profitability_real_2y: parseNumberSafe(getVal('profitability_real_2y')),
+        
         benchmark_cdi_12m: parseNumberSafe(getVal('benchmark_cdi_12m')),
         benchmark_ifix_12m: parseNumberSafe(getVal('benchmark_ifix_12m')),
         benchmark_ibov_12m: parseNumberSafe(getVal('benchmark_ibov_12m')),
@@ -88,13 +97,20 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         market_cap: getVal('val_mercado', 'valor_mercado', 'market_cap') || undefined, 
         
         // FII Específicos
+        target_audience: getVal('target_audience'),
+        mandate: getVal('mandate'),
+        segment_secondary: getVal('segment_secondary', 'segmento'),
+        fund_type: getVal('fund_type'),
+        duration: getVal('duration'),
+        num_quotas: getVal('num_quotas'),
+        
         assets_value: getVal('patrimonio_liquido', 'patrimonio', 'assets_value') || undefined, 
         manager_type: getVal('tipo_gestao', 'gestao', 'manager_type') || undefined,
         management_fee: getVal('taxa_adm', 'taxa_administracao', 'management_fee') || undefined,
         vacancy: parseNumberSafe(getVal('vacancia', 'vacancia_fisica')),
         last_dividend: parseNumberSafe(getVal('ultimo_rendimento')),
         properties_count: parseNumberSafe(getVal('num_cotistas', 'cotistas')),
-        properties: m.properties || [], // Mapeia lista de imóveis se existir
+        properties: m.properties || [], 
         
         // Ações (Stocks)
         net_margin: parseNumberSafe(getVal('margem_liquida', 'margemliquida')),
