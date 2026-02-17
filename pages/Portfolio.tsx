@@ -3,7 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
 import { Search, Wallet, TrendingUp, TrendingDown, RefreshCw, X, Calculator, Scale, Activity, BarChart3, PieChart, Coins, Target, AlertCircle, ChevronDown, ChevronUp, ExternalLink, ArrowRight, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, BarChart4, Trophy, Hourglass, Goal, CalendarCheck, Filter } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine, Cell, ComposedChart, Line, CartesianGrid, AreaChart, Area } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine, Cell, CartesianGrid } from 'recharts';
 
 // --- FORMATTERS ---
 
@@ -164,11 +164,10 @@ const IncomeAnalysisSection = ({ asset, history }: { asset: AssetPosition, histo
 
     // --- CÁLCULO DINÂMICO DO GRÁFICO ---
     const chartData = useMemo(() => {
+        // Se histórico estiver vazio, retorna vazio
         if (!history || history.length === 0) return { data: [], average: 0 };
 
-        const now = new Date();
         let months = 12;
-        
         switch(timeRange) {
             case '6M': months = 6; break;
             case '1Y': months = 12; break;
@@ -176,12 +175,15 @@ const IncomeAnalysisSection = ({ asset, history }: { asset: AssetPosition, histo
             case '5Y': months = 60; break;
         }
 
+        // Gera buckets baseados na data local para evitar problemas de fuso
         const buckets: Record<string, number> = {};
+        const now = new Date();
         
-        // Inicializa buckets para o período selecionado
         for (let i = months - 1; i >= 0; i--) {
             const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-            const key = d.toISOString().substring(0, 7); // YYYY-MM
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const key = `${y}-${m}`;
             buckets[key] = 0;
         }
 
@@ -189,8 +191,11 @@ const IncomeAnalysisSection = ({ asset, history }: { asset: AssetPosition, histo
         
         history.forEach(d => {
             const dateStr = d.paymentDate || d.dateCom;
-            if (!dateStr) return;
+            if (!dateStr || dateStr.length < 7) return;
+            
+            // Pega YYYY-MM direto da string para ser seguro
             const key = dateStr.substring(0, 7);
+            
             if (buckets[key] !== undefined) {
                 buckets[key] += d.totalReceived;
                 totalInRange += d.totalReceived;
@@ -516,10 +521,11 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
     };
 
     // Recalcula histórico total para o ativo selecionado (passado direto para o componente filho)
+    // CORREÇÃO: Normalização do ticker para garantir match
     const assetHistory = useMemo(() => {
         if (!selectedAsset) return [];
         return dividends
-            .filter(d => d.ticker === selectedAsset.ticker)
+            .filter(d => d.ticker && d.ticker.toUpperCase().trim() === selectedAsset.ticker.toUpperCase().trim())
             .sort((a, b) => (b.paymentDate || b.dateCom).localeCompare(a.paymentDate || a.dateCom));
     }, [selectedAsset, dividends]);
 
