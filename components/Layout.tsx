@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, Bell, Download, Trash2, Cloud, CloudOff, Loader2, AlertTriangle, Gift, Star, Inbox, RefreshCw, Smartphone, X, Check, Mail, Server, WifiOff, FileText, CheckCircle, Percent, TrendingUp, DollarSign, Activity, Newspaper, CloudLightning, Wifi, CircleHelp } from 'lucide-react';
@@ -185,24 +184,24 @@ const navItems = [
 export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange, isVisible = true }) => {
   return (
     <div 
-        className="fixed bottom-6 left-0 right-0 z-[90] flex justify-center pointer-events-none transition-transform duration-500 cubic-bezier(0.16, 1, 0.3, 1)"
+        className="fixed bottom-8 left-0 right-0 z-[90] flex justify-center pointer-events-none transition-transform duration-500 cubic-bezier(0.16, 1, 0.3, 1)"
         style={{ transform: isVisible ? 'translateY(0)' : 'translateY(200%)' }}
     >
-      <nav className="pointer-events-auto bg-zinc-900/85 dark:bg-zinc-800/85 backdrop-blur-xl border border-white/10 rounded-full px-2 py-2 flex items-center gap-1 shadow-2xl shadow-black/30 ring-1 ring-black/5">
+      <nav className="pointer-events-auto bg-zinc-900/90 dark:bg-zinc-800/90 backdrop-blur-xl border border-white/10 rounded-full px-5 py-3 flex items-center gap-4 shadow-2xl shadow-black/40 ring-1 ring-black/5">
           {navItems.map((item) => {
             const isActive = currentTab === item.id;
             return (
               <button
                 key={item.id}
                 onClick={() => onTabChange(item.id)}
-                className={`relative flex items-center justify-center w-12 h-12 rounded-full transition-all duration-300 ${isActive ? 'bg-white/20 text-white shadow-inner' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}
+                className={`relative flex items-center justify-center w-14 h-14 rounded-2xl transition-all duration-300 group ${isActive ? 'bg-white/15 text-white shadow-inner' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}
               >
                 <item.icon 
-                    className={`w-5 h-5 transition-all duration-300 ${isActive ? 'scale-110' : 'scale-100'}`} 
+                    className={`w-7 h-7 transition-all duration-300 ${isActive ? 'scale-110' : 'scale-100 group-active:scale-90'}`} 
                     strokeWidth={isActive ? 2.5 : 2}
                 />
                 {isActive && (
-                  <span className="absolute -bottom-1 w-1 h-1 bg-white rounded-full anim-scale-in"></span>
+                  <span className="absolute -bottom-1.5 w-1.5 h-1.5 bg-white rounded-full anim-scale-in shadow-glow"></span>
                 )}
               </button>
             );

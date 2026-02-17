@@ -86,126 +86,190 @@ const StoriesBar = ({ insights, onSelectStory }: { insights: PortfolioInsight[],
     );
 };
 
-// --- STORY VIEWER (Modal Imersivo) ---
-const StoryModal = ({ story, onClose, onViewAsset }: { story: PortfolioInsight | null, onClose: () => void, onViewAsset: (ticker: string) => void }) => {
+// --- STORY VIEWER (Tela Cheia & Navegação Lateral) ---
+const StoryViewer = ({ 
+    isOpen, 
+    stories, 
+    initialStoryId, 
+    onClose, 
+    onViewAsset 
+}: { 
+    isOpen: boolean, 
+    stories: PortfolioInsight[], 
+    initialStoryId: string | null, 
+    onClose: () => void, 
+    onViewAsset: (ticker: string) => void 
+}) => {
+    const [currentIndex, setCurrentIndex] = useState(0);
     const [progress, setProgress] = useState(0);
     const [isPaused, setIsPaused] = useState(false);
 
-    // Timer do Story
+    // Reset/Init quando abre ou muda o story inicial
     useEffect(() => {
-        if (!story) {
-            setProgress(0);
-            return;
+        if (isOpen && initialStoryId) {
+            const idx = stories.findIndex(s => s.id === initialStoryId);
+            if (idx >= 0) {
+                setCurrentIndex(idx);
+                setProgress(0);
+            }
         }
+    }, [isOpen, initialStoryId]); // Mantém dependências estáveis para evitar reset indesejado
 
-        const duration = 8000; // 8 segundos por story
-        const intervalTime = 50;
-        const step = (intervalTime / duration) * 100;
+    // Timer logic
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const STORY_DURATION = 6000; // 6 segundos por story
+        const INTERVAL = 50; // Atualiza a cada 50ms
+        const increment = (INTERVAL / STORY_DURATION) * 100;
 
         const timer = setInterval(() => {
             if (!isPaused) {
                 setProgress(prev => {
-                    if (prev >= 100) {
-                        clearInterval(timer);
-                        onClose();
-                        return 100;
+                    const next = prev + increment;
+                    if (next >= 100) {
+                        handleNext();
+                        return 0;
                     }
-                    return prev + step;
+                    return next;
                 });
             }
-        }, intervalTime);
+        }, INTERVAL);
 
         return () => clearInterval(timer);
-    }, [story, isPaused, onClose]);
+    }, [isOpen, isPaused, currentIndex, stories.length]); 
 
+    const handleNext = () => {
+        if (currentIndex < stories.length - 1) {
+            setCurrentIndex(prev => prev + 1);
+            setProgress(0);
+        } else {
+            onClose();
+        }
+    };
+
+    const handlePrev = () => {
+        if (currentIndex > 0) {
+            setCurrentIndex(prev => prev - 1);
+            setProgress(0);
+        } else {
+            // Reinicia o story atual se for o primeiro
+            setProgress(0);
+        }
+    };
+
+    const handleTap = (e: React.MouseEvent) => {
+        // Detecta clique na esquerda ou direita da tela
+        const width = window.innerWidth;
+        const x = e.clientX;
+        
+        // 35% da esquerda para voltar, o resto avança
+        if (x < width * 0.35) {
+            handlePrev();
+        } else {
+            handleNext();
+        }
+    };
+
+    if (!isOpen) return null;
+    const story = stories[currentIndex];
     if (!story) return null;
 
     const gradient = getStoryGradient(story.type);
 
     return (
-        <SwipeableModal isOpen={!!story} onClose={onClose}>
+        <div className="fixed inset-0 z-[9999] bg-black flex flex-col animate-in fade-in duration-200">
+            {/* Camadas de Fundo */}
+            <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-20`}></div>
+            <div className="absolute inset-0 backdrop-blur-3xl"></div>
+            
+            {/* Camada de Navegação (Invisível) */}
             <div 
-                className="h-full flex flex-col relative overflow-hidden bg-zinc-900 text-white"
-                onTouchStart={() => setIsPaused(true)}
-                onTouchEnd={() => setIsPaused(false)}
+                className="absolute inset-0 z-10"
+                onClick={handleTap}
                 onMouseDown={() => setIsPaused(true)}
                 onMouseUp={() => setIsPaused(false)}
-            >
-                {/* Background Blur Effect */}
-                <div className={`absolute top-[-20%] right-[-20%] w-[100%] h-[60%] bg-gradient-to-b ${gradient} blur-[120px] opacity-40 pointer-events-none`}></div>
+                onTouchStart={() => setIsPaused(true)}
+                onTouchEnd={() => setIsPaused(false)}
+            ></div>
 
-                {/* Progress Bar (Topo) */}
-                <div className="absolute top-4 left-4 right-4 flex gap-1 z-50">
-                    <div className="h-1 flex-1 bg-white/20 rounded-full overflow-hidden">
-                        <div 
-                            className="h-full bg-white transition-all duration-100 ease-linear" 
-                            style={{ width: `${progress}%` }}
-                        ></div>
-                    </div>
+            {/* Camada de UI (Acima da navegação) */}
+            <div className="relative z-20 flex flex-col h-full pointer-events-none">
+                
+                {/* Barras de Progresso */}
+                <div className="flex gap-1.5 px-3 pt-safe top-2 mt-2">
+                    {stories.map((s, idx) => (
+                        <div key={s.id} className="h-1 flex-1 bg-white/20 rounded-full overflow-hidden">
+                            <div 
+                                className="h-full bg-white transition-all duration-100 ease-linear" 
+                                style={{ width: idx < currentIndex ? '100%' : idx === currentIndex ? `${progress}%` : '0%' }}
+                            ></div>
+                        </div>
+                    ))}
                 </div>
 
-                {/* Header (Botão Fechar e Título) */}
-                <div className="relative z-40 px-6 pt-10 pb-4 flex justify-between items-center">
+                {/* Header */}
+                <div className="px-4 py-6 flex justify-between items-center mt-2 pointer-events-auto">
                     <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center bg-gradient-to-br ${gradient} shadow-lg`}>
+                        <div className={`w-9 h-9 rounded-full flex items-center justify-center bg-gradient-to-br ${gradient} shadow-lg ring-2 ring-black/20`}>
                             {getStoryIcon(story.type)}
                         </div>
                         <div>
-                            <p className="text-xs font-bold opacity-90">{story.relatedTicker || 'Insight'}</p>
-                            <p className="text-[10px] opacity-60">InvestFIIs AI</p>
+                            <p className="text-sm font-bold text-white drop-shadow-md">{story.relatedTicker || 'Insight'}</p>
+                            <p className="text-[10px] text-white/70 font-medium">InvestFIIs AI • {currentIndex + 1}/{stories.length}</p>
                         </div>
                     </div>
                     <button 
                         onClick={(e) => { e.stopPropagation(); onClose(); }}
-                        className="w-8 h-8 flex items-center justify-center rounded-full bg-black/20 backdrop-blur-md"
+                        className="w-9 h-9 flex items-center justify-center rounded-full bg-black/20 backdrop-blur-md border border-white/10 active:scale-95 transition-transform"
                     >
                         <X className="w-5 h-5 text-white" />
                     </button>
                 </div>
 
-                {/* Conteúdo Central */}
-                <div className="flex-1 flex flex-col justify-center px-8 relative z-30">
-                    <h1 className="text-3xl font-black leading-tight mb-6 drop-shadow-md">
+                {/* Conteúdo Principal */}
+                <div className="flex-1 flex flex-col justify-center px-8 pb-20">
+                    <h1 className="text-3xl font-black text-white leading-tight mb-6 drop-shadow-lg tracking-tight">
                         {story.title}
                     </h1>
                     
-                    <div className="bg-white/10 backdrop-blur-xl border border-white/10 p-6 rounded-3xl shadow-2xl mb-8">
-                        <p className="text-lg font-medium leading-relaxed opacity-90">
+                    <div className="bg-white/10 backdrop-blur-xl border border-white/10 p-6 rounded-[2rem] shadow-2xl mb-8 relative overflow-hidden">
+                        <div className={`absolute top-0 left-0 w-1 h-full bg-gradient-to-b ${gradient}`}></div>
+                        <p className="text-lg font-medium text-white/95 leading-relaxed">
                             {story.message}
                         </p>
                     </div>
 
-                    {/* Dica Extra */}
-                    <div className="flex gap-3 items-start opacity-70">
-                        <Info className="w-5 h-5 shrink-0 mt-0.5" />
-                        <p className="text-xs leading-relaxed">
-                            {story.type === 'opportunity' ? "Analistas indicam que este é um bom momento para revisão de posição." : 
-                             story.type === 'warning' ? "Fique atento a fundamentos que possam ter se deteriorado." :
-                             "Mantenha sua estratégia de longo prazo e evite ruídos de curto prazo."}
+                    <div className="flex gap-3 items-center opacity-80 bg-black/20 self-start px-3 py-1.5 rounded-full backdrop-blur-md border border-white/5">
+                        <Info className="w-4 h-4 text-white" />
+                        <p className="text-xs text-white font-medium">
+                            {story.type === 'opportunity' ? "Analistas indicam revisão." : 
+                             story.type === 'warning' ? "Atenção aos fundamentos." :
+                             "Mantenha foco no longo prazo."}
                         </p>
                     </div>
                 </div>
 
                 {/* Footer Action */}
-                <div className="p-6 pb-12 relative z-40 bg-gradient-to-t from-black/80 to-transparent">
+                <div className="p-6 pb-12 pointer-events-auto">
                     {story.relatedTicker ? (
                         <button 
                             onClick={(e) => { e.stopPropagation(); onClose(); onViewAsset(story.relatedTicker!); }}
-                            className="w-full py-4 bg-white text-black rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                            className="w-full py-4 bg-white text-black rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-transform hover:bg-zinc-100"
                         >
                             Ver {story.relatedTicker} <ArrowUpRight className="w-4 h-4" />
                         </button>
                     ) : (
                         <button 
                             onClick={(e) => { e.stopPropagation(); onClose(); }}
-                            className="w-full py-4 bg-white/10 border border-white/20 text-white rounded-2xl font-bold text-sm uppercase tracking-widest backdrop-blur-md active:scale-95 transition-transform"
+                            className="w-full py-4 bg-white/10 border border-white/20 text-white rounded-2xl font-bold text-sm uppercase tracking-widest backdrop-blur-md active:scale-95 transition-transform hover:bg-white/20"
                         >
                             Fechar Story
                         </button>
                     )}
                 </div>
             </div>
-        </SwipeableModal>
+        </div>
     );
 };
 
@@ -276,7 +340,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [allocationView, setAllocationView] = useState<'CLASS' | 'ASSET'>('CLASS');
   const [showMagicNumber, setShowMagicNumber] = useState(false);
   const [showGoals, setShowGoals] = useState(false);
-  const [selectedStory, setSelectedStory] = useState<PortfolioInsight | null>(null);
+  const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
 
   // --- CALCULATIONS ---
   
@@ -493,7 +557,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     <div className="space-y-5 pb-8">
         
         {/* STORIES / INSIGHTS (NOVO DESIGN) */}
-        <StoriesBar insights={insights} onSelectStory={setSelectedStory} />
+        <StoriesBar insights={insights} onSelectStory={(s) => setSelectedStoryId(s.id)} />
 
         {/* HERO CARD (Redesenhado) */}
         <div className="relative w-full min-h-[240px] rounded-[2.2rem] bg-zinc-950 border border-zinc-800/80 overflow-hidden shadow-2xl group anim-fade-in">
@@ -614,10 +678,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
         {/* MODALS */}
         
-        <StoryModal 
-            story={selectedStory} 
-            onClose={() => setSelectedStory(null)} 
-            onViewAsset={(t) => { setSelectedStory(null); if(onViewAsset) onViewAsset(t); }} 
+        <StoryViewer 
+            isOpen={!!selectedStoryId}
+            stories={insights}
+            initialStoryId={selectedStoryId} 
+            onClose={() => setSelectedStoryId(null)} 
+            onViewAsset={(t) => { setSelectedStoryId(null); if(onViewAsset) onViewAsset(t); }} 
         />
         
         {/* 1. AGENDA */}

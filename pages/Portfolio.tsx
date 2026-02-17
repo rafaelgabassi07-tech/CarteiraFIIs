@@ -1,10 +1,11 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
 import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, Activity, BarChart3, PieChart, Coins, AlertCircle, ChevronDown, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, Scale, SquareStack, Calendar, Map as MapIcon, ChevronRight, Share2, MousePointerClick, CandlestickChart, LineChart as LineChartIcon, SlidersHorizontal, Layers, Award, HelpCircle, Edit3, RefreshCw, Banknote, RefreshCcw } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { BrazilMap } from '../components/BrazilMap';
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, ReferenceLine, ComposedChart, CartesianGrid, Legend, AreaChart, Area, YAxis, PieChart as RePieChart, Pie, Cell, LineChart, Line, ErrorBar, Label } from 'recharts';
-import { formatBRL, formatPercent, formatNumber, formatDateShort } from '../utils/formatters';
+import { formatBRL, formatPercent, formatNumber, formatDateShort, getMonthName } from '../utils/formatters';
 
 // --- CONSTANTS ---
 const TYPE_COLORS: Record<string, string> = {
@@ -28,6 +29,11 @@ const TYPE_LABELS: Record<string, string> = {
 const CHART_COLORS = ['#10b981', '#0ea5e9', '#f59e0b', '#f43f5e', '#8b5cf6', '#6366f1', '#ec4899', '#14b8a6', '#d946ef', '#84cc16'];
 
 // --- SUB-COMPONENTS & HELPERS ---
+
+const getMonthLabel = (dateStr: string) => {
+    // dateStr format: YYYY-MM
+    return getMonthName(dateStr + '-01').substring(0, 3).toUpperCase();
+};
 
 const MetricCard = ({ label, value, highlight = false, colorClass = "text-zinc-900 dark:text-white", subtext }: any) => (
     <div className={`p-3 rounded-2xl border flex flex-col justify-center min-h-[72px] transition-all ${highlight ? 'bg-indigo-50/50 dark:bg-indigo-500/10 border-indigo-100 dark:border-indigo-500/20' : 'bg-white dark:bg-zinc-800/40 border-zinc-100 dark:border-zinc-700/50'}`}>
@@ -811,6 +817,46 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: { asset: Ass
     );
 };
 
+const PortfolioSummary = ({ assets, privacyMode }: { assets: AssetPosition[], privacyMode: boolean }) => {
+    const totalInvested = assets.reduce((acc, a) => acc + (a.averagePrice * a.quantity), 0);
+    const totalBalance = assets.reduce((acc, a) => acc + ((a.currentPrice || 0) * a.quantity), 0);
+    const gain = totalBalance - totalInvested;
+    const gainPct = totalInvested > 0 ? (gain / totalInvested) * 100 : 0;
+
+    return (
+        <div className="mb-6 mx-1">
+            <div className="bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-[2rem] p-6 shadow-xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 dark:bg-black/5 rounded-full -mr-8 -mt-8 pointer-events-none"></div>
+                
+                <div className="relative z-10">
+                    <div className="flex justify-between items-start mb-6">
+                        <div>
+                            <span className="text-[10px] font-bold opacity-60 uppercase tracking-widest">Patrimônio Filtrado</span>
+                            <h2 className="text-3xl font-black tracking-tight mt-1">{formatBRL(totalBalance, privacyMode)}</h2>
+                        </div>
+                        <div className={`px-2.5 py-1.5 rounded-xl text-xs font-black backdrop-blur-sm bg-white/10 dark:bg-black/5`}>
+                            {gain >= 0 ? '+' : ''}{gainPct.toFixed(2)}%
+                        </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4 border-t border-white/10 dark:border-black/10 pt-4">
+                        <div>
+                            <span className="text-[9px] font-bold opacity-60 uppercase tracking-widest block mb-0.5">Custo</span>
+                            <span className="text-sm font-bold">{formatBRL(totalInvested, privacyMode)}</span>
+                        </div>
+                        <div className="text-right">
+                            <span className="text-[9px] font-bold opacity-60 uppercase tracking-widest block mb-0.5">Resultado</span>
+                            <span className={`text-sm font-bold ${gain >= 0 ? 'text-emerald-300 dark:text-emerald-600' : 'text-rose-300 dark:text-rose-600'}`}>
+                                {gain >= 0 ? '+' : ''}{formatBRL(gain, privacyMode)}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const AssetListItem: React.FC<any> = ({ asset, onOpenDetails, privacyMode, isExpanded, onToggle }) => {
     const isPositive = (asset.dailyChange || 0) >= 0;
     const totalVal = asset.quantity * (asset.currentPrice || 0);
@@ -819,15 +865,15 @@ const AssetListItem: React.FC<any> = ({ asset, onOpenDetails, privacyMode, isExp
     const isProfit = profitPercent >= 0;
 
     return (
-        <div className={`mb-3 rounded-3xl border transition-all duration-300 overflow-hidden bg-white dark:bg-zinc-900 ${isExpanded ? 'border-indigo-200 dark:border-indigo-500/30 shadow-md ring-1 ring-indigo-500/10' : 'border-zinc-100 dark:border-zinc-800 shadow-[0_2px_8px_rgba(0,0,0,0.02)]'}`}>
+        <div className={`mb-3 rounded-3xl border transition-all duration-300 overflow-hidden bg-white dark:bg-zinc-900 ${isExpanded ? 'border-zinc-200 dark:border-zinc-700 shadow-lg ring-2 ring-zinc-100 dark:ring-zinc-800' : 'border-zinc-100 dark:border-zinc-800 shadow-[0_2px_8px_rgba(0,0,0,0.02)]'}`}>
             <button onClick={onToggle} className="w-full flex items-center justify-between p-4 bg-transparent press-effect outline-none">
                 <div className="flex items-center gap-4">
-                    <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-xs font-black tracking-wider shadow-sm transition-colors ${asset.assetType === AssetType.FII ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30' : 'bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400 border border-sky-100 dark:border-sky-900/30'}`}>
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xs font-black tracking-wider shadow-sm transition-colors ${asset.assetType === AssetType.FII ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30' : 'bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400 border border-sky-100 dark:border-sky-900/30'}`}>
                         {asset.ticker.substring(0, 2)}
                     </div>
                     <div className="text-left">
-                        <h4 className="text-sm font-bold text-zinc-900 dark:text-white">{asset.ticker}</h4>
-                        <div className="flex items-center gap-1.5 mt-0.5">
+                        <h4 className="text-base font-black text-zinc-900 dark:text-white">{asset.ticker}</h4>
+                        <div className="flex items-center gap-2 mt-0.5">
                             <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide">{asset.quantity} Cotas</span>
                             {asset.dy_12m !== undefined && asset.dy_12m > 0 && (
                                 <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-1.5 py-0.5 rounded">
@@ -839,16 +885,16 @@ const AssetListItem: React.FC<any> = ({ asset, onOpenDetails, privacyMode, isExp
                 </div>
                 <div className="flex items-center gap-3">
                     <div className="text-right flex flex-col items-end">
-                        <p className="text-sm font-bold text-zinc-900 dark:text-white tabular-nums tracking-tight">{formatBRL(totalVal, privacyMode)}</p>
+                        <p className="text-base font-black text-zinc-900 dark:text-white tabular-nums tracking-tight">{formatBRL(totalVal, privacyMode)}</p>
                         {asset.dailyChange !== undefined && (
-                            <div className={`flex items-center gap-1 mt-1 text-[10px] font-bold ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                                {isPositive ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
+                            <div className={`flex items-center gap-1 mt-0.5 text-[10px] font-bold ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                                 {Math.abs(asset.dailyChange).toFixed(2)}%
                             </div>
                         )}
                     </div>
-                    <div className={`w-6 h-6 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center transition-transform duration-300 ${isExpanded ? 'rotate-180 text-zinc-600 dark:text-zinc-300' : 'text-zinc-400'}`}>
-                        <ChevronDown className="w-3.5 h-3.5" />
+                    <div className={`w-7 h-7 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center transition-transform duration-300 ${isExpanded ? 'rotate-180 text-zinc-600 dark:text-zinc-300' : 'text-zinc-400'}`}>
+                        <ChevronDown className="w-4 h-4" />
                     </div>
                 </div>
             </button>
@@ -880,7 +926,7 @@ const AssetListItem: React.FC<any> = ({ asset, onOpenDetails, privacyMode, isExp
                             </div>
                         </div>
                     </div>
-                    <button onClick={(e) => { e.stopPropagation(); onOpenDetails(); }} className="w-full h-11 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-2 press-effect shadow-md">
+                    <button onClick={(e) => { e.stopPropagation(); onOpenDetails(); }} className="w-full h-12 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-2 press-effect shadow-md">
                         Ver Análise Completa
                     </button>
                 </div>
@@ -897,245 +943,204 @@ interface PortfolioProps {
   headerVisible?: boolean;
   targetAsset?: string | null;
   onClearTarget?: () => void;
-  marketDividends?: DividendReceipt[]; // Novo: Dados brutos de mercado
+  marketDividends?: DividendReceipt[];
 }
 
-const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [], privacyMode = false, marketDividends = [] }) => {
+const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [], privacyMode = false, marketDividends = [], onAssetRefresh, targetAsset, onClearTarget }) => {
     const [search, setSearch] = useState('');
     const [selectedAsset, setSelectedAsset] = useState<AssetPosition | null>(null);
     const [expandedAssetTicker, setExpandedAssetTicker] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<'RESUMO' | 'RENDA' | 'ANÁLISE' | 'IMOVEIS'>('RESUMO');
+    const [activeTab, setActiveTab] = useState<'RESUMO' | 'RENDA' | 'ANALISE'>('RESUMO');
 
     useEffect(() => {
-        if (selectedAsset) {
-            const updated = portfolio.find(p => p.ticker === selectedAsset.ticker);
-            if (updated && updated !== selectedAsset) {
-                setSelectedAsset(updated);
+        if (targetAsset) {
+            const found = portfolio.find(p => p.ticker === targetAsset);
+            if (found) {
+                setSelectedAsset(found);
             }
+            if (onClearTarget) onClearTarget();
         }
-    }, [portfolio]);
+    }, [targetAsset, portfolio, onClearTarget]);
 
-    const filtered = useMemo(() => {
-        if (!search) return portfolio;
+    const filteredPortfolio = useMemo(() => {
         return portfolio.filter(p => p.ticker.includes(search.toUpperCase()));
     }, [portfolio, search]);
 
-    const fiis = filtered.filter(p => p.assetType === AssetType.FII);
-    const stocks = filtered.filter(p => p.assetType === AssetType.STOCK);
-
-    const assetDividendChartData = useMemo(() => {
-        if (!selectedAsset) return { data: [], average: 0, activeTypes: [] };
+    const getAssetChartData = (ticker: string) => {
+        const assetDividends = dividends.filter(d => d.ticker === ticker);
+        const todayStr = new Date().toISOString().split('T')[0];
+        const groups: Record<string, any> = {};
         
-        const today = new Date();
-        const startDates: string[] = [];
         for (let i = 11; i >= 0; i--) {
-            const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
-            startDates.push(d.toISOString().substring(0, 7)); // YYYY-MM
+            const d = new Date();
+            d.setMonth(d.getMonth() - i);
+            const k = d.toISOString().substring(0, 7);
+            groups[k] = { month: getMonthLabel(k), total: 0, DIV: 0, JCP: 0, REND: 0, OUTROS: 0 };
         }
-        
-        const history = dividends
-            .filter(d => d.ticker === selectedAsset.ticker)
-            .filter(d => {
-                const dateStr = d.paymentDate || d.dateCom;
-                if (!dateStr) return false;
-                const monthKey = dateStr.substring(0, 7);
-                return monthKey >= startDates[0];
-            })
-            .sort((a, b) => (a.paymentDate || a.dateCom).localeCompare(b.paymentDate || b.dateCom));
 
-        const grouped: Record<string, Record<string, number>> = {};
-        const typesFound = new Set<string>();
-
-        history.forEach(d => {
-            const dateRef = d.paymentDate || d.dateCom;
-            const key = dateRef.substring(0, 7);
-            if (!grouped[key]) grouped[key] = { total: 0 };
-            let type = d.type || 'OUTROS';
-            if (type.includes('REND')) type = 'REND';
-            else if (type.includes('DIV')) type = 'DIV';
-            else if (type.includes('JCP') || type.includes('JURO')) type = 'JCP';
-            else if (type.includes('AMORT')) type = 'AMORT';
-            typesFound.add(type);
-            const amount = Number(d.totalReceived) || (d.quantityOwned * d.rate);
-            grouped[key][type] = (grouped[key][type] || 0) + amount;
-            grouped[key].total += amount;
+        assetDividends.forEach(d => {
+            if (d.paymentDate && d.paymentDate <= todayStr) {
+                const k = d.paymentDate.substring(0, 7);
+                if (groups[k]) {
+                    groups[k].total += d.totalReceived;
+                    let t = d.type || 'OUTROS';
+                    if (!['DIV','JCP','REND','AMORT','REST'].includes(t)) {
+                        t = 'OUTROS';
+                    }
+                    if (groups[k][t] === undefined) groups[k][t] = 0;
+                    groups[k][t] += d.totalReceived;
+                }
+            }
         });
 
-        const result = [];
-        let grandTotal = 0;
-        let count = 0;
+        const data = Object.values(groups);
+        const average = data.reduce((acc: number, c: any) => acc + c.total, 0) / 12;
+        const activeTypes = ['DIV', 'JCP', 'REND', 'AMORT', 'REST', 'OUTROS'].filter(t => data.some((d: any) => d[t] > 0));
 
-        for (const key of startDates) {
-            const monthLabel = getMonthLabel(key);
-            const monthData = grouped[key] || { total: 0 };
-            if (monthData.total > 0) {
-                grandTotal += monthData.total;
-                count++;
-            }
-            result.push({ month: monthLabel, fullDate: key, ...monthData, total: monthData.total });
-        }
-        return { data: result, average: count > 0 ? grandTotal / count : 0, activeTypes: Array.from(typesFound) };
+        return { data, average, activeTypes };
+    };
+
+    const selectedAssetChartData = useMemo(() => {
+        if (!selectedAsset) return { data: [], average: 0, activeTypes: [] };
+        return getAssetChartData(selectedAsset.ticker);
     }, [selectedAsset, dividends]);
 
-    const assetHistory = useMemo(() => {
+    const selectedAssetMarketHistory = useMemo(() => {
         if (!selectedAsset) return [];
-        return dividends.filter(d => d.ticker === selectedAsset.ticker);
-    }, [selectedAsset, dividends]);
-
-    // Filtra histórico de mercado específico para o ativo selecionado
-    const assetMarketHistory = useMemo(() => {
-        if (!selectedAsset || !marketDividends) return [];
         return marketDividends.filter(d => d.ticker === selectedAsset.ticker);
     }, [selectedAsset, marketDividends]);
 
-    const propertiesByState = useMemo(() => {
-        if (!selectedAsset || !selectedAsset.properties) return [];
-        const groups: Record<string, number> = {};
-        selectedAsset.properties.forEach(p => {
-            const parts = (p.location || 'N/A').split('-');
-            const state = parts.length > 1 ? parts[parts.length - 1].trim() : parts[0].trim();
-            const cleanState = state.length > 3 && !state.includes(' ') ? 'Outros' : state;
-            groups[cleanState] = (groups[cleanState] || 0) + 1;
-        });
-        return Object.entries(groups).sort((a, b) => b[1] - a[1]).map(([name, value], index) => ({ name, value, color: CHART_COLORS[index % CHART_COLORS.length] }));
-    }, [selectedAsset]);
-
     return (
-        <div className="pb-32">
-            <div className="sticky top-20 z-30 bg-primary-light dark:bg-primary-dark border-b border-zinc-200 dark:border-zinc-800 transition-all -mx-4 px-4 py-3 mb-4">
+        <div className="pb-24">
+             <div className="px-4 mb-4">
                 <div className="relative group">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 group-focus-within:text-indigo-500 transition-colors" />
-                    <input type="text" placeholder="Buscar ativo..." value={search} onChange={e => setSearch(e.target.value)} className="w-full bg-zinc-100 dark:bg-zinc-800 border border-transparent focus:bg-white dark:focus:bg-zinc-900 border-zinc-200 dark:border-zinc-700 pl-10 pr-10 py-2.5 rounded-xl text-sm font-medium text-zinc-900 dark:text-white placeholder:text-zinc-400 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all" />
-                    {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"><X className="w-3.5 h-3.5" /></button>}
+                    <input 
+                        type="text" 
+                        placeholder="Buscar na carteira..." 
+                        value={search} 
+                        onChange={e => setSearch(e.target.value.toUpperCase())} 
+                        className="w-full bg-zinc-100 dark:bg-zinc-800 pl-10 pr-4 py-3 rounded-2xl text-sm font-bold text-zinc-900 dark:text-white placeholder:text-zinc-400 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all border border-transparent focus:bg-white dark:focus:bg-zinc-900 focus:border-indigo-500/20" 
+                    />
                 </div>
-            </div>
+             </div>
 
-            {fiis.length > 0 && (
-                <div className="mb-6 anim-fade-in">
-                    <div className="flex items-center gap-1.5 mb-3 px-1">
-                        <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Fundos Imobiliários</h3>
-                        <InfoTooltip title="FIIs" text="Cotações com delay de ~15 minutos." />
+             <PortfolioSummary assets={filteredPortfolio} privacyMode={privacyMode} />
+
+             <div className="px-1">
+                {filteredPortfolio.length === 0 ? (
+                    <div className="text-center py-20 opacity-50">
+                        <p className="text-sm font-bold text-zinc-500">Nenhum ativo encontrado.</p>
                     </div>
-                    {fiis.map(p => (
-                        <AssetListItem key={p.ticker} asset={p} privacyMode={privacyMode} isExpanded={expandedAssetTicker === p.ticker} onToggle={() => setExpandedAssetTicker(prev => prev === p.ticker ? null : p.ticker)} onOpenDetails={() => setSelectedAsset(p)} />
-                    ))}
-                </div>
-            )}
+                ) : (
+                    filteredPortfolio.map((asset) => (
+                        <AssetListItem 
+                            key={asset.ticker} 
+                            asset={asset} 
+                            privacyMode={privacyMode}
+                            isExpanded={expandedAssetTicker === asset.ticker}
+                            onToggle={() => setExpandedAssetTicker(prev => prev === asset.ticker ? null : asset.ticker)}
+                            onOpenDetails={() => {
+                                setSelectedAsset(asset);
+                                if (onAssetRefresh) onAssetRefresh(asset.ticker);
+                            }}
+                        />
+                    ))
+                )}
+             </div>
 
-            {stocks.length > 0 && (
-                <div className="mb-6 anim-fade-in">
-                    <div className="flex items-center gap-1.5 mb-3 px-1">
-                        <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Ações</h3>
-                        <InfoTooltip title="Ações" text="Cotações com delay de ~15 minutos." />
-                    </div>
-                    {stocks.map(p => (
-                        <AssetListItem key={p.ticker} asset={p} privacyMode={privacyMode} isExpanded={expandedAssetTicker === p.ticker} onToggle={() => setExpandedAssetTicker(prev => prev === p.ticker ? null : p.ticker)} onOpenDetails={() => setSelectedAsset(p)} />
-                    ))}
-                </div>
-            )}
-            
-            {filtered.length === 0 && (
-                <div className="text-center py-20 opacity-40 anim-fade-in">
-                    <Search className="w-12 h-12 mx-auto mb-3 text-zinc-300" strokeWidth={1.5} />
-                    <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Nenhum ativo encontrado</p>
-                </div>
-            )}
-
-            <SwipeableModal isOpen={!!selectedAsset} onClose={() => setSelectedAsset(null)}>
+             <SwipeableModal isOpen={!!selectedAsset} onClose={() => setSelectedAsset(null)}>
                 {selectedAsset && (
-                    <div className="flex flex-col h-full bg-zinc-50 dark:bg-zinc-950">
-                        <div className="sticky top-0 z-20 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-200/50 dark:border-zinc-800/50 px-6 py-4 shrink-0 rounded-t-[2.5rem]">
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-14 h-14 rounded-2xl bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center text-lg font-black text-zinc-500 shadow-sm border border-zinc-200 dark:border-zinc-800">{selectedAsset.ticker.substring(0,2)}</div>
-                                    <div>
-                                        <h2 className="text-3xl font-black text-zinc-900 dark:text-white leading-none tracking-tight">{selectedAsset.ticker}</h2>
-                                        <p className="text-xs font-bold text-zinc-400 uppercase mt-1">{selectedAsset.assetType === AssetType.FII ? 'Fundo Imobiliário' : 'Ação'}</p>
+                    <div className="h-full flex flex-col bg-zinc-50 dark:bg-zinc-950">
+                        <div className="px-6 py-5 bg-white dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between shrink-0">
+                            <div className="flex items-center gap-4">
+                                {selectedAsset.logoUrl ? (
+                                    <img src={selectedAsset.logoUrl} alt={selectedAsset.ticker} className="w-12 h-12 rounded-full object-contain bg-white p-1 border border-zinc-100 dark:border-zinc-800" />
+                                ) : (
+                                    <div className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center font-black text-zinc-400 border border-zinc-200 dark:border-zinc-700">
+                                        {selectedAsset.ticker.substring(0, 2)}
                                     </div>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-2xl font-black text-zinc-900 dark:text-white">{formatBRL(selectedAsset.currentPrice, privacyMode)}</p>
-                                    <span className={`text-xs font-bold px-2 py-0.5 rounded-lg ${ (selectedAsset.dailyChange || 0) >= 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400' }`}>{(selectedAsset.dailyChange || 0) > 0 ? '+' : ''}{(selectedAsset.dailyChange || 0).toFixed(2)}%</span>
+                                )}
+                                <div>
+                                    <h2 className="text-xl font-black text-zinc-900 dark:text-white">{selectedAsset.ticker}</h2>
+                                    <p className="text-xs text-zinc-500 font-medium">{selectedAsset.company_name || 'Detalhes do Ativo'}</p>
                                 </div>
                             </div>
-                            <div className="flex p-1 bg-zinc-100 dark:bg-zinc-900 rounded-xl overflow-x-auto no-scrollbar">
-                                {['RESUMO', 'RENDA', 'ANÁLISE', 'IMOVEIS'].map(tab => {
-                                    if (tab === 'IMOVEIS' && (!selectedAsset.properties || selectedAsset.properties.length === 0)) return null;
-                                    return <button key={tab} onClick={() => setActiveTab(tab as any)} className={`flex-1 min-w-[80px] py-2.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${activeTab === tab ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>{tab}</button>
-                                })}
+                            <button onClick={() => setSelectedAsset(null)} className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-400">
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        <div className="px-6 pt-4 pb-2 bg-white dark:bg-zinc-900 shrink-0">
+                            <div className="flex p-1 bg-zinc-100 dark:bg-zinc-800 rounded-xl">
+                                {['RESUMO', 'RENDA', 'ANALISE'].map((tab) => (
+                                    <button 
+                                        key={tab}
+                                        onClick={() => setActiveTab(tab as any)}
+                                        className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${activeTab === tab ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                                    >
+                                        {tab === 'ANALISE' ? 'Análise' : tab === 'RENDA' ? 'Renda' : 'Resumo'}
+                                    </button>
+                                ))}
                             </div>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-4 sm:p-6 pb-24">
+                        <div className="flex-1 overflow-y-auto p-6 space-y-6">
                             {activeTab === 'RESUMO' && (
-                                <div className="space-y-6 anim-fade-in">
-                                    {/* Indicadores no topo */}
-                                    <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-2"><Activity className="w-3 h-3" /> Indicadores Chave</h4>
-                                    <div className="grid grid-cols-3 gap-3 mb-4">
-                                        <MetricCard label="DY (12m)" value={formatPercent(selectedAsset.dy_12m)} highlight colorClass="text-emerald-600 dark:text-emerald-400" />
-                                        <MetricCard label="P/VP" value={formatNumber(selectedAsset.p_vp)} />
-                                        {selectedAsset.assetType !== AssetType.FII ? <MetricCard label="P/L" value={formatNumber(selectedAsset.p_l)} /> : <MetricCard label="VP/Cota" value={selectedAsset.vpa ? formatBRL(selectedAsset.vpa) : '-'} />}
-                                    </div>
-
+                                <div className="anim-fade-in space-y-6">
                                     <PositionSummaryCard asset={selectedAsset} privacyMode={privacyMode} />
-                                    
-                                    <ChartsContainer ticker={selectedAsset.ticker} type={selectedAsset.assetType} asset={selectedAsset} marketDividends={assetMarketHistory} />
-                                    
-                                    {selectedAsset.vacancy !== undefined && selectedAsset.vacancy > 10 && (
-                                        <div className={`p-4 rounded-xl border flex items-center justify-between bg-rose-50 border-rose-100 dark:bg-rose-900/10 dark:border-rose-900/30`}>
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center bg-rose-100 text-rose-600`}><AlertCircle className="w-4 h-4" /></div>
-                                                <div>
-                                                    <p className={`text-xs font-bold text-rose-700 dark:text-rose-400`}>Vacância Física</p>
-                                                    <p className="text-[10px] opacity-70">Alerta de Ocupação</p>
-                                                </div>
+                                    <DetailedInfoBlock asset={selectedAsset} />
+                                    {selectedAsset.properties && selectedAsset.properties.length > 0 && (
+                                        <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-sm p-4">
+                                            <div className="flex items-center gap-2 mb-4">
+                                                <MapIcon className="w-4 h-4 text-zinc-400" />
+                                                <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Mapa de Imóveis</h3>
                                             </div>
-                                            <span className="text-lg font-black">{selectedAsset.vacancy}%</span>
+                                            <div className="h-48 w-full">
+                                                <BrazilMap 
+                                                    data={selectedAsset.properties.map(p => ({ name: p.location || '', value: 1 }))} 
+                                                    totalProperties={selectedAsset.properties.length} 
+                                                />
+                                            </div>
+                                            <div className="mt-4 space-y-2">
+                                                {selectedAsset.properties.slice(0, 5).map((prop, idx) => (
+                                                    <div key={idx} className="flex justify-between items-center text-xs p-2 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg">
+                                                        <span className="font-bold text-zinc-700 dark:text-zinc-300 truncate max-w-[70%]">{prop.name}</span>
+                                                        <span className="text-zinc-400">{prop.location}</span>
+                                                    </div>
+                                                ))}
+                                                {selectedAsset.properties.length > 5 && (
+                                                    <p className="text-[10px] text-center text-zinc-400 mt-2">e mais {selectedAsset.properties.length - 5} imóveis...</p>
+                                                )}
+                                            </div>
                                         </div>
                                     )}
                                 </div>
                             )}
-                            {activeTab === 'RENDA' && <div className="anim-fade-in"><IncomeAnalysisSection asset={selectedAsset} chartData={assetDividendChartData} marketHistory={assetMarketHistory} /></div>}
-                            {activeTab === 'ANÁLISE' && <div className="anim-fade-in"><ValuationCard asset={selectedAsset} /><DetailedInfoBlock asset={selectedAsset} />{selectedAsset.assetType === AssetType.STOCK && (<div className="mt-6"><h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-2"><BarChart3 className="w-3 h-3" /> Eficiência & Crescimento</h4><div className="grid grid-cols-2 gap-3"><MetricCard label="ROE" value={formatPercent(selectedAsset.roe)} highlight /><MetricCard label="Margem Líq." value={formatPercent(selectedAsset.net_margin)} /><MetricCard label="Margem Bruta" value={formatPercent(selectedAsset.gross_margin)} /><MetricCard label="Margem EBIT" value={formatPercent(selectedAsset.ebit_margin)} /><MetricCard label="CAGR Rec. (5a)" value={formatPercent(selectedAsset.cagr_revenue)} /><MetricCard label="CAGR Lucro (5a)" value={formatPercent(selectedAsset.cagr_profits)} /><MetricCard label="EV/EBITDA" value={formatNumber(selectedAsset.ev_ebitda)} /><MetricCard label="Dív.Líq/EBITDA" value={formatNumber(selectedAsset.net_debt_ebitda)} /><MetricCard label="Dív.Líq/PL" value={formatNumber(selectedAsset.net_debt_equity)} /><MetricCard label="LPA" value={formatBRL(selectedAsset.lpa)} /></div></div>)}</div>}
-                            {activeTab === 'IMOVEIS' && selectedAsset.properties && (
+
+                            {activeTab === 'RENDA' && (
+                                <div className="anim-fade-in">
+                                    <IncomeAnalysisSection asset={selectedAsset} chartData={selectedAssetChartData} marketHistory={selectedAssetMarketHistory} />
+                                </div>
+                            )}
+
+                            {activeTab === 'ANALISE' && (
                                 <div className="anim-fade-in space-y-6">
-                                    <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 p-6 shadow-sm mb-6">
-                                        <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-6 flex items-center gap-2"><MapIcon className="w-4 h-4 text-zinc-400" /> Mapa de Ativos</h3>
-                                        <div className="w-full relative h-[300px]">
-                                            <BrazilMap data={propertiesByState} totalProperties={selectedAsset.properties.length} />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-4">
-                                        <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest px-1">Lista de Imóveis</h3>
-                                        {selectedAsset.properties.map((prop, idx) => (
-                                            <div key={idx} className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 p-4 flex gap-4 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors">
-                                                <div className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0 text-zinc-500"><Building2 className="w-6 h-6" strokeWidth={1.5} /></div>
-                                                <div className="flex-1 min-w-0">
-                                                    <h4 className="text-xs font-black text-zinc-900 dark:text-white uppercase tracking-wide leading-tight mb-2 line-clamp-2">{prop.name}</h4>
-                                                    <div className="space-y-1">
-                                                        <div className="flex items-center gap-2 text-[11px] text-zinc-500"><span className="font-medium">Estado:</span><span className="text-zinc-700 dark:text-zinc-300 font-bold">{prop.location ? (prop.location.includes('-') ? prop.location.split('-').pop()?.trim() : prop.location) : 'N/A'}</span></div>
-                                                        {prop.abl && <div className="flex items-center gap-2 text-[11px] text-zinc-500"><span className="font-medium">Área bruta locável:</span><span className="text-zinc-700 dark:text-zinc-300 font-bold">{prop.abl}</span></div>}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
+                                    <ChartsContainer 
+                                        ticker={selectedAsset.ticker} 
+                                        type={selectedAsset.assetType} 
+                                        asset={selectedAsset}
+                                        marketDividends={selectedAssetMarketHistory}
+                                    />
+                                    <ValuationCard asset={selectedAsset} />
                                 </div>
                             )}
                         </div>
                     </div>
                 )}
-            </SwipeableModal>
+             </SwipeableModal>
         </div>
     );
-};
-
-const getMonthLabel = (key: string) => {
-    try {
-        const [y, m] = key.split('-');
-        const date = new Date(parseInt(y), parseInt(m) - 1, 1);
-        return date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
-    } catch { return key; }
 };
 
 export const Portfolio = React.memo(PortfolioComponent);
