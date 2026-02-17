@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
 import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, Activity, BarChart3, PieChart, Coins, AlertCircle, ChevronDown, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, Scale, SquareStack, Calendar, Map as MapIcon, ChevronRight } from 'lucide-react';
@@ -511,7 +510,7 @@ const IncomeAnalysisSection = ({ asset, chartData }: { asset: AssetPosition, cha
     );
 };
 
-const LocationGroup = ({ state, properties }: { state: string, properties: any[] }) => {
+const LocationGroup: React.FC<{ state: string, properties: any[] }> = ({ state, properties }) => {
     const [isOpen, setIsOpen] = useState(false);
     return (
         <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-sm">
