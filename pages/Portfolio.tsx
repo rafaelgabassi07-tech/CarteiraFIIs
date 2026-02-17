@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
 import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, Activity, BarChart3, PieChart, Coins, AlertCircle, ChevronDown, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, Scale, SquareStack, Calendar, Map as MapIcon, ChevronRight } from 'lucide-react';
@@ -904,7 +903,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                                             {/* Donut Chart */}
                                             <div className="h-64 w-full relative">
                                                 <ResponsiveContainer>
-                                                    <PieChart>
+                                                    <RePieChart>
                                                         <Pie
                                                             data={propertiesByState}
                                                             innerRadius={80}
@@ -918,12 +917,12 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                                                             ))}
                                                         </Pie>
                                                         <Tooltip contentStyle={{backgroundColor: '#18181b', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '11px'}} itemStyle={{color:'#fff'}} />
-                                                    </PieChart>
+                                                    </RePieChart>
                                                 </ResponsiveContainer>
                                                 {/* Center Text */}
-                                                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                                    <span className="text-3xl font-black text-zinc-900 dark:text-white">{selectedAsset.properties.length}</span>
-                                                    <span className="text-[10px] text-zinc-400 uppercase font-bold tracking-widest">Imóveis</span>
+                                                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none gap-1">
+                                                    <span className="text-3xl font-black text-zinc-900 dark:text-white leading-none">{selectedAsset.properties.length}</span>
+                                                    <span className="text-[10px] text-zinc-400 uppercase font-bold tracking-widest leading-none">Imóveis</span>
                                                 </div>
                                             </div>
 
