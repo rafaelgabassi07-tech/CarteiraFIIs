@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
 import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, Activity, BarChart3, PieChart, Coins, AlertCircle, ChevronDown, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, Scale } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
@@ -83,9 +83,6 @@ const MarketPerformanceCard = ({ asset }: { asset: AssetPosition }) => {
 
     const assetReturn = asset.profitability_12m;
     const monthReturn = asset.profitability_month;
-
-    // Se não tiver dados, mostra placeholder em vez de esconder
-    const hasAnyData = assetReturn !== undefined || monthReturn !== undefined || benchmarkVal !== undefined;
 
     return (
         <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm mb-6">
@@ -449,6 +446,16 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
     const [selectedAsset, setSelectedAsset] = useState<AssetPosition | null>(null);
     const [expandedAssetTicker, setExpandedAssetTicker] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'RESUMO' | 'RENDA' | 'ANÁLISE' | 'IMOVEIS'>('RESUMO');
+
+    // Sincroniza selectedAsset com o portfolio em tempo real para refletir atualizações do scraper
+    useEffect(() => {
+        if (selectedAsset) {
+            const updated = portfolio.find(p => p.ticker === selectedAsset.ticker);
+            if (updated && updated !== selectedAsset) {
+                setSelectedAsset(updated);
+            }
+        }
+    }, [portfolio]);
 
     const filtered = useMemo(() => {
         if (!search) return portfolio;
