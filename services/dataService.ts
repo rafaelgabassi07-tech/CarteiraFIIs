@@ -71,54 +71,56 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
 
     return {
         // Indicadores Gerais
-        p_vp: parseNumberSafe(getVal('pvp', 'p_vp', 'vp')),
+        p_vp: parseNumberSafe(getVal('p_vp', 'pvp', 'vp')),
         dy_12m: parseNumberSafe(getVal('dy_12m', 'dy', 'dividend_yield', 'dividendyield')), 
-        p_l: parseNumberSafe(getVal('pl', 'p_l')),
+        p_l: parseNumberSafe(getVal('p_l', 'pl')),
         roe: parseNumberSafe(getVal('roe')),
         
-        // Rentabilidade Scraper
-        profitability_12m: parseNumberSafe(getVal('rentabilidade_12m', 'rentabilidade12m')),
-        profitability_month: parseNumberSafe(getVal('rentabilidade_mes', 'rentabilidademes')),
-        profitability_2y: parseNumberSafe(getVal('rentabilidade_2y', 'rentabilidade2y')),
+        // Rentabilidade Scraper (Prioriza chaves em inglês retornadas pela API)
+        profitability_12m: parseNumberSafe(getVal('profitability_12m', 'rentabilidade_12m', 'rentabilidade12m')),
+        profitability_month: parseNumberSafe(getVal('profitability_month', 'rentabilidade_mes', 'rentabilidademes')),
+        profitability_2y: parseNumberSafe(getVal('profitability_2y', 'rentabilidade_2y', 'rentabilidade2y')),
+        
+        // Benchmarks
         benchmark_cdi_12m: parseNumberSafe(getVal('benchmark_cdi_12m')),
         benchmark_ifix_12m: parseNumberSafe(getVal('benchmark_ifix_12m')),
         benchmark_ibov_12m: parseNumberSafe(getVal('benchmark_ibov_12m')),
 
         // Metadados
-        liquidity: getVal('liquidez', 'liquidez_media_diaria') || '', 
-        market_cap: getVal('val_mercado', 'valor_mercado', 'market_cap') || undefined, 
+        liquidity: getVal('liquidity', 'liquidez', 'liquidez_media_diaria') || '', 
+        market_cap: getVal('market_cap', 'val_mercado', 'valor_mercado') || undefined, 
         
         // FII Específicos
-        assets_value: getVal('patrimonio_liquido', 'patrimonio', 'assets_value') || undefined, 
-        manager_type: getVal('tipo_gestao', 'gestao', 'manager_type') || undefined,
-        management_fee: getVal('taxa_adm', 'taxa_administracao', 'management_fee') || undefined,
-        vacancy: parseNumberSafe(getVal('vacancia', 'vacancia_fisica')),
-        last_dividend: parseNumberSafe(getVal('ultimo_rendimento')),
-        properties_count: parseNumberSafe(getVal('num_cotistas', 'cotistas')),
+        assets_value: getVal('assets_value', 'patrimonio_liquido', 'patrimonio') || undefined, 
+        manager_type: getVal('manager_type', 'tipo_gestao', 'gestao') || undefined,
+        management_fee: getVal('management_fee', 'taxa_adm', 'taxa_administracao') || undefined,
+        vacancy: parseNumberSafe(getVal('vacancy', 'vacancia', 'vacancia_fisica')),
+        last_dividend: parseNumberSafe(getVal('last_dividend', 'ultimo_rendimento')),
+        properties_count: parseNumberSafe(getVal('properties_count', 'num_cotistas', 'cotistas')),
         
         // Informações Adicionais
-        company_name: getVal('razao_social', 'company_name'),
-        num_quotas: getVal('num_cotas', 'cotas_emitidas', 'num_quotas'),
+        company_name: getVal('company_name', 'razao_social'),
+        num_quotas: getVal('num_quotas', 'cotas_emitidas'),
         cnpj: getVal('cnpj'),
-        mandate: getVal('mandato', 'mandate'),
-        target_audience: getVal('publico_alvo', 'target_audience'),
-        fund_type: getVal('tipo_fundo', 'fund_type'),
-        duration: getVal('prazo', 'duration'),
+        mandate: getVal('mandate', 'mandato'),
+        target_audience: getVal('target_audience', 'publico_alvo'),
+        fund_type: getVal('fund_type', 'tipo_fundo'),
+        duration: getVal('duration', 'prazo'),
         
         properties: m.properties || [], 
         
         // Ações (Stocks) Estendidas
-        net_margin: parseNumberSafe(getVal('margem_liquida', 'margemliquida')),
-        gross_margin: parseNumberSafe(getVal('margem_bruta', 'margembruta')),
+        net_margin: parseNumberSafe(getVal('net_margin', 'margem_liquida', 'margemliquida')),
+        gross_margin: parseNumberSafe(getVal('gross_margin', 'margem_bruta', 'margembruta')),
         ebit_margin: parseNumberSafe(getVal('ebit_margin', 'margem_ebit', 'margemebit')),
         payout: parseNumberSafe(getVal('payout')),
-        cagr_revenue: parseNumberSafe(getVal('cagr_receita_5a', 'cagr_receitas', 'cagr_receita')),
-        cagr_profits: parseNumberSafe(getVal('cagr_lucros_5a', 'cagr_lucros', 'cagr_lucro')),
-        net_debt_ebitda: parseNumberSafe(getVal('divida_liquida_ebitda', 'div_liq_ebitda', 'dividaliquida_ebitda')),
+        cagr_revenue: parseNumberSafe(getVal('cagr_revenue', 'cagr_receita_5a', 'cagr_receitas', 'cagr_receita')),
+        cagr_profits: parseNumberSafe(getVal('cagr_profits', 'cagr_lucros_5a', 'cagr_lucros', 'cagr_lucro')),
+        net_debt_ebitda: parseNumberSafe(getVal('net_debt_ebitda', 'divida_liquida_ebitda', 'div_liq_ebitda', 'dividaliquida_ebitda')),
         net_debt_equity: parseNumberSafe(getVal('net_debt_equity', 'divida_liquida_pl', 'dividaliquidapl')),
         ev_ebitda: parseNumberSafe(getVal('ev_ebitda')),
         lpa: parseNumberSafe(getVal('lpa')),
-        vpa: parseNumberSafe(getVal('vp_cota', 'vpa', 'valor_patrimonial_acao', 'valorpatrimonialcota')),
+        vpa: parseNumberSafe(getVal('vpa', 'vp_cota', 'valor_patrimonial_acao', 'valorpatrimonialcota')),
         
         updated_at: m.updated_at,
         sentiment: 'Neutro',

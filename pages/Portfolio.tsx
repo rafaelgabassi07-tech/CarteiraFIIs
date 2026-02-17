@@ -1,6 +1,7 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, Activity, BarChart3, PieChart, Coins, AlertCircle, ChevronDown, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, Scale, SquareStack, Calendar } from 'lucide-react';
+import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, Activity, BarChart3, PieChart, Coins, AlertCircle, ChevronDown, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, Scale, SquareStack, Calendar, Map as MapIcon, ChevronRight } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, ReferenceLine, ComposedChart, CartesianGrid, Legend, AreaChart, Area, YAxis, PieChart as RePieChart, Pie, Cell } from 'recharts';
 import { formatBRL, formatPercent, formatNumber, formatDateShort } from '../utils/formatters';
@@ -93,7 +94,7 @@ const PriceHistoryChart = ({ ticker }: { ticker: string }) => {
                 </div>
             </div>
 
-            <div className="h-48 w-full relative">
+            <div className="h-56 w-full relative">
                 {loading ? (
                     <div className="absolute inset-0 flex items-center justify-center bg-zinc-50/50 dark:bg-zinc-800/20 rounded-xl">
                         <div className="animate-pulse text-xs font-bold text-zinc-400">Carregando...</div>
@@ -102,7 +103,7 @@ const PriceHistoryChart = ({ ticker }: { ticker: string }) => {
                     <div className="absolute inset-0 flex items-center justify-center text-xs text-zinc-400">Dados indisponíveis</div>
                 ) : (
                     <>
-                        <div className="absolute top-0 left-0 z-10">
+                        <div className="absolute top-0 left-0 z-10 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm px-2 py-1 rounded-br-xl border-r border-b border-zinc-100 dark:border-zinc-800">
                             <span className={`text-xs font-black ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
                                 {isPositive ? '+' : ''}{variation.toFixed(2)}%
                             </span>
@@ -115,12 +116,29 @@ const PriceHistoryChart = ({ ticker }: { ticker: string }) => {
                                         <stop offset="95%" stopColor={isPositive ? '#10b981' : '#f43f5e'} stopOpacity={0}/>
                                     </linearGradient>
                                 </defs>
-                                <XAxis dataKey="date" hide />
-                                <YAxis domain={['auto', 'auto']} hide />
+                                <XAxis 
+                                    dataKey="date" 
+                                    hide={false} 
+                                    axisLine={false} 
+                                    tickLine={false} 
+                                    tick={{fontSize: 9, fill: '#71717a'}} 
+                                    tickFormatter={(val) => formatDateShort(val)} 
+                                    minTickGap={30}
+                                />
+                                <YAxis 
+                                    domain={['auto', 'auto']} 
+                                    hide={false} 
+                                    orientation="right" 
+                                    axisLine={false} 
+                                    tickLine={false} 
+                                    tick={{fontSize: 9, fill: '#71717a'}} 
+                                    width={35}
+                                    tickFormatter={(val) => `R$${val.toFixed(0)}`}
+                                />
                                 <Tooltip 
-                                    contentStyle={{ borderRadius: '8px', border: 'none', backgroundColor: '#18181b', color: '#fff', fontSize: '10px', padding: '4px 8px' }}
-                                    labelFormatter={(label) => formatDateShort(label)}
-                                    formatter={(value: number) => [formatBRL(value), '']}
+                                    contentStyle={{ borderRadius: '8px', border: '1px solid #27272a', backgroundColor: '#18181b', color: '#fff', fontSize: '10px', padding: '6px 10px' }}
+                                    labelFormatter={(label) => new Date(label).toLocaleDateString('pt-BR')}
+                                    formatter={(value: number) => [formatBRL(value), 'Preço']}
                                 />
                                 <Area 
                                     type="monotone" 
@@ -493,6 +511,86 @@ const IncomeAnalysisSection = ({ asset, chartData }: { asset: AssetPosition, cha
     );
 };
 
+const LocationGroup = ({ state, properties }: { state: string, properties: any[] }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    return (
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-sm">
+            <button 
+                onClick={() => setIsOpen(!isOpen)}
+                className="w-full flex items-center justify-between p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
+            >
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-xs font-black text-zinc-500 border border-zinc-200 dark:border-zinc-700">
+                        {state}
+                    </div>
+                    <div className="text-left">
+                        <span className="text-sm font-bold text-zinc-900 dark:text-white block">{state.length === 2 ? `Estado: ${state}` : state}</span>
+                        <span className="text-[10px] font-medium text-zinc-500">{properties.length} Ativo{properties.length !== 1 ? 's' : ''}</span>
+                    </div>
+                </div>
+                <div className={`w-6 h-6 rounded-full bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center transition-transform duration-300 ${isOpen ? 'rotate-90 text-indigo-500' : 'text-zinc-400'}`}>
+                    <ChevronRight className="w-4 h-4" />
+                </div>
+            </button>
+            
+            {isOpen && (
+                <div className="px-4 pb-4 pt-0 space-y-2 anim-slide-up">
+                    <div className="h-px w-full bg-zinc-100 dark:bg-zinc-800 mb-3"></div>
+                    {properties.map((prop, idx) => (
+                        <div key={idx} className="flex items-start gap-3 p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-100 dark:border-zinc-800/50">
+                            <MapPin className="w-4 h-4 text-indigo-500 mt-0.5 shrink-0" />
+                            <div className="min-w-0 flex-1">
+                                <h5 className="text-xs font-bold text-zinc-900 dark:text-white leading-tight mb-1">{prop.name}</h5>
+                                <div className="flex flex-wrap gap-2">
+                                    {prop.abl && (
+                                        <span className="inline-flex items-center gap-1 text-[9px] font-medium text-zinc-500 bg-white dark:bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-700">
+                                            <SquareStack className="w-3 h-3" /> ABL: {prop.abl}
+                                        </span>
+                                    )}
+                                    <span className="inline-flex items-center gap-1 text-[9px] font-medium text-zinc-500 bg-white dark:bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-700">
+                                        {prop.location}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+const PropertyStats = ({ properties }: { properties: any[] }) => {
+    // Extrai ABL total se possível (ex: "123.456 m²" -> 123456)
+    const totalABL = properties.reduce((acc, p) => {
+        if (!p.abl) return acc;
+        const val = parseFloat(p.abl.replace(/\./g, '').replace(',', '.').replace(/[^\d.]/g, ''));
+        return acc + (isNaN(val) ? 0 : val);
+    }, 0);
+
+    const states = new Set(properties.map(p => p.location ? p.location.split('-').pop().trim() : 'N/A')).size;
+
+    return (
+        <div className="grid grid-cols-3 gap-2 mb-6">
+            <div className="p-3 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col items-center justify-center text-center">
+                <Building2 className="w-5 h-5 text-indigo-500 mb-1" />
+                <span className="text-lg font-black text-zinc-900 dark:text-white leading-none">{properties.length}</span>
+                <span className="text-[9px] font-bold text-zinc-400 uppercase mt-1">Imóveis</span>
+            </div>
+            <div className="p-3 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col items-center justify-center text-center">
+                <MapIcon className="w-5 h-5 text-emerald-500 mb-1" />
+                <span className="text-lg font-black text-zinc-900 dark:text-white leading-none">{states}</span>
+                <span className="text-[9px] font-bold text-zinc-400 uppercase mt-1">Estados</span>
+            </div>
+            <div className="p-3 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col items-center justify-center text-center">
+                <SquareStack className="w-5 h-5 text-amber-500 mb-1" />
+                <span className="text-xs font-black text-zinc-900 dark:text-white leading-none mt-1">{totalABL > 0 ? (totalABL/1000).toFixed(0)+'k' : '-'}</span>
+                <span className="text-[9px] font-bold text-zinc-400 uppercase mt-1">ABL (m²)</span>
+            </div>
+        </div>
+    );
+};
+
 const AssetListItem: React.FC<any> = ({ asset, onOpenDetails, privacyMode, isExpanded, onToggle }) => {
     const isPositive = (asset.dailyChange || 0) >= 0;
     const totalVal = asset.quantity * (asset.currentPrice || 0);
@@ -608,17 +706,26 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
     const assetDividendChartData = useMemo(() => {
         if (!selectedAsset) return { data: [], average: 0, activeTypes: [] };
         
-        // Data de início para o gráfico (últimos 12 meses)
+        // CORREÇÃO CRÍTICA: Lógica de data robusta usando strings (YYYY-MM)
+        // para evitar bugs de fuso horário com new Date().
         const today = new Date();
-        const start = new Date(today.getFullYear(), today.getMonth() - 11, 1); 
+        const startDates: string[] = [];
+        // Gera as chaves dos últimos 12 meses
+        for (let i = 11; i >= 0; i--) {
+            const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+            startDates.push(d.toISOString().substring(0, 7)); // YYYY-MM
+        }
         
         // Pega todos os proventos PAGOS ou CONFIRMADOS no período
-        // O `totalReceived` já vem calculado corretamente no App.tsx > portfolioRules (qtdeOwned * rate)
         const history = dividends
-            .filter(d => 
-                d.ticker === selectedAsset.ticker && 
-                new Date(d.paymentDate || d.dateCom) >= start
-            )
+            .filter(d => d.ticker === selectedAsset.ticker)
+            .filter(d => {
+                const dateStr = d.paymentDate || d.dateCom;
+                if (!dateStr) return false;
+                const monthKey = dateStr.substring(0, 7);
+                // Inclui se for maior ou igual ao mês inicial
+                return monthKey >= startDates[0];
+            })
             .sort((a, b) => (a.paymentDate || a.dateCom).localeCompare(b.paymentDate || b.dateCom));
 
         // Agrupamento por Mês (YYYY-MM) e por Tipo (DIV, JCP, etc)
@@ -652,10 +759,8 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
         let count = 0;
 
         // Preenche os últimos 12 meses (mesmo os zerados) para o gráfico ficar contínuo
-        for (let i = 0; i < 12; i++) {
-            const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
-            const key = d.toISOString().substring(0, 7);
-            const monthLabel = d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
+        for (const key of startDates) {
+            const monthLabel = getMonthLabel(key);
             
             const monthData = grouped[key] || { total: 0 };
             
@@ -683,6 +788,21 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
         if (!selectedAsset) return [];
         return dividends.filter(d => d.ticker === selectedAsset.ticker);
     }, [selectedAsset, dividends]);
+
+    const groupedProperties = useMemo(() => {
+        if (!selectedAsset || !selectedAsset.properties) return [];
+        const groups: Record<string, any[]> = {};
+        selectedAsset.properties.forEach(p => {
+            // Extrai o estado (ex: "São Paulo - SP" -> "SP", ou "SP")
+            const parts = (p.location || 'N/A').split('-');
+            const state = parts.length > 1 ? parts[parts.length - 1].trim() : parts[0].trim();
+            const cleanState = state.length > 3 ? 'Outros' : state; // Fallback simples
+            
+            if (!groups[cleanState]) groups[cleanState] = [];
+            groups[cleanState].push(p);
+        });
+        return Object.entries(groups).sort((a,b) => b[1].length - a[1].length); // Ordena por quantidade
+    }, [selectedAsset]);
 
     return (
         <div className="pb-32">
@@ -842,36 +962,31 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                                 </div>
                             )}
 
-                            {/* ABA IMÓVEIS: Lista de Ativos Físicos com ABL */}
+                            {/* ABA IMÓVEIS: Agrupamento por Estado e Stats */}
                             {activeTab === 'IMOVEIS' && selectedAsset.properties && (
                                 <div className="anim-fade-in space-y-6">
-                                    {/* Distribuição Gráfica */}
+                                    {/* Estatísticas de Topo */}
+                                    <PropertyStats properties={selectedAsset.properties} />
+
+                                    {/* Distribuição Gráfica (Compacta) */}
                                     <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 shadow-sm">
                                         <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                                             <RePieChart className="w-3 h-3" /> Distribuição Geográfica
                                         </h4>
-                                        <div className="h-56 w-full relative">
+                                        <div className="h-48 w-full relative">
                                             <ResponsiveContainer width="100%" height="100%">
                                                 <RePieChart>
                                                     <Pie
-                                                        data={Object.entries(selectedAsset.properties.reduce((acc, curr) => {
-                                                            const loc = curr.location ? curr.location.split('-')[0].trim() : 'N/A'; // Simple normalization
-                                                            acc[loc] = (acc[loc] || 0) + 1;
-                                                            return acc;
-                                                        }, {} as Record<string, number>)).map(([name, value]) => ({ name, value })).sort((a: any, b: any) => b.value - a.value)}
+                                                        data={groupedProperties.map(([state, props]) => ({ name: state, value: props.length }))}
                                                         cx="50%"
                                                         cy="50%"
-                                                        innerRadius={50}
-                                                        outerRadius={70}
+                                                        innerRadius={40}
+                                                        outerRadius={60}
                                                         paddingAngle={4}
                                                         dataKey="value"
                                                         stroke="none"
                                                     >
-                                                        {Object.entries(selectedAsset.properties.reduce((acc, curr) => {
-                                                            const loc = curr.location ? curr.location.split('-')[0].trim() : 'N/A';
-                                                            acc[loc] = (acc[loc] || 0) + 1;
-                                                            return acc;
-                                                        }, {} as Record<string, number>)).map((entry, index) => (
+                                                        {groupedProperties.map((entry, index) => (
                                                             <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} strokeWidth={0} />
                                                         ))}
                                                     </Pie>
@@ -882,42 +997,12 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                                         </div>
                                     </div>
 
-                                    {/* Lista Detalhada */}
-                                    <div>
-                                        <div className="flex items-center justify-between mb-3 px-1">
-                                            <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
-                                                <Building2 className="w-3 h-3" /> Portfólio Imobiliário
-                                            </h4>
-                                            <span className="text-[9px] font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-500 px-2 py-1 rounded-md">{selectedAsset.properties.length} Ativos</span>
-                                        </div>
-                                        
-                                        <div className="grid grid-cols-1 gap-3">
-                                            {selectedAsset.properties.map((prop, idx) => (
-                                                <div key={idx} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex items-start gap-4 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors">
-                                                    <div className="w-10 h-10 rounded-xl bg-zinc-50 dark:bg-zinc-800 text-zinc-400 flex items-center justify-center shrink-0 border border-zinc-100 dark:border-zinc-700">
-                                                        <MapPin className="w-5 h-5" />
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <h4 className="text-xs font-bold text-zinc-900 dark:text-white leading-tight mb-1">{prop.name}</h4>
-                                                        <div className="flex flex-wrap gap-2">
-                                                            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-zinc-500 bg-zinc-50 dark:bg-zinc-800 px-2 py-1 rounded-md border border-zinc-100 dark:border-zinc-700/50">
-                                                                {prop.location || 'Local n/d'}
-                                                            </span>
-                                                            {prop.abl && (
-                                                                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-zinc-500 bg-zinc-50 dark:bg-zinc-800 px-2 py-1 rounded-md border border-zinc-100 dark:border-zinc-700/50">
-                                                                    <SquareStack className="w-3 h-3" /> {prop.abl}
-                                                                </span>
-                                                            )}
-                                                            {prop.type && (
-                                                                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-zinc-500 bg-zinc-50 dark:bg-zinc-800 px-2 py-1 rounded-md border border-zinc-100 dark:border-zinc-700/50">
-                                                                    {prop.type}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
+                                    {/* Lista Agrupada por Estado (Accordion) */}
+                                    <div className="space-y-3">
+                                        <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">Portfólio Detalhado</h4>
+                                        {groupedProperties.map(([state, props]) => (
+                                            <LocationGroup key={state} state={state} properties={props} />
+                                        ))}
                                     </div>
                                 </div>
                             )}
@@ -927,6 +1012,17 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
             </SwipeableModal>
         </div>
     );
+};
+
+// Helper para obter label do mês
+const getMonthLabel = (key: string) => {
+    try {
+        const [y, m] = key.split('-');
+        const date = new Date(parseInt(y), parseInt(m) - 1, 1);
+        return date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
+    } catch {
+        return key;
+    }
 };
 
 export const Portfolio = React.memo(PortfolioComponent);

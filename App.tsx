@@ -18,7 +18,7 @@ import { supabase, SUPABASE_URL } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 import { useScrollDirection } from './hooks/useScrollDirection';
 
-const APP_VERSION = '8.9.0'; 
+const APP_VERSION = '8.9.1'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -693,7 +693,7 @@ const App: React.FC = () => {
                   {currentTab === 'portfolio' && (
                       <Portfolio 
                           portfolio={memoizedPortfolioData.portfolio} 
-                          dividends={dividends} 
+                          dividends={memoizedPortfolioData.dividendReceipts} 
                           privacyMode={privacyMode} 
                           onAssetRefresh={refreshSingleAsset} 
                           headerVisible={isHeaderVisible} 
