@@ -130,29 +130,37 @@ const PriceHistoryChart = ({ data, loading, error, ticker, range, setRange }: an
     );
 };
 
-// Componente 2: Gráfico Comparativo (Benchmark) - NOVO
+// Componente 2: Gráfico Comparativo (Benchmark) - ATUALIZADO
 const ComparativeHistoryChart = ({ data, loading, ticker, type }: any) => {
-    // Benchmarks labels
-    const benchmarkLabel = 'IBOV'; // Usamos IBOV como proxy geral do mercado na API Yahoo
-
+    
+    // Calculates last returns for legend
     const assetReturn = useMemo(() => data && data.length > 0 ? data[data.length - 1].assetPct : 0, [data]);
-    const benchReturn = useMemo(() => data && data.length > 0 ? data[data.length - 1].benchPct : 0, [data]);
+    const ibovReturn = useMemo(() => data && data.length > 0 ? data[data.length - 1].ibovPct : 0, [data]);
+    const ifixReturn = useMemo(() => data && data.length > 0 ? data[data.length - 1].ifixPct : 0, [data]);
+
+    const hasIfix = useMemo(() => data && data.some((d: any) => d.ifixPct !== null && d.ifixPct !== undefined), [data]);
 
     return (
         <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 p-5 shadow-sm mb-6 relative overflow-hidden">
             <div className="mb-6">
                 <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2 mb-2">
-                    <TrendingUp className="w-3 h-3" /> Comparativo com Mercado
+                    <TrendingUp className="w-3 h-3" /> Comparação de {ticker} com Índices
                 </h4>
-                <div className="flex items-center gap-4 text-xs font-bold">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-bold">
                     <span className="flex items-center gap-1.5 text-indigo-500">
                         <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
                         {ticker} ({assetReturn > 0 ? '+' : ''}{assetReturn?.toFixed(1)}%)
                     </span>
-                    <span className="flex items-center gap-1.5 text-zinc-400">
-                        <span className="w-2 h-2 rounded-full bg-zinc-400"></span>
-                        {benchmarkLabel} ({benchReturn > 0 ? '+' : ''}{benchReturn?.toFixed(1)}%)
+                    <span className="flex items-center gap-1.5 text-amber-500">
+                        <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                        IBOV ({ibovReturn > 0 ? '+' : ''}{ibovReturn?.toFixed(1)}%)
                     </span>
+                    {hasIfix && (
+                        <span className="flex items-center gap-1.5 text-emerald-500">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            IFIX ({ifixReturn > 0 ? '+' : ''}{ifixReturn?.toFixed(1)}%)
+                        </span>
+                    )}
                 </div>
             </div>
 
@@ -187,22 +195,44 @@ const ComparativeHistoryChart = ({ data, loading, ticker, type }: any) => {
                             <Tooltip 
                                 contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '11px', padding: '8px 12px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)' }}
                                 labelFormatter={(label) => new Date(label).toLocaleDateString('pt-BR')}
-                                formatter={(value: number, name: string) => [`${value.toFixed(2)}%`, name === 'assetPct' ? ticker : benchmarkLabel]}
+                                formatter={(value: number, name: string) => {
+                                    if (name === 'assetPct') return [`${value.toFixed(2)}%`, ticker];
+                                    if (name === 'ibovPct') return [`${value.toFixed(2)}%`, 'IBOV'];
+                                    if (name === 'ifixPct') return [`${value.toFixed(2)}%`, 'IFIX'];
+                                    return [value, name];
+                                }}
                             />
                             <ReferenceLine y={0} stroke="#71717a" strokeOpacity={0.3} strokeDasharray="3 3" />
+                            
+                            {/* IBOV */}
                             <Line 
                                 type="monotone" 
-                                dataKey="benchPct" 
-                                stroke="#a1a1aa" 
+                                dataKey="ibovPct" 
+                                stroke="#f59e0b" // Amber
                                 strokeWidth={1.5} 
                                 dot={false} 
                                 strokeDasharray="4 4"
                                 animationDuration={1000}
                             />
+                            
+                            {/* IFIX (Conditional) */}
+                            {hasIfix && (
+                                <Line 
+                                    type="monotone" 
+                                    dataKey="ifixPct" 
+                                    stroke="#10b981" // Emerald
+                                    strokeWidth={1.5} 
+                                    dot={false} 
+                                    strokeDasharray="4 4"
+                                    animationDuration={1000}
+                                />
+                            )}
+
+                            {/* Asset */}
                             <Line 
                                 type="monotone" 
                                 dataKey="assetPct" 
-                                stroke="#6366f1" 
+                                stroke="#6366f1" // Indigo
                                 strokeWidth={2.5} 
                                 dot={false} 
                                 animationDuration={1000}
@@ -229,7 +259,7 @@ const ChartsContainer = ({ ticker, type }: { ticker: string, type: AssetType }) 
             setError(false);
             try {
                 // Fetch comparative data (returns price AND percentages)
-                const res = await fetch(`/api/history?ticker=${ticker}&benchmark=^BVSP&range=${range}`);
+                const res = await fetch(`/api/history?ticker=${ticker}&range=${range}`);
                 if (!res.ok) throw new Error('Falha');
                 const json = await res.json();
                 

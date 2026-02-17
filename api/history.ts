@@ -49,57 +49,55 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === 'OPTIONS') return res.status(200).end();
 
     const ticker = String(req.query.ticker || '').toUpperCase().trim();
-    const benchmark = String(req.query.benchmark || '').toUpperCase().trim();
+    // benchmark param is deprecated/ignored, we fetch specific indices now
     const range = String(req.query.range || '1Y');
 
     if (!ticker) return res.status(400).json({ error: 'Ticker required' });
 
     try {
-        // Fetch Asset Data
-        const assetData = await fetchYahooData(ticker, range);
-        if (!assetData) return res.status(404).json({ error: 'Asset not found' });
+        // Fetch Asset Data and Benchmarks in parallel
+        const [assetData, ibovData, ifixData] = await Promise.all([
+            fetchYahooData(ticker, range),
+            fetchYahooData('^BVSP', range), // IBOVESPA
+            fetchYahooData('IFIX.SA', range) // IFIX
+        ]);
 
-        // Fetch Benchmark Data (if requested)
-        let benchData = null;
-        if (benchmark) {
-            benchData = await fetchYahooData(benchmark, range);
-        }
+        if (!assetData) return res.status(404).json({ error: 'Asset not found' });
 
         // Process Data
         const points = [];
         const { timestamps, prices } = assetData;
         
-        // Find first valid price for normalization
-        let startPrice = 0;
-        let startBenchPrice = 0;
-
-        for (let i = 0; i < prices.length; i++) {
-            if (prices[i] !== null) {
-                startPrice = prices[i] as number;
-                break;
+        // Helper to find start price
+        const getStartPrice = (pricesArr: (number|null)[]) => {
+            for (let i = 0; i < pricesArr.length; i++) {
+                if (pricesArr[i] !== null && pricesArr[i] !== undefined) return pricesArr[i] as number;
             }
-        }
+            return 0;
+        };
 
-        // Setup benchmark start price if available
-        if (benchData) {
-            for (let i = 0; i < benchData.prices.length; i++) {
-                if (benchData.prices[i] !== null) {
-                    startBenchPrice = benchData.prices[i] as number;
-                    break;
-                }
-            }
-        }
+        const startPrice = getStartPrice(prices);
+        const startIbov = ibovData ? getStartPrice(ibovData.prices) : 0;
+        const startIfix = ifixData ? getStartPrice(ifixData.prices) : 0;
 
-        // Create Map for Benchmark Data to sync dates (Yahoo returns different timestamps for different tickers)
-        const benchMap = new Map<string, number>();
-        if (benchData) {
-            benchData.timestamps.forEach((t, i) => {
+        // Maps for O(1) lookup by date
+        const createPriceMap = (data: any) => {
+            const map = new Map<string, number>();
+            if (!data) return map;
+            data.timestamps.forEach((t: number, i: number) => {
                 const dateKey = new Date(t * 1000).toISOString().split('T')[0];
-                if (benchData!.prices[i] !== null) {
-                    benchMap.set(dateKey, benchData!.prices[i] as number);
+                if (data.prices[i] !== null) {
+                    map.set(dateKey, data.prices[i]);
                 }
             });
-        }
+            return map;
+        };
+
+        const ibovMap = createPriceMap(ibovData);
+        const ifixMap = createPriceMap(ifixData);
+
+        let lastIbovPct = 0;
+        let lastIfixPct = 0;
 
         for (let i = 0; i < timestamps.length; i++) {
             const price = prices[i];
@@ -114,26 +112,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 price: price
             };
 
-            // Calculate Asset Percentage Change
-            if (startPrice > 0) {
-                point.assetPct = ((price - startPrice) / startPrice) * 100;
-            } else {
-                point.assetPct = 0;
-            }
+            // Asset %
+            point.assetPct = startPrice > 0 ? ((price - startPrice) / startPrice) * 100 : 0;
 
-            // Calculate Benchmark Percentage Change (Syncing by Date)
-            if (benchmark && startBenchPrice > 0) {
-                const benchPrice = benchMap.get(dateKey);
-                // If exact date not found, try to find nearest previous date (simple fill forward)
-                // For simplicity in this demo, we skip if exact date missing or reuse previous
-                if (benchPrice !== undefined) {
-                    point.benchPct = ((benchPrice - startBenchPrice) / startBenchPrice) * 100;
-                } else if (points.length > 0) {
-                    point.benchPct = points[points.length - 1].benchPct;
+            // IBOV %
+            if (startIbov > 0) {
+                const ibovPrice = ibovMap.get(dateKey);
+                if (ibovPrice !== undefined) {
+                    point.ibovPct = ((ibovPrice - startIbov) / startIbov) * 100;
+                    lastIbovPct = point.ibovPct;
                 } else {
-                    point.benchPct = 0;
+                    point.ibovPct = lastIbovPct; // Fill forward
                 }
-            }
+            } else point.ibovPct = 0;
+
+            // IFIX %
+            if (startIfix > 0) {
+                const ifixPrice = ifixMap.get(dateKey);
+                if (ifixPrice !== undefined) {
+                    point.ifixPct = ((ifixPrice - startIfix) / startIfix) * 100;
+                    lastIfixPct = point.ifixPct;
+                } else {
+                    point.ifixPct = lastIfixPct; // Fill forward
+                }
+            } else point.ifixPct = null; // Send null if no data to avoid plotting flat line at 0
 
             points.push(point);
         }
