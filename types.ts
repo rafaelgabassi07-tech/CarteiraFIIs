@@ -22,14 +22,6 @@ export interface RealEstateProperty {
   type?: string;
 }
 
-export interface ProfitabilityBenchmark {
-  label: string; // ex: '12 Meses', '2 Anos'
-  asset: number;
-  cdi?: number;
-  ifix?: number;
-  ibov?: number;
-}
-
 export interface AssetFundamentals {
   // Comuns
   p_vp?: number;
@@ -43,8 +35,10 @@ export interface AssetFundamentals {
   profitability_12m?: number; // Rentabilidade 12 Meses
   profitability_month?: number; // Rentabilidade no Mês Atual
   
-  // Comparativo
-  benchmarks?: ProfitabilityBenchmark[];
+  // Benchmarks (Comparação)
+  benchmark_cdi_12m?: number;
+  benchmark_ifix_12m?: number;
+  benchmark_ibov_12m?: number;
   
   // Ações - Eficiência e Crescimento
   net_margin?: number; // Margem Líquida

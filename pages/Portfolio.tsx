@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, Wallet, TrendingUp, TrendingDown, RefreshCw, X, Calculator, Scale, Activity, BarChart3, PieChart, Coins, Target, AlertCircle, ChevronDown, ChevronUp, ExternalLink, ArrowRight, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, ArrowLeftRight } from 'lucide-react';
+import { Search, Wallet, TrendingUp, TrendingDown, RefreshCw, X, Calculator, Scale, Activity, BarChart3, PieChart, Coins, Target, AlertCircle, ChevronDown, ChevronUp, ExternalLink, ArrowRight, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 
@@ -77,6 +77,27 @@ const ValuationCard = ({ title, price, currentPrice, method, subtext, icon: Icon
                         {margin > 0 ? `+${margin.toFixed(0)}% Upside` : `${margin.toFixed(0)}% Margem`}
                     </span>
                 )}
+            </div>
+        </div>
+    );
+};
+
+// Componente de Barra de Comparação (Benchmark)
+const BenchmarkBar = ({ label, value, color }: { label: string, value: number, color: string }) => {
+    // Normaliza para visualização (max 20% para escala)
+    const width = Math.min(100, Math.max(5, (Math.abs(value) / 20) * 100));
+    
+    return (
+        <div className="mb-2 last:mb-0">
+            <div className="flex justify-between items-end mb-1">
+                <span className="text-[9px] font-bold text-zinc-400 uppercase">{label}</span>
+                <span className={`text-xs font-black ${value >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                    {value > 0 ? '+' : ''}{value.toFixed(2)}%
+                </span>
+            </div>
+            <div className="h-1.5 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden flex items-center">
+                {/* Eixo central se tiver valores negativos */}
+                <div className={`h-full rounded-full ${color}`} style={{ width: `${width}%` }}></div>
             </div>
         </div>
     );
@@ -404,7 +425,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                                 <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">{selectedAsset.segment}</p>
                             </div>
 
-                            {/* 2. SUA POSIÇÃO (NOVO) */}
+                            {/* 2. SUA POSIÇÃO */}
                             <div className="mb-8">
                                 <div className="flex items-center gap-2 mb-3 px-1">
                                     <Briefcase className="w-4 h-4 text-emerald-500" />
@@ -428,7 +449,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                                 </div>
                             </div>
 
-                            {/* 3. DIVIDEND CHART & RENTABILIDADE (NOVO) */}
+                            {/* 3. DIVIDEND CHART & RENTABILIDADE */}
                             <div className="mb-8">
                                 <div className="flex items-center gap-2 mb-3 px-1">
                                     <Zap className="w-4 h-4 text-amber-500" />
@@ -438,7 +459,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                                 {/* Gráfico de Dividendos */}
                                 <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm mb-4">
                                     <div className="flex justify-between items-center mb-4">
-                                        <h4 className="text-[10px] font-bold text-zinc-400 uppercase">Distribuição nos últimos 12M</h4>
+                                        <h4 className="text-[10px] font-bold text-zinc-400 uppercase">Dividendos (12 Meses)</h4>
                                         <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
                                             Média: {formatBRL(averageDividend)}
                                         </span>
@@ -465,35 +486,32 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                                     </div>
                                 </div>
 
-                                {/* TABELA DE COMPARAÇÃO DE ÍNDICES */}
-                                {selectedAsset.benchmarks && selectedAsset.benchmarks.length > 0 && (
-                                    <div className="bg-zinc-50 dark:bg-zinc-800/30 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-4 mb-4">
-                                        <div className="flex items-center gap-2 mb-3">
-                                            <ArrowLeftRight className="w-4 h-4 text-sky-500" />
-                                            <h4 className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Gráfico de comparação de índices</h4>
-                                        </div>
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full text-xs">
-                                                <thead>
-                                                    <tr className="text-left text-[9px] text-zinc-400 uppercase tracking-wider border-b border-zinc-200 dark:border-zinc-700/50">
-                                                        <th className="pb-2 pl-2">Período</th>
-                                                        <th className="pb-2 text-right">Ativo</th>
-                                                        <th className="pb-2 text-right">CDI</th>
-                                                        <th className="pb-2 text-right pr-2">IFIX/IBOV</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-zinc-200/50 dark:divide-zinc-700/50">
-                                                    {selectedAsset.benchmarks.map((bench, idx) => (
-                                                        <tr key={idx} className="font-medium text-zinc-900 dark:text-white">
-                                                            <td className="py-2.5 pl-2 text-zinc-500">{bench.label}</td>
-                                                            <td className={`py-2.5 text-right font-bold ${bench.asset >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600'}`}>{bench.asset}%</td>
-                                                            <td className="py-2.5 text-right text-zinc-500">{bench.cdi !== undefined ? `${bench.cdi}%` : '-'}</td>
-                                                            <td className="py-2.5 text-right pr-2 text-zinc-500">{bench.ifix !== undefined ? `${bench.ifix}%` : (bench.ibov !== undefined ? `${bench.ibov}%` : '-')}</td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
+                                {/* Comparativo Rentabilidade */}
+                                {(selectedAsset.profitability_12m || selectedAsset.benchmark_cdi_12m) && (
+                                    <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm mb-4">
+                                        <h4 className="text-[10px] font-bold text-zinc-400 uppercase mb-3">Comparativo (12 Meses)</h4>
+                                        
+                                        <BenchmarkBar 
+                                            label={selectedAsset.ticker} 
+                                            value={selectedAsset.profitability_12m || 0} 
+                                            color="bg-indigo-500" 
+                                        />
+                                        
+                                        {selectedAsset.benchmark_cdi_12m && (
+                                            <BenchmarkBar 
+                                                label="CDI" 
+                                                value={selectedAsset.benchmark_cdi_12m} 
+                                                color="bg-zinc-300 dark:bg-zinc-600" 
+                                            />
+                                        )}
+                                        
+                                        {(selectedAsset.benchmark_ifix_12m || selectedAsset.benchmark_ibov_12m) && (
+                                            <BenchmarkBar 
+                                                label={selectedAsset.assetType === AssetType.FII ? 'IFIX' : 'IBOV'} 
+                                                value={(selectedAsset.assetType === AssetType.FII ? selectedAsset.benchmark_ifix_12m : selectedAsset.benchmark_ibov_12m) || 0} 
+                                                color="bg-zinc-400 dark:bg-zinc-500" 
+                                            />
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -560,7 +578,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                                         <div className="flex items-center gap-2 mb-3 px-1">
                                             <Building2 className="w-4 h-4 text-sky-500" />
                                             <h3 className="text-xs font-black text-zinc-900 dark:text-white uppercase tracking-widest">
-                                                Lista de Imóveis ({selectedAsset.properties.length})
+                                                Portfólio Imobiliário ({selectedAsset.properties.length})
                                             </h3>
                                         </div>
                                         <div className="bg-zinc-50 dark:bg-zinc-800/30 rounded-2xl border border-zinc-100 dark:border-zinc-800 overflow-hidden divide-y divide-zinc-100 dark:divide-zinc-800">
