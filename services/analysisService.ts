@@ -124,7 +124,7 @@ export const analyzePortfolio = (
     if (inflationShield) {
         createStory(
             'inflation-shield',
-            'success',
+            'inflation-shield',
             'Vencendo a Inflação 🛡️',
             `${inflationShield.ticker} possui um DY de ${(inflationShield.dy_12m || 0).toFixed(1)}%, superando o IPCA (${ipca}%) com folga.`,
             89,

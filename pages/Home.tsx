@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, PortfolioInsight } from '../types';
-import { CircleDollarSign, CalendarClock, PieChart as PieIcon, ArrowUpRight, Wallet, ArrowRight, Sparkles, Trophy, Anchor, Coins, Crown, Info, X } from 'lucide-react';
+import { CircleDollarSign, CalendarClock, PieChart as PieIcon, ArrowUpRight, Wallet, ArrowRight, Sparkles, Trophy, Anchor, Coins, Crown, Info, X, Zap, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, CartesianGrid, AreaChart, Area, XAxis, YAxis } from 'recharts';
 import { formatBRL, formatDateShort, getMonthName, getDaysUntil } from '../utils/formatters';
@@ -9,7 +9,7 @@ import { formatBRL, formatDateShort, getMonthName, getDaysUntil } from '../utils
 const CHART_COLORS = ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#f43f5e', '#84cc16'];
 
 // --- STORIES COMPONENT ---
-const StoriesBar = ({ insights, onViewAsset }: { insights: PortfolioInsight[], onViewAsset?: (t: string) => void }) => {
+const StoriesBar = ({ insights, onSelectStory }: { insights: PortfolioInsight[], onSelectStory: (story: PortfolioInsight) => void }) => {
     if (!insights || insights.length === 0) return null;
 
     return (
@@ -17,7 +17,7 @@ const StoriesBar = ({ insights, onViewAsset }: { insights: PortfolioInsight[], o
             {insights.map((story) => (
                 <button 
                     key={story.id} 
-                    onClick={() => story.relatedTicker && onViewAsset && onViewAsset(story.relatedTicker)}
+                    onClick={() => onSelectStory(story)}
                     className="snap-start shrink-0 w-[240px] p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 shadow-sm flex flex-col justify-between items-start text-left group hover:border-zinc-300 dark:hover:border-zinc-700 transition-all press-effect"
                 >
                     <div className="flex justify-between w-full mb-2">
@@ -32,6 +32,68 @@ const StoriesBar = ({ insights, onViewAsset }: { insights: PortfolioInsight[], o
                 </button>
             ))}
         </div>
+    );
+};
+
+// --- STORY MODAL ---
+const StoryModal = ({ story, onClose, onViewAsset }: { story: PortfolioInsight | null, onClose: () => void, onViewAsset: (ticker: string) => void }) => {
+    if (!story) return null;
+
+    let icon = <Info className="w-12 h-12 text-indigo-500" />;
+    let bgClass = "bg-indigo-50 dark:bg-indigo-900/20";
+    let detailText = "Análise automática baseada no desempenho da sua carteira.";
+
+    if (story.type === 'success' || story.type === 'opportunity') {
+        icon = <Sparkles className="w-12 h-12 text-emerald-500" />;
+        bgClass = "bg-emerald-50 dark:bg-emerald-900/20";
+        detailText = story.type === 'opportunity' ? "Este ativo apresenta indicadores fundamentalistas atrativos." : "Excelente performance registrada recentemente.";
+    } else if (story.type === 'warning' || story.type === 'volatility_down') {
+        icon = <AlertTriangle className="w-12 h-12 text-rose-500" />;
+        bgClass = "bg-rose-50 dark:bg-rose-900/20";
+        detailText = "Este movimento requer atenção. Avalie se os fundamentos mudaram.";
+    } else if (story.type === 'inflation-shield') {
+        icon = <ShieldCheck className="w-12 h-12 text-emerald-500" />;
+        bgClass = "bg-emerald-50 dark:bg-emerald-900/20";
+        detailText = "O Dividend Yield deste ativo supera a inflação oficial (IPCA), protegendo seu poder de compra.";
+    }
+
+    return (
+        <SwipeableModal isOpen={!!story} onClose={onClose}>
+            <div className="p-8 h-full flex flex-col items-center text-center pb-24">
+                <div className={`w-24 h-24 rounded-full flex items-center justify-center mb-6 anim-scale-in ${bgClass}`}>
+                    {icon}
+                </div>
+                
+                <h2 className="text-2xl font-black text-zinc-900 dark:text-white mb-4 leading-tight">{story.title}</h2>
+                <p className="text-base text-zinc-600 dark:text-zinc-300 font-medium leading-relaxed mb-8 max-w-xs mx-auto">
+                    {story.message}
+                </p>
+
+                <div className="w-full bg-zinc-50 dark:bg-zinc-800/50 p-5 rounded-2xl border border-zinc-100 dark:border-zinc-800 mb-8 text-left">
+                    <h4 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-2">O que isso significa?</h4>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                        {detailText} Monitorar esses eventos ajuda a manter sua estratégia alinhada com seus objetivos de longo prazo.
+                    </p>
+                </div>
+
+                <div className="mt-auto w-full space-y-3">
+                    {story.relatedTicker && (
+                        <button 
+                            onClick={() => { onClose(); onViewAsset(story.relatedTicker!); }}
+                            className="w-full py-4 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold text-sm shadow-lg press-effect"
+                        >
+                            Ver {story.relatedTicker}
+                        </button>
+                    )}
+                    <button 
+                        onClick={onClose}
+                        className="w-full py-3 rounded-xl text-zinc-400 font-bold text-xs uppercase tracking-widest hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                    >
+                        Fechar
+                    </button>
+                </div>
+            </div>
+        </SwipeableModal>
     );
 };
 
@@ -102,6 +164,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [allocationView, setAllocationView] = useState<'CLASS' | 'ASSET'>('CLASS');
   const [showMagicNumber, setShowMagicNumber] = useState(false);
   const [showGoals, setShowGoals] = useState(false);
+  const [selectedStory, setSelectedStory] = useState<PortfolioInsight | null>(null);
 
   // --- CALCULATIONS ---
   
@@ -285,7 +348,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     <div className="space-y-5 pb-8">
         
         {/* STORIES / INSIGHTS */}
-        <StoriesBar insights={insights} onViewAsset={onViewAsset} />
+        <StoriesBar insights={insights} onSelectStory={setSelectedStory} />
 
         {/* HERO CARD (Redesenhado) */}
         <div className="relative w-full min-h-[240px] rounded-[2.2rem] bg-zinc-950 border border-zinc-800/80 overflow-hidden shadow-2xl group anim-fade-in">
@@ -405,6 +468,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </div>
 
         {/* MODALS */}
+        
+        <StoryModal 
+            story={selectedStory} 
+            onClose={() => setSelectedStory(null)} 
+            onViewAsset={(t) => { setSelectedStory(null); if(onViewAsset) onViewAsset(t); }} 
+        />
         
         {/* 1. AGENDA */}
         <SwipeableModal isOpen={showAgenda} onClose={() => setShowAgenda(false)}>

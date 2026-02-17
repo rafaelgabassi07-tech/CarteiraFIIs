@@ -281,7 +281,7 @@ export interface NewsItem {
 }
 
 // --- TIPOS DE INTELIGÊNCIA ---
-export type InsightType = 'opportunity' | 'warning' | 'neutral' | 'success' | 'news' | 'volatility_up' | 'volatility_down';
+export type InsightType = 'opportunity' | 'warning' | 'neutral' | 'success' | 'news' | 'volatility_up' | 'volatility_down' | 'inflation-shield';
 
 export interface PortfolioInsight {
     id: string;

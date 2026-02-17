@@ -1,8 +1,8 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, Activity, BarChart3, PieChart, Coins, AlertCircle, ChevronDown, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, Scale, SquareStack, Calendar, Map as MapIcon, ChevronRight, Share2, MousePointerClick, CandlestickChart, LineChart as LineChartIcon, SlidersHorizontal, Layers, Award, HelpCircle, Edit3, RefreshCw, Banknote } from 'lucide-react';
+import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, Activity, BarChart3, PieChart, Coins, AlertCircle, ChevronDown, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, Scale, SquareStack, Calendar, Map as MapIcon, ChevronRight, Share2, MousePointerClick, CandlestickChart, LineChart as LineChartIcon, SlidersHorizontal, Layers, Award, HelpCircle, Edit3, RefreshCw, Banknote, RefreshCcw } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
+import { BrazilMap } from '../components/BrazilMap';
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, ReferenceLine, ComposedChart, CartesianGrid, Legend, AreaChart, Area, YAxis, PieChart as RePieChart, Pie, Cell, LineChart, Line, ErrorBar, Label } from 'recharts';
 import { formatBRL, formatPercent, formatNumber, formatDateShort } from '../utils/formatters';
 
@@ -321,9 +321,10 @@ const ComparativeChart = ({ data, loading, ticker, type, range, setRange }: any)
     );
 };
 
-// --- COMPONENT 3: SimulatorCard (R$) ---
+// --- COMPONENT 3: SimulatorCard (R$) APRIMORADO ---
 const SimulatorCard = ({ data, ticker, dividends = [] }: any) => {
     const [amount, setAmount] = useState(1000);
+    const [reinvest, setReinvest] = useState(true); // Lógica de Bola de Neve
     
     const result = useMemo(() => {
         if (!data || data.length === 0) return null;
@@ -338,52 +339,77 @@ const SimulatorCard = ({ data, ticker, dividends = [] }: any) => {
         
         if (!startPrice) return null;
 
-        // 2. Simular compra
-        const sharesPurchased = Math.floor(amount / startPrice);
-        const leftoverCash = amount - (sharesPurchased * startPrice);
+        // 2. Simular compra inicial
+        let shares = Math.floor(amount / startPrice);
+        let cash = amount - (shares * startPrice);
+        let totalDividendsReceived = 0;
+        let dividendsUsedForReinvest = 0;
         
-        // 3. Calcular valor final da posição (Capital Gain)
-        const finalEquity = (sharesPurchased * endPrice) + leftoverCash;
-        
-        // 4. Calcular Dividendos Recebidos no período (Total Return)
-        let totalDividends = 0;
+        // 3. Processar dividendos cronologicamente (Reinvestimento)
         if (dividends && dividends.length > 0) {
-            dividends.forEach((div: DividendReceipt) => {
+            // Ordena dividendos por data de pagamento
+            const sortedDivs = [...dividends].sort((a: any, b: any) => {
+                const dateA = new Date(a.paymentDate || a.dateCom).getTime();
+                const dateB = new Date(b.paymentDate || b.dateCom).getTime();
+                return dateA - dateB;
+            });
+
+            sortedDivs.forEach((div: DividendReceipt) => {
                 const payDate = new Date(div.paymentDate || div.dateCom);
-                // Soma apenas se o dividendo ocorreu APÓS a compra simulada
+                
+                // Só processa se for após a compra
                 if (payDate >= startDate) {
-                    totalDividends += (sharesPurchased * div.rate);
+                    const receipt = shares * div.rate;
+                    totalDividendsReceived += receipt;
+                    
+                    if (reinvest) {
+                        cash += receipt;
+                        // Simula preço na data do dividendo (aproximado pela data mais próxima no array de historico)
+                        // Para simplificar e ser rápido, usamos o startPrice se não acharmos (mas vamos tentar achar)
+                        // Acha o preço mais próximo no histórico
+                        const closestPoint = data.find((p: any) => new Date(p.date) >= payDate);
+                        const reinvestPrice = closestPoint ? (closestPoint.price || closestPoint.close) : endPrice;
+                        
+                        if (reinvestPrice && cash >= reinvestPrice) {
+                            const newShares = Math.floor(cash / reinvestPrice);
+                            shares += newShares;
+                            cash -= (newShares * reinvestPrice);
+                            dividendsUsedForReinvest += (newShares * reinvestPrice);
+                        }
+                    }
                 }
             });
         }
 
-        const finalTotal = finalEquity + totalDividends;
+        const finalEquity = (shares * endPrice);
+        const finalTotal = reinvest ? (finalEquity + cash) : (finalEquity + cash + totalDividendsReceived);
         
         // Benchmarks
         const cdiGrowth = (last.cdiPct || 0) / 100;
         const finalCDI = amount * (1 + cdiGrowth);
         
-        // Income Estimation (Mensal baseado nos últimos dividendos)
-        const estimatedMonthly = (totalDividends / Math.max(1, data.length / 21)); // Aprox dias úteis
-
         return {
-            shares: sharesPurchased,
+            shares,
             equity: finalEquity,
-            dividends: totalDividends,
+            dividends: totalDividendsReceived,
             total: finalTotal,
             profit: finalTotal - amount,
             cdi: finalCDI,
             roi: ((finalTotal - amount) / amount) * 100,
-            estimatedMonthly
+            reinvestedAmount: dividendsUsedForReinvest
         };
-    }, [data, amount, dividends]);
+    }, [data, amount, dividends, reinvest]);
 
     return (
         <div className="bg-gradient-to-br from-zinc-50 to-white dark:from-zinc-900 dark:to-zinc-950 rounded-3xl border border-zinc-200 dark:border-zinc-800 p-5 shadow-sm mb-6">
             <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
-                    <Award className="w-3.5 h-3.5" /> Simulador de Retorno
-                </h3>
+                <div className="flex items-center gap-2">
+                    <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                        <Award className="w-3.5 h-3.5" /> Simulador
+                    </h3>
+                    {reinvest && <span className="text-[9px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-1.5 py-0.5 rounded font-bold">Composto</span>}
+                </div>
+                
                 <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5">
                     {[1000, 5000, 10000].map(val => (
                         <button 
@@ -398,7 +424,7 @@ const SimulatorCard = ({ data, ticker, dividends = [] }: any) => {
             </div>
 
             <div className="mb-4">
-                <p className="text-[10px] text-zinc-400 mb-1">Com <strong>{formatBRL(amount)}</strong> no início do período, você teria:</p>
+                <p className="text-[10px] text-zinc-400 mb-1">Resultado final ({reinvest ? 'Reinvestindo' : 'Sacando'}):</p>
                 <div className="flex items-baseline gap-2">
                     <span className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter">
                         {result ? formatBRL(result.total) : '...'}
@@ -409,17 +435,25 @@ const SimulatorCard = ({ data, ticker, dividends = [] }: any) => {
                         </span>
                     )}
                 </div>
+                <button 
+                    onClick={() => setReinvest(!reinvest)} 
+                    className="mt-3 flex items-center gap-2 text-[10px] font-bold text-zinc-500 hover:text-indigo-500 transition-colors"
+                >
+                    <RefreshCcw className={`w-3 h-3 ${reinvest ? 'text-indigo-500' : ''}`} />
+                    {reinvest ? 'Desativar Reinvestimento' : 'Ativar Juros Compostos'}
+                </button>
             </div>
 
             {result && (
                 <div className="space-y-3">
                     <div className="grid grid-cols-2 gap-2 text-xs">
                         <div className="bg-white dark:bg-zinc-800/50 p-2 rounded-xl border border-zinc-100 dark:border-zinc-800">
-                            <span className="text-[9px] font-bold text-zinc-400 uppercase block mb-0.5">Cotas Compradas</span>
+                            <span className="text-[9px] font-bold text-zinc-400 uppercase block mb-0.5">Cotas Finais</span>
                             <span className="font-bold text-zinc-900 dark:text-white block">{result.shares} un</span>
+                            {reinvest && <span className="text-[9px] text-emerald-500 font-bold">+{(result.shares - Math.floor(amount / (data[0]?.price || 1)))} ganhas</span>}
                         </div>
                         <div className="bg-white dark:bg-zinc-800/50 p-2 rounded-xl border border-zinc-100 dark:border-zinc-800">
-                            <span className="text-[9px] font-bold text-zinc-400 uppercase block mb-0.5">Proventos Recebidos</span>
+                            <span className="text-[9px] font-bold text-zinc-400 uppercase block mb-0.5">Dividendos Totais</span>
                             <span className="font-bold text-emerald-600 dark:text-emerald-400 block">+{formatBRL(result.dividends)}</span>
                         </div>
                     </div>
@@ -1066,20 +1100,9 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                             {activeTab === 'IMOVEIS' && selectedAsset.properties && (
                                 <div className="anim-fade-in space-y-6">
                                     <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 p-6 shadow-sm mb-6">
-                                        <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-6 flex items-center gap-2"><MapIcon className="w-4 h-4 text-zinc-400" /> Distribuição por Estado</h3>
-                                        <div className="flex flex-col items-center">
-                                            <div className="h-64 w-full relative">
-                                                <ResponsiveContainer><RePieChart><Pie data={propertiesByState} innerRadius="60%" outerRadius="80%" paddingAngle={2} dataKey="value" stroke="none">{propertiesByState.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.color} />))}</Pie><Tooltip contentStyle={{backgroundColor: '#18181b', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '11px'}} itemStyle={{color:'#fff'}} /></RePieChart></ResponsiveContainer>
-                                                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none gap-1"><span className="text-3xl font-black text-zinc-900 dark:text-white leading-none">{selectedAsset.properties.length}</span><span className="text-[10px] text-zinc-400 uppercase font-bold tracking-widest leading-none">Imóveis</span></div>
-                                            </div>
-                                            <div className="w-full mt-8 space-y-3">
-                                                {propertiesByState.map((item) => (
-                                                    <div key={item.name} className="flex items-center justify-between group">
-                                                        <div className="flex items-center gap-3"><div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: item.color }}></div><span className="text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase">{item.name}</span></div>
-                                                        <div className="flex items-center gap-2"><div className="w-24 h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden hidden sm:block"><div className="h-full rounded-full" style={{ width: `${(item.value / selectedAsset.properties!.length) * 100}%`, backgroundColor: item.color }}></div></div><span className="text-xs font-bold text-zinc-900 dark:text-white">{item.value}</span></div>
-                                                    </div>
-                                                ))}
-                                            </div>
+                                        <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-6 flex items-center gap-2"><MapIcon className="w-4 h-4 text-zinc-400" /> Mapa de Ativos</h3>
+                                        <div className="w-full relative h-[300px]">
+                                            <BrazilMap data={propertiesByState} totalProperties={selectedAsset.properties.length} />
                                         </div>
                                     </div>
                                     <div className="space-y-4">
