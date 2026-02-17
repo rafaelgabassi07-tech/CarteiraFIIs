@@ -100,6 +100,7 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         mandate: getVal('mandato', 'mandate'),
         target_audience: getVal('publico_alvo', 'target_audience'),
         fund_type: getVal('tipo_fundo', 'fund_type'),
+        duration: getVal('prazo', 'duration'),
         
         properties: m.properties || [], // Mapeia lista de imóveis se existir
         

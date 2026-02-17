@@ -137,6 +137,7 @@ function mapLabelToKey(label: string): string | null {
     if (norm === 'mandato') return 'mandato';
     if (norm.includes('publico alvo') || norm.includes('publico-alvo')) return 'publico_alvo';
     if (norm.includes('tipo de fundo')) return 'tipo_fundo';
+    if (norm.includes('prazo')) return 'prazo';
     
     // Rentabilidade
     if (norm.includes('rentab') && (norm.includes('12') || norm.includes('ano'))) return 'rentabilidade_12m';
@@ -193,7 +194,7 @@ async function scrapeInvestidor10(ticker: string) {
                 vacancia: null, ultimo_rendimento: null, num_cotistas: null, 
                 patrimonio_liquido: null,
                 taxa_adm: null, tipo_gestao: null,
-                cnpj: null, mandato: null, publico_alvo: null, tipo_fundo: null,
+                cnpj: null, mandato: null, publico_alvo: null, tipo_fundo: null, prazo: null,
                 rentabilidade_12m: null, rentabilidade_mes: null,
                 benchmark_cdi_12m: null, benchmark_ifix_12m: null, benchmark_ibov_12m: null
             };
@@ -214,7 +215,7 @@ async function scrapeInvestidor10(ticker: string) {
                     const key = mapLabelToKey(label);
                     if (key) {
                         // Campos de texto vs Numéricos
-                        if (['segmento', 'tipo_gestao', 'taxa_adm', 'cnpj', 'mandato', 'publico_alvo', 'tipo_fundo'].includes(key)) {
+                        if (['segmento', 'tipo_gestao', 'taxa_adm', 'cnpj', 'mandato', 'publico_alvo', 'tipo_fundo', 'prazo'].includes(key)) {
                             dados[key] = value;
                         } else {
                             const parsed = parseValue(value);
