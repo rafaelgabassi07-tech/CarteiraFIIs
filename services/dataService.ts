@@ -20,7 +20,7 @@ export interface FutureDividendPrediction {
     quantity: number;
     type: string;
     daysToDateCom: number;
-    status: 'CONFIRMED'; // Agora sempre confirmado
+    status: 'CONFIRMED'; 
     reasoning?: string;
 }
 
@@ -39,18 +39,16 @@ const parseNumberSafe = (val: any): number | undefined => {
     if (typeof val === 'number') return val;
     if (val === undefined || val === null || val === '') return undefined;
     
-    // Remove R$, %, espaços
     let str = String(val).replace(/[^\d.,-]/g, '').trim();
     if (!str || str === '-') return undefined;
 
-    // Lógica robusta de parsing
     const hasComma = str.includes(',');
     const hasDot = str.includes('.');
 
     if (hasComma && hasDot) {
-        if (str.lastIndexOf(',') > str.lastIndexOf('.')) { // 1.000,50
+        if (str.lastIndexOf(',') > str.lastIndexOf('.')) { 
              str = str.replace(/\./g, '').replace(',', '.');
-        } else { // 1,000.50
+        } else { 
              str = str.replace(/,/g, '');
         }
     } else if (hasComma) {
@@ -79,6 +77,9 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         // Rentabilidade Scraper
         profitability_12m: parseNumberSafe(getVal('rentabilidade_12m', 'rentabilidade12m')),
         profitability_month: parseNumberSafe(getVal('rentabilidade_mes', 'rentabilidademes')),
+        
+        // Comparativo (Novo)
+        benchmarks: m.benchmarks || [],
 
         // Metadados
         liquidity: getVal('liquidez', 'liquidez_media_diaria') || '', 
@@ -91,7 +92,7 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         vacancy: parseNumberSafe(getVal('vacancia', 'vacancia_fisica')),
         last_dividend: parseNumberSafe(getVal('ultimo_rendimento')),
         properties_count: parseNumberSafe(getVal('num_cotistas', 'cotistas')),
-        properties: m.properties || [], // Mapeia lista de imóveis se existir
+        properties: m.properties || [], 
         
         // Ações (Stocks)
         net_margin: parseNumberSafe(getVal('margem_liquida', 'margemliquida')),
@@ -184,12 +185,9 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[]): Prom
 
     const tickers = portfolio.map(p => normalizeTicker(p.ticker));
     
-    // Busca dados desde o início do ano atual para garantir cobertura e contexto
     const startOfYear = `${new Date().getFullYear()}-01-01`;
 
     try {
-        // 1. Dados Confirmados ("O Martelo do Supabase")
-        // Trazemos tudo para o cliente filtrar, é mais seguro contra fuso horário do DB
         const { data, error } = await supabase
             .from('market_dividends')
             .select('*')
@@ -203,7 +201,6 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[]): Prom
         
         const predictions: FutureDividendPrediction[] = [];
         
-        // Data de corte: Ontem (para não perder eventos de fuso horário de "hoje")
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - 1);
         const cutoffTime = cutoffDate.getTime();
@@ -217,20 +214,15 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[]): Prom
                 const asset = portfolio.find(p => normalizeTicker(p.ticker) === normalizedTicker);
                 if (!asset || asset.quantity <= 0) return;
 
-                // --- LÓGICA DE AGENDA ---
-                // Verifica se é um evento relevante (Futuro ou Recente)
                 let isRelevant = false;
                 
-                // Pagamento
                 if (div.payment_date) {
                     const payDate = parseDateToLocal(div.payment_date);
                     if (payDate && payDate.getTime() >= cutoffTime) isRelevant = true;
                 } else {
-                    // Sem data de pagamento = A Definir (Relevante)
                     isRelevant = true;
                 }
 
-                // Data Com (Se não pagou ainda, data com futura também é relevante)
                 if (!isRelevant && div.date_com) {
                     const dCom = parseDateToLocal(div.date_com);
                     if (dCom && dCom.getTime() >= cutoffTime) isRelevant = true;

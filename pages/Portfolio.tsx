@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, Wallet, TrendingUp, TrendingDown, RefreshCw, X, Calculator, Scale, Activity, BarChart3, PieChart, Coins, Target, AlertCircle, ChevronDown, ChevronUp, ExternalLink, ArrowRight, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap } from 'lucide-react';
+import { Search, Wallet, TrendingUp, TrendingDown, RefreshCw, X, Calculator, Scale, Activity, BarChart3, PieChart, Coins, Target, AlertCircle, ChevronDown, ChevronUp, ExternalLink, ArrowRight, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, ArrowLeftRight } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 
@@ -466,7 +466,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                                 </div>
 
                                 {/* Rentabilidade e Comparação */}
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="grid grid-cols-2 gap-3 mb-4">
                                     <div className="bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800 flex flex-col justify-between">
                                         <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Rentab. 12 Meses</span>
                                         <div className="flex items-baseline gap-1 mt-1">
@@ -496,6 +496,38 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                                         </div>
                                     </div>
                                 </div>
+
+                                {/* TABELA DE COMPARAÇÃO DE ÍNDICES */}
+                                {selectedAsset.benchmarks && selectedAsset.benchmarks.length > 0 && (
+                                    <div className="bg-zinc-50 dark:bg-zinc-800/30 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-4">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <ArrowLeftRight className="w-4 h-4 text-sky-500" />
+                                            <h4 className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Comparativo de Rentabilidade</h4>
+                                        </div>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-xs">
+                                                <thead>
+                                                    <tr className="text-left text-[9px] text-zinc-400 uppercase tracking-wider border-b border-zinc-200 dark:border-zinc-700/50">
+                                                        <th className="pb-2 pl-2">Período</th>
+                                                        <th className="pb-2 text-right">Ativo</th>
+                                                        <th className="pb-2 text-right">CDI</th>
+                                                        <th className="pb-2 text-right pr-2">IFIX/IBOV</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-zinc-200/50 dark:divide-zinc-700/50">
+                                                    {selectedAsset.benchmarks.map((bench, idx) => (
+                                                        <tr key={idx} className="font-medium text-zinc-900 dark:text-white">
+                                                            <td className="py-2.5 pl-2 text-zinc-500">{bench.label}</td>
+                                                            <td className={`py-2.5 text-right font-bold ${bench.asset >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600'}`}>{bench.asset}%</td>
+                                                            <td className="py-2.5 text-right text-zinc-500">{bench.cdi !== undefined ? `${bench.cdi}%` : '-'}</td>
+                                                            <td className="py-2.5 text-right pr-2 text-zinc-500">{bench.ifix !== undefined ? `${bench.ifix}%` : (bench.ibov !== undefined ? `${bench.ibov}%` : '-')}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                             
                             {/* 4. VALUATION */}
