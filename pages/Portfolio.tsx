@@ -1,8 +1,9 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, Activity, BarChart3, PieChart, Coins, AlertCircle, ChevronDown, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, Scale, SquareStack, Calendar, Map as MapIcon, ChevronRight } from 'lucide-react';
+import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, Activity, BarChart3, PieChart, Coins, AlertCircle, ChevronDown, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, Scale, SquareStack, Calendar, Map as MapIcon, ChevronRight, LineChart as LineIcon } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
-import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, ReferenceLine, ComposedChart, CartesianGrid, Legend, AreaChart, Area, YAxis, PieChart as RePieChart, Pie, Cell } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, ReferenceLine, ComposedChart, CartesianGrid, Legend, AreaChart, Area, YAxis, PieChart as RePieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { formatBRL, formatPercent, formatNumber, formatDateShort } from '../utils/formatters';
 
 // --- CONSTANTS ---
@@ -24,7 +25,7 @@ const TYPE_LABELS: Record<string, string> = {
     'OUTROS': 'Outros'
 };
 
-const CHART_COLORS = ['#0ea5e9', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6', '#6366f1', '#ec4899', '#14b8a6'];
+const CHART_COLORS = ['#10b981', '#0ea5e9', '#f59e0b', '#f43f5e', '#8b5cf6', '#6366f1', '#ec4899', '#14b8a6', '#d946ef', '#84cc16'];
 
 // --- SUB-COMPONENTS ---
 
@@ -36,27 +37,39 @@ const MetricCard = ({ label, value, highlight = false, colorClass = "text-zinc-9
     </div>
 );
 
-// Novo Componente: Gráfico de Histórico de Preços
-const PriceHistoryChart = ({ ticker }: { ticker: string }) => {
+// Novo Componente: Comparativo de Performance (Estilo Investidor10)
+const ComparativePerformanceChart = ({ ticker }: { ticker: string }) => {
     const [data, setData] = useState<any[]>([]);
-    const [range, setRange] = useState('1Y');
+    const [range, setRange] = useState('2Y');
+    const [benchmarkName, setBenchmarkName] = useState('CDI');
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(false);
+    const [simulatedValue, setSimulatedValue] = useState({ asset: 0, bench: 0 });
 
     useEffect(() => {
         let isMounted = true;
         const fetchHistory = async () => {
             setLoading(true);
-            setError(false);
             try {
-                const res = await fetch(`/api/history?ticker=${ticker}&range=${range}`);
+                // Solicita comparação (compare=true)
+                const res = await fetch(`/api/history?ticker=${ticker}&range=${range}&compare=true`);
                 if (!res.ok) throw new Error('Falha');
                 const json = await res.json();
+                
                 if (isMounted && json.points) {
                     setData(json.points);
+                    setBenchmarkName(json.benchmark || 'Índice');
+                    
+                    // Calcula simulação R$ 1000
+                    const lastPoint = json.points[json.points.length - 1];
+                    if (lastPoint) {
+                        setSimulatedValue({
+                            asset: 1000 * (1 + (lastPoint.assetChange / 100)),
+                            bench: lastPoint.benchmarkChange ? 1000 * (1 + (lastPoint.benchmarkChange / 100)) : 0
+                        });
+                    }
                 }
             } catch (e) {
-                if (isMounted) setError(true);
+                // Silent fail
             } finally {
                 if (isMounted) setLoading(false);
             }
@@ -65,93 +78,122 @@ const PriceHistoryChart = ({ ticker }: { ticker: string }) => {
         return () => { isMounted = false; };
     }, [ticker, range]);
 
-    const variation = useMemo(() => {
-        if (data.length < 2) return 0;
-        const first = data[0].price;
-        const last = data[data.length - 1].price;
-        return ((last - first) / first) * 100;
-    }, [data]);
-
-    const isPositive = variation >= 0;
+    // Define cor do ativo baseado no resultado final
+    const assetColor = simulatedValue.asset >= 1000 ? '#ef4444' : '#ef4444'; // Investidor10 usa Vermelho/Laranja para o ativo principal geralmente
+    const benchColor = '#10b981'; // Verde para o índice (ou vice versa, seguindo o print: Ativo=Vermelho, Index=Verde)
 
     return (
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm mb-6">
-            <div className="flex justify-between items-center mb-4">
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 shadow-sm mb-6">
+            
+            {/* Header e Abas */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
-                    <Activity className="w-3 h-3" /> Cotação Histórica
+                    <LineIcon className="w-3 h-3" /> Comparação com Índices
                 </h4>
-                <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5">
-                    {['1M', '6M', '1Y', '5Y'].map((r) => (
+                
+                {/* Abas Estilo Investidor10 (Underline) */}
+                <div className="flex w-full sm:w-auto border-b border-zinc-100 dark:border-zinc-800">
+                    {['1Y', '2Y', '5Y'].map((r) => (
                         <button 
                             key={r} 
                             onClick={() => setRange(r)}
-                            className={`px-2 py-1 text-[9px] font-bold rounded-md transition-all ${range === r ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                            className={`flex-1 sm:flex-none px-4 py-2 text-[10px] font-bold uppercase transition-all border-b-2 ${range === r ? 'border-amber-500 text-amber-600 dark:text-amber-500' : 'border-transparent text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                         >
-                            {r}
+                            {r === '1Y' ? '1 Ano' : r === '2Y' ? '2 Anos' : '5 Anos'}
                         </button>
                     ))}
                 </div>
             </div>
 
-            <div className="h-56 w-full relative">
-                {loading ? (
-                    <div className="absolute inset-0 flex items-center justify-center bg-zinc-50/50 dark:bg-zinc-800/20 rounded-xl">
-                        <div className="animate-pulse text-xs font-bold text-zinc-400">Carregando...</div>
+            {/* Legenda Customizada */}
+            <div className="flex justify-center gap-6 mb-4">
+                <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#ef4444' }}></div>
+                    <span className="text-[10px] font-bold text-zinc-600 dark:text-zinc-300">{ticker}</span>
+                </div>
+                {benchmarkName && (
+                    <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#10b981' }}></div>
+                        <span className="text-[10px] font-bold text-zinc-600 dark:text-zinc-300">{benchmarkName}</span>
                     </div>
-                ) : error || data.length === 0 ? (
-                    <div className="absolute inset-0 flex items-center justify-center text-xs text-zinc-400">Dados indisponíveis</div>
-                ) : (
-                    <>
-                        <div className="absolute top-0 left-0 z-10 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm px-2 py-1 rounded-br-xl border-r border-b border-zinc-100 dark:border-zinc-800">
-                            <span className={`text-xs font-black ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                {isPositive ? '+' : ''}{variation.toFixed(2)}%
-                            </span>
-                        </div>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={data}>
-                                <defs>
-                                    <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor={isPositive ? '#10b981' : '#f43f5e'} stopOpacity={0.2}/>
-                                        <stop offset="95%" stopColor={isPositive ? '#10b981' : '#f43f5e'} stopOpacity={0}/>
-                                    </linearGradient>
-                                </defs>
-                                <XAxis 
-                                    dataKey="date" 
-                                    hide={false} 
-                                    axisLine={false} 
-                                    tickLine={false} 
-                                    tick={{fontSize: 9, fill: '#71717a'}} 
-                                    tickFormatter={(val) => formatDateShort(val)} 
-                                    minTickGap={30}
-                                />
-                                <YAxis 
-                                    domain={['auto', 'auto']} 
-                                    hide={false} 
-                                    orientation="right" 
-                                    axisLine={false} 
-                                    tickLine={false} 
-                                    tick={{fontSize: 9, fill: '#71717a'}} 
-                                    width={35}
-                                    tickFormatter={(val) => `R$${val.toFixed(0)}`}
-                                />
-                                <Tooltip 
-                                    contentStyle={{ borderRadius: '8px', border: '1px solid #27272a', backgroundColor: '#18181b', color: '#fff', fontSize: '10px', padding: '6px 10px' }}
-                                    labelFormatter={(label) => new Date(label).toLocaleDateString('pt-BR')}
-                                    formatter={(value: number) => [formatBRL(value), 'Preço']}
-                                />
-                                <Area 
-                                    type="monotone" 
-                                    dataKey="price" 
-                                    stroke={isPositive ? '#10b981' : '#f43f5e'} 
-                                    strokeWidth={2} 
-                                    fillOpacity={1} 
-                                    fill="url(#colorPrice)" 
-                                />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    </>
                 )}
             </div>
+
+            <div className="h-64 w-full relative">
+                {loading ? (
+                    <div className="absolute inset-0 flex items-center justify-center bg-zinc-50/50 dark:bg-zinc-800/20 rounded-xl">
+                        <div className="animate-pulse text-xs font-bold text-zinc-400">Carregando dados...</div>
+                    </div>
+                ) : data.length === 0 ? (
+                    <div className="absolute inset-0 flex items-center justify-center text-xs text-zinc-400">Dados indisponíveis</div>
+                ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
+                            <XAxis 
+                                dataKey="date" 
+                                hide={false} 
+                                axisLine={false} 
+                                tickLine={false} 
+                                tick={{fontSize: 9, fill: '#71717a'}} 
+                                tickFormatter={(val) => formatDateShort(val)} 
+                                minTickGap={40}
+                            />
+                            <YAxis 
+                                axisLine={false} 
+                                tickLine={false} 
+                                tick={{fontSize: 9, fill: '#71717a'}} 
+                                tickFormatter={(val) => `${val.toFixed(0)}%`}
+                            />
+                            <Tooltip 
+                                contentStyle={{ borderRadius: '8px', border: '1px solid #27272a', backgroundColor: '#18181b', color: '#fff', fontSize: '10px', padding: '8px' }}
+                                labelFormatter={(label) => new Date(label).toLocaleDateString('pt-BR')}
+                                formatter={(value: number) => [`${value.toFixed(2)}%`, '']}
+                            />
+                            <Line 
+                                type="monotone" 
+                                dataKey="assetChange" 
+                                stroke="#ef4444" 
+                                strokeWidth={2.5} 
+                                dot={false} 
+                                name={ticker}
+                            />
+                            {benchmarkName && (
+                                <Line 
+                                    type="monotone" 
+                                    dataKey="benchmarkChange" 
+                                    stroke="#10b981" 
+                                    strokeWidth={2} 
+                                    dot={false}
+                                    name={benchmarkName}
+                                />
+                            )}
+                        </LineChart>
+                    </ResponsiveContainer>
+                )}
+            </div>
+
+            {/* Simulação de R$ 1.000 */}
+            {!loading && data.length > 0 && (
+                <div className="mt-6 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                    <p className="text-center text-[10px] font-bold text-zinc-500 mb-4">
+                        Se você tivesse investido <span className="text-zinc-900 dark:text-white">R$ 1.000,00</span>
+                    </p>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-rose-50 dark:bg-rose-900/10 rounded-xl p-3 text-center border border-rose-100 dark:border-rose-900/30">
+                            <span className="text-[9px] font-black uppercase text-rose-600 dark:text-rose-400 bg-rose-200/50 dark:bg-rose-900/50 px-2 py-0.5 rounded mb-1 inline-block">{ticker}</span>
+                            <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(simulatedValue.asset)}</p>
+                        </div>
+                        {simulatedValue.bench > 0 && (
+                            <div className="bg-emerald-50 dark:bg-emerald-900/10 rounded-xl p-3 text-center border border-emerald-100 dark:border-emerald-900/30">
+                                <span className="text-[9px] font-black uppercase text-emerald-600 dark:text-emerald-400 bg-emerald-200/50 dark:bg-emerald-900/50 px-2 py-0.5 rounded mb-1 inline-block">{benchmarkName}</span>
+                                <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(simulatedValue.bench)}</p>
+                            </div>
+                        )}
+                    </div>
+                    <p className="text-[8px] text-center text-zinc-400 mt-3">*Simulação baseada na variação da cotação, sem considerar reinvestimento de proventos (exceto se índice de retorno total).</p>
+                </div>
+            )}
         </div>
     );
 };
@@ -202,65 +244,6 @@ const PositionSummaryCard = ({ asset, privacyMode }: { asset: AssetPosition, pri
                 <div>
                     <p className="text-[9px] font-bold text-zinc-400 uppercase mb-1">Custo Total</p>
                     <p className="text-sm font-bold text-zinc-500">{formatBRL(totalCost, privacyMode)}</p>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-// Novo Card de Performance de Mercado
-const MarketPerformanceCard = ({ asset }: { asset: AssetPosition }) => {
-    let benchmarkVal = asset.benchmark_cdi_12m;
-    let benchmarkLabel = 'CDI';
-    
-    if (asset.assetType === AssetType.FII && asset.benchmark_ifix_12m) {
-        benchmarkVal = asset.benchmark_ifix_12m;
-        benchmarkLabel = 'IFIX';
-    } else if (asset.assetType === AssetType.STOCK && asset.benchmark_ibov_12m) {
-        benchmarkVal = asset.benchmark_ibov_12m;
-        benchmarkLabel = 'IBOV';
-    }
-
-    const assetReturn = asset.profitability_12m;
-    const monthReturn = asset.profitability_month;
-
-    return (
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm mb-6">
-            <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                <TrendingUp className="w-3 h-3" /> Performance de Mercado
-            </h4>
-            
-            <div className="space-y-4">
-                {/* 12 Meses */}
-                <div>
-                    <div className="flex justify-between items-end mb-1.5">
-                        <span className="text-[10px] font-bold text-zinc-500">Últimos 12 Meses</span>
-                        <div className="flex gap-3 text-[10px] font-bold">
-                            <span className={assetReturn !== undefined ? (assetReturn >= 0 ? 'text-emerald-500' : 'text-rose-500') : 'text-zinc-400'}>
-                                {asset.ticker}: {assetReturn !== undefined ? `${assetReturn > 0 ? '+' : ''}${assetReturn.toFixed(1)}%` : '--'}
-                            </span>
-                            <span className="text-zinc-400">
-                                {benchmarkLabel}: {benchmarkVal !== undefined ? `${benchmarkVal > 0 ? '+' : ''}${benchmarkVal.toFixed(1)}%` : '--'}
-                            </span>
-                        </div>
-                    </div>
-                    {/* Barra Visual */}
-                    <div className="h-1.5 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden flex">
-                        {assetReturn !== undefined && (
-                            <div 
-                                className={`h-full rounded-full ${assetReturn >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`} 
-                                style={{ width: `${Math.min(100, Math.max(5, Math.abs(assetReturn)))}%` }} 
-                            ></div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Mês Atual */}
-                <div className="flex items-center justify-between pt-2 border-t border-zinc-50 dark:border-zinc-800/50">
-                    <span className="text-[10px] font-bold text-zinc-500">Mês Atual</span>
-                    <span className={`text-xs font-black ${monthReturn !== undefined ? (monthReturn >= 0 ? 'text-emerald-500' : 'text-rose-500') : 'text-zinc-400'}`}>
-                        {monthReturn !== undefined ? `${monthReturn > 0 ? '+' : ''}${monthReturn.toFixed(2)}%` : '--'}
-                    </span>
                 </div>
             </div>
         </div>
@@ -510,86 +493,6 @@ const IncomeAnalysisSection = ({ asset, chartData }: { asset: AssetPosition, cha
     );
 };
 
-const LocationGroup: React.FC<{ state: string, properties: any[] }> = ({ state, properties }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    return (
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-sm">
-            <button 
-                onClick={() => setIsOpen(!isOpen)}
-                className="w-full flex items-center justify-between p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
-            >
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-xs font-black text-zinc-500 border border-zinc-200 dark:border-zinc-700">
-                        {state}
-                    </div>
-                    <div className="text-left">
-                        <span className="text-sm font-bold text-zinc-900 dark:text-white block">{state.length === 2 ? `Estado: ${state}` : state}</span>
-                        <span className="text-[10px] font-medium text-zinc-500">{properties.length} Ativo{properties.length !== 1 ? 's' : ''}</span>
-                    </div>
-                </div>
-                <div className={`w-6 h-6 rounded-full bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center transition-transform duration-300 ${isOpen ? 'rotate-90 text-indigo-500' : 'text-zinc-400'}`}>
-                    <ChevronRight className="w-4 h-4" />
-                </div>
-            </button>
-            
-            {isOpen && (
-                <div className="px-4 pb-4 pt-0 space-y-2 anim-slide-up">
-                    <div className="h-px w-full bg-zinc-100 dark:bg-zinc-800 mb-3"></div>
-                    {properties.map((prop, idx) => (
-                        <div key={idx} className="flex items-start gap-3 p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-100 dark:border-zinc-800/50">
-                            <MapPin className="w-4 h-4 text-indigo-500 mt-0.5 shrink-0" />
-                            <div className="min-w-0 flex-1">
-                                <h5 className="text-xs font-bold text-zinc-900 dark:text-white leading-tight mb-1">{prop.name}</h5>
-                                <div className="flex flex-wrap gap-2">
-                                    {prop.abl && (
-                                        <span className="inline-flex items-center gap-1 text-[9px] font-medium text-zinc-500 bg-white dark:bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-700">
-                                            <SquareStack className="w-3 h-3" /> ABL: {prop.abl}
-                                        </span>
-                                    )}
-                                    <span className="inline-flex items-center gap-1 text-[9px] font-medium text-zinc-500 bg-white dark:bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-700">
-                                        {prop.location}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-};
-
-const PropertyStats = ({ properties }: { properties: any[] }) => {
-    // Extrai ABL total se possível (ex: "123.456 m²" -> 123456)
-    const totalABL = properties.reduce((acc, p) => {
-        if (!p.abl) return acc;
-        const val = parseFloat(p.abl.replace(/\./g, '').replace(',', '.').replace(/[^\d.]/g, ''));
-        return acc + (isNaN(val) ? 0 : val);
-    }, 0);
-
-    const states = new Set(properties.map(p => p.location ? p.location.split('-').pop().trim() : 'N/A')).size;
-
-    return (
-        <div className="grid grid-cols-3 gap-2 mb-6">
-            <div className="p-3 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col items-center justify-center text-center">
-                <Building2 className="w-5 h-5 text-indigo-500 mb-1" />
-                <span className="text-lg font-black text-zinc-900 dark:text-white leading-none">{properties.length}</span>
-                <span className="text-[9px] font-bold text-zinc-400 uppercase mt-1">Imóveis</span>
-            </div>
-            <div className="p-3 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col items-center justify-center text-center">
-                <MapIcon className="w-5 h-5 text-emerald-500 mb-1" />
-                <span className="text-lg font-black text-zinc-900 dark:text-white leading-none">{states}</span>
-                <span className="text-[9px] font-bold text-zinc-400 uppercase mt-1">Estados</span>
-            </div>
-            <div className="p-3 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col items-center justify-center text-center">
-                <SquareStack className="w-5 h-5 text-amber-500 mb-1" />
-                <span className="text-xs font-black text-zinc-900 dark:text-white leading-none mt-1">{totalABL > 0 ? (totalABL/1000).toFixed(0)+'k' : '-'}</span>
-                <span className="text-[9px] font-bold text-zinc-400 uppercase mt-1">ABL (m²)</span>
-            </div>
-        </div>
-    );
-};
-
 const AssetListItem: React.FC<any> = ({ asset, onOpenDetails, privacyMode, isExpanded, onToggle }) => {
     const isPositive = (asset.dailyChange || 0) >= 0;
     const totalVal = asset.quantity * (asset.currentPrice || 0);
@@ -684,7 +587,6 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
     const [expandedAssetTicker, setExpandedAssetTicker] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'RESUMO' | 'RENDA' | 'ANÁLISE' | 'IMOVEIS'>('RESUMO');
 
-    // Sincroniza selectedAsset com o portfolio em tempo real para refletir atualizações do scraper
     useEffect(() => {
         if (selectedAsset) {
             const updated = portfolio.find(p => p.ticker === selectedAsset.ticker);
@@ -705,50 +607,37 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
     const assetDividendChartData = useMemo(() => {
         if (!selectedAsset) return { data: [], average: 0, activeTypes: [] };
         
-        // CORREÇÃO CRÍTICA: Lógica de data robusta usando strings (YYYY-MM)
-        // para evitar bugs de fuso horário com new Date().
         const today = new Date();
         const startDates: string[] = [];
-        // Gera as chaves dos últimos 12 meses
         for (let i = 11; i >= 0; i--) {
             const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
-            startDates.push(d.toISOString().substring(0, 7)); // YYYY-MM
+            startDates.push(d.toISOString().substring(0, 7)); 
         }
         
-        // Pega todos os proventos PAGOS ou CONFIRMADOS no período
         const history = dividends
             .filter(d => d.ticker === selectedAsset.ticker)
             .filter(d => {
                 const dateStr = d.paymentDate || d.dateCom;
                 if (!dateStr) return false;
                 const monthKey = dateStr.substring(0, 7);
-                // Inclui se for maior ou igual ao mês inicial
                 return monthKey >= startDates[0];
             })
             .sort((a, b) => (a.paymentDate || a.dateCom).localeCompare(b.paymentDate || b.dateCom));
 
-        // Agrupamento por Mês (YYYY-MM) e por Tipo (DIV, JCP, etc)
         const grouped: Record<string, Record<string, number>> = {};
         const typesFound = new Set<string>();
 
         history.forEach(d => {
             const dateRef = d.paymentDate || d.dateCom;
-            const key = dateRef.substring(0, 7); // Chave "YYYY-MM"
-            
+            const key = dateRef.substring(0, 7); 
             if (!grouped[key]) grouped[key] = { total: 0 };
-            
-            // Normaliza tipos para exibição
             let type = d.type || 'OUTROS';
             if (type.includes('REND')) type = 'REND';
             else if (type.includes('DIV')) type = 'DIV';
             else if (type.includes('JCP') || type.includes('JURO')) type = 'JCP';
             else if (type.includes('AMORT')) type = 'AMORT';
-            
             typesFound.add(type);
-            
-            // Soma o valor total recebido (já calculado)
-            const amount = Number(d.totalReceived) || 0;
-            
+            const amount = Number(d.totalReceived) || (d.quantityOwned * d.rate);
             grouped[key][type] = (grouped[key][type] || 0) + amount;
             grouped[key].total += amount;
         });
@@ -757,21 +646,17 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
         let grandTotal = 0;
         let count = 0;
 
-        // Preenche os últimos 12 meses (mesmo os zerados) para o gráfico ficar contínuo
         for (const key of startDates) {
             const monthLabel = getMonthLabel(key);
-            
             const monthData = grouped[key] || { total: 0 };
-            
             if (monthData.total > 0) {
                 grandTotal += monthData.total;
                 count++;
             }
-
             result.push({ 
                 month: monthLabel, 
                 fullDate: key, 
-                ...monthData, // Espalha as propriedades dinâmicas (DIV: 100, JCP: 50...)
+                ...monthData, 
                 total: monthData.total
             });
         }
@@ -788,19 +673,25 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
         return dividends.filter(d => d.ticker === selectedAsset.ticker);
     }, [selectedAsset, dividends]);
 
-    const groupedProperties = useMemo(() => {
+    // Lógica de Imóveis (Novo Layout)
+    const propertiesByState = useMemo(() => {
         if (!selectedAsset || !selectedAsset.properties) return [];
-        const groups: Record<string, any[]> = {};
+        const groups: Record<string, number> = {};
+        
         selectedAsset.properties.forEach(p => {
-            // Extrai o estado (ex: "São Paulo - SP" -> "SP", ou "SP")
             const parts = (p.location || 'N/A').split('-');
             const state = parts.length > 1 ? parts[parts.length - 1].trim() : parts[0].trim();
-            const cleanState = state.length > 3 ? 'Outros' : state; // Fallback simples
-            
-            if (!groups[cleanState]) groups[cleanState] = [];
-            groups[cleanState].push(p);
+            const cleanState = state.length > 3 && !state.includes(' ') ? 'Outros' : state;
+            groups[cleanState] = (groups[cleanState] || 0) + 1;
         });
-        return Object.entries(groups).sort((a,b) => b[1].length - a[1].length); // Ordena por quantidade
+
+        return Object.entries(groups)
+            .sort((a, b) => b[1] - a[1])
+            .map(([name, value], index) => ({
+                name,
+                value,
+                color: CHART_COLORS[index % CHART_COLORS.length]
+            }));
     }, [selectedAsset]);
 
     return (
@@ -868,7 +759,6 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
 
                             <div className="flex p-1 bg-zinc-100 dark:bg-zinc-800 rounded-xl overflow-x-auto no-scrollbar">
                                 {['RESUMO', 'RENDA', 'ANÁLISE', 'IMOVEIS'].map(tab => {
-                                    // Só mostra a aba IMÓVEIS se tiver propriedades
                                     if (tab === 'IMOVEIS' && (!selectedAsset.properties || selectedAsset.properties.length === 0)) return null;
                                     
                                     return (
@@ -884,10 +774,8 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                                 <div className="space-y-6 anim-fade-in">
                                     <PositionSummaryCard asset={selectedAsset} privacyMode={privacyMode} />
                                     
-                                    {/* Novo: Performance de Mercado + Gráfico Histórico */}
-                                    <PriceHistoryChart ticker={selectedAsset.ticker} />
-                                    
-                                    <MarketPerformanceCard asset={selectedAsset} />
+                                    {/* Gráfico Comparativo Avançado (Substitui PriceHistoryChart e MarketPerformanceCard) */}
+                                    <ComparativePerformanceChart ticker={selectedAsset.ticker} />
 
                                     {/* Indicadores Básicos de Mercado (Auxiliares) */}
                                     <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-2">
@@ -921,21 +809,21 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                                 </div>
                             )}
 
-                            {/* ABA RENDA: Foco em Proventos Passados e Futuros */}
+                            {/* ABA RENDA */}
                             {activeTab === 'RENDA' && (
                                 <div className="anim-fade-in">
                                     <IncomeAnalysisSection asset={selectedAsset} chartData={assetDividendChartData} history={assetHistory} />
                                 </div>
                             )}
 
-                            {/* ABA ANÁLISE: Valuation e Dados Cadastrais */}
+                            {/* ABA ANÁLISE */}
                             {activeTab === 'ANÁLISE' && (
                                 <div className="anim-fade-in">
                                     <ValuationCard asset={selectedAsset} />
                                     
                                     <DetailedInfoBlock asset={selectedAsset} />
                                     
-                                    {/* Indicadores Extras para Ações - Expandido com Novos Dados */}
+                                    {/* Indicadores Extras para Ações */}
                                     {selectedAsset.assetType === AssetType.STOCK && (
                                         <div className="mt-6">
                                             <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-2">
@@ -961,46 +849,93 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                                 </div>
                             )}
 
-                            {/* ABA IMÓVEIS: Agrupamento por Estado e Stats */}
+                            {/* ABA IMÓVEIS */}
                             {activeTab === 'IMOVEIS' && selectedAsset.properties && (
                                 <div className="anim-fade-in space-y-6">
-                                    {/* Estatísticas de Topo */}
-                                    <PropertyStats properties={selectedAsset.properties} />
+                                    
+                                    {/* Chart & Legend Section */}
+                                    <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6 shadow-sm mb-6">
+                                        <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-6 flex items-center gap-2">
+                                            <MapIcon className="w-4 h-4 text-zinc-400" /> Distribuição por Estado
+                                        </h3>
+                                        
+                                        <div className="flex flex-col items-center">
+                                            {/* Donut Chart */}
+                                            <div className="h-64 w-full relative">
+                                                <ResponsiveContainer>
+                                                    <PieChart>
+                                                        <Pie
+                                                            data={propertiesByState}
+                                                            innerRadius={80}
+                                                            outerRadius={100}
+                                                            paddingAngle={2}
+                                                            dataKey="value"
+                                                            stroke="none"
+                                                        >
+                                                            {propertiesByState.map((entry, index) => (
+                                                                <Cell key={`cell-${index}`} fill={entry.color} />
+                                                            ))}
+                                                        </Pie>
+                                                        <Tooltip contentStyle={{backgroundColor: '#18181b', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '11px'}} itemStyle={{color:'#fff'}} />
+                                                    </PieChart>
+                                                </ResponsiveContainer>
+                                                {/* Center Text */}
+                                                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                                    <span className="text-3xl font-black text-zinc-900 dark:text-white">{selectedAsset.properties.length}</span>
+                                                    <span className="text-[10px] text-zinc-400 uppercase font-bold tracking-widest">Imóveis</span>
+                                                </div>
+                                            </div>
 
-                                    {/* Distribuição Gráfica (Compacta) */}
-                                    <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 shadow-sm">
-                                        <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                            <RePieChart className="w-3 h-3" /> Distribuição Geográfica
-                                        </h4>
-                                        <div className="h-48 w-full relative">
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                <RePieChart>
-                                                    <Pie
-                                                        data={groupedProperties.map(([state, props]) => ({ name: state, value: props.length }))}
-                                                        cx="50%"
-                                                        cy="50%"
-                                                        innerRadius={40}
-                                                        outerRadius={60}
-                                                        paddingAngle={4}
-                                                        dataKey="value"
-                                                        stroke="none"
-                                                    >
-                                                        {groupedProperties.map((entry, index) => (
-                                                            <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} strokeWidth={0} />
-                                                        ))}
-                                                    </Pie>
-                                                    <Tooltip contentStyle={{backgroundColor: '#18181b', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '11px'}} itemStyle={{color:'#fff'}} />
-                                                    <Legend verticalAlign="middle" align="right" layout="vertical" iconType="circle" iconSize={8} wrapperStyle={{fontSize: '10px', fontWeight: 600, color: '#71717a'}} />
-                                                </RePieChart>
-                                            </ResponsiveContainer>
+                                            {/* Legend List */}
+                                            <div className="w-full mt-8 space-y-3">
+                                                {propertiesByState.map((item) => (
+                                                    <div key={item.name} className="flex items-center justify-between group">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: item.color }}></div>
+                                                            <span className="text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase">{item.name}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-24 h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden hidden sm:block">
+                                                                <div className="h-full rounded-full" style={{ width: `${(item.value / selectedAsset.properties!.length) * 100}%`, backgroundColor: item.color }}></div>
+                                                            </div>
+                                                            <span className="text-xs font-bold text-zinc-900 dark:text-white">{item.value}</span>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
                                     </div>
 
-                                    {/* Lista Agrupada por Estado (Accordion) */}
-                                    <div className="space-y-3">
-                                        <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">Portfólio Detalhado</h4>
-                                        {groupedProperties.map(([state, props]) => (
-                                            <LocationGroup key={state} state={state} properties={props} />
+                                    {/* Properties List Section */}
+                                    <div className="space-y-4">
+                                        <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest px-1">Lista de Imóveis</h3>
+                                        {selectedAsset.properties.map((prop, idx) => (
+                                            <div key={idx} className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 flex gap-4 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors">
+                                                {/* Icon Box */}
+                                                <div className="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0 text-zinc-500">
+                                                    <Building2 className="w-6 h-6" strokeWidth={1.5} />
+                                                </div>
+                                                
+                                                {/* Details */}
+                                                <div className="flex-1 min-w-0">
+                                                    <h4 className="text-xs font-black text-zinc-900 dark:text-white uppercase tracking-wide leading-tight mb-2 line-clamp-2">
+                                                        {prop.name}
+                                                    </h4>
+                                                    
+                                                    <div className="space-y-1">
+                                                        <div className="flex items-center gap-2 text-[11px] text-zinc-500">
+                                                            <span className="font-medium">Estado:</span>
+                                                            <span className="text-zinc-700 dark:text-zinc-300 font-bold">{prop.location ? (prop.location.includes('-') ? prop.location.split('-').pop()?.trim() : prop.location) : 'N/A'}</span>
+                                                        </div>
+                                                        {prop.abl && (
+                                                            <div className="flex items-center gap-2 text-[11px] text-zinc-500">
+                                                                <span className="font-medium">Área bruta locável:</span>
+                                                                <span className="text-zinc-700 dark:text-zinc-300 font-bold">{prop.abl}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
                                         ))}
                                     </div>
                                 </div>
