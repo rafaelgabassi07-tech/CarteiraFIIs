@@ -1,4 +1,3 @@
-
 // @ts-nocheck
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import axios from 'axios';
@@ -326,6 +325,7 @@ async function scrapeInvestidor10(ticker: string) {
                 if (headerText.includes('período') || headerText.includes('periodo') || headerText.includes('variação') || headerText.includes('rentabilidade')) {
                     let idxCDI = -1, idxIndex = -1, idxAsset = -1;
                     
+                    // Detecção de colunas mais robusta
                     $(table).find('thead th, tr:first-child td, tr:first-child th').each((idx, th) => {
                         const txt = $(th).text().toUpperCase();
                         if (txt.includes('CDI')) idxCDI = idx;
@@ -333,7 +333,10 @@ async function scrapeInvestidor10(ticker: string) {
                         if (txt.includes(ticker) || txt.includes('FII') || txt.includes('AÇÃO') || txt.includes('RENTABILIDADE')) idxAsset = idx;
                     });
                     
+                    // Fallback se não encontrar o header do ativo (assume coluna 1)
                     if (idxAsset === -1) idxAsset = 1;
+                    // Fallback para IFIX/IBOV (assume coluna 2 se não achou CDI)
+                    if (idxIndex === -1 && idxCDI > -1 && idxCDI !== 2) idxIndex = 2;
 
                     $(table).find('tbody tr').each((_, tr) => {
                         const rowLabel = $(tr).find('td').first().text().trim().toLowerCase();
@@ -363,7 +366,6 @@ async function scrapeInvestidor10(ticker: string) {
             });
 
             // --- 4. DIVIDENDOS (Fallback Investidor10) ---
-            // Só usa se o StatusInvest tiver falhado
             if (finalDividends.length === 0) {
                 const divTable = $('#table-dividends-history');
                 if (divTable.length > 0) {
@@ -539,8 +541,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         if (dividends.length > 0) {
-             const today = new Date().toISOString().split('T')[0];
-             // Clean future data or duplicates logic could be here
              const uniqueDivs = Array.from(new Map(dividends.map(item => [`${item.type}-${item.date_com}-${item.rate}`, item])).values());
              const { error } = await supabase.from('market_dividends').upsert(uniqueDivs, { onConflict: 'ticker,type,date_com,rate' });
              if (error) console.error('Error saving dividends:', error);

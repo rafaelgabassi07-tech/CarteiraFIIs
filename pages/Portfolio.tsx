@@ -130,13 +130,15 @@ const PriceHistoryChart = ({ data, loading, error, ticker, range, setRange }: an
     );
 };
 
-// Componente 2: Gráfico Comparativo (Benchmark) - ATUALIZADO
+// Componente 2: Gráfico Comparativo Completo (Asset, IBOV, IFIX, CDI, IPCA)
 const ComparativeHistoryChart = ({ data, loading, ticker, type }: any) => {
     
     // Calculates last returns for legend
     const assetReturn = useMemo(() => data && data.length > 0 ? data[data.length - 1].assetPct : 0, [data]);
     const ibovReturn = useMemo(() => data && data.length > 0 ? data[data.length - 1].ibovPct : 0, [data]);
     const ifixReturn = useMemo(() => data && data.length > 0 ? data[data.length - 1].ifixPct : 0, [data]);
+    const cdiReturn = useMemo(() => data && data.length > 0 ? data[data.length - 1].cdiPct : 0, [data]);
+    const ipcaReturn = useMemo(() => data && data.length > 0 ? data[data.length - 1].ipcaPct : 0, [data]);
 
     const hasIfix = useMemo(() => data && data.some((d: any) => d.ifixPct !== null && d.ifixPct !== undefined), [data]);
 
@@ -146,17 +148,25 @@ const ComparativeHistoryChart = ({ data, loading, ticker, type }: any) => {
                 <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2 mb-2">
                     <TrendingUp className="w-3 h-3" /> Comparação de {ticker} com Índices
                 </h4>
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-bold">
-                    <span className="flex items-center gap-1.5 text-indigo-500">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[10px] font-bold">
+                    <span className="flex items-center gap-1 text-indigo-500">
                         <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
                         {ticker} ({assetReturn > 0 ? '+' : ''}{assetReturn?.toFixed(1)}%)
                     </span>
-                    <span className="flex items-center gap-1.5 text-amber-500">
+                    <span className="flex items-center gap-1 text-amber-500">
                         <span className="w-2 h-2 rounded-full bg-amber-500"></span>
                         IBOV ({ibovReturn > 0 ? '+' : ''}{ibovReturn?.toFixed(1)}%)
                     </span>
+                    <span className="flex items-center gap-1 text-zinc-600 dark:text-zinc-400">
+                        <span className="w-2 h-2 rounded-full bg-zinc-600 dark:bg-zinc-400"></span>
+                        CDI ({cdiReturn > 0 ? '+' : ''}{cdiReturn?.toFixed(1)}%)
+                    </span>
+                    <span className="flex items-center gap-1 text-cyan-500">
+                        <span className="w-2 h-2 rounded-full bg-cyan-500"></span>
+                        IPCA ({ipcaReturn > 0 ? '+' : ''}{ipcaReturn?.toFixed(1)}%)
+                    </span>
                     {hasIfix && (
-                        <span className="flex items-center gap-1.5 text-emerald-500">
+                        <span className="flex items-center gap-1 text-emerald-500">
                             <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                             IFIX ({ifixReturn > 0 ? '+' : ''}{ifixReturn?.toFixed(1)}%)
                         </span>
@@ -164,7 +174,7 @@ const ComparativeHistoryChart = ({ data, loading, ticker, type }: any) => {
                 </div>
             </div>
 
-            <div className="h-48 w-full relative">
+            <div className="h-56 w-full relative">
                 {loading ? (
                     <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm z-10">
                         <div className="animate-pulse text-xs font-bold text-zinc-400">Carregando comparativo...</div>
@@ -199,40 +209,62 @@ const ComparativeHistoryChart = ({ data, loading, ticker, type }: any) => {
                                     if (name === 'assetPct') return [`${value.toFixed(2)}%`, ticker];
                                     if (name === 'ibovPct') return [`${value.toFixed(2)}%`, 'IBOV'];
                                     if (name === 'ifixPct') return [`${value.toFixed(2)}%`, 'IFIX'];
+                                    if (name === 'cdiPct') return [`${value.toFixed(2)}%`, 'CDI'];
+                                    if (name === 'ipcaPct') return [`${value.toFixed(2)}%`, 'IPCA'];
                                     return [value, name];
                                 }}
                             />
                             <ReferenceLine y={0} stroke="#71717a" strokeOpacity={0.3} strokeDasharray="3 3" />
                             
-                            {/* IBOV */}
+                            {/* CDI - Linha Pontilhada Escura */}
                             <Line 
                                 type="monotone" 
-                                dataKey="ibovPct" 
-                                stroke="#f59e0b" // Amber
+                                dataKey="cdiPct" 
+                                stroke="#52525b" 
                                 strokeWidth={1.5} 
                                 dot={false} 
-                                strokeDasharray="4 4"
+                                strokeDasharray="2 2"
+                                animationDuration={1000}
+                            />
+
+                            {/* IPCA - Linha Pontilhada Ciano */}
+                            <Line 
+                                type="monotone" 
+                                dataKey="ipcaPct" 
+                                stroke="#06b6d4" 
+                                strokeWidth={1.5} 
+                                dot={false} 
+                                strokeDasharray="2 2"
                                 animationDuration={1000}
                             />
                             
-                            {/* IFIX (Conditional) */}
+                            {/* IBOV - Laranja */}
+                            <Line 
+                                type="monotone" 
+                                dataKey="ibovPct" 
+                                stroke="#f59e0b"
+                                strokeWidth={1.5} 
+                                dot={false} 
+                                animationDuration={1000}
+                            />
+                            
+                            {/* IFIX - Verde (Conditional) */}
                             {hasIfix && (
                                 <Line 
                                     type="monotone" 
                                     dataKey="ifixPct" 
-                                    stroke="#10b981" // Emerald
+                                    stroke="#10b981"
                                     strokeWidth={1.5} 
                                     dot={false} 
-                                    strokeDasharray="4 4"
                                     animationDuration={1000}
                                 />
                             )}
 
-                            {/* Asset */}
+                            {/* Asset - Destaque */}
                             <Line 
                                 type="monotone" 
                                 dataKey="assetPct" 
-                                stroke="#6366f1" // Indigo
+                                stroke="#6366f1"
                                 strokeWidth={2.5} 
                                 dot={false} 
                                 animationDuration={1000}
