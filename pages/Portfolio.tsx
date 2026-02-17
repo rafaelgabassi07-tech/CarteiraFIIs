@@ -1,9 +1,9 @@
 
 import React, { useState, useMemo } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, Wallet, TrendingUp, TrendingDown, RefreshCw, X, Calculator, Scale, Activity, BarChart3, PieChart, Coins, Target, AlertCircle, ChevronDown, ChevronUp, ExternalLink, ArrowRight, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, BarChart4, Trophy, Hourglass, Goal } from 'lucide-react';
+import { Search, Wallet, TrendingUp, TrendingDown, RefreshCw, X, Calculator, Scale, Activity, BarChart3, PieChart, Coins, Target, AlertCircle, ChevronDown, ChevronUp, ExternalLink, ArrowRight, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, BarChart4, Trophy, Hourglass, Goal, CalendarCheck } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine, Cell } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine, Cell, ComposedChart, Line, CartesianGrid } from 'recharts';
 
 // --- FORMATTERS ---
 
@@ -21,6 +21,14 @@ const formatPercent = (val: number | undefined) => {
 const formatNumber = (val: number | undefined, decimals = 2) => {
     if (val === undefined || val === null || isNaN(val)) return '-';
     return val.toLocaleString('pt-BR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+};
+
+const formatDateShort = (dateStr: string) => {
+    if (!dateStr) return '-';
+    try {
+        const [year, month, day] = dateStr.split('T')[0].split('-');
+        return `${day}/${month}/${year.slice(2)}`;
+    } catch { return dateStr; }
 };
 
 // --- SUB-COMPONENTS ---
@@ -133,7 +141,7 @@ const DetailedInfoBlock = ({ asset }: { asset: AssetPosition }) => {
 };
 
 // Nova Seção de Performance Focada em Renda (Substitui Market Comparison)
-const IncomeAnalysisSection = ({ asset, chartData }: { asset: AssetPosition, chartData: { data: any[], average: number } }) => {
+const IncomeAnalysisSection = ({ asset, chartData, history }: { asset: AssetPosition, chartData: { data: any[], average: number }, history: DividendReceipt[] }) => {
     // Cálculo do Yield on Cost
     const totalInvested = asset.quantity * asset.averagePrice;
     const yoc = totalInvested > 0 ? (asset.totalDividends || 0) / totalInvested * 100 : 0;
@@ -175,32 +183,40 @@ const IncomeAnalysisSection = ({ asset, chartData }: { asset: AssetPosition, cha
                 </div>
             </div>
 
-            {/* 2. Gráfico de Proventos (Mantido pois é útil e funcional) */}
-            <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
-                <div className="flex justify-between items-center mb-4">
+            {/* 2. Gráfico Aprimorado + Histórico */}
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
+                <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
                     <h4 className="text-[10px] font-bold text-zinc-400 uppercase flex items-center gap-2">
-                        <BarChart3 className="w-3 h-3" /> Histórico de Proventos (12m)
+                        <BarChart3 className="w-3 h-3" /> Evolução (12m)
                     </h4>
-                    <span className="text-[10px] text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded-md">
+                    <span className="text-[10px] text-zinc-400 bg-zinc-50 dark:bg-zinc-800/50 px-2 py-1 rounded-md border border-zinc-100 dark:border-zinc-700">
                         Média: {formatBRL(chartData.average)}
                     </span>
                 </div>
-                <div className="h-40 w-full">
+                
+                <div className="h-48 w-full p-2 pt-4">
                     {chartData.data.some(d => d.value > 0) ? (
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={chartData.data}>
+                            <ComposedChart data={chartData.data}>
+                                <defs>
+                                    <linearGradient id="colorBar" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0.4}/>
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
                                 <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 700 }} dy={5} interval={0} />
                                 <Tooltip 
                                     cursor={{fill: 'transparent'}}
-                                    contentStyle={{ borderRadius: '8px', border: 'none', backgroundColor: '#18181b', color: '#fff', fontSize: '10px', padding: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                                    formatter={(value: number) => [formatBRL(value), 'Valor']}
-                                    labelStyle={{ display: 'none' }}
+                                    contentStyle={{ borderRadius: '8px', border: '1px solid #27272a', backgroundColor: '#18181b', color: '#fff', fontSize: '10px', padding: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}
+                                    formatter={(value: number) => [formatBRL(value), 'Recebido']}
+                                    labelStyle={{ color: '#a1a1aa', marginBottom: '4px' }}
                                 />
+                                <Bar dataKey="value" fill="url(#colorBar)" radius={[4, 4, 0, 0]} maxBarSize={28} />
                                 {chartData.average > 0 && (
-                                    <ReferenceLine y={chartData.average} stroke="#f59e0b" strokeDasharray="3 3" />
+                                    <ReferenceLine y={chartData.average} stroke="#f59e0b" strokeDasharray="3 3" strokeOpacity={0.6} />
                                 )}
-                                <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={32} />
-                            </BarChart>
+                            </ComposedChart>
                         </ResponsiveContainer>
                     ) : (
                         <div className="h-full flex items-center justify-center text-xs text-zinc-400 font-medium bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-700">
@@ -208,9 +224,42 @@ const IncomeAnalysisSection = ({ asset, chartData }: { asset: AssetPosition, cha
                         </div>
                     )}
                 </div>
+
+                {/* Lista de Últimos Pagamentos (Integrada) */}
+                <div className="bg-zinc-50 dark:bg-zinc-800/30">
+                    <h5 className="px-4 py-3 text-[9px] font-black text-zinc-400 uppercase tracking-widest border-t border-zinc-100 dark:border-zinc-800">
+                        Histórico Recente
+                    </h5>
+                    <div className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
+                        {history.slice(0, 4).map((h, i) => (
+                            <div key={h.id || i} className="px-4 py-3 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-lg bg-white dark:bg-zinc-800 flex items-center justify-center border border-zinc-100 dark:border-zinc-700 text-zinc-400">
+                                        <CalendarCheck className="w-3.5 h-3.5" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-zinc-900 dark:text-white">
+                                            {formatDateShort(h.paymentDate || h.dateCom)}
+                                        </p>
+                                        <p className="text-[9px] text-zinc-400 uppercase font-medium flex items-center gap-1">
+                                            {h.type} <span className="w-0.5 h-0.5 bg-zinc-400 rounded-full"></span> {h.paymentDate ? 'Pago' : 'Data Com'}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{formatBRL(h.totalReceived)}</p>
+                                    <p className="text-[9px] text-zinc-400">{formatBRL(h.rate)}/cota</p>
+                                </div>
+                            </div>
+                        ))}
+                        {history.length === 0 && (
+                            <p className="px-4 py-4 text-center text-xs text-zinc-400 italic">Nenhum registro encontrado.</p>
+                        )}
+                    </div>
+                </div>
             </div>
 
-            {/* 3. RAIO-X DE RENDA (Novo) */}
+            {/* 3. RAIO-X DE RENDA */}
             <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-sm">
                 <div className="bg-zinc-50 dark:bg-zinc-800/50 p-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-2">
                     <Zap className="w-4 h-4 text-amber-500" />
@@ -427,6 +476,13 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
         };
     }, [selectedAsset, dividends]);
 
+    const assetHistory = useMemo(() => {
+        if (!selectedAsset) return [];
+        return dividends
+            .filter(d => d.ticker === selectedAsset.ticker)
+            .sort((a, b) => (b.paymentDate || b.dateCom).localeCompare(a.paymentDate || a.dateCom));
+    }, [selectedAsset, dividends]);
+
     return (
         <div className="pb-32">
             {/* Sticky Search Header */}
@@ -563,7 +619,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                             {/* Substituído PERFORMANCE por RENDA com Análise */}
                             {activeTab === 'RENDA' && (
                                 <div className="anim-fade-in">
-                                    <IncomeAnalysisSection asset={selectedAsset} chartData={assetDividendChartData} />
+                                    <IncomeAnalysisSection asset={selectedAsset} chartData={assetDividendChartData} history={assetHistory} />
                                 </div>
                             )}
 
