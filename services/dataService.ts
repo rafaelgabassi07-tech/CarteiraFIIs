@@ -95,7 +95,9 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         last_dividend: parseNumberSafe(getVal('ultimo_rendimento')),
         properties_count: parseNumberSafe(getVal('num_cotistas', 'cotistas')),
         
-        // Novos Campos Mapeados
+        // Novos Campos Mapeados e Corrigidos
+        company_name: getVal('razao_social', 'company_name'),
+        num_quotas: getVal('num_cotas', 'cotas_emitidas', 'num_quotas'),
         cnpj: getVal('cnpj'),
         mandate: getVal('mandato', 'mandate'),
         target_audience: getVal('publico_alvo', 'target_audience'),

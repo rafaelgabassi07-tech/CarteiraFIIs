@@ -132,12 +132,14 @@ function mapLabelToKey(label: string): string | null {
     if (norm.includes('taxa de administracao') || norm.includes('taxa de admin')) return 'taxa_adm';
     if (norm.includes('segmento') || norm === 'setor' || norm.includes('setor de atuacao')) return 'segmento';
     
-    // Novos Mapeamentos (Polimento do Scraper)
+    // Mapeamentos Específicos Corrigidos
     if (norm === 'cnpj') return 'cnpj';
     if (norm === 'mandato') return 'mandato';
     if (norm.includes('publico alvo') || norm.includes('publico-alvo')) return 'publico_alvo';
     if (norm.includes('tipo de fundo')) return 'tipo_fundo';
-    if (norm.includes('prazo')) return 'prazo';
+    if (norm.includes('prazo') || norm.includes('duracao')) return 'prazo';
+    if (norm.includes('razao social')) return 'razao_social';
+    if (norm.includes('cotas emitidas') || norm.includes('numero de cotas')) return 'num_cotas';
     
     // Rentabilidade
     if (norm.includes('rentab') && (norm.includes('12') || norm.includes('ano'))) return 'rentabilidade_12m';
@@ -195,6 +197,7 @@ async function scrapeInvestidor10(ticker: string) {
                 patrimonio_liquido: null,
                 taxa_adm: null, tipo_gestao: null,
                 cnpj: null, mandato: null, publico_alvo: null, tipo_fundo: null, prazo: null,
+                razao_social: null, num_cotas: null,
                 rentabilidade_12m: null, rentabilidade_mes: null,
                 benchmark_cdi_12m: null, benchmark_ifix_12m: null, benchmark_ibov_12m: null
             };
@@ -206,16 +209,23 @@ async function scrapeInvestidor10(ticker: string) {
             if (headerName) dados.name = headerName;
 
             // --- 2. INDICADORES ---
-            // Generic Cards
+            // Varredura Genérica (Cards, Tabelas Específicas)
             $('#cards-ticker div._card, #table-indicators .cell, #table-general-data .cell, .indicator-box').each((_, el) => {
-                let label = $(el).find('div._card-header, .name, .title, span:first-child').first().text().trim();
-                let value = $(el).find('div._card-body, .value, .data, span:last-child').last().text().trim();
+                // Tenta encontrar o label em várias estruturas possíveis
+                let label = $(el).find('div._card-header, .name, .title, span:first-child, h3').first().text().trim();
+                let value = $(el).find('div._card-body, .value, .data, span:last-child, .desc').last().text().trim();
+
+                // Fallback para tabelas sem classes específicas
+                if (!label && $(el).find('span').length >= 2) {
+                    label = $(el).find('span').first().text().trim();
+                    value = $(el).find('span').last().text().trim();
+                }
 
                 if (label && value) {
                     const key = mapLabelToKey(label);
                     if (key) {
                         // Campos de texto vs Numéricos
-                        if (['segmento', 'tipo_gestao', 'taxa_adm', 'cnpj', 'mandato', 'publico_alvo', 'tipo_fundo', 'prazo'].includes(key)) {
+                        if (['segmento', 'tipo_gestao', 'taxa_adm', 'cnpj', 'mandato', 'publico_alvo', 'tipo_fundo', 'prazo', 'razao_social'].includes(key)) {
                             dados[key] = value;
                         } else {
                             const parsed = parseValue(value);
@@ -225,8 +235,8 @@ async function scrapeInvestidor10(ticker: string) {
                 }
             });
 
-            // Extração de Segmento Específica
-            if (!dados.segmento) {
+            // Extração de Segmento Específica (Breadcrumbs costumam ser mais confiáveis)
+            if (!dados.segmento || dados.segmento === 'Geral') {
                 $('#breadcrumbs li, .breadcrumbs li').each((_, el) => {
                     const txt = $(el).text().trim();
                     if (txt && !['Início', 'Home', 'Ações', 'FIIs', 'BDRs', 'Fiagros'].includes(txt) && txt.toUpperCase() !== ticker) {
@@ -279,7 +289,7 @@ async function scrapeInvestidor10(ticker: string) {
                     }
                 }
 
-                // --- 4. COMPARAÇÃO COM ÍNDICES ---
+                // --- 4. COMPARAÇÃO COM ÍNDICES (Rentabilidade) ---
                 const historySection = $('#history-section, #rentabilidade-table');
                 if (historySection.length > 0) {
                     const table = historySection.find('table').first();
@@ -294,14 +304,24 @@ async function scrapeInvestidor10(ticker: string) {
 
                         table.find('tbody tr').each((_, tr) => {
                             const rowLabel = $(tr).find('td').first().text().trim().toLowerCase();
+                            // Captura rentabilidade do ativo (coluna 1 geralmente)
                             if (rowLabel.includes('1 ano') || rowLabel.includes('12 meses')) {
                                 const cols = $(tr).find('td');
+                                // Rentabilidade do Ativo (sempre index 1 na tabela padrão do I10)
+                                const rentAtivo = parseValue($(cols[1]).text());
+                                if (rentAtivo !== null) dados.rentabilidade_12m = rentAtivo;
+
                                 if (idxCDI > -1) dados.benchmark_cdi_12m = parseValue($(cols[idxCDI]).text());
                                 if (idxIndex > -1) {
                                     const val = parseValue($(cols[idxIndex]).text());
                                     if (type === 'FII') dados.benchmark_ifix_12m = val;
                                     else dados.benchmark_ibov_12m = val;
                                 }
+                            }
+                            if (rowLabel.includes('mês') || rowLabel.includes('atual')) {
+                                const cols = $(tr).find('td');
+                                const rentMes = parseValue($(cols[1]).text());
+                                if (rentMes !== null) dados.rentabilidade_mes = rentMes;
                             }
                         });
                     }

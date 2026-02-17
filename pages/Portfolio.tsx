@@ -360,7 +360,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
     const [selectedAsset, setSelectedAsset] = useState<AssetPosition | null>(null);
     const [expandedAssetTicker, setExpandedAssetTicker] = useState<string | null>(null);
     
-    // Tab "PROVENTOS" removida e unificada em "PERFORMANCE"
+    // Tabs Unificadas
     const [activeTab, setActiveTab] = useState<'RESUMO' | 'PERFORMANCE' | 'DADOS' | 'IMOVEIS'>('RESUMO');
 
     const filtered = useMemo(() => {
@@ -512,7 +512,12 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                                     <div className="grid grid-cols-3 gap-3 mb-4">
                                         <MetricCard label="DY (12m)" value={formatPercent(selectedAsset.dy_12m)} highlight colorClass="text-emerald-600 dark:text-emerald-400" />
                                         <MetricCard label="P/VP" value={formatNumber(selectedAsset.p_vp)} />
-                                        <MetricCard label="P/L" value={formatNumber(selectedAsset.p_l)} />
+                                        {/* P/L visível apenas para ações */}
+                                        {selectedAsset.assetType !== AssetType.FII ? (
+                                            <MetricCard label="P/L" value={formatNumber(selectedAsset.p_l)} />
+                                        ) : (
+                                            <MetricCard label="Valor Patrim." value={selectedAsset.vpa ? formatBRL(selectedAsset.vpa) : '-'} />
+                                        )}
                                     </div>
 
                                     {/* Check de Vacância */}
@@ -535,7 +540,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                                     <div className="bg-white dark:bg-zinc-900 rounded-2xl p-4 border border-zinc-200 dark:border-zinc-800">
                                         <InfoRow label="Segmento" value={selectedAsset.segment_secondary || selectedAsset.segment} icon={PieChart} />
                                         <InfoRow label="Último Rendimento" value={formatBRL(selectedAsset.last_dividend)} icon={DollarSign} />
-                                        <InfoRow label="Valor Patrimonial" value={selectedAsset.assets_value} icon={Wallet} />
+                                        <InfoRow label="Patrimônio Líq." value={selectedAsset.assets_value} icon={Wallet} />
                                     </div>
                                 </div>
                             )}
