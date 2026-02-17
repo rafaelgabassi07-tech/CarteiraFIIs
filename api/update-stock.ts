@@ -233,7 +233,76 @@ async function scrapeStatusInvestDividends(ticker: string) {
     }
 }
 
+// --- SCRAPER PARA ÍNDICES (IFIX) ---
+async function scrapeInvestidor10Index(ticker: string) {
+    const url = `https://investidor10.com.br/indices/${ticker.toLowerCase()}/`;
+    try {
+        const res = await client.get(url, { headers: { 'User-Agent': getRandomAgent() } });
+        const $ = cheerio.load(res.data);
+        
+        const dados: any = {
+            ticker: ticker.toUpperCase(),
+            type: 'FII', // Mantém compatibilidade de tipo
+            segment: 'Índice',
+            updated_at: new Date().toISOString()
+        };
+
+        // 1. Pontuação Atual (Cotação)
+        // Localiza container de destaque no topo (.header-ticker -> ._card-body)
+        const headerCard = $('#header_action').find('div._card-body').first();
+        if (headerCard.length > 0) {
+            const priceStr = headerCard.find('span.value').text().trim();
+            dados.cotacao_atual = parseValue(priceStr);
+        }
+
+        // 2. Indicadores Gerais (Cards)
+        // div#cards-ticker
+        $('#cards-ticker ._card').each((_, el) => {
+            const title = $(el).find('._card-header').text().trim().toLowerCase();
+            const val = $(el).find('._card-body').text().trim();
+            
+            if (title.includes('12 meses') || title.includes('12m')) dados.rentabilidade_12m = parseValue(val);
+            if (title.includes('mês') && !title.includes('12')) dados.rentabilidade_mes = parseValue(val);
+        });
+
+        // 3. Dados Históricos (Tabela) - Opcional para validação ou dados extras
+        // table#table-history
+        // Podemos pegar o último fechamento da tabela se o header falhar
+        if (!dados.cotacao_atual) {
+            const lastRow = $('table#table-history tbody tr').first();
+            if (lastRow.length > 0) {
+                const cols = lastRow.find('td');
+                if (cols.length >= 2) {
+                    dados.cotacao_atual = parseValue($(cols[1]).text());
+                }
+            }
+        }
+
+        return {
+            metadata: {
+                ticker: dados.ticker,
+                type: dados.type,
+                name: `Índice ${dados.ticker}`,
+                current_price: dados.cotacao_atual,
+                profitability_12m: dados.rentabilidade_12m,
+                profitability_month: dados.rentabilidade_mes,
+                segment: dados.segment,
+                updated_at: dados.updated_at
+            },
+            dividends: []
+        };
+
+    } catch (e) {
+        console.error(`Error scraping index ${ticker}:`, e);
+        return null;
+    }
+}
+
 async function scrapeInvestidor10(ticker: string) {
+    if (ticker.toUpperCase() === 'IFIX') {
+        return scrapeInvestidor10Index('ifix');
+    }
+
     const tickerLower = ticker.toLowerCase();
     const isLikelyFii = ticker.endsWith('11') || ticker.endsWith('11B');
     
