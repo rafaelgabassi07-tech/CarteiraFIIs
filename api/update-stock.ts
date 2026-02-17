@@ -55,7 +55,6 @@ function parseValue(valueStr: any): number | null {
     let str = String(valueStr).trim();
     if (!str || str === '-' || str === '--' || str === 'N/A') return null;
 
-    // Remove % para permitir processamento de indicadores percentuais (DY, ROE, etc)
     str = str.replace('%', '').trim();
     str = str.replace(/^R\$\s?/, '').trim();
 
@@ -152,7 +151,6 @@ async function scrapeInvestidor10(ticker: string) {
 
     for (const url of urls) {
         try {
-            // Rotação de User-Agent por tentativa
             const res = await client.get(url, {
                 headers: { 'User-Agent': getRandomAgent() }
             });
@@ -182,8 +180,8 @@ async function scrapeInvestidor10(ticker: string) {
                 taxa_adm: null, tipo_gestao: null
             };
 
+            // Scraping Geral
             const selectors = ['div._card', '#table-indicators .cell', '#table-general-data .cell', '.indicator-box', '.data-entry', '.cell'];
-            
             selectors.forEach(selector => {
                 $(selector).each((_, el) => {
                     let label = $(el).find('div._card-header, .name, .title, span:first-child').first().text().trim();
@@ -211,6 +209,7 @@ async function scrapeInvestidor10(ticker: string) {
                 });
             });
 
+            // Segmento Fallback
             if (!dados.segmento) {
                 $('#breadcrumbs li, .breadcrumbs li').each((_, el) => {
                     const txt = $(el).text().trim();
@@ -220,186 +219,142 @@ async function scrapeInvestidor10(ticker: string) {
                 });
             }
 
-            // Fallbacks específicos
-            if (dados.cotacao_atual !== null || dados.dy !== null || dados.pvp !== null || dados.pl !== null) {
-                if (dados.dy === null) {
-                     $('span, div, p').each((_, el) => {
-                         const txt = $(el).text().trim().toLowerCase();
-                         if (txt === 'dividend yield' || txt === 'dy') {
-                             const val = $(el).next().text().trim() || $(el).parent().find('.value').text().trim();
-                             const p = parseValue(val);
-                             if (p !== null) dados.dy = p;
-                         }
-                     });
-                }
+            // --- EXTRAÇÃO DE IMÓVEIS (FIIs de Tijolo) ---
+            if (type === 'FII') {
+                const seenProperties = new Set(); // Para evitar duplicatas
 
-                if (dados.vpa === null && dados.pvp > 0 && dados.cotacao_atual > 0) {
-                     dados.vpa = dados.cotacao_atual / dados.pvp;
-                }
-
-                // --- EXTRAÇÃO DE IMÓVEIS (FIIs de Tijolo) APRIMORADA ---
-                if (type === 'FII') {
-                    // Estratégia 1: Busca na seção específica de Portfólio do Investidor10 (Grid/Carousel)
-                    // Geralmente ID #sc-portfolio-fii
-                    const portfolioSection = $('#sc-portfolio-fii, #sc-properties, #sc-portfolio');
+                // ESTRATÉGIA 1: Cards de Vacância (Comum para FIIs de tijolo no Investidor10)
+                $('.vacancies-card, .property-card, .card-property').each((_, el) => {
+                    const name = $(el).find('.name, .title, h4').first().text().trim();
+                    let location = $(el).find('.address, .location, .sub-title, p').text().trim();
                     
-                    if (portfolioSection.length > 0) {
-                        // Tenta encontrar cards dentro desta seção
-                        portfolioSection.find('.card, .property-card, .carousel-cell, .splide__slide').each((_, el) => {
-                            // Tenta extrair Nome do Imóvel
-                            let name = $(el).find('h4, .title, strong, .card-header').text().trim();
-                            if (!name) name = $(el).find('.name').text().trim();
-
-                            // Tenta extrair Localização
-                            let location = $(el).find('.address, .location, .sub-title').text().trim();
-                            
-                            // Se não achar location com classe explícita, tenta procurar texto que pareça endereço
-                            if (!location) {
-                                // Pega o corpo do card
-                                const bodyText = $(el).find('.card-body, .content').text().trim();
-                                // Heurística simples: se o corpo tem texto e não é o nome, usa como localização (frequentemente é cidade/UF)
-                                if (bodyText && bodyText !== name) location = bodyText;
-                            }
-
-                            if (name && name.length > 2) {
-                                realEstateProperties.push({
-                                    name: name.replace(/\s+/g, ' '), // Limpa espaços extras
-                                    location: location ? location.replace(/\s+/g, ' ') : 'Localização não informada',
-                                    type: 'Imóvel'
-                                });
-                            }
+                    // Limpeza
+                    if (location && location.includes(name)) location = location.replace(name, '').trim();
+                    
+                    if (name && !seenProperties.has(name) && name.length > 2) {
+                        realEstateProperties.push({
+                            name: name.replace(/\s+/g, ' '),
+                            location: location ? location.replace(/\s+/g, ' ') : 'Localização não informada',
+                            type: 'Imóvel'
                         });
+                        seenProperties.add(name);
                     }
-
-                    // Estratégia 2: Seção de Vacância (Muitas vezes contém a lista também)
-                    if (realEstateProperties.length === 0) {
-                        $('.vacancies-card').each((_, el) => {
-                            const name = $(el).find('.name, .title').first().text().trim();
-                            const location = $(el).find('.address, .location').text().trim();
-                            
-                            if (name) {
-                                realEstateProperties.push({
-                                    name: name.replace(/\s+/g, ' '),
-                                    location: location || 'Localização não informada',
-                                    type: 'Imóvel'
-                                });
-                            }
-                        });
-                    }
-
-                    // Estratégia 3: Fallback para Tabelas (Listagem antiga)
-                    if (realEstateProperties.length === 0) {
-                        $('table').each((_, table) => {
-                            const header = $(table).find('thead').text().toLowerCase();
-                            if (header.includes('imóvel') || header.includes('nome') || header.includes('propriedade')) {
-                                $(table).find('tbody tr').each((_, tr) => {
-                                    const cols = $(tr).find('td');
-                                    if (cols.length >= 2) {
-                                        const pName = $(cols[0]).text().trim();
-                                        const pLoc = $(cols[1]).text().trim();
-                                        // Valida se parece um imóvel (evita linhas de total ou lixo)
-                                        if (pName && pName.length > 3 && !pName.toLowerCase().includes('total')) {
-                                            realEstateProperties.push({
-                                                name: pName.replace(/\s+/g, ' '),
-                                                location: pLoc ? pLoc.replace(/\s+/g, ' ') : '',
-                                                type: 'Imóvel'
-                                            });
-                                        }
-                                    }
-                                });
-                            }
-                        });
-                    }
-                }
-
-                // --- SCRAPER DE DIVIDENDOS APERFEIÇOADO (HEURÍSTICA DE CONTEÚDO) ---
-                const dividends: any[] = [];
-                let tableDivs: cheerio.Cheerio<any> | null = null;
-
-                // 1. Tenta ID específico primeiro (Mais confiável)
-                const specificTable = $('#table-dividends-history');
-                if (specificTable.length > 0) {
-                    tableDivs = specificTable;
-                } else {
-                    // 2. Busca genérica (Fallback)
-                    $('table').each((_, table) => {
-                        const txt = $(table).text().toLowerCase();
-                        if ((txt.includes('tipo') || txt.includes('data com')) && 
-                            (txt.includes('pagamento') || txt.includes('valor'))) {
-                            tableDivs = $(table);
-                            return false; 
-                        }
-                    });
-                }
-
-                if (tableDivs) {
-                    tableDivs.find('tbody tr').each((i, tr) => {
-                        const cols = $(tr).find('td');
-                        if (cols.length < 3) return;
-
-                        let typeDiv = 'DIV';
-                        let dateComStr = '';
-                        let datePayStr = '';
-                        let valStr = '';
-
-                        // Varre as colunas da linha
-                        cols.each((_, td) => {
-                            const text = $(td).text().trim();
-                            const normText = normalize(text);
-
-                            // Identifica Tipo
-                            if (normText.includes('jcp') || normText.includes('juros')) typeDiv = 'JCP';
-                            else if (normText.includes('rendimento')) typeDiv = 'REND';
-                            else if (normText.includes('dividendo')) typeDiv = 'DIV';
-                            else if (normText.includes('amortiza')) typeDiv = 'AMORT';
-
-                            // Identifica Datas (DD/MM/AAAA)
-                            if (text.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
-                                if (!dateComStr) dateComStr = text; // Primeira data geralmente é Datacom
-                                else if (!datePayStr) datePayStr = text; // Segunda é Pagamento
-                            }
-
-                            // Identifica Valor (Prioriza formatos monetários R$ ou decimal com vírgula, SEM %)
-                            if (!text.includes('%')) {
-                                if (text.includes('R$') || (text.match(/\d+,\d+/) && !valStr)) {
-                                    // Se tem R$, é certeza. Se não tem R$ mas parece número e ainda não temos valor, pega.
-                                    valStr = text;
-                                } else if (text.match(/\d+,\d+/) && valStr && text.includes('R$')) {
-                                    // Se já tínhamos um valor "fraco" e agora achamos um com R$, substitui (R$ ganha)
-                                    valStr = text;
-                                }
-                            }
-                        });
-
-                        const rate = parseValue(valStr);
-                        const dateCom = parseDate(dateComStr);
-                        const paymentDate = parseDate(datePayStr);
-
-                        if (dateCom && rate !== null && rate > 0) {
-                            dividends.push({ ticker: ticker.toUpperCase(), type: typeDiv, date_com: dateCom, payment_date: paymentDate || null, rate });
-                        }
-                    });
-                }
-
-                if ((dados.dy === null || dados.dy === 0) && dados.ultimo_rendimento && dados.cotacao_atual) {
-                    dados.dy = (dados.ultimo_rendimento / dados.cotacao_atual) * 100 * 12; 
-                }
-
-                Object.keys(dados).forEach(k => {
-                    if (dados[k] === null || dados[k] === undefined || dados[k] === '') delete dados[k];
                 });
 
-                finalData = {
-                    ...dados,
-                    dy_12m: dados.dy,
-                    current_price: dados.cotacao_atual,
-                    properties: realEstateProperties // Adiciona a lista de imóveis extraída
-                };
-                finalDividends = dividends;
-                
-                break; 
+                // ESTRATÉGIA 2: Tabelas na seção "Portfólio"
+                if (realEstateProperties.length === 0) {
+                    $('#sc-portfolio-fii table, #sc-properties table, table.properties-table').each((_, table) => {
+                        const header = $(table).find('thead').text().toLowerCase();
+                        if (header.includes('imóvel') || header.includes('nome') || header.includes('propriedade')) {
+                            $(table).find('tbody tr').each((_, tr) => {
+                                const cols = $(tr).find('td');
+                                if (cols.length >= 2) {
+                                    const pName = $(cols[0]).text().trim();
+                                    const pLoc = $(cols[1]).text().trim();
+                                    if (pName && pName.length > 2 && !seenProperties.has(pName)) {
+                                        realEstateProperties.push({
+                                            name: pName.replace(/\s+/g, ' '),
+                                            location: pLoc ? pLoc.replace(/\s+/g, ' ') : 'Brasil',
+                                            type: 'Imóvel'
+                                        });
+                                        seenProperties.add(pName);
+                                    }
+                                }
+                            });
+                        }
+                    });
+                }
+
+                // ESTRATÉGIA 3: Carrossel de Imóveis (se existir)
+                if (realEstateProperties.length === 0) {
+                    $('.carousel-properties .item, .splide__slide').each((_, el) => {
+                        const name = $(el).find('h3, h4, .title').text().trim();
+                        const location = $(el).find('.desc, .subtitle, .location').text().trim();
+                        if (name && !seenProperties.has(name)) {
+                            realEstateProperties.push({
+                                name: name,
+                                location: location || '',
+                                type: 'Imóvel'
+                            });
+                            seenProperties.add(name);
+                        }
+                    });
+                }
             }
 
+            // Scraping Dividendos
+            const dividends: any[] = [];
+            let tableDivs: cheerio.Cheerio<any> | null = null;
+            const specificTable = $('#table-dividends-history');
+            if (specificTable.length > 0) tableDivs = specificTable;
+            else {
+                $('table').each((_, table) => {
+                    const txt = $(table).text().toLowerCase();
+                    if ((txt.includes('tipo') || txt.includes('data com')) && (txt.includes('pagamento') || txt.includes('valor'))) {
+                        tableDivs = $(table);
+                        return false; 
+                    }
+                });
+            }
+
+            if (tableDivs) {
+                tableDivs.find('tbody tr').each((i, tr) => {
+                    const cols = $(tr).find('td');
+                    if (cols.length < 3) return;
+                    let typeDiv = 'DIV';
+                    let dateComStr = '';
+                    let datePayStr = '';
+                    let valStr = '';
+
+                    cols.each((_, td) => {
+                        const text = $(td).text().trim();
+                        const normText = normalize(text);
+                        if (normText.includes('jcp')) typeDiv = 'JCP';
+                        else if (normText.includes('rendimento')) typeDiv = 'REND';
+                        else if (normText.includes('dividendo')) typeDiv = 'DIV';
+                        else if (normText.includes('amortiza')) typeDiv = 'AMORT';
+
+                        if (text.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+                            if (!dateComStr) dateComStr = text;
+                            else if (!datePayStr) datePayStr = text;
+                        }
+                        if (!text.includes('%') && (text.includes('R$') || (text.match(/\d+,\d+/) && !valStr))) {
+                            valStr = text;
+                        }
+                    });
+
+                    const rate = parseValue(valStr);
+                    const dateCom = parseDate(dateComStr);
+                    const paymentDate = parseDate(datePayStr);
+
+                    if (dateCom && rate !== null && rate > 0) {
+                        dividends.push({ ticker: ticker.toUpperCase(), type: typeDiv, date_com: dateCom, payment_date: paymentDate || null, rate });
+                    }
+                });
+            }
+
+            if ((dados.dy === null || dados.dy === 0) && dados.ultimo_rendimento && dados.cotacao_atual) {
+                dados.dy = (dados.ultimo_rendimento / dados.cotacao_atual) * 100 * 12; 
+            }
+
+            // Fallback para VPA se não tiver mas tiver P/VP
+            if (!dados.vpa && dados.pvp > 0 && dados.cotacao_atual > 0) {
+                dados.vpa = dados.cotacao_atual / dados.pvp;
+            }
+
+            Object.keys(dados).forEach(k => {
+                if (dados[k] === null || dados[k] === undefined || dados[k] === '') delete dados[k];
+            });
+
+            finalData = {
+                ...dados,
+                dy_12m: dados.dy,
+                current_price: dados.cotacao_atual,
+                properties: realEstateProperties // Garante que a lista vai pro DB (campo JSONB)
+            };
+            finalDividends = dividends;
+            
+            break; 
         } catch (e) {
             continue;
         }
@@ -451,6 +406,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const { metadata, dividends } = result;
 
         if (metadata) {
+            // Remove campos que não são colunas do banco, mas mantém properties se existir coluna JSON
             const dbPayload = { ...metadata };
             delete dbPayload.dy;
             delete dbPayload.cotacao_atual;
@@ -460,7 +416,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         if (dividends.length > 0) {
-             // CLEANUP: Remove registros futuros existentes para este ticker (limpa dados velhos/errados)
              const today = new Date().toISOString().split('T')[0];
              const { error: delError } = await supabase.from('market_dividends')
                 .delete()

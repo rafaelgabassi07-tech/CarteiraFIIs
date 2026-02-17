@@ -18,7 +18,7 @@ import { supabase, SUPABASE_URL } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 import { useScrollDirection } from './hooks/useScrollDirection';
 
-const APP_VERSION = '8.9.0'; 
+const APP_VERSION = '8.9.1'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -59,7 +59,6 @@ const mergeDividends = (current: DividendReceipt[], incoming: DividendReceipt[])
 };
 
 // --- LOGO COMPONENT ---
-// Defined explicitly as a component to prevent rendering issues with Header
 const AppLogo = () => (
   <img src="./logo.svg" className="w-7 h-7 object-contain drop-shadow-sm" alt="InvestFIIs" />
 );
@@ -67,7 +66,6 @@ const AppLogo = () => (
 const App: React.FC = () => {
   // --- ESTADOS GLOBAIS ---
   const updateManager = useUpdateManager(APP_VERSION);
-  // Destructuring stable values to fix re-render dependency issue
   const { setShowChangelog, checkForUpdates, isUpdateAvailable, currentVersionDate, startUpdateProcess, isUpdating, updateProgress, releaseNotes, showChangelog: isChangelogOpen } = updateManager;
 
   const { scrollDirection, isTop } = useScrollDirection();
@@ -181,57 +179,87 @@ const App: React.FC = () => {
     }
   }, [isReady]);
 
+  // --- CÁLCULOS DE PORTFÓLIO (Delegado para Serviço) ---
+  const memoizedPortfolioData = useMemo(() => {
+      return processPortfolio(transactions, dividends, quotes, assetsMetadata);
+  }, [transactions, quotes, dividends, assetsMetadata]);
+
   // --- LOGICA DE NOTIFICAÇÕES INTELIGENTES ---
   useEffect(() => {
-      if (!dividends || dividends.length === 0 || !transactions || transactions.length === 0) return;
-
+      if (!pushEnabled) return;
+      
       const newNotifs: AppNotification[] = [];
       const existingIds = new Set(notifications.map(n => n.id));
+      const today = new Date().toISOString().split('T')[0];
 
-      dividends.forEach(div => {
-          if (!div || !div.ticker) return;
-          const qty = getQuantityOnDate(div.ticker, div.dateCom, transactions);
-          if (qty > 0) {
-              const total = qty * div.rate;
+      // 1. Notificações de Dividendos (Pagamento e Datacom)
+      if (dividends && dividends.length > 0 && transactions && transactions.length > 0) {
+          dividends.forEach(div => {
+              if (!div || !div.ticker) return;
+              const qty = getQuantityOnDate(div.ticker, div.dateCom, transactions);
+              if (qty > 0) {
+                  const total = qty * div.rate;
+                  
+                  if (isSameDayLocal(div.paymentDate)) {
+                      const id = `pay-${div.ticker}-${div.paymentDate}`;
+                      if (!existingIds.has(id)) {
+                          newNotifs.push({
+                              id,
+                              title: 'Pagamento Recebido 💰',
+                              message: `${div.ticker} pagou R$ ${total.toLocaleString('pt-BR', {minimumFractionDigits: 2})} hoje!`,
+                              type: 'success',
+                              category: 'payment',
+                              timestamp: Date.now(),
+                              read: false
+                          });
+                      }
+                  }
+
+                  if (isSameDayLocal(div.dateCom)) {
+                      const id = `datacom-${div.ticker}-${div.dateCom}`;
+                      if (!existingIds.has(id)) {
+                          newNotifs.push({
+                              id,
+                              title: 'Data Com Hoje 📅',
+                              message: `Último dia para garantir proventos de ${div.ticker}.`,
+                              type: 'info',
+                              category: 'datacom',
+                              timestamp: Date.now(),
+                              read: false
+                          });
+                      }
+                  }
+              }
+          });
+      }
+
+      // 2. Notificações de Oscilação de Mercado (> 3%)
+      if (memoizedPortfolioData.portfolio && memoizedPortfolioData.portfolio.length > 0) {
+          memoizedPortfolioData.portfolio.forEach(asset => {
+              const change = asset.dailyChange || 0;
+              const id = `volatility-${asset.ticker}-${today}`;
               
-              if (isSameDayLocal(div.paymentDate)) {
-                  const id = `pay-${div.ticker}-${div.paymentDate}`;
-                  if (!existingIds.has(id)) {
-                      newNotifs.push({
-                          id,
-                          title: 'Pagamento Recebido 💰',
-                          message: `${div.ticker} pagou R$ ${total.toLocaleString('pt-BR', {minimumFractionDigits: 2})} hoje!`,
-                          type: 'success',
-                          category: 'payment',
-                          timestamp: Date.now(),
-                          read: false
-                      });
-                  }
+              if (Math.abs(change) >= 3 && !existingIds.has(id)) {
+                  const isUp = change > 0;
+                  newNotifs.push({
+                      id,
+                      title: isUp ? `${asset.ticker} Disparou 🚀` : `${asset.ticker} Caiu 📉`,
+                      message: `O ativo variou ${isUp ? '+' : ''}${change.toFixed(2)}% hoje.`,
+                      type: isUp ? 'success' : 'warning',
+                      category: 'general',
+                      timestamp: Date.now(),
+                      read: false
+                  });
               }
-
-              if (isSameDayLocal(div.dateCom)) {
-                  const id = `datacom-${div.ticker}-${div.dateCom}`;
-                  if (!existingIds.has(id)) {
-                      newNotifs.push({
-                          id,
-                          title: 'Data Com Hoje 📅',
-                          message: `Último dia para garantir proventos de ${div.ticker}.`,
-                          type: 'info',
-                          category: 'datacom',
-                          timestamp: Date.now(),
-                          read: false
-                      });
-                  }
-              }
-          }
-      });
+          });
+      }
 
       if (newNotifs.length > 0) {
           setNotifications(prev => [...newNotifs, ...prev]);
           if (navigator.vibrate) navigator.vibrate(200);
       }
 
-  }, [dividends, transactions]);
+  }, [dividends, transactions, pushEnabled, memoizedPortfolioData.portfolio]);
 
   // --- PWA INSTALL HANDLER ---
   useEffect(() => {
@@ -543,7 +571,6 @@ const App: React.FC = () => {
           }
           
           // 2. Sincroniza dados unificados FORÇANDO O SCRAPER (forceRefresh = true)
-          // Isso garante que novas informações sejam baixadas do Investidor10
           const startDate = transactions.reduce((min, t) => t.date < min ? t.date : min, transactions[0].date);
           const data = await fetchUnifiedMarketData(tickers, startDate, true); 
           
@@ -610,13 +637,7 @@ const App: React.FC = () => {
       setCurrentTab('portfolio');
   }, []);
 
-  // --- CÁLCULOS DE PORTFÓLIO (Delegado para Serviço) ---
-  const memoizedPortfolioData = useMemo(() => {
-      return processPortfolio(transactions, dividends, quotes, assetsMetadata);
-  }, [transactions, quotes, dividends, assetsMetadata]);
-
   // Determine header visibility logic
-  // CRITICAL FIX: Force header visible in Settings to prevent flicker
   const isHeaderVisible = showSettings || scrollDirection === 'up' || isTop;
 
   // --- RENDERIZAÇÃO ---
@@ -662,7 +683,7 @@ const App: React.FC = () => {
                 }
                 hideBorder={currentTab === 'transactions'}
                 isVisible={isHeaderVisible}
-                headerIcon={!showSettings ? <AppLogo /> : undefined} // Logo visível apenas nas abas principais
+                headerIcon={!showSettings ? <AppLogo /> : undefined}
             />
             
             <main className="max-w-xl mx-auto pt-24 pb-32 min-h-screen px-4">

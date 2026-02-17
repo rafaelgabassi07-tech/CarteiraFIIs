@@ -459,24 +459,30 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                                     </div>
                                 )}
 
-                                {/* LISTA DE IMÓVEIS (FIIs de Tijolo) */}
+                                {/* LISTA DE IMÓVEIS (FIIs de Tijolo) - VISUAL REFINADO */}
                                 {selectedAsset.properties && selectedAsset.properties.length > 0 && (
                                     <div className="mt-6">
-                                        <div className="flex items-center gap-2 mb-3 px-1">
-                                            <Building2 className="w-4 h-4 text-sky-500" />
-                                            <h3 className="text-xs font-black text-zinc-900 dark:text-white uppercase tracking-widest">
-                                                Portfólio Imobiliário ({selectedAsset.properties.length})
-                                            </h3>
+                                        <div className="flex items-center justify-between mb-3 px-1">
+                                            <div className="flex items-center gap-2">
+                                                <Building2 className="w-4 h-4 text-sky-500" />
+                                                <h3 className="text-xs font-black text-zinc-900 dark:text-white uppercase tracking-widest">
+                                                    Portfólio Imobiliário
+                                                </h3>
+                                            </div>
+                                            <span className="text-[10px] font-bold text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-md">
+                                                {selectedAsset.properties.length} Ativos
+                                            </span>
                                         </div>
-                                        <div className="bg-zinc-50 dark:bg-zinc-800/30 rounded-2xl border border-zinc-100 dark:border-zinc-800 overflow-hidden divide-y divide-zinc-100 dark:divide-zinc-800">
+                                        
+                                        <div className="space-y-2">
                                             {selectedAsset.properties.map((prop, idx) => (
-                                                <div key={idx} className="p-3 flex items-start gap-3">
-                                                    <div className="w-8 h-8 rounded-lg bg-white dark:bg-zinc-800 flex items-center justify-center shrink-0 text-zinc-400 border border-zinc-100 dark:border-zinc-700">
-                                                        <MapPin className="w-4 h-4" />
+                                                <div key={idx} className="p-3 bg-white dark:bg-zinc-800/60 rounded-xl border border-zinc-100 dark:border-zinc-700/50 flex items-center gap-3 hover:border-sky-200 dark:hover:border-sky-800/50 transition-colors">
+                                                    <div className="w-9 h-9 rounded-lg bg-sky-50 dark:bg-sky-900/20 flex items-center justify-center shrink-0 text-sky-600 dark:text-sky-400 border border-sky-100 dark:border-sky-900/30">
+                                                        <MapPin className="w-4 h-4" strokeWidth={2} />
                                                     </div>
                                                     <div>
-                                                        <p className="text-xs font-bold text-zinc-900 dark:text-white leading-tight">{prop.name}</p>
-                                                        <p className="text-[10px] text-zinc-500 mt-0.5">{prop.location}</p>
+                                                        <p className="text-xs font-bold text-zinc-900 dark:text-white leading-tight mb-0.5">{prop.name}</p>
+                                                        <p className="text-[10px] text-zinc-500 font-medium">{prop.location}</p>
                                                     </div>
                                                 </div>
                                             ))}
