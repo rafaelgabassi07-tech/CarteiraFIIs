@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, Activity, BarChart3, PieChart, Coins, AlertCircle, ChevronDown, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
+import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, Activity, BarChart3, PieChart, Coins, AlertCircle, ChevronDown, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, Scale } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, ReferenceLine, ComposedChart, CartesianGrid } from 'recharts';
 import { formatBRL, formatPercent, formatNumber } from '../utils/formatters';
@@ -16,7 +16,7 @@ const MetricCard = ({ label, value, highlight = false, colorClass = "text-zinc-9
     </div>
 );
 
-// Card de Resumo da Posição do Usuário (Novo)
+// Card de Resumo da Posição do Usuário
 const PositionSummaryCard = ({ asset, privacyMode }: { asset: AssetPosition, privacyMode: boolean }) => {
     const totalValue = asset.quantity * (asset.currentPrice || 0);
     const totalCost = asset.quantity * asset.averagePrice;
@@ -63,6 +63,69 @@ const PositionSummaryCard = ({ asset, privacyMode }: { asset: AssetPosition, pri
                     <p className="text-[9px] font-bold text-zinc-400 uppercase mb-1">Custo Total</p>
                     <p className="text-sm font-bold text-zinc-500">{formatBRL(totalCost, privacyMode)}</p>
                 </div>
+            </div>
+        </div>
+    );
+};
+
+// Novo Card de Performance de Mercado
+const MarketPerformanceCard = ({ asset }: { asset: AssetPosition }) => {
+    let benchmarkVal = asset.benchmark_cdi_12m;
+    let benchmarkLabel = 'CDI';
+    
+    if (asset.assetType === AssetType.FII && asset.benchmark_ifix_12m) {
+        benchmarkVal = asset.benchmark_ifix_12m;
+        benchmarkLabel = 'IFIX';
+    } else if (asset.assetType === AssetType.STOCK && asset.benchmark_ibov_12m) {
+        benchmarkVal = asset.benchmark_ibov_12m;
+        benchmarkLabel = 'IBOV';
+    }
+
+    const assetReturn = asset.profitability_12m;
+    const monthReturn = asset.profitability_month;
+
+    if (assetReturn === undefined || assetReturn === null) return null;
+
+    return (
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm mb-6">
+            <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                <TrendingUp className="w-3 h-3" /> Performance de Mercado
+            </h4>
+            
+            <div className="space-y-4">
+                {/* 12 Meses */}
+                <div>
+                    <div className="flex justify-between items-end mb-1.5">
+                        <span className="text-[10px] font-bold text-zinc-500">Últimos 12 Meses</span>
+                        <div className="flex gap-3 text-[10px] font-bold">
+                            <span className={assetReturn >= 0 ? 'text-emerald-500' : 'text-rose-500'}>
+                                {asset.ticker}: {assetReturn > 0 ? '+' : ''}{assetReturn.toFixed(1)}%
+                            </span>
+                            {benchmarkVal !== undefined && (
+                                <span className="text-zinc-400">
+                                    {benchmarkLabel}: {benchmarkVal > 0 ? '+' : ''}{benchmarkVal.toFixed(1)}%
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                    {/* Barra Visual Simples */}
+                    <div className="h-1.5 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden flex">
+                        <div 
+                            className={`h-full rounded-full ${assetReturn >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`} 
+                            style={{ width: `${Math.min(100, Math.max(5, Math.abs(assetReturn)))}%` }} 
+                        ></div>
+                    </div>
+                </div>
+
+                {/* Mês Atual */}
+                {monthReturn !== undefined && monthReturn !== null && (
+                    <div className="flex items-center justify-between pt-2 border-t border-zinc-50 dark:border-zinc-800/50">
+                        <span className="text-[10px] font-bold text-zinc-500">Mês Atual</span>
+                        <span className={`text-xs font-black ${monthReturn >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                            {monthReturn > 0 ? '+' : ''}{monthReturn.toFixed(2)}%
+                        </span>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -140,7 +203,10 @@ const DetailedInfoBlock = ({ asset }: { asset: AssetPosition }) => {
                     <InfoRow label="Mandato" value={asset.mandate} icon={Briefcase} />
                     <InfoRow label="Tipo de Gestão" value={asset.manager_type} icon={Activity} />
                     <InfoRow label="Taxa Adm." value={asset.management_fee} icon={Percent} />
+                    <InfoRow label="Liquidez Diária" value={asset.liquidity} icon={Activity} />
+                    <InfoRow label="Vacância Física" value={asset.vacancy !== undefined ? `${asset.vacancy}%` : '-'} icon={AlertCircle} />
                     <InfoRow label="Num. Cotistas" value={asset.properties_count ? formatNumber(asset.properties_count, 0) : '-'} icon={Users} />
+                    <InfoRow label="Num. Cotas" value={asset.num_quotas} icon={Coins} />
                     <InfoRow label="Patrimônio Líq." value={asset.assets_value} icon={Wallet} />
                 </>
             )}
@@ -508,6 +574,9 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                                 <div className="space-y-6 anim-fade-in">
                                     <PositionSummaryCard asset={selectedAsset} privacyMode={privacyMode} />
                                     
+                                    {/* Novo: Performance de Mercado */}
+                                    <MarketPerformanceCard asset={selectedAsset} />
+
                                     {/* Indicadores Básicos de Mercado (Auxiliares) */}
                                     <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-2">
                                         <Activity className="w-3 h-3" /> Indicadores Chave
@@ -558,11 +627,15 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                                     {selectedAsset.assetType === AssetType.STOCK && (
                                         <div className="mt-6">
                                             <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                                                <BarChart3 className="w-3 h-3" /> Eficiência & Dívida
+                                                <BarChart3 className="w-3 h-3" /> Eficiência & Crescimento
                                             </h4>
                                             <div className="grid grid-cols-2 gap-3">
                                                 <MetricCard label="ROE" value={formatPercent(selectedAsset.roe)} highlight />
                                                 <MetricCard label="Margem Líq." value={formatPercent(selectedAsset.net_margin)} />
+                                                <MetricCard label="Margem Bruta" value={formatPercent(selectedAsset.gross_margin)} />
+                                                <MetricCard label="CAGR Rec. (5a)" value={formatPercent(selectedAsset.cagr_revenue)} />
+                                                <MetricCard label="CAGR Lucro (5a)" value={formatPercent(selectedAsset.cagr_profits)} />
+                                                <MetricCard label="EV/EBITDA" value={formatNumber(selectedAsset.ev_ebitda)} />
                                                 <MetricCard label="Dív.Líq/EBITDA" value={formatNumber(selectedAsset.net_debt_ebitda)} />
                                                 <MetricCard label="LPA" value={formatBRL(selectedAsset.lpa)} />
                                             </div>
