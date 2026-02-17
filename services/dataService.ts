@@ -76,6 +76,10 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         p_l: parseNumberSafe(getVal('pl', 'p_l')),
         roe: parseNumberSafe(getVal('roe')),
         
+        // Rentabilidade Scraper
+        profitability_12m: parseNumberSafe(getVal('rentabilidade_12m', 'rentabilidade12m')),
+        profitability_month: parseNumberSafe(getVal('rentabilidade_mes', 'rentabilidademes')),
+
         // Metadados
         liquidity: getVal('liquidez', 'liquidez_media_diaria') || '', 
         market_cap: getVal('val_mercado', 'valor_mercado', 'market_cap') || undefined, 

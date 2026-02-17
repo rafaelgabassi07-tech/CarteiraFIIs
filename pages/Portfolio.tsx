@@ -1,8 +1,9 @@
 
 import React, { useState, useMemo } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, Wallet, TrendingUp, TrendingDown, RefreshCw, X, Calculator, Scale, Activity, BarChart3, PieChart, Coins, Target, AlertCircle, ChevronDown, ChevronUp, ExternalLink, ArrowRight, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin } from 'lucide-react';
+import { Search, Wallet, TrendingUp, TrendingDown, RefreshCw, X, Calculator, Scale, Activity, BarChart3, PieChart, Coins, Target, AlertCircle, ChevronDown, ChevronUp, ExternalLink, ArrowRight, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 
 // --- FORMATTERS ---
 
@@ -196,7 +197,7 @@ interface PortfolioProps {
   onClearTarget?: () => void;
 }
 
-const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode = false }) => {
+const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [], privacyMode = false }) => {
     const [search, setSearch] = useState('');
     const [selectedAsset, setSelectedAsset] = useState<AssetPosition | null>(null);
     const [expandedAssetTicker, setExpandedAssetTicker] = useState<string | null>(null);
@@ -206,7 +207,6 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
         return portfolio.filter(p => p.ticker.includes(search.toUpperCase()));
     }, [portfolio, search]);
 
-    // Calcular totais para "% na Carteira"
     const totalPortfolioValue = useMemo(() => portfolio.reduce((acc, p) => acc + (p.quantity * (p.currentPrice || 0)), 0), [portfolio]);
 
     const fiis = filtered.filter(p => p.assetType === AssetType.FII);
@@ -216,7 +216,49 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
         setExpandedAssetTicker(prev => prev === ticker ? null : ticker);
     };
 
-    // --- LÓGICA DE VALUATION APRIMORADA ---
+    // --- CHART DATA (DIVIDENDOS) ---
+    const assetDividendChartData = useMemo(() => {
+        if (!selectedAsset) return [];
+        const today = new Date();
+        const start = new Date(today.getFullYear(), today.getMonth() - 11, 1); // 12 meses atrás
+        
+        // Filtra dividendos do ativo específico nos últimos 12 meses
+        const history = dividends
+            .filter(d => 
+                d.ticker === selectedAsset.ticker && 
+                new Date(d.paymentDate || d.dateCom) >= start
+            )
+            .sort((a, b) => (a.paymentDate || a.dateCom).localeCompare(b.paymentDate || b.dateCom));
+
+        // Agrupa por mês (YYYY-MM) e soma
+        const grouped: Record<string, number> = {};
+        history.forEach(d => {
+            const key = (d.paymentDate || d.dateCom).substring(0, 7); // YYYY-MM
+            grouped[key] = (grouped[key] || 0) + d.rate; // Usa valor unitário para mostrar yield real
+        });
+
+        // Preenche últimos 12 meses (inclusive vazios)
+        const result = [];
+        for (let i = 0; i < 12; i++) {
+            const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
+            const key = d.toISOString().substring(0, 7);
+            const monthLabel = d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
+            
+            result.push({
+                month: monthLabel,
+                fullDate: key,
+                value: grouped[key] || 0
+            });
+        }
+        return result;
+    }, [selectedAsset, dividends]);
+
+    const averageDividend = useMemo(() => {
+        if (assetDividendChartData.length === 0) return 0;
+        const total = assetDividendChartData.reduce((acc, curr) => acc + curr.value, 0);
+        return total / 12;
+    }, [assetDividendChartData]);
+
     const valuationData = useMemo(() => {
         if (!selectedAsset) return null;
 
@@ -226,19 +268,14 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
         let ceilingPrice = 0; // Bazin
         let ceilingMethod = 'Bazin (6%)';
         
-        // 1. CÁLCULO PREÇO TETO (BAZIN - YIELD 6%)
-        // Lógica conservadora: Para Ações, usa estritamente DY 12m. Para FIIs, aceita projeção mensal se DY faltar.
         let annualDividend = 0;
         
         if (selectedAsset.dy_12m && selectedAsset.dy_12m > 0 && currentPrice > 0) {
-            // Cenário Ideal: Temos o Yield anual exato
             annualDividend = currentPrice * (selectedAsset.dy_12m / 100);
         } else if (selectedAsset.assetType === AssetType.FII && selectedAsset.last_dividend && selectedAsset.last_dividend > 0) {
-            // Fallback seguro APENAS para FIIs (pagamento mensal recorrente)
             annualDividend = selectedAsset.last_dividend * 12;
             ceilingMethod = 'Bazin (Proj. Mensal)';
         } else {
-             // Ações sem DY: Não projeta.
              annualDividend = 0; 
         }
 
@@ -246,13 +283,10 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
             ceilingPrice = annualDividend / 0.06; 
         }
 
-        // 2. CÁLCULO PREÇO JUSTO
         if (selectedAsset.assetType === AssetType.STOCK) {
             const lpa = selectedAsset.lpa || 0;
             const vpa = selectedAsset.vpa || 0;
 
-            // Graham clássico: sqrt(22.5 * LPA * VPA)
-            // Requer LPA e VPA positivos para fazer sentido matemático e fundamentalista
             if (lpa > 0 && vpa > 0) {
                 fairPrice = Math.sqrt(22.5 * lpa * vpa);
                 fairMethod = 'Graham (Clássico)';
@@ -260,7 +294,6 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                  fairMethod = 'Graham (Inaplicável)';
             }
         } else {
-            // FIIs: Valor Justo = Valor Patrimonial (VPA)
             const vpa = selectedAsset.vpa;
             const pvp = selectedAsset.p_vp;
 
@@ -268,7 +301,6 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                 fairPrice = vpa;
                 fairMethod = 'Valor Patrimonial';
             } else if (pvp && pvp > 0 && currentPrice > 0) {
-                // Se VPA não veio direto, deriva do P/VP: VPA = Preço / (P/VP)
                 fairPrice = currentPrice / pvp; 
                 fairMethod = 'VP (Implícito)';
             } else {
@@ -276,16 +308,9 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
             }
         }
 
-        return {
-            fairPrice,
-            fairMethod,
-            ceilingPrice,
-            ceilingMethod,
-            currentPrice
-        };
+        return { fairPrice, fairMethod, ceilingPrice, ceilingMethod, currentPrice };
     }, [selectedAsset]);
 
-    // Dados Pessoais do Ativo Selecionado
     const personalData = useMemo(() => {
         if (!selectedAsset) return null;
         const totalInvested = selectedAsset.quantity * selectedAsset.averagePrice;
@@ -402,8 +427,78 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                                     <div className="bg-zinc-900 dark:bg-white h-full rounded-full" style={{ width: `${Math.min(100, personalData.walletShare)}%` }}></div>
                                 </div>
                             </div>
+
+                            {/* 3. DIVIDEND CHART & RENTABILIDADE (NOVO) */}
+                            <div className="mb-8">
+                                <div className="flex items-center gap-2 mb-3 px-1">
+                                    <Zap className="w-4 h-4 text-amber-500" />
+                                    <h3 className="text-xs font-black text-zinc-900 dark:text-white uppercase tracking-widest">Performance & Proventos</h3>
+                                </div>
+
+                                {/* Gráfico de Dividendos */}
+                                <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm mb-4">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h4 className="text-[10px] font-bold text-zinc-400 uppercase">Dividendos (12 Meses)</h4>
+                                        <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
+                                            Média: {formatBRL(averageDividend)}
+                                        </span>
+                                    </div>
+                                    <div className="h-40 w-full">
+                                        {assetDividendChartData.some(d => d.value > 0) ? (
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <BarChart data={assetDividendChartData}>
+                                                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 700 }} dy={5} interval={0} />
+                                                    <Tooltip 
+                                                        cursor={{fill: 'transparent'}}
+                                                        contentStyle={{ borderRadius: '8px', border: 'none', backgroundColor: '#18181b', color: '#fff', fontSize: '10px', padding: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                                                        formatter={(value: number) => [formatBRL(value), 'Valor']}
+                                                        labelStyle={{ display: 'none' }}
+                                                    />
+                                                    <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        ) : (
+                                            <div className="h-full flex items-center justify-center text-xs text-zinc-400 font-medium bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-700">
+                                                Sem histórico recente
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Rentabilidade e Comparação */}
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800 flex flex-col justify-between">
+                                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Rentab. 12 Meses</span>
+                                        <div className="flex items-baseline gap-1 mt-1">
+                                            {selectedAsset.profitability_12m !== undefined && selectedAsset.profitability_12m !== null ? (
+                                                <>
+                                                    <span className={`text-lg font-black ${selectedAsset.profitability_12m >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                                        {selectedAsset.profitability_12m > 0 ? '+' : ''}{selectedAsset.profitability_12m.toFixed(2)}%
+                                                    </span>
+                                                </>
+                                            ) : (
+                                                <span className="text-sm font-bold text-zinc-400">-</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800 flex flex-col justify-between">
+                                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Rentab. Mês Atual</span>
+                                        <div className="flex items-baseline gap-1 mt-1">
+                                            {selectedAsset.profitability_month !== undefined && selectedAsset.profitability_month !== null ? (
+                                                <>
+                                                    <span className={`text-lg font-black ${selectedAsset.profitability_month >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                                        {selectedAsset.profitability_month > 0 ? '+' : ''}{selectedAsset.profitability_month.toFixed(2)}%
+                                                    </span>
+                                                </>
+                                            ) : (
+                                                <span className="text-sm font-bold text-zinc-400">-</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                             
-                            {/* 3. VALUATION */}
+                            {/* 4. VALUATION */}
                             {valuationData && (
                                 <div className="mb-8">
                                     <div className="flex items-center gap-2 mb-3 px-1">
@@ -430,7 +525,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                                 </div>
                             )}
 
-                            {/* 4. FUNDAMENTOS (Dados Expandidos) */}
+                            {/* 5. FUNDAMENTOS (Dados Expandidos) */}
                             <div className="space-y-4">
                                 <h3 className="text-xs font-black text-zinc-900 dark:text-white uppercase tracking-widest text-left flex items-center gap-2 mb-3 px-1">
                                     <Activity className="w-4 h-4 text-amber-500" /> Indicadores de Mercado
@@ -459,30 +554,24 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                                     </div>
                                 )}
 
-                                {/* LISTA DE IMÓVEIS (FIIs de Tijolo) - VISUAL REFINADO */}
+                                {/* LISTA DE IMÓVEIS (FIIs de Tijolo) */}
                                 {selectedAsset.properties && selectedAsset.properties.length > 0 && (
                                     <div className="mt-6">
-                                        <div className="flex items-center justify-between mb-3 px-1">
-                                            <div className="flex items-center gap-2">
-                                                <Building2 className="w-4 h-4 text-sky-500" />
-                                                <h3 className="text-xs font-black text-zinc-900 dark:text-white uppercase tracking-widest">
-                                                    Portfólio Imobiliário
-                                                </h3>
-                                            </div>
-                                            <span className="text-[10px] font-bold text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-md">
-                                                {selectedAsset.properties.length} Ativos
-                                            </span>
+                                        <div className="flex items-center gap-2 mb-3 px-1">
+                                            <Building2 className="w-4 h-4 text-sky-500" />
+                                            <h3 className="text-xs font-black text-zinc-900 dark:text-white uppercase tracking-widest">
+                                                Portfólio Imobiliário ({selectedAsset.properties.length})
+                                            </h3>
                                         </div>
-                                        
-                                        <div className="space-y-2">
+                                        <div className="bg-zinc-50 dark:bg-zinc-800/30 rounded-2xl border border-zinc-100 dark:border-zinc-800 overflow-hidden divide-y divide-zinc-100 dark:divide-zinc-800">
                                             {selectedAsset.properties.map((prop, idx) => (
-                                                <div key={idx} className="p-3 bg-white dark:bg-zinc-800/60 rounded-xl border border-zinc-100 dark:border-zinc-700/50 flex items-center gap-3 hover:border-sky-200 dark:hover:border-sky-800/50 transition-colors">
-                                                    <div className="w-9 h-9 rounded-lg bg-sky-50 dark:bg-sky-900/20 flex items-center justify-center shrink-0 text-sky-600 dark:text-sky-400 border border-sky-100 dark:border-sky-900/30">
-                                                        <MapPin className="w-4 h-4" strokeWidth={2} />
+                                                <div key={idx} className="p-3 flex items-start gap-3">
+                                                    <div className="w-8 h-8 rounded-lg bg-white dark:bg-zinc-800 flex items-center justify-center shrink-0 text-zinc-400 border border-zinc-100 dark:border-zinc-700">
+                                                        <MapPin className="w-4 h-4" />
                                                     </div>
                                                     <div>
-                                                        <p className="text-xs font-bold text-zinc-900 dark:text-white leading-tight mb-0.5">{prop.name}</p>
-                                                        <p className="text-[10px] text-zinc-500 font-medium">{prop.location}</p>
+                                                        <p className="text-xs font-bold text-zinc-900 dark:text-white leading-tight">{prop.name}</p>
+                                                        <p className="text-[10px] text-zinc-500 mt-0.5">{prop.location}</p>
                                                     </div>
                                                 </div>
                                             ))}

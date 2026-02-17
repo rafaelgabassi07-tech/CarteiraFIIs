@@ -17,13 +17,15 @@ const ACCENT_COLORS = [
     { hex: '#f59e0b', name: 'Amber' },
 ];
 
+// --- COMPONENTES UI REFINADOS ---
+
 const ActionTile = ({ icon: Icon, label, value, isActive, onClick, colorClass, loading }: any) => (
     <button 
         onClick={onClick}
         disabled={loading}
-        className={`relative overflow-hidden p-3.5 rounded-2xl border transition-all duration-300 flex flex-col justify-between h-[90px] w-full group active:scale-[0.96] shadow-sm ${
+        className={`relative overflow-hidden p-3 rounded-2xl border transition-all duration-300 flex flex-col justify-between h-[85px] w-full group active:scale-[0.96] shadow-[0_2px_8px_rgb(0,0,0,0.04)] dark:shadow-none ${
             isActive 
-            ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 ring-1 ring-offset-2 ring-offset-white dark:ring-offset-black ring-zinc-200 dark:ring-zinc-800' 
+            ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 ring-1 ring-offset-2 ring-offset-zinc-50 dark:ring-offset-black ring-zinc-200 dark:ring-zinc-800' 
             : 'bg-white dark:bg-zinc-900 text-zinc-500 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
         }`}
     >
@@ -34,7 +36,7 @@ const ActionTile = ({ icon: Icon, label, value, isActive, onClick, colorClass, l
         </div>
         
         <div className="text-left w-full">
-            <span className={`text-[9px] font-bold uppercase tracking-widest block mb-0.5 opacity-70`}>{label}</span>
+            <span className={`text-[9px] font-bold uppercase tracking-widest block mb-0.5 opacity-60`}>{label}</span>
             <span className="text-xs font-black tracking-tight truncate w-full block">{value}</span>
         </div>
     </button>
@@ -43,20 +45,20 @@ const ActionTile = ({ icon: Icon, label, value, isActive, onClick, colorClass, l
 const SettingsRow = ({ icon: Icon, label, description, onClick, rightElement, isDanger, className, compact = false }: any) => (
     <div 
         onClick={onClick}
-        className={`flex items-center justify-between px-5 py-4 transition-colors ${onClick ? 'cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50' : ''} ${className}`}
+        className={`flex items-center justify-between px-4 py-3 transition-colors ${onClick ? 'cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50' : ''} ${className}`}
     >
-        <div className="flex items-center gap-4">
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${isDanger ? 'bg-rose-50 text-rose-500 dark:bg-rose-900/20' : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'}`}>
+        <div className="flex items-center gap-3">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isDanger ? 'bg-rose-50 text-rose-500 dark:bg-rose-900/20' : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'}`}>
                 <Icon className="w-4 h-4" strokeWidth={2} />
             </div>
             <div>
-                <span className={`text-sm font-bold block ${isDanger ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-900 dark:text-white'}`}>{label}</span>
-                {!compact && description && <span className="text-[10px] text-zinc-400 font-medium leading-tight block mt-0.5">{description}</span>}
+                <span className={`text-xs font-bold block ${isDanger ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-900 dark:text-white'}`}>{label}</span>
+                {!compact && description && <span className="text-[10px] text-zinc-400 font-medium leading-tight">{description}</span>}
             </div>
         </div>
         <div className="flex items-center gap-3">
             {rightElement}
-            {onClick && !rightElement && <ChevronRight className="w-4 h-4 text-zinc-300" />}
+            {onClick && !rightElement && <ChevronRight className="w-3.5 h-3.5 text-zinc-300" />}
         </div>
     </div>
 );
@@ -110,60 +112,59 @@ const CalculatorWidget = () => {
     }, [dividend, yieldTarget]);
 
     return (
-        <div className={`bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden transition-all duration-300 ${isOpen ? 'ring-2 ring-indigo-500/10' : ''}`}>
+        <div className={`bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden transition-all duration-300 ${isOpen ? 'ring-2 ring-indigo-500/10' : ''}`}>
             <button 
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-full px-5 py-4 flex items-center justify-between bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
+                className="w-full px-4 py-3 flex items-center justify-between bg-gradient-to-br from-white to-zinc-50 dark:from-zinc-900 dark:to-zinc-950 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
             >
-                <div className="flex items-center gap-4">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${isOpen ? 'bg-indigo-500 text-white' : 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'}`}>
+                <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isOpen ? 'bg-indigo-500 text-white' : 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'}`}>
                         <Calculator className="w-4 h-4" strokeWidth={2} />
                     </div>
                     <div className="text-left">
-                        <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Preço Teto (Bazin)</h3>
-                        <p className="text-[10px] text-zinc-400 font-medium">Calculadora de Valuation</p>
+                        <h3 className="text-xs font-bold text-zinc-900 dark:text-white">Preço Teto (Bazin)</h3>
                     </div>
                 </div>
                 <ChevronDown className={`w-4 h-4 text-zinc-400 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {isOpen && (
-                <div className="p-5 pt-0 anim-slide-up">
-                    <div className="flex gap-2 mb-4">
+                <div className="p-4 pt-0 anim-slide-up">
+                    <div className="flex gap-2 mb-3">
                         <input 
                             type="text" 
-                            className="flex-1 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-xs font-bold uppercase outline-none focus:border-indigo-500 transition-all text-center placeholder:font-medium"
+                            className="flex-1 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3 py-2 text-xs font-bold uppercase outline-none focus:border-indigo-500 transition-all text-center placeholder:font-medium"
                             placeholder="TICKER"
                             value={ticker}
                             onChange={e => setTicker(e.target.value.toUpperCase())}
                             onKeyDown={e => e.key === 'Enter' && handleSearch()}
                         />
-                        <button onClick={handleSearch} disabled={isLoading} className="bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 w-12 rounded-xl flex items-center justify-center disabled:opacity-50 active:scale-95 transition-transform">
-                            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                        <button onClick={handleSearch} disabled={isLoading} className="bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 w-10 rounded-xl flex items-center justify-center disabled:opacity-50 active:scale-95 transition-transform">
+                            {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
                         </button>
                     </div>
 
-                    {searchError && <p className="text-center text-[10px] font-bold text-rose-500 mb-3">{searchError}</p>}
+                    {searchError && <p className="text-center text-[10px] font-bold text-rose-500 mb-2">{searchError}</p>}
 
-                    <div className="flex gap-3 mb-4">
+                    <div className="flex gap-2 mb-3">
                         <div className="flex-1 relative">
-                            <span className="absolute left-3 top-2 text-[9px] font-bold text-zinc-400 uppercase">Div. (12m)</span>
-                            <input type="text" className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3 pt-6 pb-2 text-sm font-bold outline-none focus:border-indigo-500 text-center" value={dividend} onChange={e => setDividend(e.target.value)} placeholder="0,00" />
+                            <span className="absolute left-2 top-1.5 text-[8px] font-bold text-zinc-400 uppercase">Div. (12m)</span>
+                            <input type="text" className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-2 pt-4 pb-1 text-xs font-bold outline-none focus:border-indigo-500 text-center" value={dividend} onChange={e => setDividend(e.target.value)} placeholder="0,00" />
                         </div>
                         <div className="flex-1 relative">
-                            <span className="absolute left-3 top-2 text-[9px] font-bold text-zinc-400 uppercase">Yield (%)</span>
-                            <input type="number" className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3 pt-6 pb-2 text-sm font-bold outline-none focus:border-indigo-500 text-center" value={yieldTarget} onChange={e => setYieldTarget(e.target.value)} placeholder="6" />
+                            <span className="absolute left-2 top-1.5 text-[8px] font-bold text-zinc-400 uppercase">Yield (%)</span>
+                            <input type="number" className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-2 pt-4 pb-1 text-xs font-bold outline-none focus:border-indigo-500 text-center" value={yieldTarget} onChange={e => setYieldTarget(e.target.value)} placeholder="6" />
                         </div>
                     </div>
 
                     {result !== null && (
-                        <div className="bg-gradient-to-r from-indigo-500 to-violet-600 text-white rounded-2xl p-4 shadow-lg shadow-indigo-500/20 flex items-center justify-between">
+                        <div className="bg-gradient-to-r from-indigo-500 to-violet-600 text-white rounded-xl p-3 shadow-md shadow-indigo-500/20 flex items-center justify-between">
                             <div>
-                                <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">Preço Teto</p>
-                                <p className="text-2xl font-black tracking-tight">{formatCurrency(result)}</p>
+                                <p className="text-[9px] font-bold uppercase tracking-widest opacity-90">Preço Teto</p>
+                                <p className="text-lg font-black">{formatCurrency(result)}</p>
                             </div>
                             {assetPrice > 0 && (
-                                <div className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wide border ${assetPrice <= result ? 'bg-emerald-400/20 border-emerald-400/30 text-white' : 'bg-rose-400/20 border-rose-400/30 text-white'}`}>
+                                <div className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase ${assetPrice <= result ? 'bg-white/20 text-white' : 'bg-black/20 text-white/90'}`}>
                                     {assetPrice <= result ? 'Oportunidade' : 'Aguardar'}
                                 </div>
                             )}
@@ -240,32 +241,32 @@ export const Settings: React.FC<SettingsProps> = ({
     return (
         <div className="pb-32 px-3 pt-2 anim-fade-in max-w-lg mx-auto">
             
-            {/* 1. PROFILE HEADER (Premium Glass) */}
-            <div className="bg-zinc-900 dark:bg-zinc-950 rounded-[2rem] p-5 flex items-center justify-between shadow-xl shadow-zinc-900/10 mb-8 relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none group-hover:bg-indigo-500/20 transition-colors duration-500"></div>
+            {/* 1. PROFILE HEADER (Slim & Premium) */}
+            <div className="bg-zinc-900 dark:bg-zinc-950 rounded-[1.5rem] p-4 flex items-center justify-between shadow-xl shadow-zinc-900/10 mb-6 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -mr-8 -mt-8 pointer-events-none"></div>
                 
                 <div className="flex items-center gap-4 relative z-10">
-                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-zinc-700 to-zinc-800 border-2 border-zinc-600 flex items-center justify-center text-white shadow-lg">
-                        <User className="w-6 h-6 opacity-90" strokeWidth={2} />
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-zinc-700 to-zinc-800 border-2 border-zinc-600 flex items-center justify-center text-white shadow-lg">
+                        <User className="w-5 h-5 opacity-90" strokeWidth={2} />
                     </div>
                     <div>
-                        <h2 className="text-lg font-bold text-white tracking-tight leading-none mb-1">{user?.email?.split('@')[0] || 'Investidor'}</h2>
-                        <div className="flex items-center gap-2">
-                            <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-black uppercase tracking-wide border border-emerald-500/20">
+                        <h2 className="text-base font-bold text-white tracking-tight">{user?.email?.split('@')[0] || 'Investidor'}</h2>
+                        <div className="flex items-center gap-2 mt-0.5">
+                            <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[9px] font-black uppercase tracking-wide border border-emerald-500/20">
                                 Pro
                             </span>
                             <span className="text-[10px] text-zinc-500">{user?.email}</span>
                         </div>
                     </div>
                 </div>
-                <button onClick={onLogout} className="relative z-10 w-10 h-10 rounded-full bg-zinc-800 hover:bg-rose-900/30 flex items-center justify-center text-zinc-400 hover:text-rose-400 transition-all border border-zinc-700/50">
+                <button onClick={onLogout} className="relative z-10 w-9 h-9 rounded-full bg-zinc-800 hover:bg-zinc-700 flex items-center justify-center text-zinc-400 hover:text-white transition-colors border border-zinc-700/50">
                     <LogOut className="w-4 h-4" />
                 </button>
             </div>
 
-            {/* 2. GRID AÇÕES RÁPIDAS */}
-            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-4 mb-3">Acesso Rápido</h3>
-            <div className="grid grid-cols-2 gap-3 mb-8">
+            {/* 2. GRID AÇÕES RÁPIDAS (Control Center) */}
+            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-2 mb-3">Acesso Rápido</h3>
+            <div className="grid grid-cols-2 gap-2.5 mb-6">
                 <ActionTile 
                     icon={theme === 'dark' ? Moon : theme === 'light' ? Sun : Monitor}
                     label="Aparência"
@@ -302,19 +303,19 @@ export const Settings: React.FC<SettingsProps> = ({
             </div>
 
             {/* 3. FERRAMENTAS & CUSTOMIZAÇÃO */}
-            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-4 mb-3">Ferramentas</h3>
-            <div className="space-y-4 mb-8">
+            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-2 mb-3">Ferramentas</h3>
+            <div className="space-y-3 mb-6">
                 <CalculatorWidget />
                 
-                {/* Color Picker */}
-                <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <div className="w-9 h-9 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
+                {/* Color Picker Compacto */}
+                <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
                             <Palette className="w-4 h-4 text-zinc-500" />
                         </div>
-                        <span className="text-sm font-bold text-zinc-900 dark:text-white">Cor Principal</span>
+                        <span className="text-xs font-bold text-zinc-900 dark:text-white">Cor Principal</span>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-1.5">
                         {ACCENT_COLORS.map(c => (
                             <button
                                 key={c.hex}
@@ -327,12 +328,12 @@ export const Settings: React.FC<SettingsProps> = ({
                 </div>
             </div>
 
-            {/* 4. SISTEMA & DADOS */}
-            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-4 mb-3">Sistema</h3>
-            <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 overflow-hidden divide-y divide-zinc-100 dark:divide-zinc-800 shadow-sm mb-8">
+            {/* 4. SISTEMA & DADOS (Grouped List) */}
+            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-2 mb-3">Sistema</h3>
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden divide-y divide-zinc-100 dark:divide-zinc-800 shadow-sm mb-8">
                 <SettingsRow 
                     icon={FileSpreadsheet} 
-                    label="Importar Planilha B3" 
+                    label="Importar Excel B3" 
                     description="XLSX do portal do investidor"
                     onClick={() => fileInputRef.current?.click()}
                 />
@@ -343,9 +344,9 @@ export const Settings: React.FC<SettingsProps> = ({
                     label="Status da Rede" 
                     description="Monitoramento de API"
                     rightElement={
-                        <div className="flex gap-1.5">
+                        <div className="flex gap-1">
                             {services.map(s => (
-                                <div key={s.id} className={`w-2.5 h-2.5 rounded-full ring-2 ring-white dark:ring-zinc-900 ${s.status === 'operational' ? 'bg-emerald-500' : s.status === 'checking' ? 'bg-amber-400 animate-pulse' : 'bg-rose-500'}`} />
+                                <div key={s.id} className={`w-2 h-2 rounded-full ${s.status === 'operational' ? 'bg-emerald-500' : s.status === 'checking' ? 'bg-amber-400 animate-pulse' : 'bg-rose-500'}`} />
                             ))}
                         </div>
                     }
@@ -357,27 +358,26 @@ export const Settings: React.FC<SettingsProps> = ({
                     label="Versão do App" 
                     description={`Instalada: v${appVersion}`}
                     onClick={onForceUpdate}
-                    rightElement={updateAvailable && <span className="flex h-2.5 w-2.5 relative"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-indigo-500"></span></span>}
+                    rightElement={updateAvailable && <span className="flex h-2 w-2 relative"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span></span>}
                 />
 
                 <SettingsRow 
                     icon={Sparkles} 
-                    label="Novidades" 
-                    description="O que há de novo?"
+                    label="Novidades (Changelog)" 
                     compact
                     onClick={onShowChangelog}
                 />
             </div>
 
-            {/* 5. FOOTER */}
-            <div className="flex flex-col items-center gap-6">
+            {/* 5. FOOTER & DANGER */}
+            <div className="flex flex-col items-center gap-4">
                 <button 
                     onClick={() => setConfirmReset(true)}
-                    className="text-xs font-bold text-rose-500 hover:text-rose-600 transition-colors py-3 px-6 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-900/10 flex items-center gap-2"
+                    className="text-xs font-bold text-rose-500 hover:text-rose-600 transition-colors py-2 px-4 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/10 flex items-center gap-2"
                 >
                     <Trash2 className="w-3.5 h-3.5" /> Limpar dados locais
                 </button>
-                <p className="text-[10px] text-zinc-300 font-medium uppercase tracking-widest pb-6 opacity-60">
+                <p className="text-[10px] text-zinc-300 font-medium uppercase tracking-widest pb-6">
                     InvestFIIs Cloud • {currentVersionDate || 'Stable Build'}
                 </p>
             </div>

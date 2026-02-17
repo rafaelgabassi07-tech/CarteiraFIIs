@@ -31,6 +31,10 @@ export interface AssetFundamentals {
   liquidity?: string; // Liquidez Média Diária
   market_cap?: string; // Valor de Mercado
   
+  // Rentabilidade (Novos Campos)
+  profitability_12m?: number; // Rentabilidade 12 Meses
+  profitability_month?: number; // Rentabilidade no Mês Atual
+  
   // Ações - Eficiência e Crescimento
   net_margin?: number; // Margem Líquida
   gross_margin?: number; // Margem Bruta
