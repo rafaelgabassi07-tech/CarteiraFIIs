@@ -12,8 +12,8 @@ const supabase = createClient(supabaseUrl || '', supabaseKey || '');
 
 const httpsAgent = new https.Agent({ 
     keepAlive: true,
-    maxSockets: 100,
-    maxFreeSockets: 10,
+    maxSockets: 128,
+    maxFreeSockets: 20,
     timeout: 10000, 
     rejectUnauthorized: false
 });
@@ -115,7 +115,7 @@ function parseDate(dateStr: string) {
     } catch { return null; }
 }
 
-// --- FIELD MATCHERS (Expandido para cobrir gaps) ---
+// --- FIELD MATCHERS ---
 const FIELD_MATCHERS = [
     { key: 'dy',                   indicator: ['DY', 'DIVIDEND_YIELD'], text: (t: string) => t === 'dy' || t.includes('dividend yield') || t.includes('dy (') },
     { key: 'pvp',                  indicator: ['P_VP', 'VP'],           text: (t: string) => t.includes('p/vp') || (t.includes('vp') && !t.includes('cota') && !t.includes('patrim')) },
@@ -140,11 +140,14 @@ const FIELD_MATCHERS = [
     { key: 'razao_social',         indicator: [],                       text: (t: string) => t.includes('razao social') },
     { key: 'vp_cota',              indicator: [],                       text: (t: string) => t === 'vpa' || t.replace(/\./g, '') === 'vpa' || t.includes('vp por cota') || t.includes('valor patrimonial cota') },
     { key: 'patrimonio_liquido',   indicator: [],                       text: (t: string) => t.includes('patrimonio') && (t.includes('liquido') || t.includes('liq')) },
-    // Stocks
+    // Stocks Extended
     { key: 'margem_liquida',       indicator: ['MARGEM_LIQUIDA'],       text: (t: string) => t.includes('margem liquida') },
     { key: 'margem_bruta',         indicator: [],                       text: (t: string) => t.includes('margem bruta') },
+    { key: 'margem_ebit',          indicator: ['MARGEM_EBIT'],          text: (t: string) => t.includes('margem ebit') },
+    { key: 'payout',               indicator: [],                       text: (t: string) => t.includes('payout') },
     { key: 'ev_ebitda',            indicator: [],                       text: (t: string) => t.includes('ev/ebitda') },
     { key: 'divida_liquida_ebitda',indicator: ['DIVIDA_LIQUIDA_EBITDA'],text: (t: string) => { const c = t.replace(/[\s\/\.\-]/g, ''); return c.includes('div') && c.includes('liq') && c.includes('ebitda'); } },
+    { key: 'divida_liquida_pl',    indicator: [],                       text: (t: string) => { const c = t.replace(/[\s\/\.\-]/g, ''); return c.includes('div') && c.includes('liq') && c.includes('pl') && !c.includes('ebitda'); } },
     { key: 'cagr_receita_5a',      indicator: [],                       text: (t: string) => t.includes('cagr') && t.includes('receita') },
     { key: 'cagr_lucros_5a',       indicator: [],                       text: (t: string) => t.includes('cagr') && t.includes('lucro') },
 ];
@@ -177,6 +180,60 @@ function buildProcessPair(dados: any) {
     };
 }
 
+// --- STATUSINVEST DIVIDENDS SCRAPER ---
+async function scrapeStatusInvestDividends(ticker: string) {
+    try {
+        const t = ticker.toUpperCase();
+        const type = (t.endsWith('11') || t.endsWith('11B')) ? 'fii' : 'acao';
+        const url = `https://statusinvest.com.br/${type}/companytickerprovents?ticker=${t}&chartProventsType=2`;
+
+        const { data } = await client.get(url, { 
+            headers: { 
+                'X-Requested-With': 'XMLHttpRequest',
+                'Referer': 'https://statusinvest.com.br/',
+                'User-Agent': 'Mozilla/5.0'
+            },
+            timeout: 8000
+        });
+
+        const earnings = data.assetEarningsModels || [];
+
+        return earnings.map((d: any) => {
+            const parseDateJSON = (dStr: string) => {
+                if (!dStr || dStr.trim() === '' || dStr.trim() === '-') return null;
+                const parts = dStr.split('/');
+                if (parts.length !== 3) return null;
+                return `${parts[2]}-${parts[1]}-${parts[0]}`; // YYYY-MM-DD
+            };
+            
+            let labelTipo = 'REND'; 
+            if (d.et === 1) labelTipo = 'DIV';
+            if (d.et === 2) labelTipo = 'JCP';
+            if (d.etd) {
+                const texto = d.etd.toUpperCase();
+                if (texto.includes('JURO') || texto.includes('JCP')) labelTipo = 'JCP';
+                else if (texto.includes('DIVID')) labelTipo = 'DIV';
+                else if (texto.includes('AMORTIZA')) labelTipo = 'AMORT';
+            }
+
+            const paymentDate = parseDateJSON(d.pd);
+            if (!paymentDate) return null;
+
+            return {
+                ticker: t,
+                type: labelTipo,
+                date_com: parseDateJSON(d.ed),
+                payment_date: paymentDate,
+                rate: d.v
+            };
+        }).filter((d: any) => d !== null);
+
+    } catch (error: any) {
+        console.warn(`[StatusInvest] Failed for ${ticker}: ${error.message}`);
+        return null;
+    }
+}
+
 async function scrapeInvestidor10(ticker: string) {
     const tickerLower = ticker.toLowerCase();
     const isLikelyFii = ticker.endsWith('11') || ticker.endsWith('11B');
@@ -191,6 +248,12 @@ async function scrapeInvestidor10(ticker: string) {
     let finalData: any = null;
     let finalDividends: any[] = [];
     let realEstateProperties: any[] = [];
+
+    // Tenta obter dividendos via StatusInvest primeiro (Melhor qualidade de dados)
+    const statusInvestDivs = await scrapeStatusInvestDividends(ticker);
+    if (statusInvestDivs && statusInvestDivs.length > 0) {
+        finalDividends = statusInvestDivs;
+    }
 
     for (const url of urls) {
         try {
@@ -299,41 +362,44 @@ async function scrapeInvestidor10(ticker: string) {
                 }
             });
 
-            // --- 4. DIVIDENDOS ---
-            const divTable = $('#table-dividends-history');
-            if (divTable.length > 0) {
-                divTable.find('tbody tr').each((i, tr) => {
-                    const cols = $(tr).find('td');
-                    if (cols.length < 3) return;
+            // --- 4. DIVIDENDOS (Fallback Investidor10) ---
+            // Só usa se o StatusInvest tiver falhado
+            if (finalDividends.length === 0) {
+                const divTable = $('#table-dividends-history');
+                if (divTable.length > 0) {
+                    divTable.find('tbody tr').each((i, tr) => {
+                        const cols = $(tr).find('td');
+                        if (cols.length < 3) return;
 
-                    let typeDiv = 'DIV';
-                    let dateComStr = '';
-                    let datePayStr = '';
-                    let valStr = '';
+                        let typeDiv = 'DIV';
+                        let dateComStr = '';
+                        let datePayStr = '';
+                        let valStr = '';
 
-                    cols.each((idx, td) => {
-                        const text = $(td).text().trim();
-                        const normText = normalize(text);
-                        if (normText.includes('jcp') || normText.includes('juros')) typeDiv = 'JCP';
-                        else if (normText.includes('rendimento')) typeDiv = 'REND';
-                        else if (normText.includes('dividendo')) typeDiv = 'DIV';
-                        else if (normText.includes('amortiza')) typeDiv = 'AMORT';
+                        cols.each((idx, td) => {
+                            const text = $(td).text().trim();
+                            const normText = normalize(text);
+                            if (normText.includes('jcp') || normText.includes('juros')) typeDiv = 'JCP';
+                            else if (normText.includes('rendimento')) typeDiv = 'REND';
+                            else if (normText.includes('dividendo')) typeDiv = 'DIV';
+                            else if (normText.includes('amortiza')) typeDiv = 'AMORT';
 
-                        if (text.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
-                            if (!dateComStr) dateComStr = text;
-                            else if (!datePayStr) datePayStr = text;
+                            if (text.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+                                if (!dateComStr) dateComStr = text;
+                                else if (!datePayStr) datePayStr = text;
+                            }
+                            if (text.includes(',') && !text.includes('%') && !text.includes('/')) valStr = text;
+                        });
+
+                        const rate = parseValue(valStr);
+                        const dateCom = parseDate(dateComStr);
+                        const paymentDate = parseDate(datePayStr);
+
+                        if (dateCom && rate !== null && rate > 0) {
+                            finalDividends.push({ ticker: ticker.toUpperCase(), type: typeDiv, date_com: dateCom, payment_date: paymentDate || null, rate });
                         }
-                        if (text.includes(',') && !text.includes('%') && !text.includes('/')) valStr = text;
                     });
-
-                    const rate = parseValue(valStr);
-                    const dateCom = parseDate(dateComStr);
-                    const paymentDate = parseDate(datePayStr);
-
-                    if (dateCom && rate !== null && rate > 0) {
-                        dividends.push({ ticker: ticker.toUpperCase(), type: typeDiv, date_com: dateCom, payment_date: paymentDate || null, rate });
-                    }
-                });
+                }
             }
 
             // --- 5. IMÓVEIS (Mais robusto) ---
@@ -343,11 +409,13 @@ async function scrapeInvestidor10(ticker: string) {
             $('#properties-section .card-propertie').each((i, el) => {
                 const nome = $(el).find('h3').text().trim();
                 let location = '';
+                let abl = '';
                 $(el).find('small').each((j, small) => {
                     const t = $(small).text().trim();
                     if (t.includes('Estado:')) location = t.replace('Estado:', '').trim();
+                    if (t.includes('Área bruta locável:')) abl = t.replace('Área bruta locável:', '').trim();
                 });
-                if (nome) extractedProps.push({ name: nome, location });
+                if (nome) extractedProps.push({ name: nome, location, abl });
             });
 
             // Fallback genérico se o seletor específico falhar (layout antigo ou mobile)
@@ -405,17 +473,20 @@ async function scrapeInvestidor10(ticker: string) {
                 num_quotas: dados.cotas_emitidas,
                 company_name: dados.razao_social || dados.name,
 
+                // Campos Estendidos (Stocks)
                 net_margin: parseValue(dados.margem_liquida),
                 gross_margin: parseValue(dados.margem_bruta),
+                ebit_margin: parseValue(dados.margem_ebit),
+                payout: parseValue(dados.payout),
                 ev_ebitda: parseValue(dados.ev_ebitda),
                 net_debt_ebitda: parseValue(dados.divida_liquida_ebitda),
+                net_debt_equity: parseValue(dados.divida_liquida_pl),
                 cagr_revenue: parseValue(dados.cagr_receita_5a),
                 cagr_profits: parseValue(dados.cagr_lucros_5a),
                 
                 properties: realEstateProperties.length > 0 ? realEstateProperties : null
             };
             
-            finalDividends = dividends;
             break; 
         } catch (e) {
             console.warn(`Attempt failed for ${url}:`, e);
@@ -469,8 +540,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         if (dividends.length > 0) {
              const today = new Date().toISOString().split('T')[0];
-             const { error: delError } = await supabase.from('market_dividends').delete().eq('ticker', ticker.toUpperCase()).gte('payment_date', today);
-             if (delError) console.warn('Clean up error (ignorable):', delError);
+             // Clean future data or duplicates logic could be here
              const uniqueDivs = Array.from(new Map(dividends.map(item => [`${item.type}-${item.date_com}-${item.rate}`, item])).values());
              const { error } = await supabase.from('market_dividends').upsert(uniqueDivs, { onConflict: 'ticker,type,date_com,rate' });
              if (error) console.error('Error saving dividends:', error);

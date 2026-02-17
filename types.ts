@@ -20,6 +20,7 @@ export interface RealEstateProperty {
   name: string;
   location?: string;
   type?: string;
+  abl?: string; // Adicionado ABL
 }
 
 export interface AssetFundamentals {
@@ -31,7 +32,7 @@ export interface AssetFundamentals {
   liquidity?: string; // Liquidez Média Diária
   market_cap?: string; // Valor de Mercado
   
-  // Rentabilidade (Novos Campos)
+  // Rentabilidade
   profitability_12m?: number; // Rentabilidade 12 Meses
   profitability_month?: number; // Rentabilidade no Mês Atual
   profitability_real_month?: number;
@@ -50,17 +51,17 @@ export interface AssetFundamentals {
   // Ações - Eficiência e Crescimento
   net_margin?: number; // Margem Líquida
   gross_margin?: number; // Margem Bruta
-  ebit_margin?: number; // Margem EBIT
+  ebit_margin?: number; // Margem EBIT (NOVO)
   cagr_revenue?: number; // CAGR Receita 5a
   cagr_profits?: number; // CAGR Lucros 5a
-  payout?: number; // Payout
+  payout?: number; // Payout (NOVO)
   lpa?: number; // Lucro por Ação
   vpa?: number; // Valor Patrimonial por Ação
   
   // Ações - Dívida e Valuation
   ev_ebitda?: number;
   net_debt_ebitda?: number; // Dívida Líquida / EBITDA
-  net_debt_equity?: number; // Dívida Líquida / PL
+  net_debt_equity?: number; // Dívida Líquida / PL (NOVO)
 
   // FIIs
   vacancy?: number; // Vacância Física

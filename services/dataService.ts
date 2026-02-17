@@ -79,7 +79,7 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         // Rentabilidade Scraper
         profitability_12m: parseNumberSafe(getVal('rentabilidade_12m', 'rentabilidade12m')),
         profitability_month: parseNumberSafe(getVal('rentabilidade_mes', 'rentabilidademes')),
-        profitability_2y: parseNumberSafe(getVal('rentabilidade_2y', 'rentabilidade2y')), // Mapeamento Adicionado
+        profitability_2y: parseNumberSafe(getVal('rentabilidade_2y', 'rentabilidade2y')),
         benchmark_cdi_12m: parseNumberSafe(getVal('benchmark_cdi_12m')),
         benchmark_ifix_12m: parseNumberSafe(getVal('benchmark_ifix_12m')),
         benchmark_ibov_12m: parseNumberSafe(getVal('benchmark_ibov_12m')),
@@ -96,7 +96,7 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         last_dividend: parseNumberSafe(getVal('ultimo_rendimento')),
         properties_count: parseNumberSafe(getVal('num_cotistas', 'cotistas')),
         
-        // Novos Campos Mapeados e Corrigidos
+        // Informações Adicionais
         company_name: getVal('razao_social', 'company_name'),
         num_quotas: getVal('num_cotas', 'cotas_emitidas', 'num_quotas'),
         cnpj: getVal('cnpj'),
@@ -105,14 +105,17 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         fund_type: getVal('tipo_fundo', 'fund_type'),
         duration: getVal('prazo', 'duration'),
         
-        properties: m.properties || [], // Mapeia lista de imóveis se existir
+        properties: m.properties || [], 
         
-        // Ações (Stocks)
+        // Ações (Stocks) Estendidas
         net_margin: parseNumberSafe(getVal('margem_liquida', 'margemliquida')),
         gross_margin: parseNumberSafe(getVal('margem_bruta', 'margembruta')),
+        ebit_margin: parseNumberSafe(getVal('ebit_margin', 'margem_ebit', 'margemebit')),
+        payout: parseNumberSafe(getVal('payout')),
         cagr_revenue: parseNumberSafe(getVal('cagr_receita_5a', 'cagr_receitas', 'cagr_receita')),
         cagr_profits: parseNumberSafe(getVal('cagr_lucros_5a', 'cagr_lucros', 'cagr_lucro')),
         net_debt_ebitda: parseNumberSafe(getVal('divida_liquida_ebitda', 'div_liq_ebitda', 'dividaliquida_ebitda')),
+        net_debt_equity: parseNumberSafe(getVal('net_debt_equity', 'divida_liquida_pl', 'dividaliquidapl')),
         ev_ebitda: parseNumberSafe(getVal('ev_ebitda')),
         lpa: parseNumberSafe(getVal('lpa')),
         vpa: parseNumberSafe(getVal('vp_cota', 'vpa', 'valor_patrimonial_acao', 'valorpatrimonialcota')),
