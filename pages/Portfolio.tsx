@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, Activity, BarChart3, PieChart, Coins, AlertCircle, ChevronDown, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, Scale, SquareStack, Calendar, Map as MapIcon, ChevronRight, Share2, MousePointerClick } from 'lucide-react';
+import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, Activity, BarChart3, PieChart, Coins, AlertCircle, ChevronDown, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, Scale, SquareStack, Calendar, Map as MapIcon, ChevronRight, Share2, MousePointerClick, CandlestickChart, LineChart as LineChartIcon, SlidersHorizontal } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
-import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, ReferenceLine, ComposedChart, CartesianGrid, Legend, AreaChart, Area, YAxis, PieChart as RePieChart, Pie, Cell, LineChart, Line } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, ReferenceLine, ComposedChart, CartesianGrid, Legend, AreaChart, Area, YAxis, PieChart as RePieChart, Pie, Cell, LineChart, Line, ErrorBar } from 'recharts';
 import { formatBRL, formatPercent, formatNumber, formatDateShort } from '../utils/formatters';
 
 // --- CONSTANTS ---
@@ -36,24 +36,98 @@ const MetricCard = ({ label, value, highlight = false, colorClass = "text-zinc-9
     </div>
 );
 
-// Componente 1: Gráfico de Preço (Cotação Histórica) - MANTIDO
+// Custom Candle Shape para Recharts
+const CustomCandleShape = (props: any) => {
+    const { x, y, width, height, payload } = props;
+    const { open, close, high, low } = payload;
+    
+    // Proteção contra dados inválidos
+    if (open == null || close == null || high == null || low == null) return null;
+
+    const isUp = close >= open;
+    const color = isUp ? '#10b981' : '#f43f5e'; // Emerald / Rose
+    const bodyHeight = Math.max(2, Math.abs(open - close)); // Mínimo de 2px para visibilidade
+    
+    // Escala Y do gráfico (Recharts passa isso implicitamente, mas para candle é complexo acessar diretamente no shape)
+    // Truque: O 'y' e 'height' passados pelo BarChart padrão são baseados no valor do 'bar'.
+    // Mas para candle, precisamos recalcular as posições Y baseadas na escala do eixo Y.
+    // Como Recharts CustomShape recebe 'y' da barra, e nós usamos [low, high] como dados da barra,
+    // 'y' é o topo (high) e 'height' é a diferença (high - low).
+    
+    // Coordenadas relativas ao container SVG
+    const yHigh = y;
+    const yLow = y + height;
+    
+    // Agora precisamos achar onde Open e Close estão dentro desse range [high, low]
+    // height = pixelHeight(high - low)
+    // ratio = height / (high - low)
+    
+    const range = high - low;
+    const ratio = range === 0 ? 0 : height / range;
+    
+    const yOpen = yHigh + (high - open) * ratio;
+    const yClose = yHigh + (high - close) * ratio;
+    
+    const bodyTop = Math.min(yOpen, yClose);
+    const bodyBottom = Math.max(yOpen, yClose);
+    const bodyH = Math.max(1, bodyBottom - bodyTop);
+
+    return (
+        <g stroke={color} strokeWidth="1.5" fill={color}>
+            {/* Wick (Pavio) */}
+            <line x1={x + width / 2} y1={yHigh} x2={x + width / 2} y2={yLow} />
+            {/* Body (Corpo) */}
+            <rect 
+                x={x} 
+                y={bodyTop} 
+                width={width} 
+                height={bodyH} 
+                rx={1}
+                stroke="none"
+            />
+        </g>
+    );
+};
+
+// Componente 1: Gráfico de Preço (Linha ou Candle)
 const PriceHistoryChart = ({ data, loading, error, ticker, range, setRange }: any) => {
+    const [chartType, setChartType] = useState<'AREA' | 'CANDLE'>('AREA');
+
     // Calcula variação simples para cor do gráfico
     const variation = useMemo(() => {
         if (!data || data.length < 2) return 0;
-        const first = data[0].price;
-        const last = data[data.length - 1].price;
+        const first = data[0].close || data[0].price;
+        const last = data[data.length - 1].close || data[data.length - 1].price;
         return ((last - first) / first) * 100;
     }, [data]);
 
+    const lastPrice = useMemo(() => data && data.length > 0 ? (data[data.length - 1].close || data[data.length - 1].price) : 0, [data]);
     const isPositive = variation >= 0;
+
+    // Prepara dados para Candle (Bar Chart trick)
+    // O Bar usa [low, high] como intervalo para renderizar o espaço total da vela
+    const candleData = useMemo(() => {
+        return data.map((d: any) => ({
+            ...d,
+            candleRange: [d.low, d.high] 
+        }));
+    }, [data]);
 
     return (
         <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 p-5 shadow-sm mb-6 relative overflow-hidden">
             <div className="flex justify-between items-center mb-4">
-                <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
-                    <Activity className="w-3 h-3" /> Cotação ({ticker})
-                </h4>
+                <div className="flex items-center gap-2">
+                    <button 
+                        onClick={() => setChartType(prev => prev === 'AREA' ? 'CANDLE' : 'AREA')}
+                        className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors"
+                    >
+                        {chartType === 'AREA' ? <LineChartIcon className="w-4 h-4" /> : <CandlestickChart className="w-4 h-4" />}
+                    </button>
+                    <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                        Cotação
+                    </h4>
+                </div>
+                
                 <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5">
                     {['1M', '6M', '1Y', '5Y'].map((r) => (
                         <button 
@@ -67,7 +141,7 @@ const PriceHistoryChart = ({ data, loading, error, ticker, range, setRange }: an
                 </div>
             </div>
 
-            <div className="h-56 w-full relative">
+            <div className="h-64 w-full relative">
                 {loading ? (
                     <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm z-10">
                         <div className="animate-pulse text-xs font-bold text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-3 py-1.5 rounded-full">Carregando...</div>
@@ -76,52 +150,94 @@ const PriceHistoryChart = ({ data, loading, error, ticker, range, setRange }: an
                     <div className="absolute inset-0 flex items-center justify-center text-xs text-zinc-400">Dados indisponíveis</div>
                 ) : (
                     <>
+                        {/* Tag de variação */}
                         <div className="absolute top-0 left-0 z-10 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm px-2 py-1 rounded-br-xl border-r border-b border-zinc-100 dark:border-zinc-800">
                             <span className={`text-xs font-black ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
                                 {isPositive ? '+' : ''}{variation.toFixed(2)}%
                             </span>
                         </div>
+
+                        {/* Tag de Preço Atual (Linha Pontilhada) */}
+                        <div 
+                            className="absolute right-0 z-10 bg-indigo-500 text-white px-2 py-0.5 rounded-l-md text-[10px] font-bold shadow-sm pointer-events-none transition-all duration-500"
+                            style={{ top: '10%' }} // Posição aproximada, o ReferenceLine faz o visual real
+                        >
+                            {formatBRL(lastPrice)}
+                        </div>
+
                         <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={data}>
-                                <defs>
-                                    <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor={isPositive ? '#10b981' : '#f43f5e'} stopOpacity={0.2}/>
-                                        <stop offset="95%" stopColor={isPositive ? '#10b981' : '#f43f5e'} stopOpacity={0}/>
-                                    </linearGradient>
-                                </defs>
-                                <XAxis 
-                                    dataKey="date" 
-                                    hide={false} 
-                                    axisLine={false} 
-                                    tickLine={false} 
-                                    tick={{fontSize: 9, fill: '#71717a'}} 
-                                    tickFormatter={(val) => formatDateShort(val)} 
-                                    minTickGap={30}
-                                />
-                                <YAxis 
-                                    domain={['auto', 'auto']} 
-                                    hide={false} 
-                                    orientation="right" 
-                                    axisLine={false} 
-                                    tickLine={false} 
-                                    tick={{fontSize: 9, fill: '#71717a'}} 
-                                    width={35}
-                                    tickFormatter={(val) => `R$${val.toFixed(0)}`}
-                                />
-                                <Tooltip 
-                                    contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '11px', padding: '8px 12px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)' }}
-                                    labelFormatter={(label) => new Date(label).toLocaleDateString('pt-BR')}
-                                    formatter={(value: number) => [formatBRL(value), 'Preço']}
-                                />
-                                <Area 
-                                    type="monotone" 
-                                    dataKey="price" 
-                                    stroke={isPositive ? '#10b981' : '#f43f5e'} 
-                                    strokeWidth={2} 
-                                    fillOpacity={1} 
-                                    fill="url(#colorPrice)" 
-                                />
-                            </AreaChart>
+                            {chartType === 'AREA' ? (
+                                <AreaChart data={data}>
+                                    <defs>
+                                        <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor={isPositive ? '#10b981' : '#f43f5e'} stopOpacity={0.2}/>
+                                            <stop offset="95%" stopColor={isPositive ? '#10b981' : '#f43f5e'} stopOpacity={0}/>
+                                        </linearGradient>
+                                    </defs>
+                                    <XAxis dataKey="date" hide axisLine={false} tickLine={false} />
+                                    <YAxis 
+                                        domain={['auto', 'auto']} 
+                                        hide={false} 
+                                        orientation="right" 
+                                        axisLine={false} 
+                                        tickLine={false} 
+                                        tick={{fontSize: 9, fill: '#71717a'}} 
+                                        width={35}
+                                        tickFormatter={(val) => `R$${val.toFixed(0)}`}
+                                    />
+                                    <Tooltip 
+                                        contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '11px', padding: '8px 12px' }}
+                                        labelFormatter={(label) => new Date(label).toLocaleDateString('pt-BR')}
+                                        formatter={(value: number) => [formatBRL(value), 'Preço']}
+                                    />
+                                    <ReferenceLine y={lastPrice} stroke="#6366f1" strokeDasharray="3 3" strokeOpacity={0.5} />
+                                    <Area 
+                                        type="monotone" 
+                                        dataKey="close" 
+                                        stroke={isPositive ? '#10b981' : '#f43f5e'} 
+                                        strokeWidth={2} 
+                                        fillOpacity={1} 
+                                        fill="url(#colorPrice)" 
+                                    />
+                                </AreaChart>
+                            ) : (
+                                <BarChart data={candleData}>
+                                    <XAxis dataKey="date" hide />
+                                    <YAxis 
+                                        domain={['auto', 'auto']} 
+                                        hide={false} 
+                                        orientation="right" 
+                                        axisLine={false} 
+                                        tickLine={false} 
+                                        tick={{fontSize: 9, fill: '#71717a'}} 
+                                        width={35}
+                                        tickFormatter={(val) => `R$${val.toFixed(0)}`}
+                                    />
+                                    <Tooltip
+                                        contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: 'rgba(24, 24, 27, 0.95)', color: '#fff', fontSize: '11px', padding: '8px 12px' }}
+                                        labelFormatter={(label) => new Date(label).toLocaleDateString('pt-BR')}
+                                        formatter={(value: any, name: any, props: any) => {
+                                            const { open, high, low, close } = props.payload;
+                                            return [
+                                                <div key="ohlc" className="flex flex-col gap-0.5">
+                                                    <span>O: {formatBRL(open)}</span>
+                                                    <span>H: {formatBRL(high)}</span>
+                                                    <span>L: {formatBRL(low)}</span>
+                                                    <span className="font-bold">C: {formatBRL(close)}</span>
+                                                </div>, 
+                                                ''
+                                            ];
+                                        }}
+                                    />
+                                    <ReferenceLine y={lastPrice} stroke="#f43f5e" strokeDasharray="3 3" strokeOpacity={0.8} />
+                                    <Bar 
+                                        dataKey="candleRange" 
+                                        shape={<CustomCandleShape />} 
+                                        minPointSize={2}
+                                        isAnimationActive={false}
+                                    />
+                                </BarChart>
+                            )}
                         </ResponsiveContainer>
                     </>
                 )}
@@ -130,46 +246,72 @@ const PriceHistoryChart = ({ data, loading, error, ticker, range, setRange }: an
     );
 };
 
-// Componente 2: Gráfico Comparativo Completo (Asset, IBOV, IFIX, CDI, IPCA)
-const ComparativeHistoryChart = ({ data, loading, ticker, type }: any) => {
+// Componente 2: Gráfico Comparativo Completo com Filtros
+const ComparativeHistoryChart = ({ data, loading, ticker, type, range, setRange }: any) => {
     
-    // Calculates last returns for legend
+    // Estado local para visibilidade dos índices
+    const [visibleBenchmarks, setVisibleBenchmarks] = useState({
+        'CDI': true,
+        'IPCA': true,
+        'IBOV': true,
+        'IFIX': type === 'FII' // Default on for FIIs
+    });
+
+    const toggleBenchmark = (key: string) => {
+        setVisibleBenchmarks(prev => ({ ...prev, [key]: !prev[key as keyof typeof prev] }));
+    };
+
     const assetReturn = useMemo(() => data && data.length > 0 ? data[data.length - 1].assetPct : 0, [data]);
-    const ibovReturn = useMemo(() => data && data.length > 0 ? data[data.length - 1].ibovPct : 0, [data]);
-    const ifixReturn = useMemo(() => data && data.length > 0 ? data[data.length - 1].ifixPct : 0, [data]);
-    const cdiReturn = useMemo(() => data && data.length > 0 ? data[data.length - 1].cdiPct : 0, [data]);
-    const ipcaReturn = useMemo(() => data && data.length > 0 ? data[data.length - 1].ipcaPct : 0, [data]);
-
-    const hasIfix = useMemo(() => data && data.some((d: any) => d.ifixPct !== null && d.ifixPct !== undefined), [data]);
-
+    
     return (
         <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 p-5 shadow-sm mb-6 relative overflow-hidden">
-            <div className="mb-6">
-                <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2 mb-2">
-                    <TrendingUp className="w-3 h-3" /> Comparação de {ticker} com Índices
-                </h4>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[10px] font-bold">
-                    <span className="flex items-center gap-1 text-indigo-500">
+            <div className="mb-4">
+                <div className="flex justify-between items-start mb-4">
+                    <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                        <TrendingUp className="w-3 h-3" /> Comparativo
+                    </h4>
+                    
+                    {/* Filtro de Range Estendido */}
+                    <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5">
+                        {['1Y', '2Y', '5Y', '10Y'].map((r) => (
+                            <button 
+                                key={r} 
+                                onClick={() => setRange(r)}
+                                className={`px-2 py-1 text-[9px] font-bold rounded-md transition-all ${range === r ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                            >
+                                {r}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Filtros de Índices (Chips) */}
+                <div className="flex flex-wrap gap-2 mb-4">
+                    <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg border border-indigo-100 dark:border-indigo-900/30 bg-indigo-50 dark:bg-indigo-900/20">
                         <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-                        {ticker} ({assetReturn > 0 ? '+' : ''}{assetReturn?.toFixed(1)}%)
-                    </span>
-                    <span className="flex items-center gap-1 text-amber-500">
-                        <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                        IBOV ({ibovReturn > 0 ? '+' : ''}{ibovReturn?.toFixed(1)}%)
-                    </span>
-                    <span className="flex items-center gap-1 text-zinc-600 dark:text-zinc-400">
-                        <span className="w-2 h-2 rounded-full bg-zinc-600 dark:bg-zinc-400"></span>
-                        CDI ({cdiReturn > 0 ? '+' : ''}{cdiReturn?.toFixed(1)}%)
-                    </span>
-                    <span className="flex items-center gap-1 text-cyan-500">
+                        <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300">{ticker}</span>
+                    </div>
+
+                    <button onClick={() => toggleBenchmark('CDI')} className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border transition-all ${visibleBenchmarks.CDI ? 'bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700' : 'bg-transparent border-dashed border-zinc-200 dark:border-zinc-800 opacity-60'}`}>
+                        <span className="w-2 h-2 rounded-full bg-zinc-500"></span>
+                        <span className="text-[10px] font-bold text-zinc-600 dark:text-zinc-400">CDI</span>
+                    </button>
+
+                    <button onClick={() => toggleBenchmark('IPCA')} className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border transition-all ${visibleBenchmarks.IPCA ? 'bg-cyan-50 dark:bg-cyan-900/20 border-cyan-100 dark:border-cyan-900/30' : 'bg-transparent border-dashed border-zinc-200 dark:border-zinc-800 opacity-60'}`}>
                         <span className="w-2 h-2 rounded-full bg-cyan-500"></span>
-                        IPCA ({ipcaReturn > 0 ? '+' : ''}{ipcaReturn?.toFixed(1)}%)
-                    </span>
-                    {hasIfix && (
-                        <span className="flex items-center gap-1 text-emerald-500">
+                        <span className="text-[10px] font-bold text-cyan-700 dark:text-cyan-300">IPCA</span>
+                    </button>
+
+                    <button onClick={() => toggleBenchmark('IBOV')} className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border transition-all ${visibleBenchmarks.IBOV ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-900/30' : 'bg-transparent border-dashed border-zinc-200 dark:border-zinc-800 opacity-60'}`}>
+                        <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                        <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300">IBOV</span>
+                    </button>
+
+                    {type === 'FII' && (
+                        <button onClick={() => toggleBenchmark('IFIX')} className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border transition-all ${visibleBenchmarks.IFIX ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-900/30' : 'bg-transparent border-dashed border-zinc-200 dark:border-zinc-800 opacity-60'}`}>
                             <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                            IFIX ({ifixReturn > 0 ? '+' : ''}{ifixReturn?.toFixed(1)}%)
-                        </span>
+                            <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300">IFIX</span>
+                        </button>
                     )}
                 </div>
             </div>
@@ -216,40 +358,46 @@ const ComparativeHistoryChart = ({ data, loading, ticker, type }: any) => {
                             />
                             <ReferenceLine y={0} stroke="#71717a" strokeOpacity={0.3} strokeDasharray="3 3" />
                             
-                            {/* CDI - Linha Pontilhada Escura */}
-                            <Line 
-                                type="monotone" 
-                                dataKey="cdiPct" 
-                                stroke="#52525b" 
-                                strokeWidth={1.5} 
-                                dot={false} 
-                                strokeDasharray="2 2"
-                                animationDuration={1000}
-                            />
+                            {/* CDI */}
+                            {visibleBenchmarks.CDI && (
+                                <Line 
+                                    type="monotone" 
+                                    dataKey="cdiPct" 
+                                    stroke="#52525b" 
+                                    strokeWidth={1.5} 
+                                    dot={false} 
+                                    strokeDasharray="2 2"
+                                    animationDuration={1000}
+                                />
+                            )}
 
-                            {/* IPCA - Linha Pontilhada Ciano */}
-                            <Line 
-                                type="monotone" 
-                                dataKey="ipcaPct" 
-                                stroke="#06b6d4" 
-                                strokeWidth={1.5} 
-                                dot={false} 
-                                strokeDasharray="2 2"
-                                animationDuration={1000}
-                            />
+                            {/* IPCA */}
+                            {visibleBenchmarks.IPCA && (
+                                <Line 
+                                    type="monotone" 
+                                    dataKey="ipcaPct" 
+                                    stroke="#06b6d4" 
+                                    strokeWidth={1.5} 
+                                    dot={false} 
+                                    strokeDasharray="2 2"
+                                    animationDuration={1000}
+                                />
+                            )}
                             
-                            {/* IBOV - Laranja */}
-                            <Line 
-                                type="monotone" 
-                                dataKey="ibovPct" 
-                                stroke="#f59e0b"
-                                strokeWidth={1.5} 
-                                dot={false} 
-                                animationDuration={1000}
-                            />
+                            {/* IBOV */}
+                            {visibleBenchmarks.IBOV && (
+                                <Line 
+                                    type="monotone" 
+                                    dataKey="ibovPct" 
+                                    stroke="#f59e0b"
+                                    strokeWidth={1.5} 
+                                    dot={false} 
+                                    animationDuration={1000}
+                                />
+                            )}
                             
-                            {/* IFIX - Verde (Conditional) */}
-                            {hasIfix && (
+                            {/* IFIX */}
+                            {visibleBenchmarks.IFIX && (
                                 <Line 
                                     type="monotone" 
                                     dataKey="ifixPct" 
@@ -322,12 +470,15 @@ const ChartsContainer = ({ ticker, type }: { ticker: string, type: AssetType }) 
                 data={data} 
                 loading={loading} 
                 ticker={ticker} 
-                type={type} 
+                type={type}
+                range={range}
+                setRange={setRange}
             />
         </>
     );
 }
 
+// ... Resto dos componentes (PositionSummaryCard, MarketPerformanceCard, etc) mantidos iguais ...
 // Card de Resumo da Posição do Usuário (Redesenhado)
 const PositionSummaryCard = ({ asset, privacyMode }: { asset: AssetPosition, privacyMode: boolean }) => {
     const totalValue = asset.quantity * (asset.currentPrice || 0);
@@ -955,7 +1106,8 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                             </div>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-6 pb-24">
+                        {/* Reduced padding here from p-6 to p-4/p-3 */}
+                        <div className="flex-1 overflow-y-auto p-4 sm:p-6 pb-24">
                             {/* ABA RESUMO */}
                             {activeTab === 'RESUMO' && (
                                 <div className="space-y-6 anim-fade-in">

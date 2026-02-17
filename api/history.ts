@@ -18,6 +18,7 @@ function getYahooParams(range: string) {
         case '1Y': return { range: '1y', interval: '1d' };
         case '2Y': return { range: '2y', interval: '1wk' };
         case '5Y': return { range: '5y', interval: '1wk' };
+        case '10Y': return { range: '10y', interval: '1mo' };
         case 'MAX': return { range: 'max', interval: '1mo' };
         default: return { range: '1y', interval: '1d' };
     }
@@ -35,7 +36,8 @@ function getStartDate(range: string): Date {
         case '1Y': now.setFullYear(now.getFullYear() - 1); now.setMonth(now.getMonth() - 1); break;
         case '2Y': now.setFullYear(now.getFullYear() - 2); break;
         case '5Y': now.setFullYear(now.getFullYear() - 5); break;
-        case 'MAX': now.setFullYear(now.getFullYear() - 10); break;
+        case '10Y': now.setFullYear(now.getFullYear() - 10); break;
+        case 'MAX': now.setFullYear(now.getFullYear() - 15); break;
         default: now.setFullYear(now.getFullYear() - 1);
     }
     return now;
@@ -58,9 +60,14 @@ async function fetchYahooData(symbol: string, range: string) {
         const result = data.chart?.result?.[0];
         if (!result || !result.timestamp || !result.indicators.quote[0].close) return null;
         
+        const quote = result.indicators.quote[0];
+
         return {
             timestamps: result.timestamp as number[],
-            prices: result.indicators.quote[0].close as (number | null)[]
+            prices: quote.close as (number | null)[],
+            opens: quote.open as (number | null)[],
+            highs: quote.high as (number | null)[],
+            lows: quote.low as (number | null)[]
         };
     } catch (e) {
         return null;
@@ -135,10 +142,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         // Process Data
         const points = [];
-        const { timestamps, prices } = assetData;
+        const { timestamps, prices, opens, highs, lows } = assetData;
         
         // Find Start Prices (Base 0%)
-        const getStartPrice = (arr: (number|null)[]) => arr.find(p => p !== null && p !== undefined) || 0;
+        const getStartPrice = (arr: (number|null)[]) => arr ? arr.find(p => p !== null && p !== undefined) || 0 : 0;
         
         const startPrice = getStartPrice(prices);
         const startIbov = ibovData ? getStartPrice(ibovData.prices) : 0;
@@ -152,9 +159,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         let lastIbovPct = 0;
         let lastIfixPct = 0;
         
-        // Date tracking for IPCA interpolation
-        let previousDateObj: Date | null = null;
-
         for (let i = 0; i < timestamps.length; i++) {
             const price = prices[i];
             if (price === null) continue;
@@ -166,46 +170,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             const cdiRate = cdiMap.get(dateKey);
             if (cdiRate !== undefined) {
                 accCdi = accCdi * (1 + (cdiRate / 100));
-            } else if (i > 0) {
-                // If missing CDI (weekend/holiday in BCB but not in Yahoo?), try to find missed days
-                // Simple approach: Assume Yahoo only has trading days. CDI follows trading days too.
-                // If mismatch, we just hold value.
             }
 
             // --- IPCA ACCUMULATION (Interpolated) ---
-            // Find month rate
+            // Simples: 1 mês = 21 dias úteis aprox
             const monthKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-01`;
-            // BCB returns IPCA date as 01/MM/YYYY usually for monthly
-            // We need to match YYYY-MM
-            // Since we fetched daily map, we need to adapt logic or fetch monthly map logic differently.
-            // Let's check map keys. The map keys from fetchBcbSeries are YYYY-MM-DD. 
-            // For monthly series 433, dates are 01/MM/YYYY.
-            
-            // Check if we entered a new month relative to previous point to apply monthly rate? 
-            // Better: Apply daily geometric equivalent of the month's rate.
-            // Daily IPCA approx = (1 + Monthly%)^(1/21) - 1
-            let ipcaDailyFactor = 1.0;
-            const monthRate = ipcaMap.get(monthKey); // Try exact 1st of month
-            
-            // Fallback: try to find any entry for this month if exact 01 doesn't match due to timezone
-            // Actually BCB 433 always returns day 01.
+            const monthRate = ipcaMap.get(monthKey);
+            let ipcaDailyFactor = 1.00015; // default fallback ~0.3% mo
             
             if (monthRate !== undefined) {
-                // Approx 21 business days
                 ipcaDailyFactor = Math.pow(1 + (monthRate / 100), 1 / 21);
-            } else {
-                // If current month (not released yet), assume a projection (e.g. 0.3% mo) or 0
-                // Use prev month rate as proxy or 1.00015 (approx 0.3%)
-                ipcaDailyFactor = 1.00015; 
             }
-            
-            // Apply IPCA only if day changed (Yahoo data is intraday sometimes? No, we requested 1d interval)
             accIpca = accIpca * ipcaDailyFactor;
 
             const point: any = {
                 date: dateObj.toISOString(),
                 timestamp: timestamps[i] * 1000,
-                price: price
+                price: price,
+                open: opens ? opens[i] : price,
+                high: highs ? highs[i] : price,
+                low: lows ? lows[i] : price,
+                close: price
             };
 
             // Asset %
@@ -230,13 +215,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             } else point.ifixPct = null;
 
             // CDI & IPCA % (Based on Accumulation)
-            // Normalize to start at 0% at the beginning of the chart (i=0 is 0%)
-            // We need to rebase accCdi and accIpca to the first point of THIS chart slice
-            // But we are building it sequentially.
-            // Wait, accCdi started at 1.0 at start of *data fetching* (which is start of chart approx).
-            // But assets might start later.
-            // Correct approach: normalization at first VALID asset point.
-            
             point.cdiPct = (accCdi - 1) * 100;
             point.ipcaPct = (accIpca - 1) * 100;
 
@@ -247,12 +225,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (points.length > 0) {
             const baseCdi = points[0].cdiPct;
             const baseIpca = points[0].ipcaPct;
-            
-            // Rebase logic: (Current + 100) / (Base + 100) * 100 - 100 ? No, simple subtraction for log returns, 
-            // but for simple returns: (CurrentVal / BaseVal - 1). 
-            // Our pct is (Val/Start - 1)*100.
-            // Val_t = Start * (1 + pct_t/100).
-            // NewPct = (Val_t / Val_0 - 1) * 100.
             
             const valCdi0 = 1 + (baseCdi / 100);
             const valIpca0 = 1 + (baseIpca / 100);
