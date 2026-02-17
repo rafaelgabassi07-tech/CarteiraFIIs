@@ -84,7 +84,8 @@ const MarketPerformanceCard = ({ asset }: { asset: AssetPosition }) => {
     const assetReturn = asset.profitability_12m;
     const monthReturn = asset.profitability_month;
 
-    if (assetReturn === undefined || assetReturn === null) return null;
+    // Se não tiver dados, mostra placeholder em vez de esconder
+    const hasAnyData = assetReturn !== undefined || monthReturn !== undefined || benchmarkVal !== undefined;
 
     return (
         <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm mb-6">
@@ -98,34 +99,32 @@ const MarketPerformanceCard = ({ asset }: { asset: AssetPosition }) => {
                     <div className="flex justify-between items-end mb-1.5">
                         <span className="text-[10px] font-bold text-zinc-500">Últimos 12 Meses</span>
                         <div className="flex gap-3 text-[10px] font-bold">
-                            <span className={assetReturn >= 0 ? 'text-emerald-500' : 'text-rose-500'}>
-                                {asset.ticker}: {assetReturn > 0 ? '+' : ''}{assetReturn.toFixed(1)}%
+                            <span className={assetReturn !== undefined ? (assetReturn >= 0 ? 'text-emerald-500' : 'text-rose-500') : 'text-zinc-400'}>
+                                {asset.ticker}: {assetReturn !== undefined ? `${assetReturn > 0 ? '+' : ''}${assetReturn.toFixed(1)}%` : '--'}
                             </span>
-                            {benchmarkVal !== undefined && (
-                                <span className="text-zinc-400">
-                                    {benchmarkLabel}: {benchmarkVal > 0 ? '+' : ''}{benchmarkVal.toFixed(1)}%
-                                </span>
-                            )}
+                            <span className="text-zinc-400">
+                                {benchmarkLabel}: {benchmarkVal !== undefined ? `${benchmarkVal > 0 ? '+' : ''}${benchmarkVal.toFixed(1)}%` : '--'}
+                            </span>
                         </div>
                     </div>
-                    {/* Barra Visual Simples */}
+                    {/* Barra Visual */}
                     <div className="h-1.5 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden flex">
-                        <div 
-                            className={`h-full rounded-full ${assetReturn >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`} 
-                            style={{ width: `${Math.min(100, Math.max(5, Math.abs(assetReturn)))}%` }} 
-                        ></div>
+                        {assetReturn !== undefined && (
+                            <div 
+                                className={`h-full rounded-full ${assetReturn >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`} 
+                                style={{ width: `${Math.min(100, Math.max(5, Math.abs(assetReturn)))}%` }} 
+                            ></div>
+                        )}
                     </div>
                 </div>
 
                 {/* Mês Atual */}
-                {monthReturn !== undefined && monthReturn !== null && (
-                    <div className="flex items-center justify-between pt-2 border-t border-zinc-50 dark:border-zinc-800/50">
-                        <span className="text-[10px] font-bold text-zinc-500">Mês Atual</span>
-                        <span className={`text-xs font-black ${monthReturn >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                            {monthReturn > 0 ? '+' : ''}{monthReturn.toFixed(2)}%
-                        </span>
-                    </div>
-                )}
+                <div className="flex items-center justify-between pt-2 border-t border-zinc-50 dark:border-zinc-800/50">
+                    <span className="text-[10px] font-bold text-zinc-500">Mês Atual</span>
+                    <span className={`text-xs font-black ${monthReturn !== undefined ? (monthReturn >= 0 ? 'text-emerald-500' : 'text-rose-500') : 'text-zinc-400'}`}>
+                        {monthReturn !== undefined ? `${monthReturn > 0 ? '+' : ''}${monthReturn.toFixed(2)}%` : '--'}
+                    </span>
+                </div>
             </div>
         </div>
     );
