@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, PortfolioInsight } from '../types';
-import { CircleDollarSign, CalendarClock, PieChart as PieIcon, ArrowUpRight, Wallet, ArrowRight, Sparkles, Trophy, Anchor, Coins, Crown, Info, X, Zap, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { CircleDollarSign, CalendarClock, PieChart as PieIcon, ArrowUpRight, Wallet, ArrowRight, Sparkles, Trophy, Anchor, Coins, Crown, Info, X, Zap, ShieldCheck, AlertTriangle, Play, Pause } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, CartesianGrid, AreaChart, Area, XAxis, YAxis } from 'recharts';
 import { formatBRL, formatDateShort, getMonthName, getDaysUntil } from '../utils/formatters';
@@ -8,89 +8,201 @@ import { formatBRL, formatDateShort, getMonthName, getDaysUntil } from '../utils
 // --- CONSTANTS ---
 const CHART_COLORS = ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#f43f5e', '#84cc16'];
 
-// --- STORIES COMPONENT ---
+// --- HELPERS VISUAIS PARA STORIES ---
+const getStoryGradient = (type: PortfolioInsight['type']) => {
+    switch (type) {
+        case 'success':
+        case 'opportunity':
+        case 'diversification-good':
+            return 'from-emerald-400 via-teal-500 to-emerald-600';
+        case 'warning':
+        case 'volatility_down':
+        case 'risk-concentration':
+            return 'from-orange-500 via-rose-500 to-pink-600'; // Estilo Instagram Warning
+        case 'inflation-shield':
+        case 'magic-number':
+            return 'from-amber-300 via-yellow-500 to-orange-500'; // Gold
+        case 'news':
+        case 'spotlight-fii':
+        case 'spotlight-stock':
+        default:
+            return 'from-indigo-400 via-purple-500 to-pink-500'; // Estilo Instagram Clássico
+    }
+};
+
+const getStoryIcon = (type: PortfolioInsight['type']) => {
+    switch (type) {
+        case 'success': return <ArrowUpRight className="w-5 h-5 text-white" />;
+        case 'warning': return <AlertTriangle className="w-5 h-5 text-white" />;
+        case 'inflation-shield': return <ShieldCheck className="w-5 h-5 text-white" />;
+        case 'news': return <Info className="w-5 h-5 text-white" />;
+        case 'opportunity': return <Sparkles className="w-5 h-5 text-white" />;
+        default: return <Zap className="w-5 h-5 text-white" />;
+    }
+};
+
+// --- STORIES BAR (Estilo Instagram/Rico) ---
 const StoriesBar = ({ insights, onSelectStory }: { insights: PortfolioInsight[], onSelectStory: (story: PortfolioInsight) => void }) => {
     if (!insights || insights.length === 0) return null;
 
     return (
-        <div className="mb-6 -mx-4 px-4 overflow-x-auto no-scrollbar flex gap-3 pb-2 snap-x">
-            {insights.map((story) => (
-                <button 
-                    key={story.id} 
-                    onClick={() => onSelectStory(story)}
-                    className="snap-start shrink-0 w-[240px] p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 shadow-sm flex flex-col justify-between items-start text-left group hover:border-zinc-300 dark:hover:border-zinc-700 transition-all press-effect"
-                >
-                    <div className="flex justify-between w-full mb-2">
-                        <div className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider ${story.type === 'success' || story.type === 'opportunity' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' : story.type === 'warning' || story.type === 'volatility_down' ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400' : 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400'}`}>
-                            {story.relatedTicker || 'Insight'}
-                        </div>
-                    </div>
-                    <div>
-                        <h4 className="text-xs font-bold text-zinc-900 dark:text-white mb-1 line-clamp-1">{story.title}</h4>
-                        <p className="text-[10px] text-zinc-500 leading-snug line-clamp-2">{story.message}</p>
-                    </div>
-                </button>
-            ))}
+        <div className="mb-6 pt-2 -mx-4 overflow-x-auto no-scrollbar pb-2">
+            <div className="flex gap-4 px-4">
+                {insights.map((story) => {
+                    const gradient = getStoryGradient(story.type);
+                    return (
+                        <button 
+                            key={story.id} 
+                            onClick={() => onSelectStory(story)}
+                            className="flex flex-col items-center gap-2 group shrink-0 w-[72px] press-effect"
+                        >
+                            {/* Anel de Gradiente */}
+                            <div className={`w-[68px] h-[68px] p-[2px] rounded-full bg-gradient-to-tr ${gradient} relative`}>
+                                {/* Borda Branca/Preta Interna */}
+                                <div className="w-full h-full rounded-full border-[3px] border-primary-light dark:border-primary-dark bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center overflow-hidden relative">
+                                    {/* Conteúdo do Círculo */}
+                                    <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-20`}></div>
+                                    {story.relatedTicker ? (
+                                        <span className="text-[10px] font-black uppercase z-10 text-zinc-700 dark:text-zinc-200 tracking-tighter">
+                                            {story.relatedTicker.substring(0, 4)}
+                                        </span>
+                                    ) : (
+                                        <div className="z-10 bg-black/10 dark:bg-white/10 p-2 rounded-full">
+                                            {getStoryIcon(story.type)}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            
+                            {/* Label */}
+                            <span className="text-[10px] font-medium text-zinc-600 dark:text-zinc-400 truncate w-full text-center leading-tight">
+                                {story.relatedTicker || 'Insight'}
+                            </span>
+                        </button>
+                    );
+                })}
+            </div>
         </div>
     );
 };
 
-// --- STORY MODAL ---
+// --- STORY VIEWER (Modal Imersivo) ---
 const StoryModal = ({ story, onClose, onViewAsset }: { story: PortfolioInsight | null, onClose: () => void, onViewAsset: (ticker: string) => void }) => {
+    const [progress, setProgress] = useState(0);
+    const [isPaused, setIsPaused] = useState(false);
+
+    // Timer do Story
+    useEffect(() => {
+        if (!story) {
+            setProgress(0);
+            return;
+        }
+
+        const duration = 8000; // 8 segundos por story
+        const intervalTime = 50;
+        const step = (intervalTime / duration) * 100;
+
+        const timer = setInterval(() => {
+            if (!isPaused) {
+                setProgress(prev => {
+                    if (prev >= 100) {
+                        clearInterval(timer);
+                        onClose();
+                        return 100;
+                    }
+                    return prev + step;
+                });
+            }
+        }, intervalTime);
+
+        return () => clearInterval(timer);
+    }, [story, isPaused, onClose]);
+
     if (!story) return null;
 
-    let icon = <Info className="w-12 h-12 text-indigo-500" />;
-    let bgClass = "bg-indigo-50 dark:bg-indigo-900/20";
-    let detailText = "Análise automática baseada no desempenho da sua carteira.";
-
-    if (story.type === 'success' || story.type === 'opportunity') {
-        icon = <Sparkles className="w-12 h-12 text-emerald-500" />;
-        bgClass = "bg-emerald-50 dark:bg-emerald-900/20";
-        detailText = story.type === 'opportunity' ? "Este ativo apresenta indicadores fundamentalistas atrativos." : "Excelente performance registrada recentemente.";
-    } else if (story.type === 'warning' || story.type === 'volatility_down') {
-        icon = <AlertTriangle className="w-12 h-12 text-rose-500" />;
-        bgClass = "bg-rose-50 dark:bg-rose-900/20";
-        detailText = "Este movimento requer atenção. Avalie se os fundamentos mudaram.";
-    } else if (story.type === 'inflation-shield') {
-        icon = <ShieldCheck className="w-12 h-12 text-emerald-500" />;
-        bgClass = "bg-emerald-50 dark:bg-emerald-900/20";
-        detailText = "O Dividend Yield deste ativo supera a inflação oficial (IPCA), protegendo seu poder de compra.";
-    }
+    const gradient = getStoryGradient(story.type);
 
     return (
         <SwipeableModal isOpen={!!story} onClose={onClose}>
-            <div className="p-8 h-full flex flex-col items-center text-center pb-24">
-                <div className={`w-24 h-24 rounded-full flex items-center justify-center mb-6 anim-scale-in ${bgClass}`}>
-                    {icon}
-                </div>
-                
-                <h2 className="text-2xl font-black text-zinc-900 dark:text-white mb-4 leading-tight">{story.title}</h2>
-                <p className="text-base text-zinc-600 dark:text-zinc-300 font-medium leading-relaxed mb-8 max-w-xs mx-auto">
-                    {story.message}
-                </p>
+            <div 
+                className="h-full flex flex-col relative overflow-hidden bg-zinc-900 text-white"
+                onTouchStart={() => setIsPaused(true)}
+                onTouchEnd={() => setIsPaused(false)}
+                onMouseDown={() => setIsPaused(true)}
+                onMouseUp={() => setIsPaused(false)}
+            >
+                {/* Background Blur Effect */}
+                <div className={`absolute top-[-20%] right-[-20%] w-[100%] h-[60%] bg-gradient-to-b ${gradient} blur-[120px] opacity-40 pointer-events-none`}></div>
 
-                <div className="w-full bg-zinc-50 dark:bg-zinc-800/50 p-5 rounded-2xl border border-zinc-100 dark:border-zinc-800 mb-8 text-left">
-                    <h4 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-2">O que isso significa?</h4>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                        {detailText} Monitorar esses eventos ajuda a manter sua estratégia alinhada com seus objetivos de longo prazo.
-                    </p>
+                {/* Progress Bar (Topo) */}
+                <div className="absolute top-4 left-4 right-4 flex gap-1 z-50">
+                    <div className="h-1 flex-1 bg-white/20 rounded-full overflow-hidden">
+                        <div 
+                            className="h-full bg-white transition-all duration-100 ease-linear" 
+                            style={{ width: `${progress}%` }}
+                        ></div>
+                    </div>
                 </div>
 
-                <div className="mt-auto w-full space-y-3">
-                    {story.relatedTicker && (
+                {/* Header (Botão Fechar e Título) */}
+                <div className="relative z-40 px-6 pt-10 pb-4 flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center bg-gradient-to-br ${gradient} shadow-lg`}>
+                            {getStoryIcon(story.type)}
+                        </div>
+                        <div>
+                            <p className="text-xs font-bold opacity-90">{story.relatedTicker || 'Insight'}</p>
+                            <p className="text-[10px] opacity-60">InvestFIIs AI</p>
+                        </div>
+                    </div>
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onClose(); }}
+                        className="w-8 h-8 flex items-center justify-center rounded-full bg-black/20 backdrop-blur-md"
+                    >
+                        <X className="w-5 h-5 text-white" />
+                    </button>
+                </div>
+
+                {/* Conteúdo Central */}
+                <div className="flex-1 flex flex-col justify-center px-8 relative z-30">
+                    <h1 className="text-3xl font-black leading-tight mb-6 drop-shadow-md">
+                        {story.title}
+                    </h1>
+                    
+                    <div className="bg-white/10 backdrop-blur-xl border border-white/10 p-6 rounded-3xl shadow-2xl mb-8">
+                        <p className="text-lg font-medium leading-relaxed opacity-90">
+                            {story.message}
+                        </p>
+                    </div>
+
+                    {/* Dica Extra */}
+                    <div className="flex gap-3 items-start opacity-70">
+                        <Info className="w-5 h-5 shrink-0 mt-0.5" />
+                        <p className="text-xs leading-relaxed">
+                            {story.type === 'opportunity' ? "Analistas indicam que este é um bom momento para revisão de posição." : 
+                             story.type === 'warning' ? "Fique atento a fundamentos que possam ter se deteriorado." :
+                             "Mantenha sua estratégia de longo prazo e evite ruídos de curto prazo."}
+                        </p>
+                    </div>
+                </div>
+
+                {/* Footer Action */}
+                <div className="p-6 pb-12 relative z-40 bg-gradient-to-t from-black/80 to-transparent">
+                    {story.relatedTicker ? (
                         <button 
-                            onClick={() => { onClose(); onViewAsset(story.relatedTicker!); }}
-                            className="w-full py-4 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold text-sm shadow-lg press-effect"
+                            onClick={(e) => { e.stopPropagation(); onClose(); onViewAsset(story.relatedTicker!); }}
+                            className="w-full py-4 bg-white text-black rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-transform"
                         >
-                            Ver {story.relatedTicker}
+                            Ver {story.relatedTicker} <ArrowUpRight className="w-4 h-4" />
+                        </button>
+                    ) : (
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onClose(); }}
+                            className="w-full py-4 bg-white/10 border border-white/20 text-white rounded-2xl font-bold text-sm uppercase tracking-widest backdrop-blur-md active:scale-95 transition-transform"
+                        >
+                            Fechar Story
                         </button>
                     )}
-                    <button 
-                        onClick={onClose}
-                        className="w-full py-3 rounded-xl text-zinc-400 font-bold text-xs uppercase tracking-widest hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                    >
-                        Fechar
-                    </button>
                 </div>
             </div>
         </SwipeableModal>
@@ -347,7 +459,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   return (
     <div className="space-y-5 pb-8">
         
-        {/* STORIES / INSIGHTS */}
+        {/* STORIES / INSIGHTS (NOVO DESIGN) */}
         <StoriesBar insights={insights} onSelectStory={setSelectedStory} />
 
         {/* HERO CARD (Redesenhado) */}

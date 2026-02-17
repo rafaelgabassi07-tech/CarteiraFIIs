@@ -239,7 +239,7 @@ export const analyzePortfolio = (
     if (sectors.size >= 4 && activeAssets.length >= 5) {
         createStory(
             'diversification-good',
-            'success',
+            'diversification-good',
             'Bem Diversificado 🌐',
             `Você possui ativos em ${sectors.size} setores diferentes. Isso ajuda a reduzir riscos específicos.`,
             75
@@ -252,7 +252,7 @@ export const analyzePortfolio = (
         const pct = ((concentrated.totalValue / totalPortfolioValue) * 100).toFixed(0);
         createStory(
             'risk-concentration',
-            'warning',
+            'risk-concentration',
             'Risco de Concentração ⚖️',
             `${concentrated.ticker} representa ${pct}% do seu patrimônio total. Monitore este risco.`,
             80,
@@ -270,7 +270,7 @@ export const analyzePortfolio = (
             if (randomAsset.assetType === AssetType.FII) {
                 createStory(
                     'spotlight-fii',
-                    'news',
+                    'spotlight-fii',
                     'Raio-X: FII 🏢',
                     `${randomAsset.ticker}: Cotação R$ ${randomAsset.currentPrice?.toFixed(2)} | P/VP ${(randomAsset.p_vp || 0).toFixed(2)}.`,
                     60,
@@ -279,7 +279,7 @@ export const analyzePortfolio = (
             } else {
                 createStory(
                     'spotlight-stock',
-                    'news',
+                    'spotlight-stock',
                     'Raio-X: Ação 📊',
                     `${randomAsset.ticker}: ROE de ${(randomAsset.roe || 0).toFixed(1)}% e P/L ${(randomAsset.p_l || 0).toFixed(1)}x.`,
                     60,

@@ -281,7 +281,20 @@ export interface NewsItem {
 }
 
 // --- TIPOS DE INTELIGÊNCIA ---
-export type InsightType = 'opportunity' | 'warning' | 'neutral' | 'success' | 'news' | 'volatility_up' | 'volatility_down' | 'inflation-shield';
+export type InsightType = 
+    | 'opportunity' 
+    | 'warning' 
+    | 'neutral' 
+    | 'success' 
+    | 'news' 
+    | 'volatility_up' 
+    | 'volatility_down' 
+    | 'inflation-shield'
+    | 'diversification-good'
+    | 'risk-concentration'
+    | 'magic-number'
+    | 'spotlight-fii'
+    | 'spotlight-stock';
 
 export interface PortfolioInsight {
     id: string;
