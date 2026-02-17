@@ -148,6 +148,7 @@ async function scrapeInvestidor10(ticker: string) {
 
     let finalData: any = null;
     let finalDividends: any[] = [];
+    let realEstateProperties: any[] = [];
 
     for (const url of urls) {
         try {
@@ -236,6 +237,52 @@ async function scrapeInvestidor10(ticker: string) {
                      dados.vpa = dados.cotacao_atual / dados.pvp;
                 }
 
+                // --- EXTRAÇÃO DE IMÓVEIS (FIIs de Tijolo) ---
+                if (type === 'FII') {
+                    // Procura pela seção de portfólio/imóveis. 
+                    // No Investidor10 geralmente são cards dentro de uma div com ID #sc-portfolio-fii ou similar
+                    // OU cards com classe .vacancies-card (para vacância por imóvel)
+                    
+                    $('.vacancies-card, .property-card').each((_, el) => {
+                        const name = $(el).find('.name, .title, strong').first().text().trim();
+                        const location = $(el).find('.address, .location, .city-state').text().trim();
+                        
+                        // Se não achou localização explicita, tenta extrair de textos secundários
+                        const secondaryText = $(el).text().trim();
+                        
+                        if (name) {
+                            realEstateProperties.push({
+                                name: name,
+                                location: location || 'Localização não informada',
+                                type: 'Imóvel'
+                            });
+                        }
+                    });
+
+                    // Fallback: Tenta tabelas dentro da seção portfólio se cards não existirem
+                    if (realEstateProperties.length === 0) {
+                        $('table').each((_, table) => {
+                            const header = $(table).find('thead').text().toLowerCase();
+                            if (header.includes('imóvel') || header.includes('nome')) {
+                                $(table).find('tbody tr').each((_, tr) => {
+                                    const cols = $(tr).find('td');
+                                    if (cols.length >= 2) {
+                                        const pName = $(cols[0]).text().trim();
+                                        const pLoc = $(cols[1]).text().trim();
+                                        if (pName && pName.length > 3) {
+                                            realEstateProperties.push({
+                                                name: pName,
+                                                location: pLoc,
+                                                type: 'Imóvel'
+                                            });
+                                        }
+                                    }
+                                });
+                            }
+                        });
+                    }
+                }
+
                 // --- SCRAPER DE DIVIDENDOS APERFEIÇOADO (HEURÍSTICA DE CONTEÚDO) ---
                 const dividends: any[] = [];
                 let tableDivs: cheerio.Cheerio<any> | null = null;
@@ -317,6 +364,7 @@ async function scrapeInvestidor10(ticker: string) {
                     ...dados,
                     dy_12m: dados.dy,
                     current_price: dados.cotacao_atual,
+                    properties: realEstateProperties // Adiciona a lista de imóveis extraída
                 };
                 finalDividends = dividends;
                 

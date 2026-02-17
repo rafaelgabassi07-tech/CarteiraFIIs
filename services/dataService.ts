@@ -87,6 +87,7 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         vacancy: parseNumberSafe(getVal('vacancia', 'vacancia_fisica')),
         last_dividend: parseNumberSafe(getVal('ultimo_rendimento')),
         properties_count: parseNumberSafe(getVal('num_cotistas', 'cotistas')),
+        properties: m.properties || [], // Mapeia lista de imóveis se existir
         
         // Ações (Stocks)
         net_margin: parseNumberSafe(getVal('margem_liquida', 'margemliquida')),

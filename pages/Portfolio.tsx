@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, Wallet, TrendingUp, TrendingDown, RefreshCw, X, Calculator, Scale, Activity, BarChart3, PieChart, Coins, Target, AlertCircle, ChevronDown, ChevronUp, ExternalLink, ArrowRight, DollarSign, Percent, Briefcase, Building2, Users, FileText } from 'lucide-react';
+import { Search, Wallet, TrendingUp, TrendingDown, RefreshCw, X, Calculator, Scale, Activity, BarChart3, PieChart, Coins, Target, AlertCircle, ChevronDown, ChevronUp, ExternalLink, ArrowRight, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 
 // --- FORMATTERS ---
@@ -459,8 +459,33 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                                     </div>
                                 )}
 
+                                {/* LISTA DE IMÓVEIS (FIIs de Tijolo) */}
+                                {selectedAsset.assetType === AssetType.FII && selectedAsset.properties && selectedAsset.properties.length > 0 && (
+                                    <div className="mt-6">
+                                        <div className="flex items-center gap-2 mb-3 px-1">
+                                            <Building2 className="w-4 h-4 text-sky-500" />
+                                            <h3 className="text-xs font-black text-zinc-900 dark:text-white uppercase tracking-widest">
+                                                Portfólio Imobiliário ({selectedAsset.properties.length})
+                                            </h3>
+                                        </div>
+                                        <div className="bg-zinc-50 dark:bg-zinc-800/30 rounded-2xl border border-zinc-100 dark:border-zinc-800 overflow-hidden divide-y divide-zinc-100 dark:divide-zinc-800">
+                                            {selectedAsset.properties.map((prop, idx) => (
+                                                <div key={idx} className="p-3 flex items-start gap-3">
+                                                    <div className="w-8 h-8 rounded-lg bg-white dark:bg-zinc-800 flex items-center justify-center shrink-0 text-zinc-400 border border-zinc-100 dark:border-zinc-700">
+                                                        <MapPin className="w-4 h-4" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs font-bold text-zinc-900 dark:text-white leading-tight">{prop.name}</p>
+                                                        <p className="text-[10px] text-zinc-500 mt-0.5">{prop.location}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Infos Gerais */}
-                                <div className="space-y-2 mt-2">
+                                <div className="space-y-2 mt-4">
                                     <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800 text-left">
                                         <div className="flex justify-between items-center mb-2 pb-2 border-b border-zinc-200 dark:border-zinc-700/50">
                                             <span className="text-[10px] font-bold text-zinc-400 uppercase">Liquidez Diária</span>

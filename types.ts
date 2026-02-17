@@ -16,6 +16,12 @@ export interface Transaction {
   assetType: AssetType;
 }
 
+export interface RealEstateProperty {
+  name: string;
+  location?: string;
+  type?: string;
+}
+
 export interface AssetFundamentals {
   // Comuns
   p_vp?: number;
@@ -50,6 +56,9 @@ export interface AssetFundamentals {
   management_fee?: string; // Taxa de Administração
   last_dividend?: number; // Último Rendimento
   
+  // Lista de Imóveis (FIIs de Tijolo)
+  properties?: RealEstateProperty[];
+
   updated_at?: string; // Data da última atualização via IA/Crawler
   
   description?: string;
