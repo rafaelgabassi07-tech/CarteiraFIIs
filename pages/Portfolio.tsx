@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, Activity, BarChart3, PieChart, Coins, AlertCircle, ChevronDown, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, Scale, SquareStack, Calendar, Map as MapIcon, ChevronRight, Share2, MousePointerClick, CandlestickChart, LineChart as LineChartIcon, SlidersHorizontal, Layers, Award, HelpCircle } from 'lucide-react';
+import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, Activity, BarChart3, PieChart, Coins, AlertCircle, ChevronDown, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, Scale, SquareStack, Calendar, Map as MapIcon, ChevronRight, Share2, MousePointerClick, CandlestickChart, LineChart as LineChartIcon, SlidersHorizontal, Layers, Award, HelpCircle, Edit3, RefreshCw } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, ReferenceLine, ComposedChart, CartesianGrid, Legend, AreaChart, Area, YAxis, PieChart as RePieChart, Pie, Cell, LineChart, Line, ErrorBar, Label } from 'recharts';
 import { formatBRL, formatPercent, formatNumber, formatDateShort } from '../utils/formatters';
@@ -38,9 +38,6 @@ const MetricCard = ({ label, value, highlight = false, colorClass = "text-zinc-9
 
 /**
  * Helper Matemático: Calcula Média Móvel Simples (SMA)
- * @param arr Array de dados históricos
- * @param period Número de dias (ex: 20 ou 50)
- * @param idx Índice atual no loop
  */
 const calculateSMA = (arr: any[], period: number, idx: number) => {
     if (idx < period - 1) return null;
@@ -53,7 +50,6 @@ const calculateSMA = (arr: any[], period: number, idx: number) => {
 
 /**
  * Processador de Dados do Gráfico
- * Prepara o array final injetando médias móveis e cores de volume.
  */
 const processChartData = (data: any[]) => {
     if (!data || data.length === 0) return { processedData: [], yDomain: ['auto', 'auto'], variation: 0, lastPrice: 0 };
@@ -70,22 +66,18 @@ const processChartData = (data: any[]) => {
         if (low < minPrice) minPrice = low;
         if (high > maxPrice) maxPrice = high;
         
-        // Volume Color: Green if Close >= Open, else Red
         const isUp = close >= open;
         
         return {
             ...d,
-            candleRange: [low, high], // [Min, Max] para o CustomShape desenhar a vela inteira
+            candleRange: [low, high],
             sma20: calculateSMA(arr, 20, index),
             sma50: calculateSMA(arr, 50, index),
             volColor: isUp ? '#10b981' : '#f43f5e'
         };
     });
 
-    // Margem de 2% para não colar o gráfico no topo/fundo
     const padding = (maxPrice - minPrice) * 0.02; 
-    
-    // Cálculo de variação simples
     const first = data[0].close || data[0].price;
     const last = data[data.length - 1].close || data[data.length - 1].price;
     const variation = ((last - first) / first) * 100;
@@ -225,7 +217,6 @@ const PriceHistoryChart = ({ data, loading, error, ticker, range, setRange }: an
                     <div className="absolute inset-0 flex items-center justify-center text-xs text-zinc-400">Dados indisponíveis</div>
                 ) : (
                     <>
-                        {/* Tag de variação no topo esquerdo */}
                         <div className="absolute top-0 left-0 z-10 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm px-2 py-1 rounded-br-xl border-r border-b border-zinc-100 dark:border-zinc-800">
                             <span className={`text-xs font-black ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
                                 {isPositive ? '+' : ''}{variation.toFixed(2)}%
@@ -243,7 +234,6 @@ const PriceHistoryChart = ({ data, loading, error, ticker, range, setRange }: an
                                 
                                 <XAxis dataKey="date" hide />
                                 
-                                {/* Eixo Y Principal (Preço) */}
                                 <YAxis 
                                     yAxisId="price"
                                     domain={yDomain} 
@@ -257,11 +247,10 @@ const PriceHistoryChart = ({ data, loading, error, ticker, range, setRange }: an
                                     tickMargin={5}
                                 />
 
-                                {/* Eixo Y Secundário (Volume) - Invisível e escalado para ficar embaixo */}
                                 <YAxis 
                                     yAxisId="volume"
                                     hide={true}
-                                    domain={[0, 'dataMax * 4']} // Volume ocupa max 25% da altura
+                                    domain={[0, 'dataMax * 4']} 
                                 />
 
                                 <Tooltip
@@ -298,7 +287,6 @@ const PriceHistoryChart = ({ data, loading, error, ticker, range, setRange }: an
                                     }}
                                 />
 
-                                {/* Tag de Preço Atual */}
                                 <ReferenceLine 
                                     y={lastPrice} 
                                     yAxisId="price"
@@ -310,7 +298,6 @@ const PriceHistoryChart = ({ data, loading, error, ticker, range, setRange }: an
                                     <Label content={<CurrentPriceLabel value={lastPrice} />} position="right" />
                                 </ReferenceLine>
 
-                                {/* Volume Bars */}
                                 {indicators.volume && (
                                     <Bar 
                                         dataKey="volume" 
@@ -324,7 +311,6 @@ const PriceHistoryChart = ({ data, loading, error, ticker, range, setRange }: an
                                     </Bar>
                                 )}
 
-                                {/* Main Chart: Area or Candle */}
                                 {chartType === 'AREA' ? (
                                     <Area 
                                         yAxisId="price"
@@ -344,7 +330,6 @@ const PriceHistoryChart = ({ data, loading, error, ticker, range, setRange }: an
                                     />
                                 )}
 
-                                {/* Moving Averages */}
                                 {indicators.sma20 && (
                                     <Line 
                                         yAxisId="price"
@@ -484,65 +469,12 @@ const ComparativeHistoryChart = ({ data, loading, ticker, type, range, setRange 
                             />
                             <ReferenceLine y={0} stroke="#71717a" strokeOpacity={0.3} strokeDasharray="3 3" />
                             
-                            {/* CDI */}
-                            {visibleBenchmarks.CDI && (
-                                <Line 
-                                    type="monotone" 
-                                    dataKey="cdiPct" 
-                                    stroke="#52525b" 
-                                    strokeWidth={1.5} 
-                                    dot={false} 
-                                    strokeDasharray="2 2"
-                                    animationDuration={1000}
-                                />
-                            )}
-
-                            {/* IPCA */}
-                            {visibleBenchmarks.IPCA && (
-                                <Line 
-                                    type="monotone" 
-                                    dataKey="ipcaPct" 
-                                    stroke="#06b6d4" 
-                                    strokeWidth={1.5} 
-                                    dot={false} 
-                                    strokeDasharray="2 2"
-                                    animationDuration={1000}
-                                />
-                            )}
+                            {visibleBenchmarks.CDI && <Line type="monotone" dataKey="cdiPct" stroke="#52525b" strokeWidth={1.5} dot={false} strokeDasharray="2 2" animationDuration={1000} />}
+                            {visibleBenchmarks.IPCA && <Line type="monotone" dataKey="ipcaPct" stroke="#06b6d4" strokeWidth={1.5} dot={false} strokeDasharray="2 2" animationDuration={1000} />}
+                            {visibleBenchmarks.IBOV && <Line type="monotone" dataKey="ibovPct" stroke="#f59e0b" strokeWidth={1.5} dot={false} animationDuration={1000} />}
+                            {visibleBenchmarks.IFIX && <Line type="monotone" dataKey="ifixPct" stroke="#10b981" strokeWidth={1.5} dot={false} animationDuration={1000} />}
                             
-                            {/* IBOV */}
-                            {visibleBenchmarks.IBOV && (
-                                <Line 
-                                    type="monotone" 
-                                    dataKey="ibovPct" 
-                                    stroke="#f59e0b"
-                                    strokeWidth={1.5} 
-                                    dot={false} 
-                                    animationDuration={1000}
-                                />
-                            )}
-                            
-                            {/* IFIX */}
-                            {visibleBenchmarks.IFIX && (
-                                <Line 
-                                    type="monotone" 
-                                    dataKey="ifixPct" 
-                                    stroke="#10b981"
-                                    strokeWidth={1.5} 
-                                    dot={false} 
-                                    animationDuration={1000}
-                                />
-                            )}
-
-                            {/* Asset - Destaque */}
-                            <Line 
-                                type="monotone" 
-                                dataKey="assetPct" 
-                                stroke="#6366f1"
-                                strokeWidth={2.5} 
-                                dot={false} 
-                                animationDuration={1000}
-                            />
+                            <Line type="monotone" dataKey="assetPct" stroke="#6366f1" strokeWidth={2.5} dot={false} animationDuration={1000} />
                         </LineChart>
                     </ResponsiveContainer>
                 )}
@@ -551,50 +483,47 @@ const ComparativeHistoryChart = ({ data, loading, ticker, type, range, setRange 
     );
 };
 
-// Simulador de Investimento em R$ 1.000,00 (Ex-MarketPerformanceCard)
+// --- SIMULADOR DE INVESTIMENTO INTERATIVO (APRIMORADO) ---
 const InvestmentSimulatorCard = ({ asset, historyData }: { asset: AssetPosition, historyData: any[] }) => {
-    // Cálculo dos dados simulados (baseados no último ano do histórico)
+    const [amount, setAmount] = useState(1000);
+    const [isEditing, setIsEditing] = useState(false);
+
+    // Cálculo dos dados simulados em R$ (baseados no último ano do histórico)
     const simulation = useMemo(() => {
         if (!historyData || historyData.length < 2) return null;
         
-        // Pega o último ponto válido
-        const lastPoint = historyData[historyData.length - 1];
+        // Dados para o gráfico de área (Evolução em R$)
+        const chartData = historyData.map(pt => ({
+            date: pt.date,
+            assetValue: amount * (1 + pt.assetPct / 100),
+            cdiValue: amount * (1 + pt.cdiPct / 100),
+            benchValue: amount * (1 + (pt.ifixPct || pt.ibovPct || 0) / 100)
+        }));
+
+        // Pega último ponto para resultado final
+        const last = chartData[chartData.length - 1];
+        const initialInvestment = amount;
         
-        // Cálculo R$ 1000
-        const initialInvestment = 1000;
-        const finalValue = initialInvestment * (1 + (lastPoint.assetPct / 100));
-        const finalCDI = initialInvestment * (1 + (lastPoint.cdiPct / 100));
+        const finalValue = last.assetValue;
+        const finalCDI = last.cdiValue;
+        
         const profit = finalValue - initialInvestment;
+        const profitCDI = finalCDI - initialInvestment;
+        
         const isProfit = profit >= 0;
-
-        // Comparações
-        const vsCDI = lastPoint.assetPct - lastPoint.cdiPct;
-        const benchmarkKey = asset.assetType === AssetType.FII ? 'ifixPct' : 'ibovPct';
-        const benchmarkLabel = asset.assetType === AssetType.FII ? 'IFIX' : 'IBOV';
-        const vsBenchmark = lastPoint.assetPct - (lastPoint[benchmarkKey] || 0);
-
-        // Min/Max do período para mostrar volatilidade
-        const prices = historyData.map(d => d.close).filter(p => p !== null);
-        const minPrice = Math.min(...prices);
-        const maxPrice = Math.max(...prices);
-
-        // Dados para o Sparkline (Mini gráfico)
-        const sparkData = historyData.map(d => ({ v: d.assetPct }));
+        const diffCDI = profit - profitCDI; // Diferença monetária para o CDI
 
         return {
             finalValue,
             finalCDI,
             profit,
+            profitCDI,
             isProfit,
-            vsCDI,
-            vsBenchmark,
-            benchmarkLabel,
-            minPrice,
-            maxPrice,
-            sparkData,
-            percent: lastPoint.assetPct
+            diffCDI,
+            chartData,
+            percent: ((finalValue / initialInvestment) - 1) * 100
         };
-    }, [historyData, asset]);
+    }, [historyData, amount]);
 
     if (!simulation) {
         return (
@@ -609,18 +538,45 @@ const InvestmentSimulatorCard = ({ asset, historyData }: { asset: AssetPosition,
             {/* Background Glow */}
             <div className={`absolute top-0 right-0 w-64 h-64 rounded-full blur-[80px] opacity-10 pointer-events-none transition-colors duration-500 ${simulation.isProfit ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
 
-            <div className="flex justify-between items-start mb-6 relative z-10">
-                <div>
-                    <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2 mb-1">
+            {/* Header: Título e Input */}
+            <div className="relative z-10 mb-6">
+                <div className="flex justify-between items-start mb-4">
+                    <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
                         <Award className="w-3 h-3 text-amber-500" /> Simulador (12 Meses)
                     </h4>
-                    <p className="text-xs text-zinc-500">Se você tivesse investido <strong>R$ 1.000,00</strong>...</p>
+                    <div className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${simulation.isProfit ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'}`}>
+                        {simulation.isProfit ? 'Lucro' : 'Prejuízo'}
+                    </div>
                 </div>
-                <div className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${simulation.isProfit ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'}`}>
-                    {simulation.isProfit ? 'Lucro' : 'Prejuízo'}
+
+                <div className="bg-zinc-900/50 rounded-2xl p-1 border border-zinc-800/50 flex items-center justify-between">
+                    <div className="flex-1 px-3">
+                        <span className="text-[9px] font-bold text-zinc-500 uppercase block mb-0.5">Valor Inicial</span>
+                        <div className="flex items-center gap-1">
+                            <span className="text-zinc-500 text-sm font-bold">R$</span>
+                            <input 
+                                type="number" 
+                                value={amount} 
+                                onChange={(e) => setAmount(Number(e.target.value))}
+                                className="bg-transparent text-white font-black text-lg outline-none w-full appearance-none"
+                            />
+                        </div>
+                    </div>
+                    <div className="flex gap-1 pr-1">
+                        {[1000, 5000, 10000].map(val => (
+                            <button 
+                                key={val} 
+                                onClick={() => setAmount(val)} 
+                                className={`px-2 py-1.5 rounded-lg text-[10px] font-bold transition-all ${amount === val ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:bg-zinc-800/50'}`}
+                            >
+                                {val >= 1000 ? `${val/1000}k` : val}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
 
+            {/* Resultado Principal */}
             <div className="flex items-baseline gap-2 mb-1 relative z-10">
                 <span className="text-3xl font-black text-white tracking-tight">
                     {formatBRL(simulation.finalValue)}
@@ -629,60 +585,55 @@ const InvestmentSimulatorCard = ({ asset, historyData }: { asset: AssetPosition,
                     {simulation.isProfit ? '+' : ''}{simulation.percent.toFixed(1)}%
                 </span>
             </div>
-            <p className="text-[10px] text-zinc-500 mb-6 relative z-10">
-                Resultado: {simulation.isProfit ? '+' : ''}{formatBRL(simulation.profit)}
-            </p>
+            
+            <div className="flex items-center gap-3 mb-6 relative z-10 text-[10px] font-medium text-zinc-500">
+                <span>Resultado: <strong className={simulation.profit >= 0 ? 'text-emerald-400' : 'text-rose-400'}>{simulation.profit >= 0 ? '+' : ''}{formatBRL(simulation.profit)}</strong></span>
+                <span className="w-1 h-1 bg-zinc-700 rounded-full"></span>
+                <span>Ganho Real vs CDI: <strong className={simulation.diffCDI >= 0 ? 'text-emerald-400' : 'text-rose-400'}>{simulation.diffCDI >= 0 ? '+' : ''}{formatBRL(simulation.diffCDI)}</strong></span>
+            </div>
 
-            {/* Sparkline Area Chart */}
-            <div className="h-16 w-full mb-6 relative z-10 opacity-80">
+            {/* Gráfico de Área Evolutivo */}
+            <div className="h-32 w-full mb-4 relative z-10">
                 <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={simulation.sparkData}>
+                    <AreaChart data={simulation.chartData}>
                         <defs>
-                            <linearGradient id="sparkColor" x1="0" y1="0" x2="0" y2="1">
+                            <linearGradient id="simColor" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="5%" stopColor={simulation.isProfit ? '#10b981' : '#f43f5e'} stopOpacity={0.3}/>
                                 <stop offset="95%" stopColor={simulation.isProfit ? '#10b981' : '#f43f5e'} stopOpacity={0}/>
                             </linearGradient>
                         </defs>
+                        <XAxis dataKey="date" hide />
+                        <YAxis hide domain={['auto', 'auto']} />
+                        <Tooltip 
+                            contentStyle={{ borderRadius: '8px', border: 'none', backgroundColor: '#18181b', color: '#fff', fontSize: '10px' }}
+                            formatter={(val: number, name: string) => [formatBRL(val), name === 'assetValue' ? asset.ticker : name === 'cdiValue' ? 'CDI' : 'Benchmark']}
+                            labelFormatter={() => ''}
+                        />
                         <Area 
                             type="monotone" 
-                            dataKey="v" 
+                            dataKey="assetValue" 
                             stroke={simulation.isProfit ? '#10b981' : '#f43f5e'} 
                             strokeWidth={2} 
-                            fill="url(#sparkColor)" 
+                            fill="url(#simColor)" 
+                        />
+                        <Area 
+                            type="monotone" 
+                            dataKey="cdiValue" 
+                            stroke="#52525b" 
+                            strokeWidth={1.5} 
+                            strokeDasharray="3 3"
+                            fill="transparent" 
                         />
                     </AreaChart>
                 </ResponsiveContainer>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 relative z-10">
-                <div className="bg-zinc-900/50 rounded-xl p-3 border border-zinc-800/50">
-                    <div className="flex justify-between items-center mb-1">
-                        <span className="text-[9px] font-bold text-zinc-500 uppercase">vs CDI</span>
-                        <span className={`text-[9px] font-black ${simulation.vsCDI >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                            {simulation.vsCDI > 0 ? '+' : ''}{simulation.vsCDI.toFixed(1)}%
-                        </span>
-                    </div>
-                    <div className="w-full bg-zinc-800 rounded-full h-1.5 overflow-hidden">
-                        <div className="bg-zinc-600 h-full rounded-full" style={{ width: '100%' }}></div> {/* CDI Base */}
-                        <div 
-                            className={`h-full rounded-full -mt-1.5 transition-all duration-1000 ${simulation.vsCDI >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`} 
-                            style={{ width: `${Math.min(100, Math.max(0, (simulation.finalValue / simulation.finalCDI) * 100))}%` }}
-                        ></div>
-                    </div>
+            <div className="bg-zinc-900/50 rounded-xl p-3 border border-zinc-800/50 flex justify-between items-center relative z-10">
+                <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-zinc-500"></div>
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase">CDI Acumulado</span>
                 </div>
-
-                <div className="bg-zinc-900/50 rounded-xl p-3 border border-zinc-800/50">
-                    <div className="flex justify-between items-center mb-1">
-                        <span className="text-[9px] font-bold text-zinc-500 uppercase">vs {simulation.benchmarkLabel}</span>
-                        <span className={`text-[9px] font-black ${simulation.vsBenchmark >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                            {simulation.vsBenchmark > 0 ? '+' : ''}{simulation.vsBenchmark.toFixed(1)}%
-                        </span>
-                    </div>
-                    <div className="flex justify-between text-[8px] text-zinc-500 mt-1">
-                        <span>Min: {formatBRL(simulation.minPrice)}</span>
-                        <span>Max: {formatBRL(simulation.maxPrice)}</span>
-                    </div>
-                </div>
+                <span className="text-xs font-black text-zinc-300">{formatBRL(simulation.finalCDI)}</span>
             </div>
         </div>
     );
