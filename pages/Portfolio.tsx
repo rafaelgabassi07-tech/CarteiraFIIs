@@ -1,9 +1,9 @@
 
 import React, { useState, useMemo } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, Wallet, TrendingUp, TrendingDown, RefreshCw, X, Calculator, Scale, Activity, BarChart3, PieChart, Coins, Target, AlertCircle, ChevronDown, ChevronUp, ExternalLink, ArrowRight, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, BarChart4, Trophy, Hourglass, Goal, CalendarCheck } from 'lucide-react';
+import { Search, Wallet, TrendingUp, TrendingDown, RefreshCw, X, Calculator, Scale, Activity, BarChart3, PieChart, Coins, Target, AlertCircle, ChevronDown, ChevronUp, ExternalLink, ArrowRight, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, BarChart4, Trophy, Hourglass, Goal, CalendarCheck, Filter } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine, Cell, ComposedChart, Line, CartesianGrid } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine, Cell, ComposedChart, Line, CartesianGrid, AreaChart, Area } from 'recharts';
 
 // --- FORMATTERS ---
 
@@ -141,7 +141,10 @@ const DetailedInfoBlock = ({ asset }: { asset: AssetPosition }) => {
 };
 
 // Nova Seção de Performance Focada em Renda (Substitui Market Comparison)
-const IncomeAnalysisSection = ({ asset, chartData, history }: { asset: AssetPosition, chartData: { data: any[], average: number }, history: DividendReceipt[] }) => {
+const IncomeAnalysisSection = ({ asset, history }: { asset: AssetPosition, history: DividendReceipt[] }) => {
+    // State para filtros de gráfico
+    const [timeRange, setTimeRange] = useState<'6M' | '1Y' | '2Y' | '5Y'>('1Y');
+
     // Cálculo do Yield on Cost
     const totalInvested = asset.quantity * asset.averagePrice;
     const yoc = totalInvested > 0 ? (asset.totalDividends || 0) / totalInvested * 100 : 0;
@@ -158,6 +161,57 @@ const IncomeAnalysisSection = ({ asset, chartData, history }: { asset: AssetPosi
 
     // Payback em Anos (Simples)
     const paybackYears = monthlyReturn > 0 ? (currentPrice / (monthlyReturn * 12)) : 0;
+
+    // --- CÁLCULO DINÂMICO DO GRÁFICO ---
+    const chartData = useMemo(() => {
+        if (!history || history.length === 0) return { data: [], average: 0 };
+
+        const now = new Date();
+        let months = 12;
+        
+        switch(timeRange) {
+            case '6M': months = 6; break;
+            case '1Y': months = 12; break;
+            case '2Y': months = 24; break;
+            case '5Y': months = 60; break;
+        }
+
+        const buckets: Record<string, number> = {};
+        
+        // Inicializa buckets para o período selecionado
+        for (let i = months - 1; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const key = d.toISOString().substring(0, 7); // YYYY-MM
+            buckets[key] = 0;
+        }
+
+        let totalInRange = 0;
+        
+        history.forEach(d => {
+            const dateStr = d.paymentDate || d.dateCom;
+            if (!dateStr) return;
+            const key = dateStr.substring(0, 7);
+            if (buckets[key] !== undefined) {
+                buckets[key] += d.totalReceived;
+                totalInRange += d.totalReceived;
+            }
+        });
+
+        const data = Object.entries(buckets).map(([key, value]) => {
+            const [y, m] = key.split('-');
+            const dateObj = new Date(parseInt(y), parseInt(m) - 1, 1);
+            return {
+                date: key,
+                label: dateObj.toLocaleDateString('pt-BR', { month: 'short', year: months > 12 ? '2-digit' : undefined }).replace('.','').toUpperCase(),
+                value
+            };
+        }).sort((a,b) => a.date.localeCompare(b.date));
+
+        return { 
+            data, 
+            average: totalInRange / months 
+        };
+    }, [history, timeRange]);
 
     return (
         <div className="space-y-6">
@@ -185,19 +239,36 @@ const IncomeAnalysisSection = ({ asset, chartData, history }: { asset: AssetPosi
 
             {/* 2. Gráfico Aprimorado + Histórico */}
             <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
-                    <h4 className="text-[10px] font-bold text-zinc-400 uppercase flex items-center gap-2">
-                        <BarChart3 className="w-3 h-3" /> Evolução (12m)
-                    </h4>
-                    <span className="text-[10px] text-zinc-400 bg-zinc-50 dark:bg-zinc-800/50 px-2 py-1 rounded-md border border-zinc-100 dark:border-zinc-700">
-                        Média: {formatBRL(chartData.average)}
-                    </span>
+                <div className="p-4 border-b border-zinc-100 dark:border-zinc-800">
+                    <div className="flex justify-between items-center mb-4">
+                        <h4 className="text-[10px] font-bold text-zinc-400 uppercase flex items-center gap-2">
+                            <BarChart3 className="w-3 h-3" /> Evolução
+                        </h4>
+                        
+                        {/* Filtros de Período */}
+                        <div className="flex bg-zinc-100 dark:bg-zinc-800 p-0.5 rounded-lg">
+                            {(['6M', '1Y', '2Y', '5Y'] as const).map(range => (
+                                <button
+                                    key={range}
+                                    onClick={() => setTimeRange(range)}
+                                    className={`px-2 py-1 text-[9px] font-bold rounded-md transition-all ${timeRange === range ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                                >
+                                    {range}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 mb-2">
+                        <span className="text-[10px] text-zinc-400 uppercase font-bold">Média no período:</span>
+                        <span className="text-xs font-black text-zinc-900 dark:text-white">{formatBRL(chartData.average)}</span>
+                    </div>
                 </div>
                 
                 <div className="h-48 w-full p-2 pt-4">
                     {chartData.data.some(d => d.value > 0) ? (
                         <ResponsiveContainer width="100%" height="100%">
-                            <ComposedChart data={chartData.data}>
+                            <BarChart data={chartData.data}>
                                 <defs>
                                     <linearGradient id="colorBar" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
@@ -205,33 +276,33 @@ const IncomeAnalysisSection = ({ asset, chartData, history }: { asset: AssetPosi
                                     </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
-                                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 700 }} dy={5} interval={0} />
+                                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 700 }} dy={5} interval={0} />
                                 <Tooltip 
                                     cursor={{fill: 'transparent'}}
                                     contentStyle={{ borderRadius: '8px', border: '1px solid #27272a', backgroundColor: '#18181b', color: '#fff', fontSize: '10px', padding: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}
                                     formatter={(value: number) => [formatBRL(value), 'Recebido']}
                                     labelStyle={{ color: '#a1a1aa', marginBottom: '4px' }}
                                 />
-                                <Bar dataKey="value" fill="url(#colorBar)" radius={[4, 4, 0, 0]} maxBarSize={28} />
+                                <Bar dataKey="value" fill="url(#colorBar)" radius={[4, 4, 0, 0]} maxBarSize={32} />
                                 {chartData.average > 0 && (
                                     <ReferenceLine y={chartData.average} stroke="#f59e0b" strokeDasharray="3 3" strokeOpacity={0.6} />
                                 )}
-                            </ComposedChart>
+                            </BarChart>
                         </ResponsiveContainer>
                     ) : (
                         <div className="h-full flex items-center justify-center text-xs text-zinc-400 font-medium bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-700">
-                            Sem histórico recente
+                            Sem dados no período
                         </div>
                     )}
                 </div>
 
                 {/* Lista de Últimos Pagamentos (Integrada) */}
-                <div className="bg-zinc-50 dark:bg-zinc-800/30">
-                    <h5 className="px-4 py-3 text-[9px] font-black text-zinc-400 uppercase tracking-widest border-t border-zinc-100 dark:border-zinc-800">
-                        Histórico Recente
+                <div className="bg-zinc-50 dark:bg-zinc-800/30 max-h-[300px] overflow-y-auto">
+                    <h5 className="px-4 py-3 text-[9px] font-black text-zinc-400 uppercase tracking-widest border-t border-zinc-100 dark:border-zinc-800 sticky top-0 bg-zinc-50 dark:bg-zinc-900/90 backdrop-blur-sm z-10">
+                        Histórico Completo
                     </h5>
                     <div className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
-                        {history.slice(0, 4).map((h, i) => (
+                        {history.slice(0, 20).map((h, i) => (
                             <div key={h.id || i} className="px-4 py-3 flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     <div className="w-8 h-8 rounded-lg bg-white dark:bg-zinc-800 flex items-center justify-center border border-zinc-100 dark:border-zinc-700 text-zinc-400">
@@ -253,7 +324,12 @@ const IncomeAnalysisSection = ({ asset, chartData, history }: { asset: AssetPosi
                             </div>
                         ))}
                         {history.length === 0 && (
-                            <p className="px-4 py-4 text-center text-xs text-zinc-400 italic">Nenhum registro encontrado.</p>
+                            <p className="px-4 py-6 text-center text-xs text-zinc-400 italic">Nenhum registro de provento encontrado.</p>
+                        )}
+                        {history.length > 20 && (
+                            <p className="px-4 py-3 text-center text-[9px] text-zinc-400 font-medium border-t border-zinc-100 dark:border-zinc-800">
+                                Exibindo últimos 20 de {history.length}
+                            </p>
                         )}
                     </div>
                 </div>
@@ -439,43 +515,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
         setExpandedAssetTicker(prev => prev === ticker ? null : ticker);
     };
 
-    const assetDividendChartData = useMemo(() => {
-        if (!selectedAsset) return { data: [], average: 0 };
-        const today = new Date();
-        const start = new Date(today.getFullYear(), today.getMonth() - 11, 1); 
-        
-        const history = dividends
-            .filter(d => d.ticker === selectedAsset.ticker && new Date(d.paymentDate || d.dateCom) >= start)
-            .sort((a, b) => (a.paymentDate || a.dateCom).localeCompare(b.paymentDate || b.dateCom));
-
-        const grouped: Record<string, number> = {};
-        history.forEach(d => {
-            const key = (d.paymentDate || d.dateCom).substring(0, 7); 
-            grouped[key] = (grouped[key] || 0) + d.rate;
-        });
-
-        const result = [];
-        let total = 0;
-        let count = 0;
-
-        for (let i = 0; i < 12; i++) {
-            const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
-            const key = d.toISOString().substring(0, 7);
-            const monthLabel = d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
-            const val = grouped[key] || 0;
-            if (val > 0) {
-                total += val;
-                count++;
-            }
-            result.push({ month: monthLabel, fullDate: key, value: val });
-        }
-        
-        return { 
-            data: result, 
-            average: count > 0 ? total / count : 0 
-        };
-    }, [selectedAsset, dividends]);
-
+    // Recalcula histórico total para o ativo selecionado (passado direto para o componente filho)
     const assetHistory = useMemo(() => {
         if (!selectedAsset) return [];
         return dividends
@@ -619,7 +659,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                             {/* Substituído PERFORMANCE por RENDA com Análise */}
                             {activeTab === 'RENDA' && (
                                 <div className="anim-fade-in">
-                                    <IncomeAnalysisSection asset={selectedAsset} chartData={assetDividendChartData} history={assetHistory} />
+                                    <IncomeAnalysisSection asset={selectedAsset} history={assetHistory} />
                                 </div>
                             )}
 
