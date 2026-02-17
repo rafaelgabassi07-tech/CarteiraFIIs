@@ -34,6 +34,13 @@ export interface AssetFundamentals {
   // Rentabilidade (Novos Campos)
   profitability_12m?: number; // Rentabilidade 12 Meses
   profitability_month?: number; // Rentabilidade no Mês Atual
+  profitability_real_month?: number;
+  profitability_3m?: number;
+  profitability_real_3m?: number;
+  profitability_real_12m?: number;
+  profitability_2y?: number;
+  profitability_real_2y?: number;
+
   
   // Benchmarks (Comparação)
   benchmark_cdi_12m?: number;
@@ -64,6 +71,14 @@ export interface AssetFundamentals {
   properties_count?: number; // Quantidade de Imóveis ou Número de Cotistas (adaptado)
   management_fee?: string; // Taxa de Administração
   last_dividend?: number; // Último Rendimento
+  
+  // Informações Adicionais (FIIs)
+  company_name?: string;
+  cnpj?: string;
+  target_audience?: string;
+  fund_type?: string;
+  duration?: string;
+  num_quotas?: string;
   
   // Lista de Imóveis (FIIs de Tijolo)
   properties?: RealEstateProperty[];
