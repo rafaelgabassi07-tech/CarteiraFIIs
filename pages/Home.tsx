@@ -1,48 +1,12 @@
 
 import React, { useMemo, useState } from 'react';
 import { AssetPosition, DividendReceipt, AssetType } from '../types';
-import { CircleDollarSign, CalendarClock, PieChart as PieIcon, TrendingUp, TrendingDown, ArrowUpRight, Wallet, ArrowRight, Zap, Target, Layers, LayoutGrid, Coins, Sparkles, CheckCircle2, Lock, Calendar, Trophy, Medal, Star, ListFilter, TrendingUp as GrowthIcon, Anchor, Calculator, Repeat, ChevronRight, Hourglass, Landmark, Crown, LockKeyhole, Info, Footprints, BarChart3, LineChart, History } from 'lucide-react';
+import { CircleDollarSign, CalendarClock, PieChart as PieIcon, ArrowUpRight, Wallet, ArrowRight, Sparkles, Trophy, Anchor, Coins, Crown, Info } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, CartesianGrid, AreaChart, Area, XAxis, YAxis } from 'recharts';
+import { formatBRL, formatDateShort, getMonthName, getDaysUntil } from '../utils/formatters';
 
-// --- UTILS & HELPERS ---
-
-const formatBRL = (val: any, privacy = false) => {
-  if (privacy) return '••••••';
-  const num = typeof val === 'number' ? val : 0;
-  return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-};
-
-const formatDateShort = (dateStr?: string) => {
-    if (!dateStr || typeof dateStr !== 'string' || dateStr.length < 10) return '--/--';
-    try {
-        const parts = dateStr.split('-'); // YYYY-MM-DD
-        if (parts.length === 3) return `${parts[2]}/${parts[1]}`;
-        return '--/--';
-    } catch {
-        return '--/--';
-    }
-};
-
-const getMonthName = (dateStr: string) => {
-    try {
-        const date = new Date(dateStr + 'T12:00:00'); // Safe timezone
-        return date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-    } catch {
-        return dateStr;
-    }
-};
-
-const getDaysUntil = (dateStr: string) => {
-    const today = new Date();
-    today.setHours(0,0,0,0);
-    const target = new Date(dateStr + 'T12:00:00');
-    target.setHours(0,0,0,0);
-    const diffTime = target.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
-};
-
+// --- CONSTANTS ---
 const CHART_COLORS = ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#f43f5e', '#84cc16'];
 
 // --- SUB-COMPONENTS ---
@@ -112,68 +76,55 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [showMagicNumber, setShowMagicNumber] = useState(false);
   const [showGoals, setShowGoals] = useState(false);
 
-  // --- CALCS ---
+  // --- CALCULATIONS ---
   const totalReturn = (totalAppreciation + salesGain) + totalDividendsReceived;
   const totalReturnPercent = invested > 0 ? (totalReturn / invested) * 100 : 0;
   
-  // Yield on Cost (Baseado no total investido)
-  const yieldOnCost = invested > 0 ? (totalDividendsReceived / invested) * 100 : 0;
-
-  // 1. Alocação (Classes e Ativos)
+  // 1. Alocação Otimizada
   const allocationData = useMemo(() => {
       let fiis = 0, stocks = 0;
-      const assetList: { name: string, value: number, color: string, percent: number, pm: number, current: number }[] = [];
-      const totalBalance = balance || 1;
-
-      portfolio.forEach((p, idx) => {
-          const v = p.quantity * (p.currentPrice || 0);
-          if(p.assetType === AssetType.FII) fiis += v; else stocks += v;
-          if (v > 0) {
-              assetList.push({ 
+      const assetList = portfolio
+          .map((p, idx) => {
+              const v = p.quantity * (p.currentPrice || 0);
+              if (p.assetType === AssetType.FII) fiis += v; else stocks += v;
+              return { 
                   name: p.ticker, 
                   value: v, 
                   color: CHART_COLORS[idx % CHART_COLORS.length],
-                  percent: (v / totalBalance) * 100,
-                  pm: p.averagePrice,
-                  current: p.currentPrice || 0
-              });
-          }
-      });
+                  percent: (v / (balance || 1)) * 100,
+              };
+          })
+          .filter(d => d.value > 0)
+          .sort((a,b) => b.value - a.value)
+          .slice(0, 15);
 
       const byClass = [
           { name: 'FIIs', value: fiis, color: '#6366f1' }, 
           { name: 'Ações', value: stocks, color: '#0ea5e9' }
       ].filter(d => d.value > 0);
 
-      // Sort by Value DESC and take top 15 to show in list
-      const byAsset = assetList.sort((a,b) => b.value - a.value).slice(0, 15);
-
-      return { byClass, byAsset };
+      return { byClass, byAsset: assetList };
   }, [portfolio, balance]);
 
-  // 2. Agenda (Proventos Futuros) - AGRUPADA & COMPACTA
+  // 2. Agenda Otimizada
   const agendaData = useMemo(() => {
       const todayStr = new Date().toISOString().split('T')[0];
       const validReceipts = dividendReceipts.filter(d => d && (d.paymentDate || d.dateCom));
       
-      // Filtra futuros ou hoje
-      const future = validReceipts.filter(d => (d.paymentDate && d.paymentDate >= todayStr) || (!d.paymentDate && d.dateCom >= todayStr))
+      const future = validReceipts
+          .filter(d => (d.paymentDate && d.paymentDate >= todayStr) || (!d.paymentDate && d.dateCom >= todayStr))
           .sort((a, b) => (a.paymentDate || a.dateCom || '').localeCompare(b.paymentDate || b.dateCom || ''));
       
       const totalFuture = future.reduce((acc, curr) => acc + (curr.totalReceived || 0), 0);
       const nextPayment = future[0];
-      
-      let daysToNext = 0;
-      if (nextPayment) {
-          daysToNext = getDaysUntil(nextPayment.paymentDate || nextPayment.dateCom);
-      }
+      const daysToNext = nextPayment ? getDaysUntil(nextPayment.paymentDate || nextPayment.dateCom) : 0;
 
-      // Agrupamento por Mês
+      // Group by Month
       const grouped: Record<string, DividendReceipt[]> = {};
       future.forEach(item => {
           const dateRef = item.paymentDate || item.dateCom;
           if (!dateRef) return;
-          const monthKey = dateRef.substring(0, 7); // YYYY-MM
+          const monthKey = dateRef.substring(0, 7);
           if (!grouped[monthKey]) grouped[monthKey] = [];
           grouped[monthKey].push(item);
       });
@@ -181,131 +132,87 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       return { list: future, grouped, totalFuture, nextPayment, daysToNext };
   }, [dividendReceipts]);
 
-  // 3. Renda (Histórico) - COM LISTA DE ÚLTIMOS PAGAMENTOS E AGRUPAMENTO
+  // 3. Renda (Gráfico 6 meses + Stats)
   const incomeData = useMemo(() => {
       const groups: Record<string, number> = {};
       const todayStr = new Date().toISOString().split('T')[0];
       
-      // Data para cálculo de 12 meses
-      const now = new Date();
-      const oneYearAgo = new Date();
-      oneYearAgo.setFullYear(now.getFullYear() - 1);
-      oneYearAgo.setDate(now.getDate() - 1); // Margem de segurança
-
-      // Pega ultimos 12 meses para o GRÁFICO (Visualização de 6 meses é padrão, mas calculamos tudo)
+      // Inicializa últimos 6 meses com 0
       for (let i = 5; i >= 0; i--) {
           const d = new Date();
           d.setMonth(d.getMonth() - i);
-          const key = d.toISOString().substring(0, 7);
-          groups[key] = 0;
+          groups[d.toISOString().substring(0, 7)] = 0;
       }
 
-      const receivedList: DividendReceipt[] = [];
       let last12mTotal = 0;
+      const oneYearAgoStr = new Date(new Date().setFullYear(new Date().getFullYear() - 1)).toISOString().split('T')[0];
 
       dividendReceipts.forEach(d => {
-          if (!d.paymentDate || d.paymentDate > todayStr) return; // Apenas pagos
+          if (!d.paymentDate || d.paymentDate > todayStr) return;
           
-          // Cálculo 12 Meses (TTM)
-          const pDate = new Date(d.paymentDate + 'T12:00:00');
-          if (pDate >= oneYearAgo && pDate <= now) {
-              last12mTotal += d.totalReceived;
-          }
+          if (d.paymentDate >= oneYearAgoStr) last12mTotal += d.totalReceived;
 
           const monthKey = d.paymentDate.substring(0, 7);
-          if (groups[monthKey] !== undefined) {
-              groups[monthKey] += d.totalReceived;
-          }
-          
-          receivedList.push(d);
+          if (groups[monthKey] !== undefined) groups[monthKey] += d.totalReceived;
       });
       
       const chartData = Object.entries(groups)
-          .map(([date, value]) => {
-              const [year, month] = date.split('-');
-              const monthShort = new Date(parseInt(year), parseInt(month)-1, 1).toLocaleDateString('pt-BR', { month: 'short' });
-              return { 
-                  date, 
-                  value, 
-                  label: monthShort.replace('.','').toUpperCase(),
-                  fullLabel: getMonthName(date)
-              };
-          })
+          .map(([date, value]) => ({ 
+              date, 
+              value, 
+              label: getMonthName(date + '-01').substring(0,3).toUpperCase()
+          }))
           .sort((a, b) => a.date.localeCompare(b.date));
 
-      const average = chartData.reduce((acc, cur) => acc + cur.value, 0) / (chartData.length || 1);
+      const average = chartData.reduce((acc, cur) => acc + cur.value, 0) / 6;
       const max = Math.max(...chartData.map(d => d.value));
 
-      return { chartData, average, max, last12mTotal };
+      return { chartData, average, max, last12mTotal, currentMonth: chartData[chartData.length - 1]?.value || 0 };
   }, [dividendReceipts]);
 
-  const currentMonthIncome = incomeData.chartData[incomeData.chartData.length - 1]?.value || 0;
-
-  // 4. Número Mágico - ROBUSTO (Suporte a Ações)
+  // 4. Magic Number
   const magicNumberData = useMemo(() => {
-      const magicList: any[] = [];
-      portfolio.forEach(asset => {
-          if (asset.quantity > 0 && asset.currentPrice && asset.currentPrice > 0) {
+      return portfolio
+          .map(asset => {
+              if (asset.quantity <= 0 || !asset.currentPrice) return null;
               
-              let estimatedDiv = 0;
-              let hasData = false;
-              
-              // 1. Tenta usar DY Anualizado (Melhor para ações e FIIs)
+              let estimatedDiv = asset.last_dividend;
+              // Preferência por DY Anualizado p/ cálculo mais estável
               if (asset.dy_12m && asset.dy_12m > 0) {
-                  // Converte Yield anual em valor monetário mensal médio aproximado
                   estimatedDiv = (asset.currentPrice * (asset.dy_12m / 100)) / 12;
-                  hasData = true;
-              } 
-              // 2. Fallback: Último dividendo declarado (FIIs)
-              else if (asset.last_dividend && asset.last_dividend > 0) {
-                  estimatedDiv = asset.last_dividend;
-                  hasData = true;
               }
 
-              if (hasData && estimatedDiv > 0) {
-                  const magicNumber = Math.ceil(asset.currentPrice / estimatedDiv);
-                  
-                  if (magicNumber > 0 && magicNumber < 100000) { // Sanity check
-                      const missing = Math.max(0, magicNumber - asset.quantity);
-                      const progress = Math.min(100, (asset.quantity / magicNumber) * 100);
-                      const costToReach = missing * asset.currentPrice;
-                      
-                      // Nova métrica: Poder de Recompra (Quantas cotas a renda compra por mês)
-                      const currentIncome = asset.quantity * estimatedDiv;
-                      const repurchasePower = currentIncome / asset.currentPrice;
+              if (!estimatedDiv || estimatedDiv <= 0) return null;
 
-                      magicList.push({
-                          ticker: asset.ticker,
-                          current: asset.quantity,
-                          target: magicNumber,
-                          missing,
-                          progress,
-                          estimatedDiv: estimatedDiv,
-                          price: asset.currentPrice,
-                          type: asset.assetType,
-                          costToReach,
-                          repurchasePower // Nova métrica
-                      });
-                  }
-              }
-          }
-      });
-      // Sort by reached first, then by closest progress
-      return magicList.sort((a, b) => {
-          if (a.missing === 0 && b.missing !== 0) return -1;
-          if (b.missing === 0 && a.missing !== 0) return 1;
-          return b.progress - a.progress;
-      }); 
+              const magicNumber = Math.ceil(asset.currentPrice / estimatedDiv);
+              const missing = Math.max(0, magicNumber - asset.quantity);
+              
+              return {
+                  ticker: asset.ticker,
+                  current: asset.quantity,
+                  target: magicNumber,
+                  missing,
+                  progress: Math.min(100, (asset.quantity / magicNumber) * 100),
+                  estimatedDiv,
+                  price: asset.currentPrice,
+                  repurchasePower: (asset.quantity * estimatedDiv) / asset.currentPrice
+              };
+          })
+          .filter(Boolean)
+          .sort((a: any, b: any) => {
+              if (a.missing === 0 && b.missing !== 0) return -1;
+              if (b.missing === 0 && a.missing !== 0) return 1;
+              return b.progress - a.progress;
+          });
   }, [portfolio]);
 
-  const magicReachedCount = magicNumberData.filter(m => m.missing === 0).length;
+  const magicReachedCount = magicNumberData.filter((m: any) => m.missing === 0).length;
 
-  // 5. Objetivos (Gamification + Metas Reais)
+  // 5. Goals & Levels
   const goalsData = useMemo(() => {
       const safeBalance = balance || 0;
-      const safeIncome = currentMonthIncome || 0;
+      const safeIncome = incomeData.currentMonth || 0;
       
-      // Níveis
       const levels = [
           { level: 1, name: 'Iniciante', target: 1000 },
           { level: 2, name: 'Aprendiz', target: 5000 },
@@ -318,67 +225,40 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           { level: 9, name: 'Magnata', target: 5000000 },
       ];
 
-      let currentLevel = levels[0];
-      let nextLevel = levels[1];
-
-      for (let i = 0; i < levels.length; i++) {
-          if (safeBalance >= levels[i].target) {
-              currentLevel = levels[i];
-              nextLevel = levels[i+1] || { ...levels[i], target: levels[i].target * 2 };
-          } else {
-              break;
-          }
-      }
-
-      const progress = Math.min(100, ((safeBalance - (levels[currentLevel.level-2]?.target || 0)) / (nextLevel.target - (levels[currentLevel.level-2]?.target || 0))) * 100);
+      const currentLevelIdx = levels.findIndex(l => safeBalance < l.target);
+      const currentLevel = levels[currentLevelIdx === -1 ? levels.length - 1 : Math.max(0, currentLevelIdx - 1)];
+      const nextLevel = levels[currentLevel.level] || { ...currentLevel, target: currentLevel.target * 2 };
       
-      // Metas Reais (Patrimônio e Renda)
-      const incomeMilestones = [50, 100, 500, 1000, 2500, 5000, 10000, 20000];
-      const nextIncome = incomeMilestones.find(m => m > safeIncome) || (safeIncome * 1.5);
+      const prevTarget = currentLevel.level > 1 ? levels[currentLevel.level - 2].target : 0;
+      const progress = Math.min(100, ((safeBalance - prevTarget) / (nextLevel.target - prevTarget)) * 100);
 
-      // Calculo de Liberdade (Salário Mínimo 2024 Base)
       const MIN_WAGE = 1412;
-      const freedomPct = (safeIncome / MIN_WAGE) * 100;
-      
-      // Calculo Renda Passiva Diária
-      const dailyPassiveIncome = safeIncome / 30;
-
-      // --- CONQUISTAS (Achievements) ---
       const achievements = [
-          { id: 'first_step', label: 'Primeiro Aporte', sub: 'Patrimônio > 0', icon: Wallet, unlocked: safeBalance > 0, color: 'text-emerald-500 bg-emerald-100 dark:bg-emerald-900/20' },
-          { id: 'income_start', label: 'Primeira Renda', sub: 'Recebeu proventos', icon: CircleDollarSign, unlocked: safeIncome > 0, color: 'text-violet-500 bg-violet-100 dark:bg-violet-900/20' },
-          { id: '10k_club', label: 'Clube dos 10k', sub: 'Patrimônio 10k', icon: Coins, unlocked: safeBalance >= 10000, color: 'text-amber-500 bg-amber-100 dark:bg-amber-900/20' },
-          { id: 'half_wage', label: 'Meio Salário', sub: 'Renda > R$700', icon: Anchor, unlocked: safeIncome >= 706, color: 'text-sky-500 bg-sky-100 dark:bg-sky-900/20' },
-          { id: '100k_club', label: 'Clube dos 100k', sub: 'Patrimônio Sólido', icon: Trophy, unlocked: safeBalance >= 100000, color: 'text-rose-500 bg-rose-100 dark:bg-rose-900/20' },
-          { id: 'full_wage', label: 'Salário Mínimo', sub: 'Liberdade Nv.1', icon: Crown, unlocked: safeIncome >= 1412, color: 'text-yellow-500 bg-yellow-100 dark:bg-yellow-900/20' },
+          { id: 'start', label: 'Primeiro Aporte', sub: '> 0', icon: Wallet, unlocked: safeBalance > 0, color: 'text-emerald-500 bg-emerald-100 dark:bg-emerald-900/20' },
+          { id: 'income', label: 'Renda Viva', sub: 'Recebeu Div.', icon: CircleDollarSign, unlocked: safeIncome > 0, color: 'text-violet-500 bg-violet-100 dark:bg-violet-900/20' },
+          { id: '10k', label: 'Clube 10k', sub: 'Patrimônio', icon: Coins, unlocked: safeBalance >= 10000, color: 'text-amber-500 bg-amber-100 dark:bg-amber-900/20' },
+          { id: 'half', label: 'Meio Salário', sub: 'Renda Mensal', icon: Anchor, unlocked: safeIncome >= (MIN_WAGE/2), color: 'text-sky-500 bg-sky-100 dark:bg-sky-900/20' },
+          { id: '100k', label: 'Clube 100k', sub: 'Patrimônio', icon: Trophy, unlocked: safeBalance >= 100000, color: 'text-rose-500 bg-rose-100 dark:bg-rose-900/20' },
+          { id: 'wage', label: 'Liberdade I', sub: '1 Salário', icon: Crown, unlocked: safeIncome >= MIN_WAGE, color: 'text-yellow-500 bg-yellow-100 dark:bg-yellow-900/20' },
       ];
 
-      const unlockedCount = achievements.filter(a => a.unlocked).length;
-
       return { 
-          currentLevel, 
-          nextLevel, 
-          progress,
-          patrimony: { current: safeBalance, target: nextLevel.target },
-          income: { current: safeIncome, target: nextIncome },
-          freedom: { current: safeIncome, target: MIN_WAGE, pct: freedomPct },
-          dailyIncome: dailyPassiveIncome,
-          achievements,
-          unlockedCount
+          currentLevel, nextLevel, progress, achievements,
+          unlockedCount: achievements.filter(a => a.unlocked).length,
+          income: { current: safeIncome, target: safeIncome * 1.5 || 100 },
+          freedom: { current: safeIncome, target: MIN_WAGE }
       };
-  }, [balance, currentMonthIncome]);
+  }, [balance, incomeData.currentMonth]);
 
   return (
     <div className="space-y-5 pb-8">
         
-        {/* HERO CARD - PREMIUM FINTECH STYLE */}
-        <div className="relative w-full h-auto min-h-[220px] rounded-[2.2rem] bg-zinc-950 border border-zinc-800/80 overflow-hidden shadow-2xl group anim-fade-in">
-            {/* Ambient Lighting Effects - NEUTRAL GRAYSCALE */}
+        {/* HERO CARD */}
+        <div className="relative w-full min-h-[220px] rounded-[2.2rem] bg-zinc-950 border border-zinc-800/80 overflow-hidden shadow-2xl group anim-fade-in">
             <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 bg-zinc-600/10 blur-[80px] rounded-full pointer-events-none"></div>
             <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-64 h-64 bg-white/5 blur-[80px] rounded-full pointer-events-none"></div>
 
             <div className="relative z-10 p-7 flex flex-col justify-between h-full">
-                {/* Top Row: Label & Privacy */}
                 <div className="flex justify-between items-start">
                     <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/5 backdrop-blur-md">
                         <Wallet className="w-3.5 h-3.5 text-zinc-400" strokeWidth={2.5} />
@@ -386,17 +266,13 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                 </div>
 
-                {/* Middle: Big Value */}
                 <div className="mt-6 mb-8">
                     <h1 className="text-[3rem] sm:text-[3.5rem] font-black text-white leading-none tracking-tighter tabular-nums drop-shadow-sm select-none">
                         {formatBRL(balance, privacyMode)}
                     </h1>
                 </div>
 
-                {/* Bottom: Metrics Row */}
                 <div className="grid grid-cols-2 gap-6 pt-6 border-t border-white/5">
-                    
-                    {/* Rentabilidade */}
                     <div>
                         <div className="flex items-center gap-1.5 mb-1.5">
                             <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Rentabilidade</span>
@@ -410,8 +286,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                             </span>
                         </div>
                     </div>
-
-                    {/* Proventos */}
                     <div className="pl-6 border-l border-white/5">
                         <div className="flex items-center gap-1.5 mb-1.5">
                             <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Proventos Totais</span>
@@ -428,7 +302,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
         {/* BENTO GRID */}
         <div className="grid grid-cols-2 gap-3 anim-slide-up">
-            
             <BentoCard 
                 title="Agenda" 
                 value={agendaData.nextPayment ? formatDateShort(agendaData.nextPayment.paymentDate || agendaData.nextPayment.dateCom) : '--'} 
@@ -441,7 +314,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             
             <BentoCard 
                 title="Renda" 
-                value={formatBRL(currentMonthIncome, privacyMode)} 
+                value={formatBRL(incomeData.currentMonth, privacyMode)} 
                 subtext="Neste Mês"
                 icon={CircleDollarSign} 
                 colorClass="bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
@@ -478,11 +351,15 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         <div className="text-left">
                             <div className="flex items-center gap-1.5">
                                 <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Alocação</h3>
-                                <InfoTooltip title="Alocação" text="Distribuição atual do seu patrimônio por classe de ativo (FIIs vs Ações)." />
+                                <InfoTooltip title="Alocação" text="Distribuição atual do seu patrimônio por classe de ativo." />
                             </div>
                             <div className="flex gap-3 mt-1 text-xs text-zinc-500">
-                                <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div> FIIs {allocationData.byClass.find(c=>c.name==='FIIs')?.value ? ((allocationData.byClass.find(c=>c.name==='FIIs')?.value || 0)/(balance || 1)*100).toFixed(0) : 0}%</span>
-                                <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-sky-500"></div> Ações {allocationData.byClass.find(c=>c.name==='Ações')?.value ? ((allocationData.byClass.find(c=>c.name==='Ações')?.value || 0)/(balance || 1)*100).toFixed(0) : 0}%</span>
+                                {allocationData.byClass.map(c => (
+                                    <span key={c.name} className="flex items-center gap-1">
+                                        <div className="w-1.5 h-1.5 rounded-full" style={{backgroundColor: c.color}}></div> 
+                                        {c.name} {((c.value/(balance || 1))*100).toFixed(0)}%
+                                    </span>
+                                ))}
                             </div>
                         </div>
                     </div>
@@ -493,9 +370,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
         </div>
 
-        {/* --- MODALS --- */}
-
-        {/* 1. AGENDA (Informações Adicionais) */}
+        {/* MODALS */}
+        
+        {/* 1. AGENDA */}
         <SwipeableModal isOpen={showAgenda} onClose={() => setShowAgenda(false)}>
             <div className="p-6 h-full flex flex-col anim-slide-up">
                 <div className="flex items-center gap-4 mb-6 shrink-0">
@@ -508,35 +385,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                 </div>
 
-                {/* Cards de Resumo Compactos */}
-                <div className="grid grid-cols-2 gap-2.5 mb-5 shrink-0">
-                    <div className="bg-violet-50 dark:bg-violet-900/10 p-2.5 rounded-xl border border-violet-100 dark:border-violet-900/20 flex flex-col justify-center min-h-[60px]">
-                        <p className="text-[9px] text-violet-600 dark:text-violet-400 uppercase font-bold mb-0.5">Próximo Pagamento</p>
-                        <div className="flex items-baseline gap-1">
-                            <span className="text-xl font-black text-violet-700 dark:text-violet-400 leading-none">
-                                {agendaData.daysToNext === 0 ? 'Hoje' : agendaData.daysToNext}
-                            </span>
-                            <span className="text-[9px] font-bold text-violet-500">
-                                {agendaData.daysToNext === 0 ? '' : 'dias'}
-                            </span>
-                        </div>
-                        {agendaData.nextPayment && (
-                            <p className="text-[9px] text-zinc-500 mt-1 truncate font-medium border-t border-violet-200/50 dark:border-violet-800/50 pt-1">
-                                {agendaData.nextPayment.ticker} • {formatBRL(agendaData.nextPayment.totalReceived, privacyMode)}
-                            </p>
-                        )}
-                    </div>
-                    <div className="bg-zinc-50 dark:bg-zinc-800 p-2.5 rounded-xl border border-zinc-100 dark:border-zinc-700/50 flex flex-col justify-center min-h-[60px]">
-                        <p className="text-[9px] text-zinc-500 uppercase font-bold mb-0.5">Status</p>
-                        <div className="flex items-center gap-1.5 mb-1">
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                            <span className="text-xs font-bold text-zinc-900 dark:text-white leading-none">Confirmado</span>
-                        </div>
-                        <p className="text-[9px] text-zinc-400 leading-tight">Baseado na B3</p>
-                    </div>
-                </div>
-
-                {/* Container de Scroll Dedicado */}
                 <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar">
                     {Object.keys(agendaData.grouped).length > 0 ? (
                         <div className="space-y-6">
@@ -546,47 +394,40 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                         {getMonthName(monthKey + '-01')}
                                     </h3>
                                     <div className="space-y-0">
-                                        {(items as DividendReceipt[]).map((item, idx) => {
-                                            const isToday = item.paymentDate === new Date().toISOString().split('T')[0];
-                                            return (
-                                                <div key={idx} className={`flex items-center justify-between py-3 border-b border-zinc-50 dark:border-zinc-800/50 last:border-0 ${isToday ? 'bg-violet-50/50 dark:bg-violet-900/10 px-2 rounded-lg -mx-2' : ''}`}>
-                                                    <div className="flex items-center gap-3">
-                                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black ${isToday ? 'bg-violet-500 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'}`}>
-                                                            {item.ticker.substring(0, 2)}
-                                                        </div>
-                                                        <div>
-                                                            <div className="flex items-center gap-2">
-                                                                <h4 className="font-bold text-xs text-zinc-900 dark:text-white">{item.ticker}</h4>
-                                                                <span className="text-[9px] text-zinc-400 uppercase">{item.type}</span>
-                                                            </div>
-                                                            <div className="flex items-center gap-2 text-[9px] text-zinc-500 font-medium">
-                                                                <span className={item.paymentDate ? '' : 'text-zinc-300'}>Pag: {formatDateShort(item.paymentDate)}</span>
-                                                                <span className="w-1 h-1 rounded-full bg-zinc-300"></span>
-                                                                <span>Com: {formatDateShort(item.dateCom)}</span>
-                                                            </div>
-                                                        </div>
+                                        {(items as DividendReceipt[]).map((item, idx) => (
+                                            <div key={idx} className="flex items-center justify-between py-3 border-b border-zinc-50 dark:border-zinc-800/50 last:border-0">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-black text-zinc-500">
+                                                        {item.ticker.substring(0, 2)}
                                                     </div>
-                                                    <div className="text-right">
-                                                        <p className={`font-bold text-sm ${isToday ? 'text-violet-600 dark:text-violet-400' : 'text-emerald-600 dark:text-emerald-400'}`}>{formatBRL(item.totalReceived, privacyMode)}</p>
+                                                    <div>
+                                                        <h4 className="font-bold text-xs text-zinc-900 dark:text-white">{item.ticker}</h4>
+                                                        <div className="flex items-center gap-2 text-[9px] text-zinc-500 font-medium">
+                                                            <span>Pag: {formatDateShort(item.paymentDate)}</span>
+                                                            <span className="w-1 h-1 rounded-full bg-zinc-300"></span>
+                                                            <span>Com: {formatDateShort(item.dateCom)}</span>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            );
-                                        })}
+                                                <div className="text-right">
+                                                    <p className="font-bold text-sm text-emerald-600 dark:text-emerald-400">{formatBRL(item.totalReceived, privacyMode)}</p>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             ))}
                         </div>
                     ) : (
                         <div className="text-center py-10 opacity-50">
-                            <CalendarClock className="w-12 h-12 mx-auto mb-3 text-zinc-300" />
-                            <p className="text-sm font-bold text-zinc-500">Sem proventos futuros confirmados.</p>
+                            <p className="text-sm font-bold text-zinc-500">Sem proventos futuros.</p>
                         </div>
                     )}
                 </div>
             </div>
         </SwipeableModal>
 
-        {/* 2. RENDA (Reformulada - COMPACTA) */}
+        {/* 2. RENDA */}
         <SwipeableModal isOpen={showProventos} onClose={() => setShowProventos(false)}>
             <div className="p-6 h-full flex flex-col anim-slide-up">
                 <div className="flex items-center gap-4 mb-4 shrink-0">
@@ -595,46 +436,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                     <div>
                         <h2 className="text-2xl font-bold text-zinc-900 dark:text-white leading-none">Evolução</h2>
-                        <p className="text-xs text-zinc-500 font-medium mt-1">Visão Geral de Proventos</p>
+                        <p className="text-xs text-zinc-500 font-medium mt-1">Últimos 12 meses: {formatBRL(incomeData.last12mTotal, privacyMode)}</p>
                     </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar">
-                    
-                    {/* DASHBOARD COMPACTO */}
-                    <div className="mb-6 space-y-3">
-                        {/* Header Total e YoC */}
-                        <div className="bg-gradient-to-r from-emerald-500 to-teal-600 p-4 rounded-2xl text-white shadow-lg shadow-emerald-500/10 flex justify-between items-center">
-                            <div>
-                                <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-0.5">Total Recebido</p>
-                                <p className="text-2xl font-black tracking-tight leading-none">{formatBRL(totalDividendsReceived, privacyMode)}</p>
-                            </div>
-                            <div className="text-right bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 backdrop-blur-md">
-                                <p className="text-[9px] font-bold opacity-80 uppercase">Yield on Cost</p>
-                                <p className="text-sm font-black">{yieldOnCost.toFixed(2)}%</p>
-                            </div>
-                        </div>
-
-                        {/* Grid de Métricas (3 Colunas) */}
-                        <div className="grid grid-cols-3 gap-2">
-                            <div className="bg-zinc-50 dark:bg-zinc-800 p-2.5 rounded-xl border border-zinc-100 dark:border-zinc-700/50 flex flex-col justify-center min-h-[60px]">
-                                <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-wide truncate mb-0.5">Últimos 12m</p>
-                                <p className="text-xs font-black text-zinc-900 dark:text-white leading-tight">{formatBRL(incomeData.last12mTotal, privacyMode)}</p>
-                            </div>
-                            <div className="bg-zinc-50 dark:bg-zinc-800 p-2.5 rounded-xl border border-zinc-100 dark:border-zinc-700/50 flex flex-col justify-center min-h-[60px]">
-                                <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-wide truncate mb-0.5">Média Mensal</p>
-                                <p className="text-xs font-black text-zinc-900 dark:text-white leading-tight">{formatBRL(incomeData.average, privacyMode)}</p>
-                            </div>
-                            <div className="bg-zinc-50 dark:bg-zinc-800 p-2.5 rounded-xl border border-zinc-100 dark:border-zinc-700/50 flex flex-col justify-center min-h-[60px]">
-                                <p className="text-[9px] text-amber-500 font-bold uppercase tracking-wide truncate mb-0.5 flex items-center gap-1"><Trophy className="w-2.5 h-2.5" /> Recorde</p>
-                                <p className="text-xs font-black text-zinc-900 dark:text-white leading-tight">{formatBRL(incomeData.max, privacyMode)}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Gráfico Reduzido (Mais sutil) */}
                     <div className="h-48 w-full mb-6 shrink-0 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-2 relative overflow-hidden">
-                        <p className="absolute top-3 left-3 text-[9px] font-bold text-zinc-400 uppercase tracking-widest z-10">Tendência (6 Meses)</p>
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={incomeData.chartData} margin={{ top: 20, right: 0, left: -25, bottom: 0 }}>
                                 <defs>
@@ -649,19 +456,16 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                 <RechartsTooltip 
                                     contentStyle={{ borderRadius: '8px', border: 'none', backgroundColor: '#18181b', color: '#fff', fontSize: '10px', padding: '8px' }}
                                     formatter={(value: number) => [formatBRL(value), '']}
-                                    labelStyle={{ display: 'none' }}
                                 />
                                 <Area type="monotone" dataKey="value" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorIncome)" />
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
-
-                    {/* Histórico Removido */}
                 </div>
             </div>
         </SwipeableModal>
 
-        {/* 3. NÚMERO MÁGICO */}
+        {/* 3. MAGIC NUMBER */}
         <SwipeableModal isOpen={showMagicNumber} onClose={() => setShowMagicNumber(false)}>
             <div className="p-6 h-full flex flex-col anim-slide-up">
                 <div className="flex items-center gap-4 mb-6 shrink-0">
@@ -690,7 +494,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                 <div className="text-right">
                                     {item.missing === 0 ? (
                                         <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[10px] font-bold uppercase">
-                                            <Sparkles className="w-3 h-3" /> Atingido
+                                            Atingido
                                         </span>
                                     ) : (
                                         <span className="text-[10px] font-bold text-zinc-400 uppercase">Faltam {item.missing}</span>
@@ -699,10 +503,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                             </div>
                             
                             <div className="mb-2">
-                                <div className="flex justify-between text-[10px] font-bold text-zinc-500 mb-1">
-                                    <span>Progresso</span>
-                                    <span>{item.progress.toFixed(0)}%</span>
-                                </div>
                                 <div className="h-2 w-full bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
                                     <div className="h-full bg-amber-500 rounded-full transition-all duration-1000" style={{ width: `${item.progress}%` }}></div>
                                 </div>
@@ -710,10 +510,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
                             <div className="flex justify-between items-center pt-2 border-t border-zinc-200 dark:border-zinc-700/50">
                                 <div>
-                                    <p className="text-[9px] font-bold text-zinc-400 uppercase">Renda Gerada</p>
-                                    <p className="text-xs font-bold text-zinc-900 dark:text-white">{formatBRL(item.current * item.estimatedDiv, privacyMode)}</p>
-                                </div>
-                                <div className="text-right">
                                     <p className="text-[9px] font-bold text-zinc-400 uppercase">Poder de Recompra</p>
                                     <p className="text-xs font-bold text-emerald-500">{item.repurchasePower.toFixed(2)} cotas/mês</p>
                                 </div>
@@ -738,31 +534,18 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 </div>
 
                 <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar">
-                    {/* Level Progress */}
                     <div className="mb-8 text-center">
-                        <div className="relative w-32 h-32 mx-auto mb-4 flex items-center justify-center">
-                            <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                                <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e4e4e7" strokeWidth="3" className="dark:stroke-zinc-800" />
-                                <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#f43f5e" strokeWidth="3" strokeDasharray={`${goalsData.progress}, 100`} className="transition-all duration-1000 ease-out" />
-                            </svg>
-                            <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                <span className="text-3xl font-black text-zinc-900 dark:text-white">{goalsData.currentLevel.level}</span>
-                                <span className="text-[9px] font-bold text-zinc-400 uppercase">Nível</span>
-                            </div>
-                        </div>
                         <p className="text-sm font-medium text-zinc-500 px-8">
                             Faltam <span className="text-rose-500 font-bold">{formatBRL(goalsData.nextLevel.target - (balance || 0), privacyMode)}</span> para atingir o nível <span className="text-zinc-900 dark:text-white font-bold">{goalsData.nextLevel.name}</span>.
                         </p>
                     </div>
 
-                    {/* Metas Financeiras */}
                     <div className="space-y-6 mb-8">
                         <ProgressBar current={goalsData.income.current} target={goalsData.income.target} label="Meta de Renda Mensal" colorClass="bg-emerald-500" privacyMode={privacyMode} />
-                        <ProgressBar current={goalsData.patrimony.current} target={goalsData.patrimony.target} label="Meta de Patrimônio" colorClass="bg-indigo-500" privacyMode={privacyMode} />
-                        <ProgressBar current={goalsData.freedom.current} target={goalsData.freedom.target} label="Liberdade Financeira (Salário Mínimo)" colorClass="bg-amber-500" privacyMode={privacyMode} />
+                        <ProgressBar current={balance} target={goalsData.nextLevel.target} label="Meta de Patrimônio" colorClass="bg-indigo-500" privacyMode={privacyMode} />
+                        <ProgressBar current={goalsData.income.current} target={goalsData.freedom.target} label="Liberdade Financeira" colorClass="bg-amber-500" privacyMode={privacyMode} />
                     </div>
 
-                    {/* Conquistas */}
                     <div>
                         <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4">Conquistas ({goalsData.unlockedCount}/{goalsData.achievements.length})</h3>
                         <div className="grid grid-cols-2 gap-3">
@@ -794,14 +577,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                 </div>
 
-                {/* Toggle View */}
                 <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl mb-6 shrink-0">
                     <button onClick={() => setAllocationView('CLASS')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${allocationView === 'CLASS' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500'}`}>Por Classe</button>
                     <button onClick={() => setAllocationView('ASSET')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${allocationView === 'ASSET' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500'}`}>Por Ativo</button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar">
-                    {/* Chart */}
                     <div className="h-64 w-full relative mb-6">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
@@ -816,20 +597,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                         <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
                                     ))}
                                 </Pie>
-                                <RechartsTooltip 
-                                    formatter={(value: number) => formatBRL(value, privacyMode)}
-                                    contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: '#18181b', color: '#fff', fontSize: '12px' }}
-                                />
+                                <RechartsTooltip formatter={(value: number) => formatBRL(value, privacyMode)} />
                             </PieChart>
                         </ResponsiveContainer>
-                        {/* Center Info */}
-                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                            <span className="text-[10px] font-bold text-zinc-400 uppercase">Total</span>
-                            <span className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(balance, privacyMode)}</span>
-                        </div>
                     </div>
 
-                    {/* List */}
                     <div className="space-y-3">
                         {(allocationView === 'CLASS' ? allocationData.byClass : allocationData.byAsset).map((item, idx) => (
                             <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800">
@@ -839,9 +611,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                 </div>
                                 <div className="text-right">
                                     <p className="text-sm font-bold text-zinc-900 dark:text-white">{formatBRL(item.value, privacyMode)}</p>
-                                    <p className="text-[10px] font-medium text-zinc-500">
-                                        {(item as any).percent?.toFixed(1) || 0}%
-                                    </p>
+                                    <p className="text-[10px] font-medium text-zinc-500">{(item as any).percent?.toFixed(1) || 0}%</p>
                                 </div>
                             </div>
                         ))}

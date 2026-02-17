@@ -1,35 +1,10 @@
 
 import React, { useState, useMemo } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, Wallet, TrendingUp, TrendingDown, RefreshCw, X, Calculator, Scale, Activity, BarChart3, PieChart, Coins, Target, AlertCircle, ChevronDown, ChevronUp, ExternalLink, ArrowRight, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, BarChart4, Trophy, Hourglass, Goal, CalendarCheck } from 'lucide-react';
+import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, Activity, BarChart3, PieChart, Coins, AlertCircle, ChevronDown, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, Goal } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine, Cell, ComposedChart, Line, CartesianGrid } from 'recharts';
-
-// --- FORMATTERS ---
-
-const formatBRL = (val: any, privacy = false) => {
-  if (privacy) return '••••••';
-  if (val === undefined || val === null || isNaN(val)) return 'R$ 0,00';
-  return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-};
-
-const formatPercent = (val: number | undefined) => {
-    if (val === undefined || val === null || isNaN(val)) return '-';
-    return `${val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
-};
-
-const formatNumber = (val: number | undefined, decimals = 2) => {
-    if (val === undefined || val === null || isNaN(val)) return '-';
-    return val.toLocaleString('pt-BR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
-};
-
-const formatDateShort = (dateStr: string) => {
-    if (!dateStr) return '-';
-    try {
-        const [year, month, day] = dateStr.split('T')[0].split('-');
-        return `${day}/${month}/${year.slice(2)}`;
-    } catch { return dateStr; }
-};
+import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, ReferenceLine, ComposedChart, CartesianGrid } from 'recharts';
+import { formatBRL, formatPercent, formatNumber } from '../utils/formatters';
 
 // --- SUB-COMPONENTS ---
 
@@ -41,24 +16,19 @@ const MetricCard = ({ label, value, highlight = false, colorClass = "text-zinc-9
     </div>
 );
 
-// Componente de Valuation (Design Refinado para Resumo)
 const ValuationCard = ({ asset }: { asset: AssetPosition }) => {
     let fairPrice = 0;
-    let label = '';
     let method = '';
 
-    // Lógica de Preço Justo
     if (asset.assetType === AssetType.FII) {
         if (asset.vpa && asset.vpa > 0) {
             fairPrice = asset.vpa;
-            label = 'Preço Justo (VPA)';
-            method = 'Baseado no Valor Patrimonial';
+            method = 'Valor Patrimonial (VP)';
         }
     } else {
         if (asset.lpa && asset.lpa > 0 && asset.vpa && asset.vpa > 0) {
             fairPrice = Math.sqrt(22.5 * asset.lpa * asset.vpa);
-            label = 'Preço Justo (Graham)';
-            method = 'Fórmula de Benjamin Graham';
+            method = 'Graham (22.5 x LPA x VPA)';
         }
     }
 
@@ -70,11 +40,11 @@ const ValuationCard = ({ asset }: { asset: AssetPosition }) => {
     return (
         <div className="mb-6">
             <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                <Calculator className="w-3 h-3" /> Valuation
+                <Calculator className="w-3 h-3" /> Valuation Estimado
             </h4>
             <div className={`p-4 rounded-2xl border flex justify-between items-center relative overflow-hidden ${isUndervalued ? 'bg-emerald-50 border-emerald-100 dark:bg-emerald-900/10 dark:border-emerald-900/30' : 'bg-amber-50 border-amber-100 dark:bg-amber-900/10 dark:border-amber-900/30'}`}>
                 <div className="relative z-10">
-                    <p className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${isUndervalued ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>{label}</p>
+                    <p className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${isUndervalued ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>Preço Justo</p>
                     <div className="flex items-baseline gap-2">
                         <span className="text-2xl font-black text-zinc-900 dark:text-white">{formatBRL(fairPrice)}</span>
                     </div>
@@ -108,28 +78,22 @@ const DetailedInfoBlock = ({ asset }: { asset: AssetPosition }) => {
                 <Info className="w-3 h-3" /> Informações Detalhadas
             </h4>
             
-            {/* Informações Comuns */}
             <InfoRow label="Razão Social" value={asset.company_name} icon={Building2} />
             <InfoRow label="CNPJ" value={asset.cnpj} icon={FileText} />
             <InfoRow label="Segmento" value={asset.segment_secondary || asset.segment} icon={PieChart} />
             
-            {/* Específico FIIs */}
             {asset.assetType === AssetType.FII && (
                 <>
                     <InfoRow label="Público-Alvo" value={asset.target_audience} icon={Users} />
-                    <InfoRow label="Mandato" value={asset.mandate} icon={Target} />
-                    <InfoRow label="Tipo de Fundo" value={asset.fund_type} icon={Briefcase} />
-                    <InfoRow label="Prazo" value={asset.duration} icon={Clock} />
-                    <InfoRow label="Gestão" value={asset.manager_type} icon={Activity} />
+                    <InfoRow label="Mandato" value={asset.mandate} icon={Briefcase} />
+                    <InfoRow label="Tipo de Gestão" value={asset.manager_type} icon={Activity} />
                     <InfoRow label="Taxa Adm." value={asset.management_fee} icon={Percent} />
                     <InfoRow label="Vacância Física" value={asset.vacancy !== undefined ? `${asset.vacancy}%` : '-'} icon={AlertCircle} />
                     <InfoRow label="Num. Cotistas" value={asset.properties_count ? formatNumber(asset.properties_count, 0) : '-'} icon={Users} />
-                    <InfoRow label="Num. Cotas" value={asset.num_quotas} icon={Coins} />
                     <InfoRow label="Patrimônio Líq." value={asset.assets_value} icon={Wallet} />
                 </>
             )}
 
-            {/* Específico Ações */}
             {asset.assetType === AssetType.STOCK && (
                 <>
                     <InfoRow label="Valor de Mercado" value={asset.market_cap} icon={Wallet} />
@@ -140,29 +104,20 @@ const DetailedInfoBlock = ({ asset }: { asset: AssetPosition }) => {
     );
 };
 
-// Nova Seção de Performance Focada em Renda (Substitui Market Comparison)
-const IncomeAnalysisSection = ({ asset, chartData, history }: { asset: AssetPosition, chartData: { data: any[], average: number }, history: DividendReceipt[] }) => {
-    // Cálculo do Yield on Cost
+const IncomeAnalysisSection = ({ asset, chartData }: { asset: AssetPosition, chartData: { data: any[], average: number }, history: DividendReceipt[] }) => {
     const totalInvested = asset.quantity * asset.averagePrice;
     const yoc = totalInvested > 0 ? (asset.totalDividends || 0) / totalInvested * 100 : 0;
     
-    // Estimativas
     const currentPrice = asset.currentPrice || 0;
-    const lastDiv = asset.last_dividend || (asset.dy_12m ? (currentPrice * (asset.dy_12m/100))/12 : 0);
-    const monthlyReturn = lastDiv > 0 ? lastDiv : 0;
+    const monthlyReturn = asset.last_dividend || (asset.dy_12m ? (currentPrice * (asset.dy_12m/100))/12 : 0);
     
-    // Número Mágico
     const magicNumber = monthlyReturn > 0 ? Math.ceil(currentPrice / monthlyReturn) : 0;
     const magicProgress = magicNumber > 0 ? Math.min(100, (asset.quantity / magicNumber) * 100) : 0;
     const missingForMagic = Math.max(0, magicNumber - asset.quantity);
-
-    // Payback em Anos (Simples)
     const paybackYears = monthlyReturn > 0 ? (currentPrice / (monthlyReturn * 12)) : 0;
 
     return (
         <div className="space-y-6">
-            
-            {/* 1. SEU RESULTADO (Destaque Principal) */}
             <div className="p-5 rounded-2xl border bg-gradient-to-br from-indigo-50 to-white dark:from-zinc-800 dark:to-zinc-900 border-indigo-100 dark:border-zinc-800 relative overflow-hidden">
                 <div className="relative z-10 flex justify-between items-center">
                     <div>
@@ -183,7 +138,6 @@ const IncomeAnalysisSection = ({ asset, chartData, history }: { asset: AssetPosi
                 </div>
             </div>
 
-            {/* 2. Gráfico Aprimorado (SEM HISTÓRICO LISTA) */}
             <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
                 <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
                     <h4 className="text-[10px] font-bold text-zinc-400 uppercase flex items-center gap-2">
@@ -208,9 +162,8 @@ const IncomeAnalysisSection = ({ asset, chartData, history }: { asset: AssetPosi
                                 <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 700 }} dy={5} interval={0} />
                                 <Tooltip 
                                     cursor={{fill: 'transparent'}}
-                                    contentStyle={{ borderRadius: '8px', border: '1px solid #27272a', backgroundColor: '#18181b', color: '#fff', fontSize: '10px', padding: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}
+                                    contentStyle={{ borderRadius: '8px', border: '1px solid #27272a', backgroundColor: '#18181b', color: '#fff', fontSize: '10px', padding: '8px' }}
                                     formatter={(value: number) => [formatBRL(value), 'Recebido']}
-                                    labelStyle={{ color: '#a1a1aa', marginBottom: '4px' }}
                                 />
                                 <Bar dataKey="value" fill="url(#colorBar)" radius={[4, 4, 0, 0]} maxBarSize={28} />
                                 {chartData.average > 0 && (
@@ -224,11 +177,8 @@ const IncomeAnalysisSection = ({ asset, chartData, history }: { asset: AssetPosi
                         </div>
                     )}
                 </div>
-                
-                {/* Lista Removida */}
             </div>
 
-            {/* 3. RAIO-X DE RENDA */}
             <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-sm">
                 <div className="bg-zinc-50 dark:bg-zinc-800/50 p-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-2">
                     <Zap className="w-4 h-4 text-amber-500" />
@@ -236,7 +186,6 @@ const IncomeAnalysisSection = ({ asset, chartData, history }: { asset: AssetPosi
                 </div>
                 
                 <div className="p-4 space-y-4">
-                    {/* Bola de Neve */}
                     <div>
                         <div className="flex justify-between items-end mb-2">
                             <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 flex items-center gap-1">
@@ -291,16 +240,7 @@ const IncomeAnalysisSection = ({ asset, chartData, history }: { asset: AssetPosi
     );
 };
 
-// --- COMPONENTE: LIST ITEM ---
-interface AssetListItemProps {
-  asset: AssetPosition;
-  onOpenDetails: () => void;
-  privacyMode: boolean;
-  isExpanded: boolean;
-  onToggle: () => void;
-}
-
-const AssetListItem: React.FC<AssetListItemProps> = ({ asset, onOpenDetails, privacyMode, isExpanded, onToggle }) => {
+const AssetListItem: React.FC<any> = ({ asset, onOpenDetails, privacyMode, isExpanded, onToggle }) => {
     const isPositive = (asset.dailyChange || 0) >= 0;
     const totalVal = asset.quantity * (asset.currentPrice || 0);
     const profitValue = (asset.currentPrice && asset.averagePrice) ? (asset.currentPrice - asset.averagePrice) * asset.quantity : 0;
@@ -370,7 +310,7 @@ const AssetListItem: React.FC<AssetListItemProps> = ({ asset, onOpenDetails, pri
                         </div>
                     </div>
                     <button onClick={(e) => { e.stopPropagation(); onOpenDetails(); }} className="w-full h-10 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-2 press-effect border border-indigo-100 dark:border-indigo-900/30">
-                        Ver Detalhes e Valuation <ArrowRight className="w-3.5 h-3.5" />
+                        Detalhes & Valuation
                     </button>
                 </div>
             </div>
@@ -388,12 +328,10 @@ interface PortfolioProps {
   onClearTarget?: () => void;
 }
 
-const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [], privacyMode = false, onAssetRefresh }) => {
+const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [], privacyMode = false }) => {
     const [search, setSearch] = useState('');
     const [selectedAsset, setSelectedAsset] = useState<AssetPosition | null>(null);
     const [expandedAssetTicker, setExpandedAssetTicker] = useState<string | null>(null);
-    
-    // Tabs Unificadas (Mudado PERFORMANCE para RENDA)
     const [activeTab, setActiveTab] = useState<'RESUMO' | 'RENDA' | 'DADOS' | 'IMOVEIS'>('RESUMO');
 
     const filtered = useMemo(() => {
@@ -403,10 +341,6 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
 
     const fiis = filtered.filter(p => p.assetType === AssetType.FII);
     const stocks = filtered.filter(p => p.assetType === AssetType.STOCK);
-
-    const handleToggle = (ticker: string) => {
-        setExpandedAssetTicker(prev => prev === ticker ? null : ticker);
-    };
 
     const assetDividendChartData = useMemo(() => {
         if (!selectedAsset) return { data: [], average: 0 };
@@ -432,29 +366,20 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
             const key = d.toISOString().substring(0, 7);
             const monthLabel = d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
             const val = grouped[key] || 0;
-            if (val > 0) {
-                total += val;
-                count++;
-            }
+            if (val > 0) { total += val; count++; }
             result.push({ month: monthLabel, fullDate: key, value: val });
         }
         
-        return { 
-            data: result, 
-            average: count > 0 ? total / count : 0 
-        };
+        return { data: result, average: count > 0 ? total / count : 0 };
     }, [selectedAsset, dividends]);
 
     const assetHistory = useMemo(() => {
         if (!selectedAsset) return [];
-        return dividends
-            .filter(d => d.ticker === selectedAsset.ticker)
-            .sort((a, b) => (b.paymentDate || b.dateCom).localeCompare(a.paymentDate || a.dateCom));
+        return dividends.filter(d => d.ticker === selectedAsset.ticker);
     }, [selectedAsset, dividends]);
 
     return (
         <div className="pb-32">
-            {/* Sticky Search Header */}
             <div className="sticky top-20 z-30 bg-primary-light dark:bg-primary-dark border-b border-zinc-200 dark:border-zinc-800 transition-all -mx-4 px-4 py-3 mb-4">
                 <div className="relative group">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 group-focus-within:text-indigo-500 transition-colors" />
@@ -463,7 +388,6 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                 </div>
             </div>
 
-            {/* FIIs Section */}
             {fiis.length > 0 && (
                 <div className="mb-6 anim-fade-in">
                     <div className="flex items-center gap-1.5 mb-3 px-1">
@@ -471,12 +395,11 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                         <InfoTooltip title="FIIs" text="Cotações com delay de ~15 minutos." />
                     </div>
                     {fiis.map(p => (
-                        <AssetListItem key={p.ticker} asset={p} privacyMode={privacyMode} isExpanded={expandedAssetTicker === p.ticker} onToggle={() => handleToggle(p.ticker)} onOpenDetails={() => setSelectedAsset(p)} />
+                        <AssetListItem key={p.ticker} asset={p} privacyMode={privacyMode} isExpanded={expandedAssetTicker === p.ticker} onToggle={() => setExpandedAssetTicker(prev => prev === p.ticker ? null : p.ticker)} onOpenDetails={() => setSelectedAsset(p)} />
                     ))}
                 </div>
             )}
 
-            {/* Stocks Section */}
             {stocks.length > 0 && (
                 <div className="mb-6 anim-fade-in">
                     <div className="flex items-center gap-1.5 mb-3 px-1">
@@ -484,7 +407,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                         <InfoTooltip title="Ações" text="Cotações com delay de ~15 minutos." />
                     </div>
                     {stocks.map(p => (
-                        <AssetListItem key={p.ticker} asset={p} privacyMode={privacyMode} isExpanded={expandedAssetTicker === p.ticker} onToggle={() => handleToggle(p.ticker)} onOpenDetails={() => setSelectedAsset(p)} />
+                        <AssetListItem key={p.ticker} asset={p} privacyMode={privacyMode} isExpanded={expandedAssetTicker === p.ticker} onToggle={() => setExpandedAssetTicker(prev => prev === p.ticker ? null : p.ticker)} onOpenDetails={() => setSelectedAsset(p)} />
                     ))}
                 </div>
             )}
@@ -496,11 +419,9 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                 </div>
             )}
 
-            {/* DETAILED MODAL */}
             <SwipeableModal isOpen={!!selectedAsset} onClose={() => setSelectedAsset(null)}>
                 {selectedAsset && (
                     <div className="flex flex-col h-full bg-zinc-50 dark:bg-black">
-                        {/* Header Fixo */}
                         <div className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 p-6 pb-4 shrink-0 rounded-t-[2.5rem]">
                             <div className="flex items-center justify-between mb-6">
                                 <div className="flex items-center gap-4">
@@ -520,63 +441,29 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                                 </div>
                             </div>
 
-                            {/* Tabs Navigation (Merged) */}
                             <div className="flex p-1 bg-zinc-100 dark:bg-zinc-800 rounded-xl overflow-x-auto no-scrollbar">
                                 {['RESUMO', 'RENDA', 'DADOS', 'IMOVEIS'].map(tab => {
                                     if (tab === 'IMOVEIS' && (!selectedAsset.properties || selectedAsset.properties.length === 0)) return null;
                                     return (
-                                        <button
-                                            key={tab}
-                                            onClick={() => setActiveTab(tab as any)}
-                                            className={`flex-1 min-w-[80px] py-2.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${activeTab === tab ? 'bg-white dark:bg-zinc-700 text-indigo-600 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
-                                        >
-                                            {tab}
-                                        </button>
+                                        <button key={tab} onClick={() => setActiveTab(tab as any)} className={`flex-1 min-w-[80px] py-2.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${activeTab === tab ? 'bg-white dark:bg-zinc-700 text-indigo-600 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>{tab}</button>
                                     )
                                 })}
                             </div>
                         </div>
 
-                        {/* Content Scrollable */}
                         <div className="flex-1 overflow-y-auto p-6 pb-24">
                             {activeTab === 'RESUMO' && (
                                 <div className="space-y-6 anim-fade-in">
-                                    
-                                    {/* Valuation movido para cá (Destaque) */}
                                     <ValuationCard asset={selectedAsset} />
-
-                                    {/* Indicadores Principais */}
-                                    <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                                        <Activity className="w-3 h-3" /> Indicadores
-                                    </h4>
                                     <div className="grid grid-cols-3 gap-3 mb-4">
                                         <MetricCard label="DY (12m)" value={formatPercent(selectedAsset.dy_12m)} highlight colorClass="text-emerald-600 dark:text-emerald-400" />
                                         <MetricCard label="P/VP" value={formatNumber(selectedAsset.p_vp)} />
-                                        {/* P/L visível apenas para ações, caso contrário mostra VP/Cota para FIIs */}
                                         {selectedAsset.assetType !== AssetType.FII ? (
                                             <MetricCard label="P/L" value={formatNumber(selectedAsset.p_l)} />
                                         ) : (
                                             <MetricCard label="VP/Cota" value={selectedAsset.vpa ? formatBRL(selectedAsset.vpa) : '-'} />
                                         )}
                                     </div>
-
-                                    {/* Check de Vacância */}
-                                    {selectedAsset.vacancy !== undefined && (
-                                        <div className={`p-4 rounded-xl border flex items-center justify-between ${selectedAsset.vacancy > 10 ? 'bg-rose-50 border-rose-100 dark:bg-rose-900/10 dark:border-rose-900/30' : 'bg-emerald-50 border-emerald-100 dark:bg-emerald-900/10 dark:border-emerald-900/30'}`}>
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${selectedAsset.vacancy > 10 ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
-                                                    {selectedAsset.vacancy > 10 ? <AlertCircle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
-                                                </div>
-                                                <div>
-                                                    <p className={`text-xs font-bold ${selectedAsset.vacancy > 10 ? 'text-rose-700 dark:text-rose-400' : 'text-emerald-700 dark:text-emerald-400'}`}>Vacância Física</p>
-                                                    <p className="text-[10px] opacity-70">Média 12 meses</p>
-                                                </div>
-                                            </div>
-                                            <span className="text-lg font-black">{selectedAsset.vacancy}%</span>
-                                        </div>
-                                    )}
-
-                                    {/* Infos Rápidas */}
                                     <div className="bg-white dark:bg-zinc-900 rounded-2xl p-4 border border-zinc-200 dark:border-zinc-800">
                                         <InfoRow label="Segmento" value={selectedAsset.segment_secondary || selectedAsset.segment} icon={PieChart} />
                                         <InfoRow label="Último Rendimento" value={formatBRL(selectedAsset.last_dividend)} icon={DollarSign} />
@@ -585,7 +472,6 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                                 </div>
                             )}
 
-                            {/* Substituído PERFORMANCE por RENDA com Análise */}
                             {activeTab === 'RENDA' && (
                                 <div className="anim-fade-in">
                                     <IncomeAnalysisSection asset={selectedAsset} chartData={assetDividendChartData} history={assetHistory} />
@@ -595,15 +481,6 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                             {activeTab === 'DADOS' && (
                                 <div className="anim-fade-in">
                                     <DetailedInfoBlock asset={selectedAsset} />
-                                    {/* Valuation para Ações */}
-                                    {selectedAsset.assetType === AssetType.STOCK && (
-                                        <div className="grid grid-cols-2 gap-3 mb-6">
-                                            <MetricCard label="ROE" value={formatPercent(selectedAsset.roe)} highlight />
-                                            <MetricCard label="Margem Líq." value={formatPercent(selectedAsset.net_margin)} />
-                                            <MetricCard label="Dív.Líq/EBITDA" value={formatNumber(selectedAsset.net_debt_ebitda)} />
-                                            <MetricCard label="LPA" value={formatBRL(selectedAsset.lpa)} />
-                                        </div>
-                                    )}
                                 </div>
                             )}
 
