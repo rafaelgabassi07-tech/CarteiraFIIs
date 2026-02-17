@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, Wallet, TrendingUp, TrendingDown, RefreshCw, X, Calculator, Scale, Activity, BarChart3, PieChart, Coins, Target, AlertCircle, ChevronDown, ChevronUp, ExternalLink, ArrowRight, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, BarChart4 } from 'lucide-react';
+import { Search, Wallet, TrendingUp, TrendingDown, RefreshCw, X, Calculator, Scale, Activity, BarChart3, PieChart, Coins, Target, AlertCircle, ChevronDown, ChevronUp, ExternalLink, ArrowRight, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, BarChart4, Trophy } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine, Cell } from 'recharts';
 
@@ -133,15 +133,24 @@ const DetailedInfoBlock = ({ asset }: { asset: AssetPosition }) => {
 };
 
 const PerformanceSection = ({ asset, chartData }: { asset: AssetPosition, chartData: { data: any[], average: number } }) => {
+    // Calculo da Rentabilidade do Usuário (Wallet Performance)
+    const userProfitPercent = asset.averagePrice > 0 ? ((asset.currentPrice || 0) / asset.averagePrice - 1) * 100 : 0;
+    const userProfitValue = (asset.currentPrice && asset.averagePrice) ? (asset.currentPrice - asset.averagePrice) * asset.quantity : 0;
+    const isUserProfitable = userProfitPercent >= 0;
+
+    // Dados de Mercado (Market Performance)
+    const market12m = asset.profitability_12m;
+    const marketMonth = asset.profitability_month;
+
     const rows = [
-        { period: '1 Mês', nominal: asset.profitability_month, real: asset.profitability_real_month },
-        { period: '12 Meses', nominal: asset.profitability_12m, real: asset.profitability_real_12m },
+        { period: '1 Mês', nominal: marketMonth, real: asset.profitability_real_month },
+        { period: '12 Meses', nominal: market12m, real: asset.profitability_real_12m },
         { period: '24 Meses', nominal: asset.profitability_2y, real: asset.profitability_real_2y },
     ];
 
-    // Gráfico Comparativo 12 Meses
+    // Gráfico Comparativo 12 Meses (Mostra rentabilidade do mercado vs índices)
     const comparisonData = [
-        { name: asset.ticker, value: asset.profitability_12m || 0, fill: '#6366f1' }, // Indigo
+        { name: asset.ticker, value: market12m || 0, fill: '#6366f1' }, // Indigo
         { name: 'CDI', value: asset.benchmark_cdi_12m || 0, fill: '#a1a1aa' }, // Zinc 400
         { name: asset.assetType === AssetType.FII ? 'IFIX' : 'IBOV', value: (asset.assetType === AssetType.FII ? asset.benchmark_ifix_12m : asset.benchmark_ibov_12m) || 0, fill: '#71717a' } // Zinc 500
     ].filter(d => d.value !== 0);
@@ -149,7 +158,27 @@ const PerformanceSection = ({ asset, chartData }: { asset: AssetPosition, chartD
     return (
         <div className="space-y-6">
             
-            {/* 1. Gráfico de Proventos */}
+            {/* 1. SEU RESULTADO (Destaque Principal) */}
+            <div className={`p-5 rounded-2xl border relative overflow-hidden ${isUserProfitable ? 'bg-emerald-50 border-emerald-100 dark:bg-emerald-900/10 dark:border-emerald-900/30' : 'bg-rose-50 border-rose-100 dark:bg-rose-900/10 dark:border-rose-900/30'}`}>
+                <div className="relative z-10 flex justify-between items-center">
+                    <div>
+                        <p className={`text-[10px] font-black uppercase tracking-widest mb-1 opacity-70 ${isUserProfitable ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-700 dark:text-rose-300'}`}>Seu Resultado (Carteira)</p>
+                        <div className="flex items-baseline gap-2">
+                            <span className={`text-2xl font-black ${isUserProfitable ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
+                                {isUserProfitable ? '+' : ''}{userProfitPercent.toFixed(2)}%
+                            </span>
+                            <span className="text-xs font-bold opacity-60 dark:text-white">
+                                ({isUserProfitable ? '+' : ''}{formatBRL(userProfitValue)})
+                            </span>
+                        </div>
+                    </div>
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isUserProfitable ? 'bg-emerald-200/50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400' : 'bg-rose-200/50 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400'}`}>
+                        {isUserProfitable ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
+                    </div>
+                </div>
+            </div>
+
+            {/* 2. Gráfico de Proventos */}
             <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
                 <div className="flex justify-between items-center mb-4">
                     <h4 className="text-[10px] font-bold text-zinc-400 uppercase flex items-center gap-2">
@@ -184,11 +213,11 @@ const PerformanceSection = ({ asset, chartData }: { asset: AssetPosition, chartD
                 </div>
             </div>
 
-            {/* 2. Rentabilidade e Comparação */}
+            {/* 3. Rentabilidade de Mercado e Comparação */}
             <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-sm">
                 <div className="bg-zinc-50 dark:bg-zinc-800/50 p-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-indigo-500" />
-                    <h4 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Rentabilidade do Ativo</h4>
+                    <Activity className="w-4 h-4 text-indigo-500" />
+                    <h4 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Performance de Mercado (Cotação)</h4>
                 </div>
                 
                 {/* Tabela Simplificada */}
@@ -205,10 +234,10 @@ const PerformanceSection = ({ asset, chartData }: { asset: AssetPosition, chartD
                             {rows.map((row, idx) => (
                                 <tr key={idx} className="border-b border-zinc-50 dark:border-zinc-800/50 last:border-0">
                                     <td className="p-3 font-medium text-zinc-500">{row.period}</td>
-                                    <td className={`p-3 text-right font-bold ${row.nominal && row.nominal >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                    <td className={`p-3 text-right font-bold ${row.nominal ? (row.nominal >= 0 ? 'text-emerald-600' : 'text-rose-600') : 'text-zinc-300'}`}>
                                         {formatPercent(row.nominal)}
                                     </td>
-                                    <td className={`p-3 text-right font-bold ${row.real && row.real >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                    <td className={`p-3 text-right font-bold ${row.real ? (row.real >= 0 ? 'text-emerald-600' : 'text-rose-600') : 'text-zinc-300'}`}>
                                         {formatPercent(row.real)}
                                     </td>
                                 </tr>
@@ -512,11 +541,11 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                                     <div className="grid grid-cols-3 gap-3 mb-4">
                                         <MetricCard label="DY (12m)" value={formatPercent(selectedAsset.dy_12m)} highlight colorClass="text-emerald-600 dark:text-emerald-400" />
                                         <MetricCard label="P/VP" value={formatNumber(selectedAsset.p_vp)} />
-                                        {/* P/L visível apenas para ações */}
+                                        {/* P/L visível apenas para ações, caso contrário mostra VP/Cota para FIIs */}
                                         {selectedAsset.assetType !== AssetType.FII ? (
                                             <MetricCard label="P/L" value={formatNumber(selectedAsset.p_l)} />
                                         ) : (
-                                            <MetricCard label="Valor Patrim." value={selectedAsset.vpa ? formatBRL(selectedAsset.vpa) : '-'} />
+                                            <MetricCard label="VP/Cota" value={selectedAsset.vpa ? formatBRL(selectedAsset.vpa) : '-'} />
                                         )}
                                     </div>
 

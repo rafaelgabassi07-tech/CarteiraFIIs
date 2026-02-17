@@ -290,26 +290,36 @@ async function scrapeInvestidor10(ticker: string) {
                 }
 
                 // --- 4. COMPARAÇÃO COM ÍNDICES (Rentabilidade) ---
-                const historySection = $('#history-section, #rentabilidade-table');
-                if (historySection.length > 0) {
-                    const table = historySection.find('table').first();
-                    if (table.length > 0) {
+                // Varredura mais agressiva por tabelas de rentabilidade
+                $('table').each((i, table) => {
+                    const headerText = $(table).find('thead').text().toLowerCase() || $(table).find('tr:first-child').text().toLowerCase();
+                    
+                    if (headerText.includes('rentabilidade') || headerText.includes('variação') || headerText.includes('valorização')) {
+                        
                         let idxCDI = -1, idxIndex = -1; 
                         
-                        table.find('thead th').each((i, th) => {
+                        // Encontra índices das colunas
+                        $(table).find('thead th, tr:first-child td, tr:first-child th').each((idx, th) => {
                             const txt = $(th).text().toUpperCase();
-                            if (txt.includes('CDI')) idxCDI = i;
-                            if (txt.includes('IFIX') || txt.includes('IBOV')) idxIndex = i;
+                            if (txt.includes('CDI')) idxCDI = idx;
+                            if (txt.includes('IFIX') || txt.includes('IBOV')) idxIndex = idx;
                         });
 
-                        table.find('tbody tr').each((_, tr) => {
+                        $(table).find('tbody tr').each((_, tr) => {
                             const rowLabel = $(tr).find('td').first().text().trim().toLowerCase();
-                            // Captura rentabilidade do ativo (coluna 1 geralmente)
-                            if (rowLabel.includes('1 ano') || rowLabel.includes('12 meses')) {
-                                const cols = $(tr).find('td');
-                                // Rentabilidade do Ativo (sempre index 1 na tabela padrão do I10)
+                            const cols = $(tr).find('td');
+
+                            // Rentabilidade do Mês
+                            if (rowLabel.includes('mês') || rowLabel.includes('atual') || rowLabel.includes('último')) {
+                                const rentMes = parseValue($(cols[1]).text());
+                                if (rentMes !== null && rentMes !== 0) dados.rentabilidade_mes = rentMes;
+                            }
+
+                            // Rentabilidade 12 Meses / Ano
+                            if (rowLabel.includes('12 meses') || rowLabel.includes('ano') || rowLabel.includes('1 ano')) {
+                                // Tenta pegar da coluna do ativo (geralmente index 1)
                                 const rentAtivo = parseValue($(cols[1]).text());
-                                if (rentAtivo !== null) dados.rentabilidade_12m = rentAtivo;
+                                if (rentAtivo !== null && rentAtivo !== 0) dados.rentabilidade_12m = rentAtivo;
 
                                 if (idxCDI > -1) dados.benchmark_cdi_12m = parseValue($(cols[idxCDI]).text());
                                 if (idxIndex > -1) {
@@ -318,12 +328,16 @@ async function scrapeInvestidor10(ticker: string) {
                                     else dados.benchmark_ibov_12m = val;
                                 }
                             }
-                            if (rowLabel.includes('mês') || rowLabel.includes('atual')) {
-                                const cols = $(tr).find('td');
-                                const rentMes = parseValue($(cols[1]).text());
-                                if (rentMes !== null) dados.rentabilidade_mes = rentMes;
-                            }
                         });
+                    }
+                });
+
+                // Fallback para ID específico se a varredura falhar
+                if (!dados.rentabilidade_12m) {
+                    const historySection = $('#history-section, #rentabilidade-table');
+                    if (historySection.length > 0) {
+                        const table = historySection.find('table').first();
+                        // ... (Lógica antiga mantida como fallback)
                     }
                 }
 
