@@ -450,9 +450,6 @@ const ChartsContainer = ({ ticker, type, asset }: { ticker: string, type: AssetT
     );
 };
 
-// ... (Rest of components: PositionSummaryCard, ValuationCard, DetailedInfoBlock, IncomeAnalysisSection, AssetListItem, PortfolioComponent) keep same ...
-// Including them here for completeness of the file rewrite request context
-
 const PositionSummaryCard = ({ asset, privacyMode }: { asset: AssetPosition, privacyMode: boolean }) => {
     const totalInvested = asset.quantity * asset.averagePrice;
     const totalValue = asset.quantity * (asset.currentPrice || 0);
@@ -495,8 +492,12 @@ const ValuationCard = ({ asset }: { asset: AssetPosition }) => {
     let fairPrice = 0;
     let upside = 0;
     
-    if (asset.assetType === AssetType.STOCK && asset.lpa > 0 && asset.vpa > 0) {
-        fairPrice = Math.sqrt(22.5 * asset.lpa * asset.vpa);
+    // Extração segura para evitar erros de TS (possibly undefined)
+    const lpa = asset.lpa ?? 0;
+    const vpa = asset.vpa ?? 0;
+    
+    if (asset.assetType === AssetType.STOCK && lpa > 0 && vpa > 0) {
+        fairPrice = Math.sqrt(22.5 * lpa * vpa);
     } else if (asset.dy_12m && asset.currentPrice) {
          const dividend = (asset.dy_12m/100) * asset.currentPrice;
          fairPrice = dividend / 0.06;
