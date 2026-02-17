@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, Wallet, TrendingUp, TrendingDown, RefreshCw, X, Calculator, Scale, Activity, BarChart3, PieChart, Coins, Target, AlertCircle, ChevronDown, ChevronUp, ExternalLink, ArrowRight, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, BarChart4, Trophy } from 'lucide-react';
+import { Search, Wallet, TrendingUp, TrendingDown, RefreshCw, X, Calculator, Scale, Activity, BarChart3, PieChart, Coins, Target, AlertCircle, ChevronDown, ChevronUp, ExternalLink, ArrowRight, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, BarChart4, Trophy, Hourglass, Goal } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine, Cell } from 'recharts';
 
@@ -132,53 +132,50 @@ const DetailedInfoBlock = ({ asset }: { asset: AssetPosition }) => {
     );
 };
 
-const PerformanceSection = ({ asset, chartData }: { asset: AssetPosition, chartData: { data: any[], average: number } }) => {
-    // Calculo da Rentabilidade do Usuário (Wallet Performance)
-    const userProfitPercent = asset.averagePrice > 0 ? ((asset.currentPrice || 0) / asset.averagePrice - 1) * 100 : 0;
-    const userProfitValue = (asset.currentPrice && asset.averagePrice) ? (asset.currentPrice - asset.averagePrice) * asset.quantity : 0;
-    const isUserProfitable = userProfitPercent >= 0;
+// Nova Seção de Performance Focada em Renda (Substitui Market Comparison)
+const IncomeAnalysisSection = ({ asset, chartData }: { asset: AssetPosition, chartData: { data: any[], average: number } }) => {
+    // Cálculo do Yield on Cost
+    const totalInvested = asset.quantity * asset.averagePrice;
+    const yoc = totalInvested > 0 ? (asset.totalDividends || 0) / totalInvested * 100 : 0;
+    
+    // Estimativas
+    const currentPrice = asset.currentPrice || 0;
+    const lastDiv = asset.last_dividend || (asset.dy_12m ? (currentPrice * (asset.dy_12m/100))/12 : 0);
+    const monthlyReturn = lastDiv > 0 ? lastDiv : 0;
+    
+    // Número Mágico
+    const magicNumber = monthlyReturn > 0 ? Math.ceil(currentPrice / monthlyReturn) : 0;
+    const magicProgress = magicNumber > 0 ? Math.min(100, (asset.quantity / magicNumber) * 100) : 0;
+    const missingForMagic = Math.max(0, magicNumber - asset.quantity);
 
-    // Dados de Mercado (Market Performance)
-    const market12m = asset.profitability_12m;
-    const marketMonth = asset.profitability_month;
-
-    const rows = [
-        { period: '1 Mês', nominal: marketMonth, real: asset.profitability_real_month },
-        { period: '12 Meses', nominal: market12m, real: asset.profitability_real_12m },
-        { period: '24 Meses', nominal: asset.profitability_2y, real: asset.profitability_real_2y },
-    ];
-
-    // Gráfico Comparativo 12 Meses (Mostra rentabilidade do mercado vs índices)
-    const comparisonData = [
-        { name: asset.ticker, value: market12m || 0, fill: '#6366f1' }, // Indigo
-        { name: 'CDI', value: asset.benchmark_cdi_12m || 0, fill: '#a1a1aa' }, // Zinc 400
-        { name: asset.assetType === AssetType.FII ? 'IFIX' : 'IBOV', value: (asset.assetType === AssetType.FII ? asset.benchmark_ifix_12m : asset.benchmark_ibov_12m) || 0, fill: '#71717a' } // Zinc 500
-    ].filter(d => d.value !== 0);
+    // Payback em Anos (Simples)
+    const paybackYears = monthlyReturn > 0 ? (currentPrice / (monthlyReturn * 12)) : 0;
 
     return (
         <div className="space-y-6">
             
             {/* 1. SEU RESULTADO (Destaque Principal) */}
-            <div className={`p-5 rounded-2xl border relative overflow-hidden ${isUserProfitable ? 'bg-emerald-50 border-emerald-100 dark:bg-emerald-900/10 dark:border-emerald-900/30' : 'bg-rose-50 border-rose-100 dark:bg-rose-900/10 dark:border-rose-900/30'}`}>
+            <div className="p-5 rounded-2xl border bg-gradient-to-br from-indigo-50 to-white dark:from-zinc-800 dark:to-zinc-900 border-indigo-100 dark:border-zinc-800 relative overflow-hidden">
                 <div className="relative z-10 flex justify-between items-center">
                     <div>
-                        <p className={`text-[10px] font-black uppercase tracking-widest mb-1 opacity-70 ${isUserProfitable ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-700 dark:text-rose-300'}`}>Seu Resultado (Carteira)</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest mb-1 text-indigo-600 dark:text-indigo-400 opacity-80">Retorno com Proventos</p>
                         <div className="flex items-baseline gap-2">
-                            <span className={`text-2xl font-black ${isUserProfitable ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
-                                {isUserProfitable ? '+' : ''}{userProfitPercent.toFixed(2)}%
-                            </span>
-                            <span className="text-xs font-bold opacity-60 dark:text-white">
-                                ({isUserProfitable ? '+' : ''}{formatBRL(userProfitValue)})
+                            <span className="text-2xl font-black text-zinc-900 dark:text-white">
+                                {formatBRL(asset.totalDividends || 0)}
                             </span>
                         </div>
+                        <div className="mt-2 inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white dark:bg-black/20 border border-indigo-100 dark:border-white/5">
+                            <span className="text-[9px] font-bold text-zinc-500">Yield on Cost:</span>
+                            <span className="text-[9px] font-black text-emerald-500">+{yoc.toFixed(2)}%</span>
+                        </div>
                     </div>
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isUserProfitable ? 'bg-emerald-200/50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400' : 'bg-rose-200/50 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400'}`}>
-                        {isUserProfitable ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
+                    <div className="w-12 h-12 rounded-2xl bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                        <Wallet className="w-6 h-6" />
                     </div>
                 </div>
             </div>
 
-            {/* 2. Gráfico de Proventos */}
+            {/* 2. Gráfico de Proventos (Mantido pois é útil e funcional) */}
             <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
                 <div className="flex justify-between items-center mb-4">
                     <h4 className="text-[10px] font-bold text-zinc-400 uppercase flex items-center gap-2">
@@ -213,75 +210,64 @@ const PerformanceSection = ({ asset, chartData }: { asset: AssetPosition, chartD
                 </div>
             </div>
 
-            {/* 3. Rentabilidade de Mercado e Comparação */}
+            {/* 3. RAIO-X DE RENDA (Novo) */}
             <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-sm">
                 <div className="bg-zinc-50 dark:bg-zinc-800/50 p-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-2">
-                    <Activity className="w-4 h-4 text-indigo-500" />
-                    <h4 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Performance de Mercado (Cotação)</h4>
+                    <Zap className="w-4 h-4 text-amber-500" />
+                    <h4 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Raio-X de Renda</h4>
                 </div>
                 
-                {/* Tabela Simplificada */}
-                <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                        <thead>
-                            <tr className="border-b border-zinc-100 dark:border-zinc-800">
-                                <th className="text-left p-3 font-bold text-zinc-400">Período</th>
-                                <th className="text-right p-3 font-bold text-zinc-400">Nominal</th>
-                                <th className="text-right p-3 font-bold text-zinc-400">Real (IPCA+)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {rows.map((row, idx) => (
-                                <tr key={idx} className="border-b border-zinc-50 dark:border-zinc-800/50 last:border-0">
-                                    <td className="p-3 font-medium text-zinc-500">{row.period}</td>
-                                    <td className={`p-3 text-right font-bold ${row.nominal ? (row.nominal >= 0 ? 'text-emerald-600' : 'text-rose-600') : 'text-zinc-300'}`}>
-                                        {formatPercent(row.nominal)}
-                                    </td>
-                                    <td className={`p-3 text-right font-bold ${row.real ? (row.real >= 0 ? 'text-emerald-600' : 'text-rose-600') : 'text-zinc-300'}`}>
-                                        {formatPercent(row.real)}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                <div className="p-4 space-y-4">
+                    {/* Bola de Neve */}
+                    <div>
+                        <div className="flex justify-between items-end mb-2">
+                            <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 flex items-center gap-1">
+                                <Coins className="w-3.5 h-3.5 text-amber-500" /> Número Mágico
+                            </span>
+                            <span className="text-[10px] font-black text-zinc-400 uppercase">
+                                {missingForMagic === 0 ? 'Atingido!' : `Faltam ${missingForMagic} cotas`}
+                            </span>
+                        </div>
+                        <div className="h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden mb-1">
+                            <div className="h-full bg-amber-500 transition-all duration-1000" style={{ width: `${magicProgress}%` }}></div>
+                        </div>
+                        <p className="text-[10px] text-zinc-400 leading-tight">
+                            Você precisa de <strong>{magicNumber}</strong> cotas para comprar uma nova cota todo mês apenas com os dividendos.
+                        </p>
+                    </div>
 
-                {/* Comparativo 12m Visual */}
-                {comparisonData.length > 1 && (
-                    <div className="p-4 border-t border-zinc-100 dark:border-zinc-800">
-                        <h5 className="text-[9px] font-bold text-zinc-400 uppercase mb-3">Performance Relativa (12m)</h5>
-                        <div className="h-24 w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={comparisonData} layout="vertical" margin={{ top: 0, right: 30, left: 0, bottom: 0 }}>
-                                    <XAxis type="number" hide />
-                                    <YAxis 
-                                        dataKey="name" 
-                                        type="category" 
-                                        tick={{ fontSize: 10, fill: '#71717a', fontWeight: 700 }} 
-                                        width={45} 
-                                        axisLine={false} 
-                                        tickLine={false} 
-                                    />
-                                    <Tooltip 
-                                        cursor={{fill: 'transparent'}}
-                                        contentStyle={{ borderRadius: '8px', border: 'none', backgroundColor: '#18181b', color: '#fff', fontSize: '10px', padding: '8px' }}
-                                        formatter={(value: number) => [`${value.toFixed(2)}%`, 'Rentabilidade 12m']}
-                                    />
-                                    <Bar 
-                                        dataKey="value" 
-                                        radius={[0, 4, 4, 0]} 
-                                        barSize={12} 
-                                        label={{ position: 'right', fill: '#71717a', fontSize: 10, fontWeight: 700, formatter: (v: number) => `${v.toFixed(2)}%` }}
-                                    >
-                                        {comparisonData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={entry.fill} />
-                                        ))}
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
+                    <div className="border-t border-zinc-100 dark:border-zinc-800 pt-4">
+                        <h5 className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-3">Metas de Renda Passiva</h5>
+                        <div className="space-y-3">
+                            {[50, 100, 1000].map(target => {
+                                const needed = monthlyReturn > 0 ? Math.ceil(target / monthlyReturn) : 0;
+                                const has = asset.quantity >= needed;
+                                return (
+                                    <div key={target} className="flex justify-between items-center text-xs">
+                                        <span className="font-bold text-zinc-600 dark:text-zinc-400 flex items-center gap-2">
+                                            {has ? <CheckCircle className="w-3.5 h-3.5 text-emerald-500" /> : <Goal className="w-3.5 h-3.5 text-zinc-300" />}
+                                            R$ {target}/mês
+                                        </span>
+                                        <span className={`font-mono font-medium ${has ? 'text-emerald-500' : 'text-zinc-400'}`}>
+                                            {needed} cotas
+                                        </span>
+                                    </div>
+                                )
+                            })}
                         </div>
                     </div>
-                )}
+
+                    <div className="grid grid-cols-2 gap-3 pt-2">
+                        <div className="p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                            <p className="text-[9px] font-bold text-zinc-400 uppercase mb-1">Payback Estimado</p>
+                            <p className="text-lg font-black text-zinc-900 dark:text-white">{paybackYears > 0 ? paybackYears.toFixed(1) : '-'} <span className="text-xs font-medium text-zinc-500">anos</span></p>
+                        </div>
+                        <div className="p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                            <p className="text-[9px] font-bold text-zinc-400 uppercase mb-1">Renda/Cota</p>
+                            <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(monthlyReturn)}</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );
@@ -389,8 +375,8 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
     const [selectedAsset, setSelectedAsset] = useState<AssetPosition | null>(null);
     const [expandedAssetTicker, setExpandedAssetTicker] = useState<string | null>(null);
     
-    // Tabs Unificadas
-    const [activeTab, setActiveTab] = useState<'RESUMO' | 'PERFORMANCE' | 'DADOS' | 'IMOVEIS'>('RESUMO');
+    // Tabs Unificadas (Mudado PERFORMANCE para RENDA)
+    const [activeTab, setActiveTab] = useState<'RESUMO' | 'RENDA' | 'DADOS' | 'IMOVEIS'>('RESUMO');
 
     const filtered = useMemo(() => {
         if (!search) return portfolio;
@@ -511,7 +497,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
 
                             {/* Tabs Navigation (Merged) */}
                             <div className="flex p-1 bg-zinc-100 dark:bg-zinc-800 rounded-xl overflow-x-auto no-scrollbar">
-                                {['RESUMO', 'PERFORMANCE', 'DADOS', 'IMOVEIS'].map(tab => {
+                                {['RESUMO', 'RENDA', 'DADOS', 'IMOVEIS'].map(tab => {
                                     if (tab === 'IMOVEIS' && (!selectedAsset.properties || selectedAsset.properties.length === 0)) return null;
                                     return (
                                         <button
@@ -574,9 +560,10 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                                 </div>
                             )}
 
-                            {activeTab === 'PERFORMANCE' && (
+                            {/* Substituído PERFORMANCE por RENDA com Análise */}
+                            {activeTab === 'RENDA' && (
                                 <div className="anim-fade-in">
-                                    <PerformanceSection asset={selectedAsset} chartData={assetDividendChartData} />
+                                    <IncomeAnalysisSection asset={selectedAsset} chartData={assetDividendChartData} />
                                 </div>
                             )}
 
