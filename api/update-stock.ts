@@ -237,42 +237,71 @@ async function scrapeInvestidor10(ticker: string) {
                      dados.vpa = dados.cotacao_atual / dados.pvp;
                 }
 
-                // --- EXTRAÇÃO DE IMÓVEIS (FIIs de Tijolo) ---
+                // --- EXTRAÇÃO DE IMÓVEIS (FIIs de Tijolo) APRIMORADA ---
                 if (type === 'FII') {
-                    // Procura pela seção de portfólio/imóveis. 
-                    // No Investidor10 geralmente são cards dentro de uma div com ID #sc-portfolio-fii ou similar
-                    // OU cards com classe .vacancies-card (para vacância por imóvel)
+                    // Estratégia 1: Busca na seção específica de Portfólio do Investidor10 (Grid/Carousel)
+                    // Geralmente ID #sc-portfolio-fii
+                    const portfolioSection = $('#sc-portfolio-fii, #sc-properties, #sc-portfolio');
                     
-                    $('.vacancies-card, .property-card').each((_, el) => {
-                        const name = $(el).find('.name, .title, strong').first().text().trim();
-                        const location = $(el).find('.address, .location, .city-state').text().trim();
-                        
-                        // Se não achou localização explicita, tenta extrair de textos secundários
-                        const secondaryText = $(el).text().trim();
-                        
-                        if (name) {
-                            realEstateProperties.push({
-                                name: name,
-                                location: location || 'Localização não informada',
-                                type: 'Imóvel'
-                            });
-                        }
-                    });
+                    if (portfolioSection.length > 0) {
+                        // Tenta encontrar cards dentro desta seção
+                        portfolioSection.find('.card, .property-card, .carousel-cell, .splide__slide').each((_, el) => {
+                            // Tenta extrair Nome do Imóvel
+                            let name = $(el).find('h4, .title, strong, .card-header').text().trim();
+                            if (!name) name = $(el).find('.name').text().trim();
 
-                    // Fallback: Tenta tabelas dentro da seção portfólio se cards não existirem
+                            // Tenta extrair Localização
+                            let location = $(el).find('.address, .location, .sub-title').text().trim();
+                            
+                            // Se não achar location com classe explícita, tenta procurar texto que pareça endereço
+                            if (!location) {
+                                // Pega o corpo do card
+                                const bodyText = $(el).find('.card-body, .content').text().trim();
+                                // Heurística simples: se o corpo tem texto e não é o nome, usa como localização (frequentemente é cidade/UF)
+                                if (bodyText && bodyText !== name) location = bodyText;
+                            }
+
+                            if (name && name.length > 2) {
+                                realEstateProperties.push({
+                                    name: name.replace(/\s+/g, ' '), // Limpa espaços extras
+                                    location: location ? location.replace(/\s+/g, ' ') : 'Localização não informada',
+                                    type: 'Imóvel'
+                                });
+                            }
+                        });
+                    }
+
+                    // Estratégia 2: Seção de Vacância (Muitas vezes contém a lista também)
+                    if (realEstateProperties.length === 0) {
+                        $('.vacancies-card').each((_, el) => {
+                            const name = $(el).find('.name, .title').first().text().trim();
+                            const location = $(el).find('.address, .location').text().trim();
+                            
+                            if (name) {
+                                realEstateProperties.push({
+                                    name: name.replace(/\s+/g, ' '),
+                                    location: location || 'Localização não informada',
+                                    type: 'Imóvel'
+                                });
+                            }
+                        });
+                    }
+
+                    // Estratégia 3: Fallback para Tabelas (Listagem antiga)
                     if (realEstateProperties.length === 0) {
                         $('table').each((_, table) => {
                             const header = $(table).find('thead').text().toLowerCase();
-                            if (header.includes('imóvel') || header.includes('nome')) {
+                            if (header.includes('imóvel') || header.includes('nome') || header.includes('propriedade')) {
                                 $(table).find('tbody tr').each((_, tr) => {
                                     const cols = $(tr).find('td');
                                     if (cols.length >= 2) {
                                         const pName = $(cols[0]).text().trim();
                                         const pLoc = $(cols[1]).text().trim();
-                                        if (pName && pName.length > 3) {
+                                        // Valida se parece um imóvel (evita linhas de total ou lixo)
+                                        if (pName && pName.length > 3 && !pName.toLowerCase().includes('total')) {
                                             realEstateProperties.push({
-                                                name: pName,
-                                                location: pLoc,
+                                                name: pName.replace(/\s+/g, ' '),
+                                                location: pLoc ? pLoc.replace(/\s+/g, ' ') : '',
                                                 type: 'Imóvel'
                                             });
                                         }

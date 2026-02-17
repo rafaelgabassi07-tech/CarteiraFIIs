@@ -460,7 +460,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, privacyMode =
                                 )}
 
                                 {/* LISTA DE IMÓVEIS (FIIs de Tijolo) */}
-                                {selectedAsset.assetType === AssetType.FII && selectedAsset.properties && selectedAsset.properties.length > 0 && (
+                                {selectedAsset.properties && selectedAsset.properties.length > 0 && (
                                     <div className="mt-6">
                                         <div className="flex items-center gap-2 mb-3 px-1">
                                             <Building2 className="w-4 h-4 text-sky-500" />
