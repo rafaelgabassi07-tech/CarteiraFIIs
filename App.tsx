@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Header, BottomNav, ChangelogModal, NotificationsModal, ConfirmationModal, InstallPromptModal, UpdateReportModal } from './components/Layout';
 import { SplashScreen } from './components/SplashScreen';
@@ -12,13 +11,14 @@ import { Transaction, BrapiQuote, DividendReceipt, AssetType, AppNotification, A
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData, triggerScraperUpdate, mapScraperToFundamentals, fetchFutureAnnouncements } from './services/dataService';
 import { getQuantityOnDate, isSameDayLocal, mapSupabaseToTx, processPortfolio, normalizeTicker } from './services/portfolioRules';
+import { analyzePortfolio } from './services/analysisService'; // IMPORT REATIVADO
 import { Check, Loader2, AlertTriangle, Info, Database, Activity, Globe } from 'lucide-react';
 import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase, SUPABASE_URL } from './services/supabase';
 import { Session } from '@supabase/supabase-js';
 import { useScrollDirection } from './hooks/useScrollDirection';
 
-const APP_VERSION = '8.9.1'; 
+const APP_VERSION = '8.9.2'; 
 
 const STORAGE_KEYS = {
   DIVS: 'investfiis_v4_div_cache',
@@ -615,6 +615,11 @@ const App: React.FC = () => {
       return processPortfolio(transactions, dividends, quotes, assetsMetadata, marketIndicators.ipca);
   }, [transactions, quotes, dividends, assetsMetadata, marketIndicators]);
 
+  // --- GERAÇÃO DE STORIES (INSIGHTS) ---
+  const insights = useMemo(() => {
+      return analyzePortfolio(memoizedPortfolioData.portfolio, marketIndicators.ipca);
+  }, [memoizedPortfolioData.portfolio, marketIndicators.ipca]);
+
   // Determine header visibility logic
   // CRITICAL FIX: Force header visible in Settings to prevent flicker
   const isHeaderVisible = showSettings || scrollDirection === 'up' || isTop;
@@ -687,7 +692,8 @@ const App: React.FC = () => {
                           {...memoizedPortfolioData} 
                           totalAppreciation={memoizedPortfolioData.balance - memoizedPortfolioData.invested} 
                           privacyMode={privacyMode} 
-                          onViewAsset={handleViewAsset} 
+                          onViewAsset={handleViewAsset}
+                          insights={insights}
                       />
                   )}
                   {currentTab === 'portfolio' && (
