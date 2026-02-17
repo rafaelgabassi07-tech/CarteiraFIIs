@@ -223,10 +223,8 @@ const PriceHistoryChart = ({ data, loading, error, ticker, range, setRange }: an
     );
 };
 
-// --- COMPONENT 2: UNIFIED STRATEGY CHART (Comparativo & Simulador) ---
-const UnifiedStrategyChart = ({ data, loading, ticker, type, range, setRange }: any) => {
-    const [mode, setMode] = useState<'COMPARE' | 'SIMULATOR'>('COMPARE');
-    const [simulationAmount, setSimulationAmount] = useState(1000);
+// --- COMPONENT 2: ComparativeChart (Percentual) ---
+const ComparativeChart = ({ data, loading, ticker, type, range, setRange }: any) => {
     const [visibleBenchmarks, setVisibleBenchmarks] = useState({
         'CDI': true,
         'IPCA': true,
@@ -238,61 +236,13 @@ const UnifiedStrategyChart = ({ data, loading, ticker, type, range, setRange }: 
         setVisibleBenchmarks(prev => ({ ...prev, [key]: !prev[key as keyof typeof prev] }));
     };
 
-    // Prepara dados dependendo do modo
-    const chartData = useMemo(() => {
-        if (!data || data.length === 0) return [];
-        
-        if (mode === 'SIMULATOR') {
-            // Converte % acumulado em Valor Monetário (R$)
-            // Assume que o primeiro ponto é o start (R$ Amount) e aplica as variações
-            // O backend já retorna % acumulado relativo ao início do período selecionado (range)
-            return data.map((pt: any) => ({
-                ...pt,
-                assetVal: simulationAmount * (1 + (pt.assetPct || 0) / 100),
-                cdiVal: simulationAmount * (1 + (pt.cdiPct || 0) / 100),
-                ipcaVal: simulationAmount * (1 + (pt.ipcaPct || 0) / 100),
-                ibovVal: simulationAmount * (1 + (pt.ibovPct || 0) / 100),
-                ifixVal: simulationAmount * (1 + (pt.ifixPct || 0) / 100),
-            }));
-        }
-        
-        return data; // Modo Comparativo usa as % diretas
-    }, [data, mode, simulationAmount]);
-
-    // Métricas do Simulador (Último Ponto)
-    const simulationResult = useMemo(() => {
-        if (mode !== 'SIMULATOR' || chartData.length === 0) return null;
-        const last = chartData[chartData.length - 1];
-        const profit = last.assetVal - simulationAmount;
-        const profitCDI = last.cdiVal - simulationAmount;
-        return {
-            finalValue: last.assetVal,
-            profit,
-            isProfit: profit >= 0,
-            diffCDI: profit - profitCDI
-        };
-    }, [chartData, mode, simulationAmount]);
-
     return (
         <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm mb-6 relative overflow-hidden transition-all duration-300">
-            {/* Header com Toggle de Modo */}
             <div className="flex flex-col gap-4 mb-4">
                 <div className="flex justify-between items-start">
-                    <div className="flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl">
-                        <button 
-                            onClick={() => setMode('COMPARE')}
-                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 ${mode === 'COMPARE' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
-                        >
-                            <TrendingUp className="w-3 h-3" /> Comparar (%)
-                        </button>
-                        <button 
-                            onClick={() => setMode('SIMULATOR')}
-                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 ${mode === 'SIMULATOR' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
-                        >
-                            <Award className="w-3 h-3" /> Simulador (R$)
-                        </button>
-                    </div>
-                    
+                    <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                        <TrendingUp className="w-3.5 h-3.5" /> Rentabilidade Comparativa
+                    </h3>
                     <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5">
                         {['1Y', '2Y', '5Y', 'MAX'].map((r) => (
                             <button key={r} onClick={() => setRange(r)} className={`px-2 py-1 text-[9px] font-bold rounded-md transition-all ${range === r ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>{r}</button>
@@ -300,38 +250,6 @@ const UnifiedStrategyChart = ({ data, loading, ticker, type, range, setRange }: 
                     </div>
                 </div>
 
-                {/* Controles Específicos do Simulador */}
-                {mode === 'SIMULATOR' && (
-                    <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl p-3 border border-zinc-100 dark:border-zinc-800 flex items-center justify-between anim-slide-up">
-                        <div className="flex flex-col">
-                            <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Aporte Inicial</span>
-                            <div className="flex gap-1">
-                                {[1000, 5000, 10000, 50000].map(val => (
-                                    <button 
-                                        key={val} 
-                                        onClick={() => setSimulationAmount(val)}
-                                        className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${simulationAmount === val ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900' : 'bg-white dark:bg-zinc-800 text-zinc-500 border border-zinc-200 dark:border-zinc-700'}`}
-                                    >
-                                        {val >= 1000 ? `${val/1000}k` : val}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                        {simulationResult && (
-                            <div className="text-right">
-                                <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Resultado</span>
-                                <div className="flex flex-col items-end">
-                                    <span className="text-lg font-black text-zinc-900 dark:text-white leading-none">{formatBRL(simulationResult.finalValue)}</span>
-                                    <span className={`text-[10px] font-bold ${simulationResult.isProfit ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                        {simulationResult.isProfit ? '+' : ''}{formatBRL(simulationResult.profit)}
-                                    </span>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* Filtros de Benchmark */}
                 <div className="flex flex-wrap gap-2">
                     <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg border border-indigo-100 dark:border-indigo-900/30 bg-indigo-50 dark:bg-indigo-900/20">
                         <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
@@ -359,11 +277,11 @@ const UnifiedStrategyChart = ({ data, loading, ticker, type, range, setRange }: 
                     <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm z-10">
                         <div className="animate-pulse text-xs font-bold text-zinc-400">Carregando dados...</div>
                     </div>
-                ) : !chartData || chartData.length === 0 ? (
+                ) : !data || data.length === 0 ? (
                     <div className="absolute inset-0 flex items-center justify-center text-xs text-zinc-400">Dados insuficientes</div>
                 ) : (
                     <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={chartData} margin={{ top: 10, right: 5, left: -20, bottom: 0 }}>
+                        <LineChart data={data} margin={{ top: 10, right: 5, left: -20, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
                             <XAxis dataKey="date" hide={false} axisLine={false} tickLine={false} tick={{fontSize: 9, fill: '#71717a'}} tickFormatter={(val) => formatDateShort(val)} minTickGap={40} />
                             <YAxis 
@@ -372,33 +290,109 @@ const UnifiedStrategyChart = ({ data, loading, ticker, type, range, setRange }: 
                                 tickLine={false} 
                                 tick={{fontSize: 9, fill: '#71717a'}} 
                                 width={35}
-                                tickFormatter={(val) => mode === 'SIMULATOR' ? (val >= 1000 ? `${(val/1000).toFixed(0)}k` : val) : `${val.toFixed(0)}%`}
+                                tickFormatter={(val) => `${val.toFixed(0)}%`}
                             />
                             <Tooltip 
                                 contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: 'rgba(24, 24, 27, 0.95)', color: '#fff', fontSize: '11px', padding: '8px 12px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)' }}
                                 labelFormatter={(label) => new Date(label).toLocaleDateString('pt-BR')}
                                 formatter={(value: number, name: string) => {
-                                    const formattedVal = mode === 'SIMULATOR' ? formatBRL(value) : `${value.toFixed(2)}%`;
-                                    if (name === 'assetPct' || name === 'assetVal') return [formattedVal, ticker];
-                                    if (name === 'ibovPct' || name === 'ibovVal') return [formattedVal, 'IBOV'];
-                                    if (name === 'ifixPct' || name === 'ifixVal') return [formattedVal, 'IFIX'];
-                                    if (name === 'cdiPct' || name === 'cdiVal') return [formattedVal, 'CDI'];
-                                    if (name === 'ipcaPct' || name === 'ipcaVal') return [formattedVal, 'IPCA'];
+                                    const formattedVal = `${value.toFixed(2)}%`;
+                                    if (name === 'assetPct') return [formattedVal, ticker];
+                                    if (name === 'ibovPct') return [formattedVal, 'IBOV'];
+                                    if (name === 'ifixPct') return [formattedVal, 'IFIX'];
+                                    if (name === 'cdiPct') return [formattedVal, 'CDI'];
+                                    if (name === 'ipcaPct') return [formattedVal, 'IPCA'];
                                     return [formattedVal, name];
                                 }}
                             />
-                            <ReferenceLine y={mode === 'SIMULATOR' ? simulationAmount : 0} stroke="#71717a" strokeOpacity={0.3} strokeDasharray="3 3" />
                             
-                            {visibleBenchmarks.CDI && <Line type="monotone" dataKey={mode === 'SIMULATOR' ? 'cdiVal' : 'cdiPct'} stroke="#52525b" strokeWidth={1.5} dot={false} strokeDasharray="2 2" animationDuration={1000} />}
-                            {visibleBenchmarks.IPCA && <Line type="monotone" dataKey={mode === 'SIMULATOR' ? 'ipcaVal' : 'ipcaPct'} stroke="#06b6d4" strokeWidth={1.5} dot={false} strokeDasharray="2 2" animationDuration={1000} />}
-                            {visibleBenchmarks.IBOV && <Line type="monotone" dataKey={mode === 'SIMULATOR' ? 'ibovVal' : 'ibovPct'} stroke="#f59e0b" strokeWidth={1.5} dot={false} animationDuration={1000} />}
-                            {visibleBenchmarks.IFIX && <Line type="monotone" dataKey={mode === 'SIMULATOR' ? 'ifixVal' : 'ifixPct'} stroke="#10b981" strokeWidth={1.5} dot={false} animationDuration={1000} />}
+                            {visibleBenchmarks.CDI && <Line type="monotone" dataKey="cdiPct" stroke="#52525b" strokeWidth={1.5} dot={false} strokeDasharray="2 2" animationDuration={1000} />}
+                            {visibleBenchmarks.IPCA && <Line type="monotone" dataKey="ipcaPct" stroke="#06b6d4" strokeWidth={1.5} dot={false} strokeDasharray="2 2" animationDuration={1000} />}
+                            {visibleBenchmarks.IBOV && <Line type="monotone" dataKey="ibovPct" stroke="#f59e0b" strokeWidth={1.5} dot={false} animationDuration={1000} />}
+                            {visibleBenchmarks.IFIX && <Line type="monotone" dataKey="ifixPct" stroke="#10b981" strokeWidth={1.5} dot={false} animationDuration={1000} />}
                             
-                            <Line type="monotone" dataKey={mode === 'SIMULATOR' ? 'assetVal' : 'assetPct'} stroke="#6366f1" strokeWidth={2.5} dot={false} animationDuration={1000} />
+                            <Line type="monotone" dataKey="assetPct" stroke="#6366f1" strokeWidth={2.5} dot={false} animationDuration={1000} />
                         </LineChart>
                     </ResponsiveContainer>
                 )}
             </div>
+        </div>
+    );
+};
+
+// --- COMPONENT 3: SimulatorCard (R$) ---
+const SimulatorCard = ({ data, ticker }: any) => {
+    const [amount, setAmount] = useState(1000);
+    const result = useMemo(() => {
+        if (!data || data.length === 0) return null;
+        const last = data[data.length - 1];
+        
+        // Percentuais acumulados no período (já normalizados pelo backend ou processChartData)
+        const assetGrowth = (last.assetPct || 0) / 100;
+        const cdiGrowth = (last.cdiPct || 0) / 100;
+        const savingsGrowth = cdiGrowth * 0.7; // Estimativa poupança
+
+        const finalAsset = amount * (1 + assetGrowth);
+        const finalCDI = amount * (1 + cdiGrowth);
+        const finalSavings = amount * (1 + savingsGrowth);
+
+        return {
+            asset: finalAsset,
+            cdi: finalCDI,
+            savings: finalSavings,
+            profit: finalAsset - amount,
+            diffCDI: finalAsset - finalCDI
+        };
+    }, [data, amount]);
+
+    return (
+        <div className="bg-gradient-to-br from-zinc-50 to-white dark:from-zinc-900 dark:to-zinc-950 rounded-3xl border border-zinc-200 dark:border-zinc-800 p-5 shadow-sm mb-6">
+            <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                    <Award className="w-3.5 h-3.5" /> Simulador de Retorno
+                </h3>
+                <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5">
+                    {[1000, 5000, 10000].map(val => (
+                        <button 
+                            key={val} 
+                            onClick={() => setAmount(val)} 
+                            className={`px-2 py-1 text-[9px] font-bold rounded-md transition-all ${amount === val ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                        >
+                            {val/1000}k
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            <div className="mb-4">
+                <p className="text-[10px] text-zinc-400 mb-1">Se você tivesse investido <strong>{formatBRL(amount)}</strong> neste período:</p>
+                <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter">
+                        {result ? formatBRL(result.asset) : '...'}
+                    </span>
+                    {result && (
+                        <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${result.profit >= 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400'}`}>
+                            {result.profit > 0 ? '+' : ''}{formatBRL(result.profit)}
+                        </span>
+                    )}
+                </div>
+            </div>
+
+            {result && (
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="bg-white dark:bg-zinc-800/50 p-2 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                        <span className="text-[9px] font-bold text-zinc-400 uppercase block">vs CDI (100%)</span>
+                        <span className="font-bold text-zinc-600 dark:text-zinc-300">{formatBRL(result.cdi)}</span>
+                        <span className={`block text-[9px] font-bold ${result.diffCDI >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                            {result.diffCDI >= 0 ? '+' : ''}{formatBRL(result.diffCDI)}
+                        </span>
+                    </div>
+                    <div className="bg-white dark:bg-zinc-800/50 p-2 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                        <span className="text-[9px] font-bold text-zinc-400 uppercase block">vs Poupança (Est.)</span>
+                        <span className="font-bold text-zinc-600 dark:text-zinc-300">{formatBRL(result.savings)}</span>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -438,7 +432,7 @@ const ChartsContainer = ({ ticker, type, asset }: { ticker: string, type: AssetT
                 setRange={setRange} 
             />
             
-            <UnifiedStrategyChart 
+            <ComparativeChart 
                 data={historyData} 
                 loading={loading} 
                 ticker={ticker} 
@@ -446,6 +440,8 @@ const ChartsContainer = ({ ticker, type, asset }: { ticker: string, type: AssetT
                 range={range}
                 setRange={setRange}
             />
+
+            <SimulatorCard data={historyData} ticker={ticker} />
         </>
     );
 };
