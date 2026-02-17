@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, Activity, BarChart3, PieChart, Coins, AlertCircle, ChevronDown, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, Scale, SquareStack, Calendar, Map as MapIcon, ChevronRight, Share2, MousePointerClick, CandlestickChart, LineChart as LineChartIcon, SlidersHorizontal, Layers } from 'lucide-react';
+import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, Activity, BarChart3, PieChart, Coins, AlertCircle, ChevronDown, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, Scale, SquareStack, Calendar, Map as MapIcon, ChevronRight, Share2, MousePointerClick, CandlestickChart, LineChart as LineChartIcon, SlidersHorizontal, Layers, Award } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, ReferenceLine, ComposedChart, CartesianGrid, Legend, AreaChart, Area, YAxis, PieChart as RePieChart, Pie, Cell, LineChart, Line, ErrorBar, Label } from 'recharts';
 import { formatBRL, formatPercent, formatNumber, formatDateShort } from '../utils/formatters';
@@ -41,27 +41,12 @@ const CustomCandleShape = (props: any) => {
     const { x, y, width, height, payload } = props;
     const { open, close, high, low } = payload;
     
-    // Se estiver usando o eixo Y 'price', o Recharts já escala y/height. 
-    // Porém, em ComposedChart com múltiplos eixos, precisamos garantir que estamos desenhando nas coordenadas certas.
-    // O Recharts passa y como o topo da barra (o valor maior entre open/close se for Bar padrão, mas aqui manipulamos).
-    
     if (open == null || close == null || high == null || low == null) return null;
 
     const isUp = close >= open;
     const color = isUp ? '#10b981' : '#f43f5e'; // Emerald / Rose
     const wickColor = isUp ? '#10b981' : '#f43f5e'; // Mesma cor do corpo para consistência
 
-    // Hack para pegar a escala do eixo Y atual do contexto do Recharts (props.yAxis)
-    // Se não disponível, usamos a lógica relativa básica (que pode falhar em ComposedChart complexo)
-    // Felizmente, num CustomShape de Bar, o Recharts já nos dá o Y e Height da "Barra" (open/close).
-    // Precisamos recalcular High e Low em pixels.
-    
-    // A melhor forma em Recharts Custom Shape é usar as escalas passadas ou calcular proporção.
-    // Simplificação: assumindo que o Bar dataKey é [low, high] para reservar o espaço vertical total.
-    
-    // O Recharts desenha a barra do 'min' ao 'max' do array passado em dataKey.
-    // Se passamos [low, high], o 'y' é o pixel do 'high' e 'height' é (low - high) em pixels.
-    
     const pixelHigh = y;
     const pixelLow = y + height;
     const pixelRange = height;
@@ -576,8 +561,145 @@ const ComparativeHistoryChart = ({ data, loading, ticker, type, range, setRange 
     );
 };
 
+// Simulador de Investimento em R$ 1.000,00 (Ex-MarketPerformanceCard)
+const InvestmentSimulatorCard = ({ asset, historyData }: { asset: AssetPosition, historyData: any[] }) => {
+    // Cálculo dos dados simulados (baseados no último ano do histórico)
+    const simulation = useMemo(() => {
+        if (!historyData || historyData.length < 2) return null;
+        
+        // Pega o último ponto válido
+        const lastPoint = historyData[historyData.length - 1];
+        
+        // Cálculo R$ 1000
+        const initialInvestment = 1000;
+        const finalValue = initialInvestment * (1 + (lastPoint.assetPct / 100));
+        const finalCDI = initialInvestment * (1 + (lastPoint.cdiPct / 100));
+        const profit = finalValue - initialInvestment;
+        const isProfit = profit >= 0;
+
+        // Comparações
+        const vsCDI = lastPoint.assetPct - lastPoint.cdiPct;
+        const benchmarkKey = asset.assetType === AssetType.FII ? 'ifixPct' : 'ibovPct';
+        const benchmarkLabel = asset.assetType === AssetType.FII ? 'IFIX' : 'IBOV';
+        const vsBenchmark = lastPoint.assetPct - (lastPoint[benchmarkKey] || 0);
+
+        // Min/Max do período para mostrar volatilidade
+        const prices = historyData.map(d => d.close).filter(p => p !== null);
+        const minPrice = Math.min(...prices);
+        const maxPrice = Math.max(...prices);
+
+        // Dados para o Sparkline (Mini gráfico)
+        const sparkData = historyData.map(d => ({ v: d.assetPct }));
+
+        return {
+            finalValue,
+            finalCDI,
+            profit,
+            isProfit,
+            vsCDI,
+            vsBenchmark,
+            benchmarkLabel,
+            minPrice,
+            maxPrice,
+            sparkData,
+            percent: lastPoint.assetPct
+        };
+    }, [historyData, asset]);
+
+    if (!simulation) {
+        return (
+            <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 p-5 shadow-sm mb-6 flex items-center justify-center h-40">
+                <span className="text-xs text-zinc-400 font-medium">Carregando simulação...</span>
+            </div>
+        );
+    }
+
+    return (
+        <div className="bg-zinc-950 rounded-3xl border border-zinc-800 p-6 shadow-xl mb-6 relative overflow-hidden group">
+            {/* Background Glow */}
+            <div className={`absolute top-0 right-0 w-64 h-64 rounded-full blur-[80px] opacity-10 pointer-events-none transition-colors duration-500 ${simulation.isProfit ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
+
+            <div className="flex justify-between items-start mb-6 relative z-10">
+                <div>
+                    <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2 mb-1">
+                        <Award className="w-3 h-3 text-amber-500" /> Simulador (12 Meses)
+                    </h4>
+                    <p className="text-xs text-zinc-500">Se você tivesse investido <strong>R$ 1.000,00</strong>...</p>
+                </div>
+                <div className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${simulation.isProfit ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'}`}>
+                    {simulation.isProfit ? 'Lucro' : 'Prejuízo'}
+                </div>
+            </div>
+
+            <div className="flex items-baseline gap-2 mb-1 relative z-10">
+                <span className="text-3xl font-black text-white tracking-tight">
+                    {formatBRL(simulation.finalValue)}
+                </span>
+                <span className={`text-sm font-bold ${simulation.isProfit ? 'text-emerald-500' : 'text-rose-500'}`}>
+                    {simulation.isProfit ? '+' : ''}{simulation.percent.toFixed(1)}%
+                </span>
+            </div>
+            <p className="text-[10px] text-zinc-500 mb-6 relative z-10">
+                Resultado: {simulation.isProfit ? '+' : ''}{formatBRL(simulation.profit)}
+            </p>
+
+            {/* Sparkline Area Chart */}
+            <div className="h-16 w-full mb-6 relative z-10 opacity-80">
+                <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={simulation.sparkData}>
+                        <defs>
+                            <linearGradient id="sparkColor" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor={simulation.isProfit ? '#10b981' : '#f43f5e'} stopOpacity={0.3}/>
+                                <stop offset="95%" stopColor={simulation.isProfit ? '#10b981' : '#f43f5e'} stopOpacity={0}/>
+                            </linearGradient>
+                        </defs>
+                        <Area 
+                            type="monotone" 
+                            dataKey="v" 
+                            stroke={simulation.isProfit ? '#10b981' : '#f43f5e'} 
+                            strokeWidth={2} 
+                            fill="url(#sparkColor)" 
+                        />
+                    </AreaChart>
+                </ResponsiveContainer>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 relative z-10">
+                <div className="bg-zinc-900/50 rounded-xl p-3 border border-zinc-800/50">
+                    <div className="flex justify-between items-center mb-1">
+                        <span className="text-[9px] font-bold text-zinc-500 uppercase">vs CDI</span>
+                        <span className={`text-[9px] font-black ${simulation.vsCDI >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            {simulation.vsCDI > 0 ? '+' : ''}{simulation.vsCDI.toFixed(1)}%
+                        </span>
+                    </div>
+                    <div className="w-full bg-zinc-800 rounded-full h-1.5 overflow-hidden">
+                        <div className="bg-zinc-600 h-full rounded-full" style={{ width: '100%' }}></div> {/* CDI Base */}
+                        <div 
+                            className={`h-full rounded-full -mt-1.5 transition-all duration-1000 ${simulation.vsCDI >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`} 
+                            style={{ width: `${Math.min(100, Math.max(0, (simulation.finalValue / simulation.finalCDI) * 100))}%` }}
+                        ></div>
+                    </div>
+                </div>
+
+                <div className="bg-zinc-900/50 rounded-xl p-3 border border-zinc-800/50">
+                    <div className="flex justify-between items-center mb-1">
+                        <span className="text-[9px] font-bold text-zinc-500 uppercase">vs {simulation.benchmarkLabel}</span>
+                        <span className={`text-[9px] font-black ${simulation.vsBenchmark >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            {simulation.vsBenchmark > 0 ? '+' : ''}{simulation.vsBenchmark.toFixed(1)}%
+                        </span>
+                    </div>
+                    <div className="flex justify-between text-[8px] text-zinc-500 mt-1">
+                        <span>Min: {formatBRL(simulation.minPrice)}</span>
+                        <span>Max: {formatBRL(simulation.maxPrice)}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // Container para gerenciar dados dos gráficos
-const ChartsContainer = ({ ticker, type }: { ticker: string, type: AssetType }) => {
+const ChartsContainer = ({ ticker, type, asset }: { ticker: string, type: AssetType, asset: AssetPosition }) => {
     const [data, setData] = useState<any[]>([]);
     const [range, setRange] = useState('1Y');
     const [loading, setLoading] = useState(true);
@@ -617,6 +739,10 @@ const ChartsContainer = ({ ticker, type }: { ticker: string, type: AssetType }) 
                 range={range} 
                 setRange={setRange} 
             />
+            
+            {/* Novo Card de Simulação Injetado com os dados históricos carregados */}
+            <InvestmentSimulatorCard asset={asset} historyData={data} />
+
             <ComparativeHistoryChart 
                 data={data} 
                 loading={loading} 
@@ -629,7 +755,7 @@ const ChartsContainer = ({ ticker, type }: { ticker: string, type: AssetType }) 
     );
 }
 
-// ... Resto dos componentes (PositionSummaryCard, MarketPerformanceCard, etc) mantidos iguais ...
+// ... Resto dos componentes (PositionSummaryCard, etc) mantidos iguais ...
 // Card de Resumo da Posição do Usuário (Redesenhado)
 const PositionSummaryCard = ({ asset, privacyMode }: { asset: AssetPosition, privacyMode: boolean }) => {
     const totalValue = asset.quantity * (asset.currentPrice || 0);
@@ -664,66 +790,6 @@ const PositionSummaryCard = ({ asset, privacyMode }: { asset: AssetPosition, pri
                         {profitPercent > 0 ? '+' : ''}{profitPercent.toFixed(2)}%
                     </p>
                 </div>
-            </div>
-        </div>
-    );
-};
-
-// Novo Card de Performance de Mercado (Compacto e Visual)
-const MarketPerformanceCard = ({ asset }: { asset: AssetPosition }) => {
-    let benchmarkVal = asset.benchmark_cdi_12m;
-    let benchmarkLabel = 'CDI';
-    
-    if (asset.assetType === AssetType.FII && asset.benchmark_ifix_12m) {
-        benchmarkVal = asset.benchmark_ifix_12m;
-        benchmarkLabel = 'IFIX';
-    } else if (asset.assetType === AssetType.STOCK && asset.benchmark_ibov_12m) {
-        benchmarkVal = asset.benchmark_ibov_12m;
-        benchmarkLabel = 'IBOV';
-    }
-
-    const assetReturn = asset.profitability_12m;
-
-    return (
-        <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 p-5 shadow-sm mb-6">
-            <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                <TrendingUp className="w-3 h-3" /> Rentabilidade (12 Meses)
-            </h4>
-            
-            <div className="space-y-4">
-                <div className="relative pt-2">
-                    <div className="flex justify-between items-end mb-2 text-xs font-bold">
-                        <span className="text-zinc-600 dark:text-zinc-300">{asset.ticker}</span>
-                        <span className={assetReturn !== undefined ? (assetReturn >= 0 ? 'text-emerald-500' : 'text-rose-500') : 'text-zinc-400'}>
-                            {assetReturn !== undefined ? `${assetReturn > 0 ? '+' : ''}${assetReturn.toFixed(1)}%` : '--'}
-                        </span>
-                    </div>
-                    <div className="h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                        {assetReturn !== undefined && (
-                            <div 
-                                className={`h-full rounded-full ${assetReturn >= 0 ? 'bg-indigo-500' : 'bg-rose-500'}`} 
-                                style={{ width: `${Math.min(100, Math.max(10, Math.abs(assetReturn) * 2))}%` }} 
-                            ></div>
-                        )}
-                    </div>
-                </div>
-
-                {benchmarkVal !== undefined && (
-                    <div className="relative">
-                        <div className="flex justify-between items-end mb-2 text-xs font-bold">
-                            <span className="text-zinc-400">{benchmarkLabel}</span>
-                            <span className="text-zinc-400">
-                                {benchmarkVal > 0 ? '+' : ''}{benchmarkVal.toFixed(1)}%
-                            </span>
-                        </div>
-                        <div className="h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                            <div 
-                                className="h-full rounded-full bg-zinc-300 dark:bg-zinc-600" 
-                                style={{ width: `${Math.min(100, Math.max(10, Math.abs(benchmarkVal) * 2))}%` }} 
-                            ></div>
-                        </div>
-                    </div>
-                )}
             </div>
         </div>
     );
@@ -1265,10 +1331,8 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                                     <PositionSummaryCard asset={selectedAsset} privacyMode={privacyMode} />
                                     
                                     {/* Gráficos Gerenciados pelo Container */}
-                                    <ChartsContainer ticker={selectedAsset.ticker} type={selectedAsset.assetType} />
+                                    <ChartsContainer ticker={selectedAsset.ticker} type={selectedAsset.assetType} asset={selectedAsset} />
                                     
-                                    <MarketPerformanceCard asset={selectedAsset} />
-
                                     <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-2">
                                         <Activity className="w-3 h-3" /> Indicadores Chave
                                     </h4>

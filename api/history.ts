@@ -144,12 +144,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const points = [];
         const { timestamps, prices, opens, highs, lows } = assetData;
         
-        // Find Start Prices (Base 0%)
-        const getStartPrice = (arr: (number|null)[]) => arr ? arr.find(p => p !== null && p !== undefined) || 0 : 0;
+        // Find Valid Start Prices (First Non-Null)
+        // Isso corrige o problema onde o primeiro dia do array é null (comum no Yahoo)
+        const getFirstValidPrice = (arr: (number|null)[]) => arr ? arr.find(p => p !== null && p !== undefined && p > 0) || 0 : 0;
         
-        const startPrice = getStartPrice(prices);
-        const startIbov = ibovData ? getStartPrice(ibovData.prices) : 0;
-        const startIfix = ifixData ? getStartPrice(ifixData.prices) : 0;
+        const startPrice = getFirstValidPrice(prices);
+        const startIbov = ibovData ? getFirstValidPrice(ibovData.prices) : 0;
+        const startIfix = ifixData ? getFirstValidPrice(ifixData.prices) : 0;
 
         // Cumulative Trackers for BCB
         let accCdi = 1.0;
@@ -161,6 +162,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         
         for (let i = 0; i < timestamps.length; i++) {
             const price = prices[i];
+            
+            // Pula pontos nulos do ativo principal, mas mantém a timeline do CDI/IPCA se possível
+            // Simplificação: só adiciona ponto se tiver preço do ativo
             if (price === null) continue;
 
             const dateObj = new Date(timestamps[i] * 1000);
@@ -173,7 +177,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
 
             // --- IPCA ACCUMULATION (Interpolated) ---
-            // Simples: 1 mês = 21 dias úteis aprox
             const monthKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-01`;
             const monthRate = ipcaMap.get(monthKey);
             let ipcaDailyFactor = 1.00015; // default fallback ~0.3% mo
@@ -202,7 +205,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 if (ibovPrice !== undefined) {
                     point.ibovPct = ((ibovPrice - startIbov) / startIbov) * 100;
                     lastIbovPct = point.ibovPct;
-                } else point.ibovPct = lastIbovPct;
+                } else point.ibovPct = lastIbovPct; // Fill forward
             } else point.ibovPct = 0;
 
             // IFIX %
@@ -211,7 +214,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 if (ifixPrice !== undefined) {
                     point.ifixPct = ((ifixPrice - startIfix) / startIfix) * 100;
                     lastIfixPct = point.ifixPct;
-                } else point.ifixPct = lastIfixPct;
+                } else point.ifixPct = lastIfixPct; // Fill forward
             } else point.ifixPct = null;
 
             // CDI & IPCA % (Based on Accumulation)
@@ -221,20 +224,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             points.push(point);
         }
 
-        // Re-normalize percentage curves to ensure they all start at 0 at the first data point
+        // Re-normalize percentage curves to ensure they all start at 0 at the first VISIBLE data point
         if (points.length > 0) {
             const baseCdi = points[0].cdiPct;
             const baseIpca = points[0].ipcaPct;
+            const baseIbov = points[0].ibovPct;
+            const baseIfix = points[0].ifixPct || 0;
             
+            // Fatores de ajuste baseados no primeiro ponto visível do gráfico
             const valCdi0 = 1 + (baseCdi / 100);
             const valIpca0 = 1 + (baseIpca / 100);
+            const valIbov0 = 1 + (baseIbov / 100);
+            const valIfix0 = 1 + (baseIfix / 100);
 
             for (const p of points) {
                 const valCdi = 1 + (p.cdiPct / 100);
                 const valIpca = 1 + (p.ipcaPct / 100);
+                const valIbov = 1 + (p.ibovPct / 100);
                 
                 p.cdiPct = ((valCdi / valCdi0) - 1) * 100;
                 p.ipcaPct = ((valIpca / valIpca0) - 1) * 100;
+                p.ibovPct = ((valIbov / valIbov0) - 1) * 100;
+                
+                if (p.ifixPct !== null) {
+                    const valIfix = 1 + (p.ifixPct / 100);
+                    p.ifixPct = ((valIfix / valIfix0) - 1) * 100;
+                }
             }
         }
 
