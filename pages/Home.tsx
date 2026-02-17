@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, PortfolioInsight } from '../types';
-import { CircleDollarSign, CalendarClock, PieChart as PieIcon, ArrowUpRight, Wallet, ArrowRight, Sparkles, Trophy, Anchor, Coins, Crown, Info, X, Zap, ShieldCheck, AlertTriangle, Play, Pause } from 'lucide-react';
+import { CircleDollarSign, CalendarClock, PieChart as PieIcon, ArrowUpRight, Wallet, ArrowRight, Sparkles, Trophy, Anchor, Coins, Crown, Info, X, Zap, ShieldCheck, AlertTriangle, Play, Pause, TrendingUp, Target } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, CartesianGrid, AreaChart, Area, XAxis, YAxis } from 'recharts';
 import { formatBRL, formatDateShort, getMonthName, getDaysUntil } from '../utils/formatters';
@@ -337,12 +337,13 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       return { list: future, grouped, totalFuture, nextPayment, daysToNext };
   }, [dividendReceipts]);
 
-  // 3. Renda (Gráfico 12 meses + Stats) - CORRIGIDO PARA 12 MESES
+  // 3. Renda Aprimorada (Chart + Lista Detalhada)
   const incomeData = useMemo(() => {
       const groups: Record<string, number> = {};
+      const historyList: { date: string, ticker: string, type: string, amount: number, paymentDate: string }[] = [];
       const todayStr = new Date().toISOString().split('T')[0];
       
-      // Inicializa últimos 12 meses com 0 (Garantes histórico visível no modal)
+      // Inicializa últimos 12 meses
       for (let i = 11; i >= 0; i--) {
           const d = new Date();
           d.setMonth(d.getMonth() - i);
@@ -352,16 +353,33 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       let last12mTotal = 0;
       const oneYearAgoStr = new Date(new Date().setFullYear(new Date().getFullYear() - 1)).toISOString().split('T')[0];
 
-      dividendReceipts.forEach(d => {
+      // Ordena por data mais recente primeiro
+      const sortedReceipts = [...dividendReceipts].sort((a, b) => {
+          const dateA = a.paymentDate || a.dateCom;
+          const dateB = b.paymentDate || b.dateCom;
+          return dateB.localeCompare(dateA);
+      });
+
+      sortedReceipts.forEach(d => {
+          // Filtra futuros para o histórico de recebimentos
           if (!d.paymentDate || d.paymentDate > todayStr) return;
           
           if (d.paymentDate >= oneYearAgoStr) last12mTotal += d.totalReceived;
 
           const monthKey = d.paymentDate.substring(0, 7);
-          // Apenas soma se o mês estiver no range dos últimos 12 meses gerados
           if (groups[monthKey] !== undefined) groups[monthKey] += d.totalReceived;
+
+          // Adiciona ao histórico detalhado
+          historyList.push({
+              date: d.paymentDate,
+              ticker: d.ticker,
+              type: d.type,
+              amount: d.totalReceived,
+              paymentDate: d.paymentDate
+          });
       });
       
+      // Dados do Gráfico
       const chartData = Object.entries(groups)
           .map(([date, value]) => ({ 
               date, 
@@ -370,28 +388,41 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           }))
           .sort((a, b) => a.date.localeCompare(b.date));
 
+      // Agrupa histórico por mês para exibição (Mês -> Lista)
+      const groupedHistory: Record<string, typeof historyList> = {};
+      historyList.forEach(h => {
+          const mKey = h.date.substring(0, 7);
+          if (!groupedHistory[mKey]) groupedHistory[mKey] = [];
+          groupedHistory[mKey].push(h);
+      });
+
       const average = chartData.reduce((acc, cur) => acc + cur.value, 0) / 12;
       const max = Math.max(...chartData.map(d => d.value));
 
-      return { chartData, average, max, last12mTotal, currentMonth: chartData[chartData.length - 1]?.value || 0 };
+      return { chartData, average, max, last12mTotal, currentMonth: chartData[chartData.length - 1]?.value || 0, groupedHistory };
   }, [dividendReceipts]);
 
-  // 4. Magic Number
+  // 4. Magic Number Aprimorado
   const magicNumberData = useMemo(() => {
       const all = portfolio
           .map(asset => {
               if (asset.quantity <= 0 || !asset.currentPrice) return null;
               
+              // Estimativa segura: Último Dividendo ou Média DY
               let estimatedDiv = asset.last_dividend;
-              if (asset.dy_12m && asset.dy_12m > 0) {
+              if ((!estimatedDiv || estimatedDiv <= 0) && asset.dy_12m && asset.dy_12m > 0) {
                   estimatedDiv = (asset.currentPrice * (asset.dy_12m / 100)) / 12;
               }
 
               if (!estimatedDiv || estimatedDiv <= 0) return null;
 
+              const currentIncome = asset.quantity * estimatedDiv;
               const magicNumber = Math.ceil(asset.currentPrice / estimatedDiv);
               const missing = Math.max(0, magicNumber - asset.quantity);
               
+              // Quantas cotas consigo comprar HOJE com a renda?
+              const buyingPower = currentIncome / asset.currentPrice;
+
               return {
                   ticker: asset.ticker,
                   current: asset.quantity,
@@ -400,15 +431,17 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   progress: Math.min(100, (asset.quantity / magicNumber) * 100),
                   estimatedDiv,
                   price: asset.currentPrice,
-                  repurchasePower: (asset.quantity * estimatedDiv) / asset.currentPrice
+                  currentIncome,
+                  buyingPower, // Ex: 0.5 (compra meia cota), 1.2 (compra 1.2 cotas)
+                  assetType: asset.assetType
               };
           })
           .filter(Boolean)
           .sort((a: any, b: any) => b.progress - a.progress);
       
       return {
-          achieved: all.filter((a: any) => a.missing === 0),
-          inProgress: all.filter((a: any) => a.missing > 0)
+          achieved: all.filter((a: any) => a.buyingPower >= 1),
+          inProgress: all.filter((a: any) => a.buyingPower < 1)
       };
   }, [portfolio]);
 
@@ -642,7 +675,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
         </SwipeableModal>
 
-        {/* 2. RENDA (Evolução com Gráfico de 12 Meses) */}
+        {/* 2. RENDA (Evolução + Histórico Detalhado) */}
         <SwipeableModal isOpen={showProventos} onClose={() => setShowProventos(false)}>
             <div className="p-6 h-full flex flex-col anim-slide-up">
                 <div className="flex items-center gap-4 mb-4 shrink-0">
@@ -656,7 +689,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 </div>
 
                 <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar">
-                    <div className="h-48 w-full mb-6 shrink-0 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-2 relative overflow-hidden">
+                    {/* Gráfico */}
+                    <div className="h-48 w-full mb-8 shrink-0 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-2 relative overflow-hidden">
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={incomeData.chartData} margin={{ top: 20, right: 0, left: -25, bottom: 0 }}>
                                 <defs>
@@ -677,11 +711,41 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         </ResponsiveContainer>
                     </div>
 
-                    <div className="space-y-3">
-                        {[...incomeData.chartData].reverse().map((item) => (
-                            <div key={item.date} className="flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800">
-                                <span className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wider">{getMonthName(item.date + '-01')}</span>
-                                <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{formatBRL(item.value, privacyMode)}</span>
+                    {/* Histórico Detalhado */}
+                    <div className="space-y-6">
+                        <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                            <CalendarClock className="w-3 h-3" /> Histórico de Recebimentos
+                        </h3>
+                        {Object.keys(incomeData.groupedHistory).sort((a,b) => b.localeCompare(a)).map(monthKey => (
+                            <div key={monthKey}>
+                                <div className="sticky top-0 bg-white dark:bg-zinc-900 z-10 py-2 border-b border-zinc-100 dark:border-zinc-800 mb-2">
+                                    <h4 className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wider">
+                                        {getMonthName(monthKey + '-01')}
+                                    </h4>
+                                </div>
+                                <div className="space-y-1">
+                                    {incomeData.groupedHistory[monthKey].map((item, idx) => (
+                                        <div key={`${item.ticker}-${idx}`} className="flex items-center justify-between py-2.5 px-2 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 rounded-xl transition-colors">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-9 h-9 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-black text-zinc-500 border border-zinc-200 dark:border-zinc-700">
+                                                    {item.ticker.substring(0, 2)}
+                                                </div>
+                                                <div>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="text-xs font-bold text-zinc-900 dark:text-white">{item.ticker}</span>
+                                                        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded uppercase ${item.type === 'JCP' ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'}`}>
+                                                            {item.type}
+                                                        </span>
+                                                    </div>
+                                                    <span className="text-[10px] text-zinc-400">{formatDateShort(item.paymentDate)}</span>
+                                                </div>
+                                            </div>
+                                            <span className="text-sm font-bold text-zinc-900 dark:text-white tabular-nums">
+                                                +{formatBRL(item.amount, privacyMode)}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -698,26 +762,43 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     </div>
                     <div>
                         <h2 className="text-2xl font-bold text-zinc-900 dark:text-white leading-none">Bola de Neve</h2>
-                        <p className="text-xs text-zinc-500 font-medium mt-1">{magicReachedCount} ativos se pagam sozinhos.</p>
+                        <div className="flex items-center gap-1.5 mt-1">
+                            <p className="text-xs text-zinc-500 font-medium">{magicReachedCount} ativos autossustentáveis.</p>
+                            <InfoTooltip title="Número Mágico" text="O ponto onde a renda gerada pelo ativo paga uma nova cota dele mesmo, criando juros compostos automáticos." />
+                        </div>
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar space-y-6">
+                <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar space-y-8">
                     {/* Seção Atingidos */}
                     {magicNumberData.achieved.length > 0 && (
                         <div>
                             <h3 className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                                <Crown className="w-3 h-3" /> Conquistados
+                                <Crown className="w-3 h-3" /> Conquistados (Efeito Bola de Neve Ativo)
                             </h3>
                             <div className="grid grid-cols-2 gap-3">
                                 {magicNumberData.achieved.map((item: any) => (
-                                    <div key={item.ticker} className="p-3 rounded-2xl bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <span className="text-xs font-black text-zinc-900 dark:text-white">{item.ticker}</span>
-                                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">{item.repurchasePower.toFixed(1)}x</span>
+                                    <div key={item.ticker} className="relative overflow-hidden p-4 rounded-2xl bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-900/20 dark:to-zinc-900 border border-emerald-200 dark:border-emerald-800 shadow-sm">
+                                        <div className="flex justify-between items-start mb-3">
+                                            <span className="text-sm font-black text-zinc-900 dark:text-white">{item.ticker}</span>
+                                            <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/40 px-2 py-0.5 rounded-full">
+                                                {item.buyingPower.toFixed(1)}x
+                                            </span>
                                         </div>
-                                        <div className="h-1.5 w-full bg-emerald-200 dark:bg-emerald-900/50 rounded-full overflow-hidden">
-                                            <div className="h-full bg-emerald-500 w-full"></div>
+                                        <div className="space-y-1">
+                                            <div className="flex justify-between text-[10px]">
+                                                <span className="text-zinc-500">Renda Gerada:</span>
+                                                <span className="font-bold text-zinc-700 dark:text-zinc-300">{formatBRL(item.currentIncome, privacyMode)}</span>
+                                            </div>
+                                            <div className="flex justify-between text-[10px]">
+                                                <span className="text-zinc-500">Preço Cota:</span>
+                                                <span className="font-bold text-zinc-700 dark:text-zinc-300">{formatBRL(item.price, privacyMode)}</span>
+                                            </div>
+                                        </div>
+                                        <div className="mt-3 pt-2 border-t border-emerald-100 dark:border-emerald-800/30">
+                                            <p className="text-[9px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                                                <Zap className="w-2.5 h-2.5" /> Compra +{Math.floor(item.buyingPower)} cotas/mês
+                                            </p>
                                         </div>
                                     </div>
                                 ))}
@@ -728,30 +809,42 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     {/* Seção Em Progresso */}
                     {magicNumberData.inProgress.length > 0 && (
                         <div>
-                            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3">Em Progresso</h3>
+                            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                <Target className="w-3 h-3" /> Em Progresso
+                            </h3>
                             <div className="space-y-3">
                                 {magicNumberData.inProgress.map((item: any) => (
-                                    <div key={item.ticker} className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700/50">
-                                        <div className="flex justify-between items-start mb-2">
+                                    <div key={item.ticker} className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                                        <div className="flex justify-between items-start mb-3">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-700 flex items-center justify-center text-xs font-black shadow-sm">
+                                                <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-xs font-black text-zinc-500">
                                                     {item.ticker.substring(0, 2)}
                                                 </div>
                                                 <div>
                                                     <h4 className="font-bold text-sm text-zinc-900 dark:text-white">{item.ticker}</h4>
-                                                    <p className="text-[10px] text-zinc-500 font-medium">Faltam {item.missing} cotas</p>
+                                                    <p className="text-[10px] text-zinc-500 font-medium">Faltam <span className="text-zinc-900 dark:text-white font-bold">{item.missing}</span> cotas</p>
                                                 </div>
                                             </div>
-                                            <span className="text-[10px] font-bold text-zinc-400 bg-white dark:bg-zinc-900 px-2 py-1 rounded-lg border border-zinc-100 dark:border-zinc-800">
+                                            <span className="text-[10px] font-bold text-zinc-400 bg-zinc-50 dark:bg-zinc-800 px-2 py-1 rounded-lg border border-zinc-100 dark:border-zinc-700">
                                                 {item.progress.toFixed(0)}%
                                             </span>
                                         </div>
-                                        <div className="h-2 w-full bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden mb-2">
+                                        
+                                        <div className="h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden mb-3">
                                             <div className="h-full bg-amber-500 rounded-full transition-all duration-1000" style={{ width: `${item.progress}%` }}></div>
                                         </div>
-                                        <p className="text-[9px] text-zinc-400 text-right">
-                                            Meta: {item.target} cotas
-                                        </p>
+
+                                        <div className="flex items-center justify-between text-[10px] bg-zinc-50 dark:bg-zinc-800/50 p-2 rounded-lg">
+                                            <div className="flex flex-col">
+                                                <span className="text-zinc-400 uppercase text-[8px] font-bold">Renda Atual</span>
+                                                <span className="font-bold text-zinc-900 dark:text-white">{formatBRL(item.currentIncome, privacyMode)}</span>
+                                            </div>
+                                            <ArrowRight className="w-3 h-3 text-zinc-300" />
+                                            <div className="flex flex-col items-end">
+                                                <span className="text-zinc-400 uppercase text-[8px] font-bold">Meta (1 Cota)</span>
+                                                <span className="font-bold text-zinc-900 dark:text-white">{formatBRL(item.price, privacyMode)}</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
