@@ -94,6 +94,13 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         vacancy: parseNumberSafe(getVal('vacancia', 'vacancia_fisica')),
         last_dividend: parseNumberSafe(getVal('ultimo_rendimento')),
         properties_count: parseNumberSafe(getVal('num_cotistas', 'cotistas')),
+        
+        // Novos Campos Mapeados
+        cnpj: getVal('cnpj'),
+        mandate: getVal('mandato', 'mandate'),
+        target_audience: getVal('publico_alvo', 'target_audience'),
+        fund_type: getVal('tipo_fundo', 'fund_type'),
+        
         properties: m.properties || [], // Mapeia lista de imóveis se existir
         
         // Ações (Stocks)

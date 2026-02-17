@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, Wallet, TrendingUp, TrendingDown, RefreshCw, X, Calculator, Scale, Activity, BarChart3, PieChart, Coins, Target, AlertCircle, ChevronDown, ChevronUp, ExternalLink, ArrowRight, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle } from 'lucide-react';
+import { Search, Wallet, TrendingUp, TrendingDown, RefreshCw, X, Calculator, Scale, Activity, BarChart3, PieChart, Coins, Target, AlertCircle, ChevronDown, ChevronUp, ExternalLink, ArrowRight, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, BarChart4 } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine, Cell } from 'recharts';
 
@@ -26,14 +26,14 @@ const formatNumber = (val: number | undefined, decimals = 2) => {
 // --- SUB-COMPONENTS ---
 
 const MetricCard = ({ label, value, highlight = false, colorClass = "text-zinc-900 dark:text-white", subtext }: any) => (
-    <div className={`p-3 rounded-xl border flex flex-col justify-center min-h-[64px] ${highlight ? 'bg-indigo-50 dark:bg-indigo-900/10 border-indigo-100 dark:border-indigo-900/30' : 'bg-zinc-50 dark:bg-zinc-800/50 border-zinc-100 dark:border-zinc-800'}`}>
+    <div className={`p-3 rounded-xl border flex flex-col justify-center min-h-[68px] ${highlight ? 'bg-indigo-50 dark:bg-indigo-900/10 border-indigo-100 dark:border-indigo-900/30' : 'bg-zinc-50 dark:bg-zinc-800/50 border-zinc-100 dark:border-zinc-800'}`}>
         <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1 truncate">{label}</span>
-        <span className={`text-xs sm:text-sm font-black truncate ${colorClass}`}>{value}</span>
+        <span className={`text-sm font-black truncate ${colorClass}`}>{value}</span>
         {subtext && <span className="text-[9px] text-zinc-400 mt-0.5">{subtext}</span>}
     </div>
 );
 
-// Novo Componente de Valuation (Somente Preço Justo)
+// Componente de Valuation (Design Refinado para Resumo)
 const ValuationCard = ({ asset }: { asset: AssetPosition }) => {
     let fairPrice = 0;
     let label = '';
@@ -41,18 +41,16 @@ const ValuationCard = ({ asset }: { asset: AssetPosition }) => {
 
     // Lógica de Preço Justo
     if (asset.assetType === AssetType.FII) {
-        // Para FIIs, o valor patrimonial é a referência base de preço justo
         if (asset.vpa && asset.vpa > 0) {
             fairPrice = asset.vpa;
             label = 'Preço Justo (VPA)';
-            method = 'Valor Patrimonial';
+            method = 'Baseado no Valor Patrimonial';
         }
     } else {
-        // Para Ações, usamos Graham simplificado: Sqrt(22.5 * LPA * VPA)
         if (asset.lpa && asset.lpa > 0 && asset.vpa && asset.vpa > 0) {
             fairPrice = Math.sqrt(22.5 * asset.lpa * asset.vpa);
             label = 'Preço Justo (Graham)';
-            method = 'Graham (LPA x VPA)';
+            method = 'Fórmula de Benjamin Graham';
         }
     }
 
@@ -62,21 +60,23 @@ const ValuationCard = ({ asset }: { asset: AssetPosition }) => {
     const isUndervalued = upside > 0;
 
     return (
-        <div className={`p-4 mb-6 rounded-2xl border flex justify-between items-center relative overflow-hidden ${isUndervalued ? 'bg-emerald-50 border-emerald-100 dark:bg-emerald-900/10 dark:border-emerald-900/30' : 'bg-amber-50 border-amber-100 dark:bg-amber-900/10 dark:border-amber-900/30'}`}>
-            <div className="relative z-10">
-                <div className="flex items-center gap-1.5 mb-1">
-                    <Calculator className={`w-3 h-3 ${isUndervalued ? 'text-emerald-500' : 'text-amber-500'}`} />
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">{label}</p>
+        <div className="mb-6">
+            <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                <Calculator className="w-3 h-3" /> Valuation
+            </h4>
+            <div className={`p-4 rounded-2xl border flex justify-between items-center relative overflow-hidden ${isUndervalued ? 'bg-emerald-50 border-emerald-100 dark:bg-emerald-900/10 dark:border-emerald-900/30' : 'bg-amber-50 border-amber-100 dark:bg-amber-900/10 dark:border-amber-900/30'}`}>
+                <div className="relative z-10">
+                    <p className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${isUndervalued ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>{label}</p>
+                    <div className="flex items-baseline gap-2">
+                        <span className="text-2xl font-black text-zinc-900 dark:text-white">{formatBRL(fairPrice)}</span>
+                    </div>
+                    <span className="text-[9px] text-zinc-400 font-medium opacity-80">{method}</span>
                 </div>
-                <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-black text-zinc-900 dark:text-white">{formatBRL(fairPrice)}</span>
-                </div>
-                <span className="text-[9px] text-zinc-400 font-medium opacity-80">{method}</span>
-            </div>
-            <div className="text-right relative z-10">
-                <p className="text-[9px] font-bold text-zinc-400 uppercase mb-1">Potencial</p>
-                <div className={`inline-flex items-center justify-center px-3 py-1.5 rounded-xl text-xs font-black ${isUndervalued ? 'bg-white/60 dark:bg-black/20 text-emerald-600 dark:text-emerald-400' : 'bg-white/60 dark:bg-black/20 text-amber-600 dark:text-amber-400'}`}>
-                    {upside > 0 ? '+' : ''}{upside.toFixed(1)}%
+                <div className="text-right relative z-10">
+                    <p className="text-[9px] font-bold text-zinc-400 uppercase mb-1">Potencial</p>
+                    <div className={`inline-flex items-center justify-center px-3 py-1.5 rounded-xl text-xs font-black ${isUndervalued ? 'bg-white/60 dark:bg-black/20 text-emerald-600 dark:text-emerald-400' : 'bg-white/60 dark:bg-black/20 text-amber-600 dark:text-amber-400'}`}>
+                        {upside > 0 ? '+' : ''}{upside.toFixed(1)}%
+                    </div>
                 </div>
             </div>
         </div>
@@ -89,120 +89,171 @@ const InfoRow = ({ label, value, icon: Icon }: any) => (
             {Icon && <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-400"><Icon className="w-4 h-4" /></div>}
             <span className="text-xs font-medium text-zinc-500">{label}</span>
         </div>
-        <span className="text-xs font-bold text-zinc-900 dark:text-white text-right max-w-[180px] break-words">{value || '-'}</span>
+        <span className="text-xs font-bold text-zinc-900 dark:text-white text-right max-w-[180px] break-words leading-tight">{value || '-'}</span>
     </div>
 );
 
 const DetailedInfoBlock = ({ asset }: { asset: AssetPosition }) => {
-    if (asset.assetType !== AssetType.FII) return null;
     return (
         <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm mb-6">
             <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                <Info className="w-3 h-3" /> Informações sobre {asset.ticker}
+                <Info className="w-3 h-3" /> Informações Detalhadas
             </h4>
+            
+            {/* Informações Comuns */}
             <InfoRow label="Razão Social" value={asset.company_name} icon={Building2} />
             <InfoRow label="CNPJ" value={asset.cnpj} icon={FileText} />
-            <InfoRow label="Público-Alvo" value={asset.target_audience} icon={Users} />
-            <InfoRow label="Mandato" value={asset.mandate} icon={Target} />
             <InfoRow label="Segmento" value={asset.segment_secondary || asset.segment} icon={PieChart} />
-            <InfoRow label="Tipo de Fundo" value={asset.fund_type} icon={Briefcase} />
-            <InfoRow label="Prazo de Duração" value={asset.duration} icon={Clock} />
-            <InfoRow label="Tipo de Gestão" value={asset.manager_type} icon={Activity} />
-            <InfoRow label="Taxa de Administração" value={asset.management_fee} icon={Percent} />
-            <InfoRow label="Vacância" value={asset.vacancy ? `${asset.vacancy}%` : '-'} icon={AlertCircle} />
-            <InfoRow label="Num. Cotistas" value={asset.properties_count ? formatNumber(asset.properties_count, 0) : '-'} icon={Users} />
-            <InfoRow label="Cotas Emitidas" value={asset.num_quotas} icon={Coins} />
-            <InfoRow label="Val. Patrimonial / Cota" value={asset.vpa ? formatNumber(asset.vpa) : '-'} icon={DollarSign} />
-            <InfoRow label="Valor Patrimonial" value={asset.assets_value} icon={Wallet} />
-            <InfoRow label="Último Rendimento" value={formatBRL(asset.last_dividend)} icon={DollarSign} />
+            
+            {/* Específico FIIs */}
+            {asset.assetType === AssetType.FII && (
+                <>
+                    <InfoRow label="Público-Alvo" value={asset.target_audience} icon={Users} />
+                    <InfoRow label="Mandato" value={asset.mandate} icon={Target} />
+                    <InfoRow label="Tipo de Fundo" value={asset.fund_type} icon={Briefcase} />
+                    <InfoRow label="Prazo" value={asset.duration} icon={Clock} />
+                    <InfoRow label="Gestão" value={asset.manager_type} icon={Activity} />
+                    <InfoRow label="Taxa Adm." value={asset.management_fee} icon={Percent} />
+                    <InfoRow label="Vacância Física" value={asset.vacancy !== undefined ? `${asset.vacancy}%` : '-'} icon={AlertCircle} />
+                    <InfoRow label="Num. Cotistas" value={asset.properties_count ? formatNumber(asset.properties_count, 0) : '-'} icon={Users} />
+                    <InfoRow label="Num. Cotas" value={asset.num_quotas} icon={Coins} />
+                    <InfoRow label="Patrimônio Líq." value={asset.assets_value} icon={Wallet} />
+                </>
+            )}
+
+            {/* Específico Ações */}
+            {asset.assetType === AssetType.STOCK && (
+                <>
+                    <InfoRow label="Valor de Mercado" value={asset.market_cap} icon={Wallet} />
+                    <InfoRow label="Liquidez Diária" value={asset.liquidity} icon={Activity} />
+                </>
+            )}
         </div>
     );
 };
 
-const ProfitabilityTable = ({ asset }: { asset: AssetPosition }) => {
+const PerformanceSection = ({ asset, chartData }: { asset: AssetPosition, chartData: { data: any[], average: number } }) => {
     const rows = [
         { period: '1 Mês', nominal: asset.profitability_month, real: asset.profitability_real_month },
-        { period: '3 Meses', nominal: asset.profitability_3m, real: asset.profitability_real_3m },
-        { period: '1 Ano', nominal: asset.profitability_12m, real: asset.profitability_real_12m },
-        { period: '2 Anos', nominal: asset.profitability_2y, real: asset.profitability_real_2y },
+        { period: '12 Meses', nominal: asset.profitability_12m, real: asset.profitability_real_12m },
+        { period: '24 Meses', nominal: asset.profitability_2y, real: asset.profitability_real_2y },
     ];
 
     // Gráfico Comparativo 12 Meses
-    const chartData = [
+    const comparisonData = [
         { name: asset.ticker, value: asset.profitability_12m || 0, fill: '#6366f1' }, // Indigo
         { name: 'CDI', value: asset.benchmark_cdi_12m || 0, fill: '#a1a1aa' }, // Zinc 400
         { name: asset.assetType === AssetType.FII ? 'IFIX' : 'IBOV', value: (asset.assetType === AssetType.FII ? asset.benchmark_ifix_12m : asset.benchmark_ibov_12m) || 0, fill: '#71717a' } // Zinc 500
     ].filter(d => d.value !== 0);
 
     return (
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-sm mb-6">
-            <div className="bg-zinc-50 dark:bg-zinc-800/50 p-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-emerald-500" />
-                <h4 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Rentabilidade Histórica</h4>
-            </div>
+        <div className="space-y-6">
             
-            {/* Tabela */}
-            <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                    <thead>
-                        <tr className="border-b border-zinc-100 dark:border-zinc-800">
-                            <th className="text-left p-3 font-bold text-zinc-400">Período</th>
-                            <th className="text-right p-3 font-bold text-zinc-400">Nominal</th>
-                            <th className="text-right p-3 font-bold text-zinc-400">Real</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {rows.map((row, idx) => (
-                            <tr key={idx} className="border-b border-zinc-50 dark:border-zinc-800/50 last:border-0">
-                                <td className="p-3 font-medium text-zinc-500">{row.period}</td>
-                                <td className={`p-3 text-right font-bold ${row.nominal && row.nominal >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                    {formatPercent(row.nominal)}
-                                </td>
-                                <td className={`p-3 text-right font-bold ${row.real && row.real >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                    {formatPercent(row.real)}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-
-            {/* Gráfico Comparativo 12m */}
-            {chartData.length > 1 && (
-                <div className="p-4 border-t border-zinc-100 dark:border-zinc-800">
-                    <h5 className="text-[9px] font-bold text-zinc-400 uppercase mb-3">Comparativo 12 Meses</h5>
-                    <div className="h-40 w-full">
+            {/* 1. Gráfico de Proventos */}
+            <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                <div className="flex justify-between items-center mb-4">
+                    <h4 className="text-[10px] font-bold text-zinc-400 uppercase flex items-center gap-2">
+                        <BarChart3 className="w-3 h-3" /> Histórico de Proventos (12m)
+                    </h4>
+                    <span className="text-[10px] text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded-md">
+                        Média: {formatBRL(chartData.average)}
+                    </span>
+                </div>
+                <div className="h-40 w-full">
+                    {chartData.data.some(d => d.value > 0) ? (
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 30, left: 40, bottom: 0 }}>
-                                <XAxis type="number" hide />
-                                <YAxis 
-                                    dataKey="name" 
-                                    type="category" 
-                                    tick={{ fontSize: 10, fill: '#71717a', fontWeight: 700 }} 
-                                    width={40} 
-                                    axisLine={false} 
-                                    tickLine={false} 
-                                />
+                            <BarChart data={chartData.data}>
+                                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 700 }} dy={5} interval={0} />
                                 <Tooltip 
                                     cursor={{fill: 'transparent'}}
-                                    contentStyle={{ borderRadius: '8px', border: 'none', backgroundColor: '#18181b', color: '#fff', fontSize: '10px', padding: '8px' }}
-                                    formatter={(value: number) => [`${value.toFixed(2)}%`, 'Rentabilidade 12m']}
+                                    contentStyle={{ borderRadius: '8px', border: 'none', backgroundColor: '#18181b', color: '#fff', fontSize: '10px', padding: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                                    formatter={(value: number) => [formatBRL(value), 'Valor']}
+                                    labelStyle={{ display: 'none' }}
                                 />
-                                <Bar 
-                                    dataKey="value" 
-                                    radius={[0, 4, 4, 0]} 
-                                    barSize={20} 
-                                    label={{ position: 'right', fill: '#71717a', fontSize: 10, fontWeight: 700, formatter: (v: number) => `${v.toFixed(2)}%` }}
-                                >
-                                    {chartData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                                    ))}
-                                </Bar>
+                                {chartData.average > 0 && (
+                                    <ReferenceLine y={chartData.average} stroke="#f59e0b" strokeDasharray="3 3" />
+                                )}
+                                <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={32} />
                             </BarChart>
                         </ResponsiveContainer>
-                    </div>
+                    ) : (
+                        <div className="h-full flex items-center justify-center text-xs text-zinc-400 font-medium bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-700">
+                            Sem histórico recente
+                        </div>
+                    )}
                 </div>
-            )}
+            </div>
+
+            {/* 2. Rentabilidade e Comparação */}
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-sm">
+                <div className="bg-zinc-50 dark:bg-zinc-800/50 p-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-indigo-500" />
+                    <h4 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Rentabilidade do Ativo</h4>
+                </div>
+                
+                {/* Tabela Simplificada */}
+                <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                        <thead>
+                            <tr className="border-b border-zinc-100 dark:border-zinc-800">
+                                <th className="text-left p-3 font-bold text-zinc-400">Período</th>
+                                <th className="text-right p-3 font-bold text-zinc-400">Nominal</th>
+                                <th className="text-right p-3 font-bold text-zinc-400">Real (IPCA+)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {rows.map((row, idx) => (
+                                <tr key={idx} className="border-b border-zinc-50 dark:border-zinc-800/50 last:border-0">
+                                    <td className="p-3 font-medium text-zinc-500">{row.period}</td>
+                                    <td className={`p-3 text-right font-bold ${row.nominal && row.nominal >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                        {formatPercent(row.nominal)}
+                                    </td>
+                                    <td className={`p-3 text-right font-bold ${row.real && row.real >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                        {formatPercent(row.real)}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* Comparativo 12m Visual */}
+                {comparisonData.length > 1 && (
+                    <div className="p-4 border-t border-zinc-100 dark:border-zinc-800">
+                        <h5 className="text-[9px] font-bold text-zinc-400 uppercase mb-3">Performance Relativa (12m)</h5>
+                        <div className="h-24 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={comparisonData} layout="vertical" margin={{ top: 0, right: 30, left: 0, bottom: 0 }}>
+                                    <XAxis type="number" hide />
+                                    <YAxis 
+                                        dataKey="name" 
+                                        type="category" 
+                                        tick={{ fontSize: 10, fill: '#71717a', fontWeight: 700 }} 
+                                        width={45} 
+                                        axisLine={false} 
+                                        tickLine={false} 
+                                    />
+                                    <Tooltip 
+                                        cursor={{fill: 'transparent'}}
+                                        contentStyle={{ borderRadius: '8px', border: 'none', backgroundColor: '#18181b', color: '#fff', fontSize: '10px', padding: '8px' }}
+                                        formatter={(value: number) => [`${value.toFixed(2)}%`, 'Rentabilidade 12m']}
+                                    />
+                                    <Bar 
+                                        dataKey="value" 
+                                        radius={[0, 4, 4, 0]} 
+                                        barSize={12} 
+                                        label={{ position: 'right', fill: '#71717a', fontSize: 10, fontWeight: 700, formatter: (v: number) => `${v.toFixed(2)}%` }}
+                                    >
+                                        {comparisonData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.fill} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
@@ -308,7 +359,9 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
     const [search, setSearch] = useState('');
     const [selectedAsset, setSelectedAsset] = useState<AssetPosition | null>(null);
     const [expandedAssetTicker, setExpandedAssetTicker] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<'RESUMO' | 'DADOS' | 'RENTABILIDADE' | 'PROVENTOS' | 'IMOVEIS'>('RESUMO');
+    
+    // Tab "PROVENTOS" removida e unificada em "PERFORMANCE"
+    const [activeTab, setActiveTab] = useState<'RESUMO' | 'PERFORMANCE' | 'DADOS' | 'IMOVEIS'>('RESUMO');
 
     const filtered = useMemo(() => {
         if (!search) return portfolio;
@@ -427,9 +480,9 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                                 </div>
                             </div>
 
-                            {/* Tabs Navigation */}
+                            {/* Tabs Navigation (Merged) */}
                             <div className="flex p-1 bg-zinc-100 dark:bg-zinc-800 rounded-xl overflow-x-auto no-scrollbar">
-                                {['RESUMO', 'DADOS', 'RENTABILIDADE', 'PROVENTOS', 'IMOVEIS'].map(tab => {
+                                {['RESUMO', 'PERFORMANCE', 'DADOS', 'IMOVEIS'].map(tab => {
                                     if (tab === 'IMOVEIS' && (!selectedAsset.properties || selectedAsset.properties.length === 0)) return null;
                                     return (
                                         <button
@@ -448,11 +501,18 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                         <div className="flex-1 overflow-y-auto p-6 pb-24">
                             {activeTab === 'RESUMO' && (
                                 <div className="space-y-6 anim-fade-in">
+                                    
+                                    {/* Valuation movido para cá (Destaque) */}
+                                    <ValuationCard asset={selectedAsset} />
+
                                     {/* Indicadores Principais */}
-                                    <div className="grid grid-cols-3 gap-3">
+                                    <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                        <Activity className="w-3 h-3" /> Indicadores
+                                    </h4>
+                                    <div className="grid grid-cols-3 gap-3 mb-4">
                                         <MetricCard label="DY (12m)" value={formatPercent(selectedAsset.dy_12m)} highlight colorClass="text-emerald-600 dark:text-emerald-400" />
                                         <MetricCard label="P/VP" value={formatNumber(selectedAsset.p_vp)} />
-                                        <MetricCard label="Liquidez" value={selectedAsset.liquidity} />
+                                        <MetricCard label="P/L" value={formatNumber(selectedAsset.p_l)} />
                                     </div>
 
                                     {/* Check de Vacância */}
@@ -480,59 +540,24 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                                 </div>
                             )}
 
+                            {activeTab === 'PERFORMANCE' && (
+                                <div className="anim-fade-in">
+                                    <PerformanceSection asset={selectedAsset} chartData={assetDividendChartData} />
+                                </div>
+                            )}
+
                             {activeTab === 'DADOS' && (
                                 <div className="anim-fade-in">
-                                    <ValuationCard asset={selectedAsset} />
                                     <DetailedInfoBlock asset={selectedAsset} />
                                     {/* Valuation para Ações */}
                                     {selectedAsset.assetType === AssetType.STOCK && (
                                         <div className="grid grid-cols-2 gap-3 mb-6">
-                                            <MetricCard label="P/L" value={formatNumber(selectedAsset.p_l)} highlight />
                                             <MetricCard label="ROE" value={formatPercent(selectedAsset.roe)} highlight />
                                             <MetricCard label="Margem Líq." value={formatPercent(selectedAsset.net_margin)} />
                                             <MetricCard label="Dív.Líq/EBITDA" value={formatNumber(selectedAsset.net_debt_ebitda)} />
+                                            <MetricCard label="LPA" value={formatBRL(selectedAsset.lpa)} />
                                         </div>
                                     )}
-                                </div>
-                            )}
-
-                            {activeTab === 'RENTABILIDADE' && (
-                                <div className="anim-fade-in space-y-6">
-                                    <ProfitabilityTable asset={selectedAsset} />
-                                </div>
-                            )}
-
-                            {activeTab === 'PROVENTOS' && (
-                                <div className="anim-fade-in">
-                                    <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm mb-4">
-                                        <div className="flex justify-between items-center mb-4">
-                                            <h4 className="text-[10px] font-bold text-zinc-400 uppercase">Histórico (12 Meses)</h4>
-                                            <span className="text-[10px] text-zinc-400">Média: {formatBRL(assetDividendChartData.average)}</span>
-                                        </div>
-                                        <div className="h-40 w-full">
-                                            {assetDividendChartData.data.some(d => d.value > 0) ? (
-                                                <ResponsiveContainer width="100%" height="100%">
-                                                    <BarChart data={assetDividendChartData.data}>
-                                                        <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 700 }} dy={5} interval={0} />
-                                                        <Tooltip 
-                                                            cursor={{fill: 'transparent'}}
-                                                            contentStyle={{ borderRadius: '8px', border: 'none', backgroundColor: '#18181b', color: '#fff', fontSize: '10px', padding: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                                                            formatter={(value: number) => [formatBRL(value), 'Valor']}
-                                                            labelStyle={{ display: 'none' }}
-                                                        />
-                                                        {assetDividendChartData.average > 0 && (
-                                                            <ReferenceLine y={assetDividendChartData.average} stroke="#f59e0b" strokeDasharray="3 3" />
-                                                        )}
-                                                        <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={40} />
-                                                    </BarChart>
-                                                </ResponsiveContainer>
-                                            ) : (
-                                                <div className="h-full flex items-center justify-center text-xs text-zinc-400 font-medium bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-700">
-                                                    Sem histórico recente
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
                                 </div>
                             )}
 

@@ -132,7 +132,13 @@ function mapLabelToKey(label: string): string | null {
     if (norm.includes('taxa de administracao') || norm.includes('taxa de admin')) return 'taxa_adm';
     if (norm.includes('segmento') || norm === 'setor' || norm.includes('setor de atuacao')) return 'segmento';
     
-    // Rentabilidade (Novos Mapeamentos)
+    // Novos Mapeamentos (Polimento do Scraper)
+    if (norm === 'cnpj') return 'cnpj';
+    if (norm === 'mandato') return 'mandato';
+    if (norm.includes('publico alvo') || norm.includes('publico-alvo')) return 'publico_alvo';
+    if (norm.includes('tipo de fundo')) return 'tipo_fundo';
+    
+    // Rentabilidade
     if (norm.includes('rentab') && (norm.includes('12') || norm.includes('ano'))) return 'rentabilidade_12m';
     if (norm.includes('rentab') && norm.includes('mes')) return 'rentabilidade_mes';
 
@@ -169,7 +175,7 @@ async function scrapeInvestidor10(ticker: string) {
             else if (url.includes('/fiagros/')) type = 'FII';
             else if (url.includes('/bdrs/')) type = 'BDR';
 
-            // --- 1. HEADER INFO (Prioridade Máxima) ---
+            // --- 1. HEADER INFO ---
             const headerPriceStr = $('#header_action').find('div._card-body span.value').text().trim();
             const headerName = $('#header_action').find('h2.name-ticker').text().trim();
             
@@ -187,27 +193,28 @@ async function scrapeInvestidor10(ticker: string) {
                 vacancia: null, ultimo_rendimento: null, num_cotistas: null, 
                 patrimonio_liquido: null,
                 taxa_adm: null, tipo_gestao: null,
+                cnpj: null, mandato: null, publico_alvo: null, tipo_fundo: null,
                 rentabilidade_12m: null, rentabilidade_mes: null,
                 benchmark_cdi_12m: null, benchmark_ifix_12m: null, benchmark_ibov_12m: null
             };
 
-            // Se achou preço no header, usa ele
             if (headerPriceStr) {
                 const p = parseValue(headerPriceStr);
                 if (p !== null) dados.cotacao_atual = p;
             }
             if (headerName) dados.name = headerName;
 
-            // --- 2. INDICADORES (Cards no topo) ---
-            // Prioriza div#cards-ticker
-            $('#cards-ticker div._card').each((_, el) => {
+            // --- 2. INDICADORES ---
+            // Generic Cards
+            $('#cards-ticker div._card, #table-indicators .cell, #table-general-data .cell, .indicator-box').each((_, el) => {
                 let label = $(el).find('div._card-header, .name, .title, span:first-child').first().text().trim();
                 let value = $(el).find('div._card-body, .value, .data, span:last-child').last().text().trim();
 
                 if (label && value) {
                     const key = mapLabelToKey(label);
                     if (key) {
-                        if (['segmento', 'tipo_gestao', 'taxa_adm'].includes(key)) {
+                        // Campos de texto vs Numéricos
+                        if (['segmento', 'tipo_gestao', 'taxa_adm', 'cnpj', 'mandato', 'publico_alvo', 'tipo_fundo'].includes(key)) {
                             dados[key] = value;
                         } else {
                             const parsed = parseValue(value);
@@ -217,22 +224,7 @@ async function scrapeInvestidor10(ticker: string) {
                 }
             });
 
-            // Backup selectors para dados gerais
-            const otherSelectors = ['#table-indicators .cell', '#table-general-data .cell', '.indicator-box'];
-            otherSelectors.forEach(selector => {
-                $(selector).each((_, el) => {
-                    let label = $(el).find('.name, .title').first().text().trim();
-                    let value = $(el).find('.value, .data').last().text().trim();
-                    if (label && value) {
-                        const key = mapLabelToKey(label);
-                        if (key && dados[key] === null) {
-                             if (['segmento', 'tipo_gestao', 'taxa_adm'].includes(key)) dados[key] = value;
-                             else dados[key] = parseValue(value);
-                        }
-                    }
-                });
-            });
-
+            // Extração de Segmento Específica
             if (!dados.segmento) {
                 $('#breadcrumbs li, .breadcrumbs li').each((_, el) => {
                     const txt = $(el).text().trim();
@@ -242,16 +234,14 @@ async function scrapeInvestidor10(ticker: string) {
                 });
             }
 
-            // Fallbacks e Lógicas de Negócio
             if (dados.cotacao_atual !== null || dados.dy !== null || dados.pvp !== null || dados.pl !== null) {
-                
                 if (dados.vpa === null && dados.pvp > 0 && dados.cotacao_atual > 0) {
                      dados.vpa = dados.cotacao_atual / dados.pvp;
                 }
 
-                // --- 3. LISTA DE IMÓVEIS (Específico para FIIs) ---
+                // --- 3. LISTA DE IMÓVEIS ---
                 if (type === 'FII') {
-                    // Tenta seletores específicos sugeridos
+                    // Busca genérica por containers de propriedades
                     const propContainers = ['#sc_properties', '#properties-section', '.properties-list'];
                     let propertiesContainer: any = null;
 
@@ -263,7 +253,6 @@ async function scrapeInvestidor10(ticker: string) {
                     }
 
                     if (!propertiesContainer) {
-                        // Busca genérica por título
                         $('h2, h3, h4').each((_, el) => {
                             const txt = $(el).text().trim().toUpperCase();
                             if (txt.includes('LISTA DE IMÓVEIS') || txt.includes('PORTFÓLIO')) {
@@ -274,12 +263,10 @@ async function scrapeInvestidor10(ticker: string) {
                     }
 
                     if (propertiesContainer) {
-                        // Itera sobre cards ou itens de carrossel
                         $(propertiesContainer).find('.card, .property-card, .carousel-cell, .splide__slide, .item').each((_, el) => {
                             let name = $(el).find('h4, h3, strong, .title, .name').first().text().trim();
                             let location = $(el).find('.address, .location, .sub-title, p').not('.name').first().text().trim();
                             
-                            // Limpeza básica
                             if (name && name.length > 3 && !name.includes('%') && !name.toUpperCase().includes('TOTAL')) {
                                 realEstateProperties.push({
                                     name: name.replace(/\s+/g, ' '),
@@ -291,13 +278,12 @@ async function scrapeInvestidor10(ticker: string) {
                     }
                 }
 
-                // --- 4. COMPARAÇÃO COM ÍNDICES (Benchmarks) ---
+                // --- 4. COMPARAÇÃO COM ÍNDICES ---
                 const historySection = $('#history-section, #rentabilidade-table');
                 if (historySection.length > 0) {
-                    // Procura tabela
                     const table = historySection.find('table').first();
                     if (table.length > 0) {
-                        let idxCDI = -1, idxIndex = -1; // Index = IFIX ou IBOV
+                        let idxCDI = -1, idxIndex = -1; 
                         
                         table.find('thead th').each((i, th) => {
                             const txt = $(th).text().toUpperCase();
@@ -307,7 +293,6 @@ async function scrapeInvestidor10(ticker: string) {
 
                         table.find('tbody tr').each((_, tr) => {
                             const rowLabel = $(tr).find('td').first().text().trim().toLowerCase();
-                            // Pega linha de 1 Ano ou 12 Meses
                             if (rowLabel.includes('1 ano') || rowLabel.includes('12 meses')) {
                                 const cols = $(tr).find('td');
                                 if (idxCDI > -1) dados.benchmark_cdi_12m = parseValue($(cols[idxCDI]).text());
@@ -321,8 +306,7 @@ async function scrapeInvestidor10(ticker: string) {
                     }
                 }
 
-                // --- 5. DISTRIBUIÇÃO NOS ÚLTIMOS 12M (Tabela Detalhada) ---
-                // ID específico: table#table-dividends-history
+                // --- 5. DIVIDENDOS ---
                 const dividends: any[] = [];
                 const divTable = $('#table-dividends-history');
                 
@@ -331,14 +315,11 @@ async function scrapeInvestidor10(ticker: string) {
                         const cols = $(tr).find('td');
                         if (cols.length < 3) return;
 
-                        // Geralmente: Tipo | Data Com | Data Pagamento | Valor
-                        // Mas precisamos detectar as colunas
                         let typeDiv = 'DIV';
                         let dateComStr = '';
                         let datePayStr = '';
                         let valStr = '';
 
-                        // Heurística de colunas
                         cols.each((idx, td) => {
                             const text = $(td).text().trim();
                             const normText = normalize(text);
@@ -349,12 +330,11 @@ async function scrapeInvestidor10(ticker: string) {
                             else if (normText.includes('amortiza')) typeDiv = 'AMORT';
 
                             if (text.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
-                                if (!dateComStr) dateComStr = text; // Primeira data é Data Com geralmente
-                                else if (!datePayStr) datePayStr = text; // Segunda é Pagamento
+                                if (!dateComStr) dateComStr = text;
+                                else if (!datePayStr) datePayStr = text;
                             }
 
                             if (text.includes(',') && !text.includes('%') && !text.includes('/')) {
-                                // Provável valor
                                 if (!valStr) valStr = text;
                             }
                         });
@@ -373,20 +353,8 @@ async function scrapeInvestidor10(ticker: string) {
                             });
                         }
                     });
-                } else {
-                    // Fallback para tabela genérica se ID não existir
-                    $('table').each((_, table) => {
-                        const txt = $(table).text().toLowerCase();
-                        if (txt.includes('data com') && txt.includes('valor') && dividends.length === 0) {
-                            $(table).find('tbody tr').each((i, tr) => {
-                                // Mesma lógica de extração acima...
-                                // Simplificado para brevidade, já que o ID específico foi solicitado
-                            });
-                        }
-                    });
                 }
 
-                // Ajuste DY se vier zerado
                 if ((dados.dy === null || dados.dy === 0) && dados.ultimo_rendimento && dados.cotacao_atual) {
                     dados.dy = (dados.ultimo_rendimento / dados.cotacao_atual) * 100 * 12; 
                 }
