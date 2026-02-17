@@ -117,7 +117,8 @@ async function scrapeInvestidor10(ticker: string) {
             const dados: any = {
                 ticker: ticker.toUpperCase(), type, updated_at: new Date().toISOString(),
                 dy: null, pvp: null, pl: null, liquidez: null, val_mercado: null, segmento: null,
-                roe: null, margem_liquida: null, vacancia: null, ultimo_rendimento: null
+                roe: null, margem_liquida: null, vacancia: null, ultimo_rendimento: null,
+                rentabilidade_12m: null, rentabilidade_mes: null
             };
 
             // Mapeamento simples de chaves
@@ -125,7 +126,8 @@ async function scrapeInvestidor10(ticker: string) {
                 'p/vp': 'pvp', 'vp': 'pvp', 'p/l': 'pl', 'dy': 'dy', 'dividend yield': 'dy',
                 'liquidez media diaria': 'liquidez', 'valor de mercado': 'val_mercado',
                 'roe': 'roe', 'margem liquida': 'margem_liquida', 'vacancia fisica': 'vacancia',
-                'ultimo rendimento': 'ultimo_rendimento', 'cotacao': 'cotacao_atual'
+                'ultimo rendimento': 'ultimo_rendimento', 'cotacao': 'cotacao_atual',
+                'rentab. 12 meses': 'rentabilidade_12m', 'rentab. mes': 'rentabilidade_mes'
             };
 
             // Varre os cards principais (_card) e tabela de indicadores
@@ -161,16 +163,16 @@ async function scrapeInvestidor10(ticker: string) {
             }
 
             // --- 2. LISTA DE IMÓVEIS (Específico FIIs) ---
-            // Estratégia: Buscar ID #sc-properties (Padrão Investidor10)
+            // Estratégia: Buscar ID #sc-properties (Padrão Investidor10) e #properties
             if (type === 'FII') {
-                const propertiesContainer = $('#sc-properties, #sc-portfolio-fii, .properties-list');
+                const propertiesContainer = $('#sc-properties, #sc-portfolio-fii, #properties, .properties-list');
                 
                 if (propertiesContainer.length > 0) {
-                    propertiesContainer.find('.card-property, .card').each((_, el) => {
-                        const name = $(el).find('.card-header h3, h4, .title').text().trim();
-                        const location = $(el).find('.card-body p, .address, .description').first().text().trim();
+                    propertiesContainer.find('.card-property, .card, .carousel-cell, .item').each((_, el) => {
+                        const name = $(el).find('h3, h4, .title, strong').first().text().trim();
+                        const location = $(el).find('.address, .description, p').not('.title').first().text().trim();
                         
-                        if (name && name.length > 2 && !name.includes('%')) {
+                        if (name && name.length > 2 && !name.includes('%') && !name.includes('R$')) {
                             realEstateProperties.push({
                                 name: name.replace(/\s+/g, ' '),
                                 location: location ? location.replace(/\s+/g, ' ') : 'Localização não informada',
@@ -201,7 +203,7 @@ async function scrapeInvestidor10(ticker: string) {
             }
 
             // --- 3. BENCHMARKS (Rentabilidade) ---
-            // Estratégia: Buscar ID #table-rentabilidade ou tabela com texto "12 meses"
+            // Estratégia: Buscar ID #rentabilidade ou tabela com texto de índices
             const rentabSection = $('#rentabilidade, #sc-rentabilidade');
             let rentabTable = rentabSection.find('table');
             
@@ -218,7 +220,9 @@ async function scrapeInvestidor10(ticker: string) {
 
             if (rentabTable.length > 0) {
                 const headers: string[] = [];
+                // Tenta pegar headers do thead
                 rentabTable.find('thead th').each((_, th) => headers.push($(th).text().trim().toLowerCase()));
+                // Fallback para primeira linha
                 if (headers.length === 0) rentabTable.find('tr:first-child td').each((_, td) => headers.push($(td).text().trim().toLowerCase()));
 
                 rentabTable.find('tbody tr').each((_, tr) => {
@@ -234,15 +238,25 @@ async function scrapeInvestidor10(ticker: string) {
                         
                         Object.keys(rowData).forEach(k => {
                             const val = parseValue(rowData[k]);
-                            if (k.includes(ticker.toLowerCase())) bench.asset = val;
+                            if (k.includes(ticker.toLowerCase()) || k.includes('rentabilidade')) bench.asset = val;
                             else if (k.includes('cdi')) bench.cdi = val;
                             else if (k.includes('ifix')) bench.ifix = val;
                             else if (k.includes('ibov')) bench.ibov = val;
                         });
 
+                        // Se encontrou asset, adiciona
                         if (bench.asset !== undefined) benchmarks.push(bench);
                     }
                 });
+            }
+
+            // Extrai rentabilidades específicas se não pegou nos cards
+            if (benchmarks.length > 0) {
+                const r12m = benchmarks.find(b => b.label.toLowerCase().includes('12 meses'));
+                if (r12m) dados.rentabilidade_12m = r12m.asset;
+                
+                const rMonth = benchmarks.find(b => b.label.toLowerCase().includes('mês atual'));
+                if (rMonth) dados.rentabilidade_mes = rMonth.asset;
             }
 
             // --- 4. HISTÓRICO DE DIVIDENDOS ---
@@ -342,6 +356,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const dbPayload = { ...metadata };
         delete dbPayload.dy; // Remove legacy keys
         delete dbPayload.cotacao_atual;
+        
+        // Upsert metadata (properties e benchmarks serão salvos como JSONB se a coluna permitir, senão serão ignorados pelo Supabase, mas retornados na resposta)
         await supabase.from('ativos_metadata').upsert(dbPayload, { onConflict: 'ticker' });
 
         // Save Dividends
@@ -357,6 +373,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             await supabase.from('market_dividends').upsert(uniqueDivs, { onConflict: 'ticker,type,date_com,rate' });
         }
 
+        // Retorna explicitamente metadata completo (com benchmarks e properties) para o frontend
         return res.status(200).json({ success: true, data: metadata, dividends });
 
     } catch (e: any) {
