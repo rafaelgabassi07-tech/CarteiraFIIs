@@ -24,8 +24,6 @@ export interface RealEstateProperty {
 
 export interface AssetFundamentals {
   // Comuns
-  company_name?: string; // Razão Social
-  cnpj?: string;
   p_vp?: number;
   p_l?: number;
   dy_12m?: number;
@@ -33,15 +31,9 @@ export interface AssetFundamentals {
   liquidity?: string; // Liquidez Média Diária
   market_cap?: string; // Valor de Mercado
   
-  // Rentabilidade (Novos Campos da Tabela)
-  profitability_month?: number;
-  profitability_real_month?: number;
-  profitability_3m?: number;
-  profitability_real_3m?: number;
-  profitability_12m?: number;
-  profitability_real_12m?: number;
-  profitability_2y?: number;
-  profitability_real_2y?: number;
+  // Rentabilidade (Novos Campos)
+  profitability_12m?: number; // Rentabilidade 12 Meses
+  profitability_month?: number; // Rentabilidade no Mês Atual
   
   // Benchmarks (Comparação)
   benchmark_cdi_12m?: number;
@@ -49,38 +41,34 @@ export interface AssetFundamentals {
   benchmark_ibov_12m?: number;
   
   // Ações - Eficiência e Crescimento
-  net_margin?: number;
-  gross_margin?: number;
-  ebit_margin?: number;
-  cagr_revenue?: number;
-  cagr_profits?: number;
-  payout?: number;
-  lpa?: number;
-  vpa?: number;
+  net_margin?: number; // Margem Líquida
+  gross_margin?: number; // Margem Bruta
+  ebit_margin?: number; // Margem EBIT
+  cagr_revenue?: number; // CAGR Receita 5a
+  cagr_profits?: number; // CAGR Lucros 5a
+  payout?: number; // Payout
+  lpa?: number; // Lucro por Ação
+  vpa?: number; // Valor Patrimonial por Ação
   
   // Ações - Dívida e Valuation
   ev_ebitda?: number;
-  net_debt_ebitda?: number;
-  net_debt_equity?: number;
+  net_debt_ebitda?: number; // Dívida Líquida / EBITDA
+  net_debt_equity?: number; // Dívida Líquida / PL
 
-  // FIIs - Informações Gerais (Do Print)
-  target_audience?: string; // Público Alvo
+  // FIIs
+  vacancy?: number; // Vacância Física
+  assets_value?: string; // Patrimônio Líquido (R$)
+  manager_type?: string; // Tipo de Gestão (Ativa/Passiva)
+  segment_secondary?: string; // Segmento/Tipo de Fundo
   mandate?: string; // Mandato
-  segment_secondary?: string; // Segmento
-  fund_type?: string; // Tipo de Fundo (Tijolo/Papel)
-  duration?: string; // Prazo de Duração
-  manager_type?: string; // Tipo de Gestão
+  properties_count?: number; // Quantidade de Imóveis ou Número de Cotistas (adaptado)
   management_fee?: string; // Taxa de Administração
-  vacancy?: number; // Vacância
-  num_quotas?: string; // Cotas Emitidas (Número Total)
-  assets_value?: string; // Valor Patrimonial (Total)
-  properties_count?: number; // Número de Cotistas ou Imóveis
   last_dividend?: number; // Último Rendimento
   
   // Lista de Imóveis (FIIs de Tijolo)
   properties?: RealEstateProperty[];
 
-  updated_at?: string;
+  updated_at?: string; // Data da última atualização via IA/Crawler
   
   description?: string;
   sentiment?: 'Otimista' | 'Neutro' | 'Pessimista' | string;
