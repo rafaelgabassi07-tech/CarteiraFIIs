@@ -46,8 +46,8 @@ const StoriesBar = ({ insights, onSelectStory }: { insights: PortfolioInsight[],
     if (!insights || insights.length === 0) return null;
 
     return (
-        <div className="mb-6 pt-2 -mx-4 overflow-x-auto no-scrollbar pb-2">
-            <div className="flex gap-4 px-4">
+        <div className="mb-4 -mt-2 -mx-4 overflow-x-auto no-scrollbar pb-2">
+            <div className="flex gap-4 px-4 pt-1">
                 {insights.map((story) => {
                     const gradient = getStoryGradient(story.type);
                     return (
@@ -675,6 +675,15 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                 <Area type="monotone" dataKey="value" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorIncome)" />
                             </AreaChart>
                         </ResponsiveContainer>
+                    </div>
+
+                    <div className="space-y-3">
+                        {[...incomeData.chartData].reverse().map((item) => (
+                            <div key={item.date} className="flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800">
+                                <span className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wider">{getMonthName(item.date + '-01')}</span>
+                                <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{formatBRL(item.value, privacyMode)}</span>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>
