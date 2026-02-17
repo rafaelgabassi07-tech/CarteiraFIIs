@@ -41,9 +41,8 @@ const client = axios.create({
     maxRedirects: 5
 });
 
-// --- HELPERS AVANÇADOS (Baseados no seu script) ---
+// --- HELPERS AVANÇADOS ---
 const REGEX_NORMALIZE = /[\u0300-\u036f]/g;
-const REGEX_CLEAN_NUMBER = /[^0-9,-]+/g;
 
 function normalize(str: string) {
     if (!str) return '';
@@ -57,7 +56,6 @@ function parseValue(valueStr: any): number | null {
     let str = String(valueStr).trim();
     if (!str || str === '-' || str === '--' || str === 'N/A' || str === 'null') return null;
 
-    // Tratamento para valores por extenso (Bilhão/Milhão)
     const lower = str.toLowerCase();
     let multiplier = 1;
     
@@ -65,7 +63,6 @@ function parseValue(valueStr: any): number | null {
     else if (lower.includes('milh')) multiplier = 1e6;
     else if (lower.includes('mil')) multiplier = 1e3;
     
-    // Tratamento de sufixos abreviados
     const lastChar = str.slice(-1).toUpperCase();
     if (['B', 'M', 'K'].includes(lastChar)) {
         if (lastChar === 'B') multiplier = 1e9;
@@ -73,30 +70,23 @@ function parseValue(valueStr: any): number | null {
         else if (lastChar === 'K') multiplier = 1e3;
     }
 
-    // Limpeza pesada
     str = str.replace(/^R\$\s?/, '').replace('%', '').trim();
-    str = str.replace(/\s/g, '').replace(/\u00A0/g, ''); // Remove espaços e nbsp
-    
-    // Remove textos não numéricos que sobraram (ex: " bi", " mi")
+    str = str.replace(/\s/g, '').replace(/\u00A0/g, ''); 
     str = str.replace(/[a-zA-ZçÇãÃõÕáÁéÉíÍóÓúÚ]+/g, '');
 
-    // Robust parsing for 1.000,00 vs 1,000.00
     const lastCommaIndex = str.lastIndexOf(',');
     const lastDotIndex = str.lastIndexOf('.');
     
     let clean = "";
     if (lastCommaIndex > lastDotIndex) {
-        // BR format: 1.000,00 -> 1000.00
         clean = str.replace(/\./g, '').replace(',', '.');
     } else if (lastDotIndex > lastCommaIndex) {
-        // US format: 1,000.00 -> 1000.00
         clean = str.replace(/,/g, '');
     } else {
         if (lastCommaIndex !== -1) clean = str.replace(',', '.');
         else clean = str;
     }
 
-    // Garante que só restam números e ponto
     clean = clean.replace(/[^0-9.-]/g, '');
     
     if (!clean) return null;
@@ -125,16 +115,16 @@ function parseDate(dateStr: string) {
     } catch { return null; }
 }
 
-// --- FIELD MATCHERS (LISTA COMPLETA) ---
+// --- FIELD MATCHERS (Expandido para cobrir gaps) ---
 const FIELD_MATCHERS = [
     { key: 'dy',                   indicator: ['DY', 'DIVIDEND_YIELD'], text: (t: string) => t === 'dy' || t.includes('dividend yield') || t.includes('dy (') },
-    { key: 'pvp',                  indicator: ['P_VP', 'VP'],           text: (t: string) => t.includes('p/vp') || t === 'vp' || t.includes('p/vpa') },
+    { key: 'pvp',                  indicator: ['P_VP', 'VP'],           text: (t: string) => t.includes('p/vp') || (t.includes('vp') && !t.includes('cota') && !t.includes('patrim')) },
     { key: 'pl',                   indicator: ['P_L', 'PL'],            text: (t: string) => t === 'p/l' || t.includes('p/l') },
     { key: 'roe',                  indicator: ['ROE'],                  text: (t: string) => t.replace(/\./g, '') === 'roe' },
     { key: 'lpa',                  indicator: [],                       text: (t: string) => t.replace(/\./g, '') === 'lpa' },
     { key: 'liquidez',             indicator: [],                       text: (t: string) => t.includes('liquidez') },
-    { key: 'val_mercado',          indicator: [],                       text: (t: string) => t.includes('mercado') },
-    { key: 'variacao_12m',         indicator: [],                       text: (t: string) => t.includes('variacao') && (t.includes('12m') || t.includes('12 m')) },
+    { key: 'val_mercado',          indicator: [],                       text: (t: string) => t.includes('mercado') && !t.includes('patrim') },
+    { key: 'variacao_12m',         indicator: [],                       text: (t: string) => (t.includes('variacao') || t.includes('rentabilidade')) && (t.includes('12m') || t.includes('12 m') || t.includes('12 meses')) },
     { key: 'ultimo_rendimento',    indicator: [],                       text: (t: string) => t.includes('ultimo rendimento') },
     { key: 'segmento',             indicator: [],                       text: (t: string) => t.includes('segmento') },
     { key: 'vacancia',             indicator: [],                       text: (t: string) => t.includes('vacancia') },
@@ -147,17 +137,16 @@ const FIELD_MATCHERS = [
     { key: 'taxa_adm',             indicator: [],                       text: (t: string) => t.includes('taxa') && t.includes('administracao') },
     { key: 'cotas_emitidas',       indicator: [],                       text: (t: string) => t.includes('cotas') && (t.includes('emitidas') || t.includes('total')) },
     { key: 'publico_alvo',         indicator: [],                       text: (t: string) => t.includes('publico') && t.includes('alvo') },
+    { key: 'razao_social',         indicator: [],                       text: (t: string) => t.includes('razao social') },
+    { key: 'vp_cota',              indicator: [],                       text: (t: string) => t === 'vpa' || t.replace(/\./g, '') === 'vpa' || t.includes('vp por cota') || t.includes('valor patrimonial cota') },
+    { key: 'patrimonio_liquido',   indicator: [],                       text: (t: string) => t.includes('patrimonio') && (t.includes('liquido') || t.includes('liq')) },
+    // Stocks
     { key: 'margem_liquida',       indicator: ['MARGEM_LIQUIDA'],       text: (t: string) => t.includes('margem liquida') },
     { key: 'margem_bruta',         indicator: [],                       text: (t: string) => t.includes('margem bruta') },
-    { key: 'margem_ebit',          indicator: [],                       text: (t: string) => t.includes('margem ebit') },
-    { key: 'payout',               indicator: [],                       text: (t: string) => t.includes('payout') },
     { key: 'ev_ebitda',            indicator: [],                       text: (t: string) => t.includes('ev/ebitda') },
     { key: 'divida_liquida_ebitda',indicator: ['DIVIDA_LIQUIDA_EBITDA'],text: (t: string) => { const c = t.replace(/[\s\/\.\-]/g, ''); return c.includes('div') && c.includes('liq') && c.includes('ebitda'); } },
-    { key: 'divida_liquida_pl',    indicator: [],                       text: (t: string) => { const c = t.replace(/[\s\/\.\-]/g, ''); return c.includes('div') && c.includes('liq') && c.includes('patrim'); } },
     { key: 'cagr_receita_5a',      indicator: [],                       text: (t: string) => t.includes('cagr') && t.includes('receita') },
     { key: 'cagr_lucros_5a',       indicator: [],                       text: (t: string) => t.includes('cagr') && t.includes('lucro') },
-    { key: 'vp_cota',              indicator: [],                       text: (t: string) => t === 'vpa' || t.replace(/\./g, '') === 'vpa' || t.includes('vp por cota') },
-    { key: 'patrimonio_liquido',   indicator: [],                       text: (t: string) => t.includes('patrimonio liquido') }
 ];
 
 function buildProcessPair(dados: any) {
@@ -197,7 +186,6 @@ async function scrapeInvestidor10(ticker: string) {
     const urlAcao = `https://investidor10.com.br/acoes/${tickerLower}/`;
     const urlBdr = `https://investidor10.com.br/bdrs/${tickerLower}/`;
 
-    // Prioriza URL baseada no tipo provável
     const urls = isLikelyFii ? [urlFii, urlFiagro, urlAcao, urlBdr] : [urlAcao, urlFii, urlFiagro, urlBdr];
 
     let finalData: any = null;
@@ -210,7 +198,6 @@ async function scrapeInvestidor10(ticker: string) {
                 headers: { 'User-Agent': getRandomAgent() }
             });
             
-            // Validação simples de conteúdo
             if (res.data.length < 5000) continue;
 
             const $ = cheerio.load(res.data);
@@ -220,7 +207,6 @@ async function scrapeInvestidor10(ticker: string) {
             else if (url.includes('/fiagros/')) type = 'FII';
             else if (url.includes('/bdrs/')) type = 'BDR';
 
-            // Objeto de dados inicial
             const dados: any = {
                 ticker: ticker.toUpperCase(),
                 type: type,
@@ -233,21 +219,16 @@ async function scrapeInvestidor10(ticker: string) {
             const headerPriceStr = $('#header_action').find('div._card-body span.value').text().trim();
             const headerName = $('#header_action').find('h2.name-ticker').text().trim();
             
-            if (headerPriceStr) {
-                dados.cotacao_atual = parseValue(headerPriceStr);
-            }
+            if (headerPriceStr) dados.cotacao_atual = parseValue(headerPriceStr);
             if (headerName) dados.name = headerName;
 
             // --- 2. INDICADORES (Varredura Genérica) ---
-            
-            // Cards (Layout novo e antigo)
             $('._card').each((i, el) => {
                 const titulo = $(el).find('._card-header').text().trim();
                 const valor  = $(el).find('._card-body').text().trim();
                 processPair(titulo, valor, 'card');
             });
 
-            // Cells (Layout mobile/tabela)
             $('.cell').each((i, el) => {
                 let titulo = $(el).find('.name').text().trim();
                 if (!titulo) titulo = $(el).children('span').first().text().trim();
@@ -256,7 +237,6 @@ async function scrapeInvestidor10(ticker: string) {
                 processPair(titulo, valor, 'cell');
             });
 
-            // Generic Table Rows (Dados técnicos)
             $('table tbody tr').each((i, row) => {
                 const cols = $(row).find('td');
                 if (cols.length >= 2) {
@@ -267,7 +247,7 @@ async function scrapeInvestidor10(ticker: string) {
                 }
             });
 
-            // Fallback Segmento (Breadcrumbs)
+            // Fallback Segmento
             if (!dados.segmento || dados.segmento === 'Geral') {
                 $('#breadcrumbs li, .breadcrumbs li').each((_, el) => {
                     const txt = $(el).text().trim();
@@ -277,14 +257,12 @@ async function scrapeInvestidor10(ticker: string) {
                 });
             }
 
-            // --- 3. RENTABILIDADE DETALHADA (Tabelas Específicas) ---
+            // --- 3. RENTABILIDADE DETALHADA ---
             $('table').each((_, table) => {
                 const headerText = $(table).text().toLowerCase();
                 if (headerText.includes('período') || headerText.includes('periodo') || headerText.includes('variação') || headerText.includes('rentabilidade')) {
-                    
                     let idxCDI = -1, idxIndex = -1, idxAsset = -1;
                     
-                    // Mapeia colunas dinamicamente
                     $(table).find('thead th, tr:first-child td, tr:first-child th').each((idx, th) => {
                         const txt = $(th).text().toUpperCase();
                         if (txt.includes('CDI')) idxCDI = idx;
@@ -292,12 +270,11 @@ async function scrapeInvestidor10(ticker: string) {
                         if (txt.includes(ticker) || txt.includes('FII') || txt.includes('AÇÃO') || txt.includes('RENTABILIDADE')) idxAsset = idx;
                     });
                     
-                    if (idxAsset === -1) idxAsset = 1; // Default
+                    if (idxAsset === -1) idxAsset = 1;
 
                     $(table).find('tbody tr').each((_, tr) => {
                         const rowLabel = $(tr).find('td').first().text().trim().toLowerCase();
                         const cols = $(tr).find('td');
-
                         if (!rowLabel) return;
 
                         const rentAtivo = parseValue($(cols[idxAsset]).text());
@@ -322,10 +299,8 @@ async function scrapeInvestidor10(ticker: string) {
                 }
             });
 
-            // --- 4. DIVIDENDOS (Lógica Mantida e Refinada) ---
-            const dividends: any[] = [];
+            // --- 4. DIVIDENDOS ---
             const divTable = $('#table-dividends-history');
-            
             if (divTable.length > 0) {
                 divTable.find('tbody tr').each((i, tr) => {
                     const cols = $(tr).find('td');
@@ -339,7 +314,6 @@ async function scrapeInvestidor10(ticker: string) {
                     cols.each((idx, td) => {
                         const text = $(td).text().trim();
                         const normText = normalize(text);
-
                         if (normText.includes('jcp') || normText.includes('juros')) typeDiv = 'JCP';
                         else if (normText.includes('rendimento')) typeDiv = 'REND';
                         else if (normText.includes('dividendo')) typeDiv = 'DIV';
@@ -349,10 +323,7 @@ async function scrapeInvestidor10(ticker: string) {
                             if (!dateComStr) dateComStr = text;
                             else if (!datePayStr) datePayStr = text;
                         }
-
-                        if (text.includes(',') && !text.includes('%') && !text.includes('/')) {
-                            if (!valStr) valStr = text;
-                        }
+                        if (text.includes(',') && !text.includes('%') && !text.includes('/')) valStr = text;
                     });
 
                     const rate = parseValue(valStr);
@@ -360,18 +331,12 @@ async function scrapeInvestidor10(ticker: string) {
                     const paymentDate = parseDate(datePayStr);
 
                     if (dateCom && rate !== null && rate > 0) {
-                        dividends.push({ 
-                            ticker: ticker.toUpperCase(), 
-                            type: typeDiv, 
-                            date_com: dateCom, 
-                            payment_date: paymentDate || null, 
-                            rate 
-                        });
+                        dividends.push({ ticker: ticker.toUpperCase(), type: typeDiv, date_com: dateCom, payment_date: paymentDate || null, rate });
                     }
                 });
             }
 
-            // --- 5. IMÓVEIS (FIIs) ---
+            // --- 5. IMÓVEIS ---
             $('#properties-section .card-propertie').each((i, el) => {
                 const nome  = $(el).find('h3').text().trim();
                 let location = '';
@@ -382,16 +347,12 @@ async function scrapeInvestidor10(ticker: string) {
                 if (nome) realEstateProperties.push({ name: nome, location });
             });
 
-            // Fallback DY calculation if missing
             if ((!dados.dy || dados.dy === 'N/A') && dados.ultimo_rendimento && dados.cotacao_atual) {
                 const ultRend = parseValue(dados.ultimo_rendimento);
                 const cot = parseValue(dados.cotacao_atual);
-                if (ultRend && cot) {
-                    dados.dy = (ultRend / cot) * 100 * 12;
-                }
+                if (ultRend && cot) dados.dy = (ultRend / cot) * 100 * 12;
             }
 
-            // --- MAPPING FINAL (DB Schema Match) ---
             finalData = {
                 ticker: dados.ticker,
                 type: dados.type,
@@ -409,7 +370,6 @@ async function scrapeInvestidor10(ticker: string) {
                 market_cap: dados.val_mercado || null,
                 liquidity: dados.liquidez || null,
                 
-                // Rentabilidade
                 profitability_12m: dados.rentabilidade_12m || parseValue(dados.variacao_12m),
                 profitability_month: dados.rentabilidade_mes,
                 profitability_2y: dados.rentabilidade_2y,
@@ -417,7 +377,6 @@ async function scrapeInvestidor10(ticker: string) {
                 benchmark_ifix_12m: dados.benchmark_ifix_12m,
                 benchmark_ibov_12m: dados.benchmark_ibov_12m,
 
-                // FIIs
                 vacancy: parseValue(dados.vacancia),
                 assets_value: dados.patrimonio_liquido,
                 properties_count: parseValue(dados.num_cotistas),
@@ -425,16 +384,14 @@ async function scrapeInvestidor10(ticker: string) {
                 management_fee: dados.taxa_adm,
                 last_dividend: parseValue(dados.ultimo_rendimento),
                 
-                // Details
                 cnpj: dados.cnpj,
                 mandate: dados.mandato,
                 target_audience: dados.publico_alvo,
                 fund_type: dados.tipo_fundo,
                 duration: dados.prazo_duracao,
                 num_quotas: dados.cotas_emitidas,
-                company_name: dados.name,
+                company_name: dados.razao_social || dados.name,
 
-                // Stocks (Indicadores extras)
                 net_margin: parseValue(dados.margem_liquida),
                 gross_margin: parseValue(dados.margem_bruta),
                 ev_ebitda: parseValue(dados.ev_ebitda),
@@ -446,10 +403,10 @@ async function scrapeInvestidor10(ticker: string) {
             };
             
             finalDividends = dividends;
-            break; // Sucesso
+            break; 
         } catch (e) {
             console.warn(`Attempt failed for ${url}:`, e);
-            continue; // Tenta próxima URL
+            continue; 
         }
     }
 
@@ -472,64 +429,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         let shouldScrape = force;
         
         if (!shouldScrape) {
-            const { data: existing } = await supabase
-                .from('ativos_metadata')
-                .select('*')
-                .eq('ticker', ticker)
-                .single();
-            
+            const { data: existing } = await supabase.from('ativos_metadata').select('*').eq('ticker', ticker).single();
             if (existing && existing.updated_at) {
                 const age = Date.now() - new Date(existing.updated_at).getTime();
-                const cacheTime = existing.dy_12m === 0 ? 3600000 : 10800000; // 1h ou 3h
-                
-                // Força se faltar rentabilidade
-                if (existing.rentabilidade_12m === null) {
-                    shouldScrape = true;
-                } else if (age < cacheTime) {
-                     const { data: divs } = await supabase
-                        .from('market_dividends')
-                        .select('*')
-                        .eq('ticker', ticker);
+                const cacheTime = existing.dy_12m === 0 ? 3600000 : 10800000; 
+                if (existing.rentabilidade_12m === null) shouldScrape = true;
+                else if (age < cacheTime) {
+                     const { data: divs } = await supabase.from('market_dividends').select('*').eq('ticker', ticker);
                     return res.status(200).json({ success: true, data: existing, dividends: divs || [], cached: true });
                 }
-            } else {
-                shouldScrape = true;
-            }
+            } else shouldScrape = true;
         }
 
         const result = await scrapeInvestidor10(ticker);
         
-        if (!result) {
-            return res.status(404).json({ success: false, error: 'Falha ao obter dados.' });
-        }
+        if (!result) return res.status(404).json({ success: false, error: 'Falha ao obter dados.' });
 
         const { metadata, dividends } = result;
 
         if (metadata) {
             const dbPayload = { ...metadata };
-            // Sanitização para DB
             Object.keys(dbPayload).forEach(key => dbPayload[key] === undefined && delete dbPayload[key]);
-
             const { error } = await supabase.from('ativos_metadata').upsert(dbPayload, { onConflict: 'ticker' });
             if (error) console.error('Error saving metadata:', error);
         }
 
         if (dividends.length > 0) {
              const today = new Date().toISOString().split('T')[0];
-             // Limpeza preventiva de dividendos futuros errados
-             const { error: delError } = await supabase.from('market_dividends')
-                .delete()
-                .eq('ticker', ticker.toUpperCase())
-                .gte('payment_date', today);
-             
+             const { error: delError } = await supabase.from('market_dividends').delete().eq('ticker', ticker.toUpperCase()).gte('payment_date', today);
              if (delError) console.warn('Clean up error (ignorable):', delError);
-
-             const uniqueDivs = Array.from(new Map(dividends.map(item => [
-                `${item.type}-${item.date_com}-${item.rate}`, item
-            ])).values());
-            
-            const { error } = await supabase.from('market_dividends').upsert(uniqueDivs, { onConflict: 'ticker,type,date_com,rate' });
-            if (error) console.error('Error saving dividends:', error);
+             const uniqueDivs = Array.from(new Map(dividends.map(item => [`${item.type}-${item.date_com}-${item.rate}`, item])).values());
+             const { error } = await supabase.from('market_dividends').upsert(uniqueDivs, { onConflict: 'ticker,type,date_com,rate' });
+             if (error) console.error('Error saving dividends:', error);
         }
 
         return res.status(200).json({ success: true, data: metadata, dividends });
