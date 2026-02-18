@@ -20,22 +20,30 @@ export const analyzePortfolio = (
     // Helper para selecionar imagem de fundo baseada no tema
     const getThemeImage = (type: PortfolioInsight['type'], ticker?: string) => {
         // Mapeia tipos para keywords visuais (usando seeds do Picsum para consistência)
-        let seed = 'abstract';
+        let seed = 'finance';
         
-        if (ticker) seed = ticker;
-        else {
+        // Se tiver ticker, usa ele como seed para consistência visual do ativo
+        if (ticker) {
+            seed = ticker;
+        } else {
             switch (type) {
                 case 'success': seed = 'growth'; break;
-                case 'warning': seed = 'alert'; break;
-                case 'opportunity': seed = 'money'; break;
+                case 'warning': seed = 'storm'; break;
+                case 'opportunity': seed = 'treasure'; break;
                 case 'inflation-shield': seed = 'shield'; break;
-                case 'magic-number': seed = 'snowball'; break;
+                case 'magic-number': seed = 'snow'; break;
                 case 'risk-concentration': seed = 'balance'; break;
-                case 'diversification-good': seed = 'world'; break;
-                default: seed = 'finance';
+                case 'diversification-good': seed = 'puzzle'; break;
+                case 'spotlight-fii': seed = 'building'; break;
+                case 'spotlight-stock': seed = 'office'; break;
+                case 'news': seed = 'newspaper'; break;
+                case 'volatility_up': seed = 'rocket'; break;
+                case 'volatility_down': seed = 'rain'; break;
+                default: seed = 'abstract';
             }
         }
         
+        // Adiciona timestamp para evitar cache agressivo se necessário, mas mantendo a seed
         return `https://picsum.photos/seed/${seed}/1080/1920?blur=2`;
     };
 

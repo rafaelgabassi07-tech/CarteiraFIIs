@@ -168,6 +168,16 @@ const StoryViewer = ({
 
     if (!isOpen) return null;
     const story = stories[currentIndex];
+    const nextStory = stories[currentIndex + 1];
+
+    // Preload next image
+    useEffect(() => {
+        if (nextStory && nextStory.imageUrl) {
+            const img = new Image();
+            img.src = nextStory.imageUrl;
+        }
+    }, [nextStory]);
+
     if (!story) return null;
 
     const gradient = getStoryGradient(story.type);
@@ -175,17 +185,17 @@ const StoryViewer = ({
     return createPortal(
         <div className="fixed inset-0 z-[99999] bg-black flex flex-col animate-in fade-in duration-300 touch-none">
             {story.imageUrl && (
-                <div className="absolute inset-0 z-0">
+                <div key={story.id} className="absolute inset-0 z-0 overflow-hidden">
                     <img 
                         src={story.imageUrl} 
-                        className="w-full h-full object-cover opacity-50" 
+                        className="w-full h-full object-cover opacity-50 animate-in fade-in zoom-in-105 duration-1000 fill-mode-forwards" 
                         alt=""
                     />
                     <div className="absolute inset-0 bg-black/40"></div>
                 </div>
             )}
             
-            <div className={`absolute inset-0 bg-gradient-to-br ${gradient} ${story.imageUrl ? 'opacity-60 mix-blend-overlay' : 'opacity-20'}`}></div>
+            <div className={`absolute inset-0 bg-gradient-to-br ${gradient} ${story.imageUrl ? 'opacity-60 mix-blend-overlay' : 'opacity-20'} transition-colors duration-700`}></div>
             {!story.imageUrl && <div className="absolute inset-0 backdrop-blur-3xl"></div>}
             
             <div 
