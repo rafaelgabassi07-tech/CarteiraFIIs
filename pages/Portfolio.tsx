@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
 import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, Activity, BarChart3, PieChart, Coins, AlertCircle, ChevronDown, DollarSign, Percent, Briefcase, Building2, Users, FileText, MapPin, Zap, Info, Clock, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, Scale, SquareStack, Calendar, Map as MapIcon, ChevronRight, Share2, MousePointerClick, CandlestickChart, LineChart as LineChartIcon, SlidersHorizontal, Layers, Award, HelpCircle, Edit3, RefreshCw, Banknote, RefreshCcw } from 'lucide-react';
@@ -817,87 +816,80 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: { asset: Ass
     );
 };
 
-const PortfolioSummary = ({ assets, privacyMode }: { assets: AssetPosition[], privacyMode: boolean }) => {
-    const totalInvested = assets.reduce((acc, a) => acc + (a.averagePrice * a.quantity), 0);
-    const totalBalance = assets.reduce((acc, a) => acc + ((a.currentPrice || 0) * a.quantity), 0);
+const PortfolioHeader = ({ totalBalance, totalInvested, privacyMode }: { totalBalance: number, totalInvested: number, privacyMode: boolean }) => {
     const gain = totalBalance - totalInvested;
     const gainPct = totalInvested > 0 ? (gain / totalInvested) * 100 : 0;
+    const isPositive = gain >= 0;
 
     return (
-        <div className="mb-6 mx-1">
-            <div className="bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-[2rem] p-6 shadow-xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 dark:bg-black/5 rounded-full -mr-8 -mt-8 pointer-events-none"></div>
-                
-                <div className="relative z-10">
-                    <div className="flex justify-between items-start mb-6">
-                        <div>
-                            <span className="text-[10px] font-bold opacity-60 uppercase tracking-widest">Patrimônio Filtrado</span>
-                            <h2 className="text-3xl font-black tracking-tight mt-1">{formatBRL(totalBalance, privacyMode)}</h2>
-                        </div>
-                        <div className={`px-2.5 py-1.5 rounded-xl text-xs font-black backdrop-blur-sm bg-white/10 dark:bg-black/5`}>
-                            {gain >= 0 ? '+' : ''}{gainPct.toFixed(2)}%
-                        </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4 border-t border-white/10 dark:border-black/10 pt-4">
-                        <div>
-                            <span className="text-[9px] font-bold opacity-60 uppercase tracking-widest block mb-0.5">Custo</span>
-                            <span className="text-sm font-bold">{formatBRL(totalInvested, privacyMode)}</span>
-                        </div>
-                        <div className="text-right">
-                            <span className="text-[9px] font-bold opacity-60 uppercase tracking-widest block mb-0.5">Resultado</span>
-                            <span className={`text-sm font-bold ${gain >= 0 ? 'text-emerald-300 dark:text-emerald-600' : 'text-rose-300 dark:text-rose-600'}`}>
-                                {gain >= 0 ? '+' : ''}{formatBRL(gain, privacyMode)}
-                            </span>
-                        </div>
-                    </div>
+        <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-20 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-xl px-4 pt-3 pb-3 border-b border-zinc-200 dark:border-zinc-800 transition-all">
+            <div className="flex justify-between items-end">
+                <div>
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5 block">Patrimônio Filtrado</span>
+                    <h2 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tight leading-none">
+                        {formatBRL(totalBalance, privacyMode)}
+                    </h2>
+                </div>
+                <div className={`px-2.5 py-1.5 rounded-lg text-xs font-black flex items-center gap-1 ${isPositive ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400'}`}>
+                    {isPositive ? <TrendingUp className="w-3.5 h-3.5" strokeWidth={3} /> : <TrendingDown className="w-3.5 h-3.5" strokeWidth={3} />}
+                    {gainPct.toFixed(2)}%
                 </div>
             </div>
         </div>
     );
 };
 
-const AssetListItem: React.FC<any> = ({ asset, onOpenDetails, privacyMode, isExpanded, onToggle }) => {
+const AssetListItem: React.FC<any> = ({ asset, onOpenDetails, privacyMode, isExpanded, onToggle, totalPortfolioValue }) => {
     const isPositive = (asset.dailyChange || 0) >= 0;
     const totalVal = asset.quantity * (asset.currentPrice || 0);
     const profitValue = (asset.currentPrice && asset.averagePrice) ? (asset.currentPrice - asset.averagePrice) * asset.quantity : 0;
     const profitPercent = asset.averagePrice > 0 ? ((asset.currentPrice || 0) / asset.averagePrice - 1) * 100 : 0;
     const isProfit = profitPercent >= 0;
+    
+    const allocationPct = totalPortfolioValue > 0 ? (totalVal / totalPortfolioValue) * 100 : 0;
 
     return (
         <div className={`mb-3 rounded-3xl border transition-all duration-300 overflow-hidden bg-white dark:bg-zinc-900 ${isExpanded ? 'border-zinc-200 dark:border-zinc-700 shadow-lg ring-2 ring-zinc-100 dark:ring-zinc-800' : 'border-zinc-100 dark:border-zinc-800 shadow-[0_2px_8px_rgba(0,0,0,0.02)]'}`}>
-            <button onClick={onToggle} className="w-full flex items-center justify-between p-4 bg-transparent press-effect outline-none">
-                <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xs font-black tracking-wider shadow-sm transition-colors ${asset.assetType === AssetType.FII ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30' : 'bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400 border border-sky-100 dark:border-sky-900/30'}`}>
-                        {asset.ticker.substring(0, 2)}
-                    </div>
-                    <div className="text-left">
-                        <h4 className="text-base font-black text-zinc-900 dark:text-white">{asset.ticker}</h4>
-                        <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide">{asset.quantity} Cotas</span>
-                            {asset.dy_12m !== undefined && asset.dy_12m > 0 && (
-                                <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-1.5 py-0.5 rounded">
-                                    DY {asset.dy_12m.toFixed(1)}%
-                                </span>
-                            )}
+            <button onClick={onToggle} className="w-full relative p-4 bg-transparent press-effect outline-none">
+                
+                <div className="flex items-center justify-between mb-3 relative z-10">
+                    <div className="flex items-center gap-3.5">
+                        <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-xs font-black tracking-wider shadow-sm transition-colors ${asset.assetType === AssetType.FII ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30' : 'bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400 border border-sky-100 dark:border-sky-900/30'}`}>
+                            {asset.ticker.substring(0, 2)}
+                        </div>
+                        <div className="text-left">
+                            <h4 className="text-base font-black text-zinc-900 dark:text-white leading-none">{asset.ticker}</h4>
+                            <div className="flex items-center gap-2 mt-1">
+                                <span className="text-[10px] font-medium text-zinc-400">{asset.quantity} un</span>
+                                {asset.dy_12m !== undefined && asset.dy_12m > 0 && (
+                                    <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-1.5 py-0.5 rounded">
+                                        DY {asset.dy_12m.toFixed(1)}%
+                                    </span>
+                                )}
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div className="flex items-center gap-3">
-                    <div className="text-right flex flex-col items-end">
+                    
+                    <div className="text-right">
                         <p className="text-base font-black text-zinc-900 dark:text-white tabular-nums tracking-tight">{formatBRL(totalVal, privacyMode)}</p>
                         {asset.dailyChange !== undefined && (
-                            <div className={`flex items-center gap-1 mt-0.5 text-[10px] font-bold ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                            <div className={`flex justify-end items-center gap-1 mt-0.5 text-[10px] font-bold ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                                 {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                                 {Math.abs(asset.dailyChange).toFixed(2)}%
                             </div>
                         )}
                     </div>
-                    <div className={`w-7 h-7 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center transition-transform duration-300 ${isExpanded ? 'rotate-180 text-zinc-600 dark:text-zinc-300' : 'text-zinc-400'}`}>
-                        <ChevronDown className="w-4 h-4" />
-                    </div>
+                </div>
+
+                {/* Allocation Bar */}
+                <div className="w-full h-1 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden flex items-center">
+                    <div 
+                        className={`h-full rounded-full ${asset.assetType === AssetType.FII ? 'bg-indigo-500' : 'bg-sky-500'}`} 
+                        style={{ width: `${allocationPct}%` }}
+                    ></div>
                 </div>
             </button>
+
             <div className={`transition-all duration-500 ease-out-mola overflow-hidden ${isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
                 <div className="p-4 pt-0">
                     <div className="bg-zinc-50/50 dark:bg-zinc-800/20 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 overflow-hidden mb-3">
@@ -966,6 +958,14 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
         return portfolio.filter(p => p.ticker.includes(search.toUpperCase()));
     }, [portfolio, search]);
 
+    const totalFilteredBalance = useMemo(() => {
+        return filteredPortfolio.reduce((acc, a) => acc + ((a.currentPrice || 0) * a.quantity), 0);
+    }, [filteredPortfolio]);
+
+    const totalFilteredInvested = useMemo(() => {
+        return filteredPortfolio.reduce((acc, a) => acc + (a.averagePrice * a.quantity), 0);
+    }, [filteredPortfolio]);
+
     const getAssetChartData = (ticker: string) => {
         const assetDividends = dividends.filter(d => d.ticker === ticker);
         const todayStr = new Date().toISOString().split('T')[0];
@@ -1011,23 +1011,24 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
     }, [selectedAsset, marketDividends]);
 
     return (
-        <div className="pb-24">
-             <div className="px-4 mb-4">
+        <div className="pb-24 -mt-2"> {/* Negative margin to pull closer to main header */}
+             
+             <PortfolioHeader totalBalance={totalFilteredBalance} totalInvested={totalFilteredInvested} privacyMode={privacyMode} />
+
+             <div className="px-4 py-3 bg-primary-light dark:bg-primary-dark sticky top-[calc(3.5rem+env(safe-area-inset-top)+65px)] z-10">
                 <div className="relative group">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 group-focus-within:text-indigo-500 transition-colors" />
                     <input 
                         type="text" 
-                        placeholder="Buscar na carteira..." 
+                        placeholder="Filtrar por nome ou ticker..." 
                         value={search} 
                         onChange={e => setSearch(e.target.value.toUpperCase())} 
-                        className="w-full bg-zinc-100 dark:bg-zinc-800 pl-10 pr-4 py-3 rounded-2xl text-sm font-bold text-zinc-900 dark:text-white placeholder:text-zinc-400 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all border border-transparent focus:bg-white dark:focus:bg-zinc-900 focus:border-indigo-500/20" 
+                        className="w-full bg-zinc-100 dark:bg-zinc-800 pl-10 pr-4 py-2.5 rounded-xl text-sm font-bold text-zinc-900 dark:text-white placeholder:text-zinc-400 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all border border-transparent focus:bg-white dark:focus:bg-zinc-900 focus:border-indigo-500/20" 
                     />
                 </div>
              </div>
 
-             <PortfolioSummary assets={filteredPortfolio} privacyMode={privacyMode} />
-
-             <div className="px-1">
+             <div className="px-1 mt-2">
                 {filteredPortfolio.length === 0 ? (
                     <div className="text-center py-20 opacity-50">
                         <p className="text-sm font-bold text-zinc-500">Nenhum ativo encontrado.</p>
@@ -1044,6 +1045,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                                 setSelectedAsset(asset);
                                 if (onAssetRefresh) onAssetRefresh(asset.ticker);
                             }}
+                            totalPortfolioValue={totalFilteredBalance}
                         />
                     ))
                 )}
