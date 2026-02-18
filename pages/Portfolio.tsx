@@ -239,7 +239,9 @@ const ComparativeChart = ({ data, loading, ticker, type, range, setRange }: any)
     });
 
     const toggleBenchmark = (key: string) => {
-        setVisibleBenchmarks(prev => ({ ...prev, [key]: !prev[key] }));
+        // Cast para evitar erro TS7053 ao indexar o objeto de estado
+        const k = key as keyof typeof visibleBenchmarks;
+        setVisibleBenchmarks(prev => ({ ...prev, [k]: !prev[k] }));
     };
 
     return (
@@ -476,6 +478,60 @@ const SimulatorCard = ({ data, ticker, dividends = [] }: any) => {
                     </div>
                 </div>
             )}
+        </div>
+    );
+};
+
+const ChartsContainer = ({ ticker, type, marketDividends }: { ticker: string, type: AssetType, asset?: AssetPosition, marketDividends: DividendReceipt[] }) => {
+    const [range, setRange] = useState('1Y');
+    const [historyData, setHistoryData] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
+
+    useEffect(() => {
+        let mounted = true;
+        const fetchData = async () => {
+            setLoading(true);
+            setError(false);
+            try {
+                const res = await fetch(`/api/history?ticker=${ticker}&range=${range}`);
+                if (!res.ok) throw new Error('Failed to fetch history');
+                const json = await res.json();
+                if (mounted) setHistoryData(json.points || []);
+            } catch (e) {
+                console.error(e);
+                if (mounted) setError(true);
+            } finally {
+                if (mounted) setLoading(false);
+            }
+        };
+        fetchData();
+        return () => { mounted = false; };
+    }, [ticker, range]);
+
+    return (
+        <div className="space-y-6">
+            <PriceHistoryChart 
+                data={historyData} 
+                loading={loading} 
+                error={error} 
+                ticker={ticker} 
+                range={range} 
+                setRange={setRange} 
+            />
+            <ComparativeChart 
+                data={historyData} 
+                loading={loading} 
+                ticker={ticker} 
+                type={type} 
+                range={range} 
+                setRange={setRange} 
+            />
+            <SimulatorCard 
+                data={historyData} 
+                ticker={ticker} 
+                dividends={marketDividends} 
+            />
         </div>
     );
 };
@@ -763,60 +819,6 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: { asset: Ass
                     </div>
                 </div>
             </div>
-        </div>
-    );
-};
-
-const ChartsContainer = ({ ticker, type, marketDividends }: { ticker: string, type: AssetType, asset: AssetPosition, marketDividends: DividendReceipt[] }) => {
-    const [range, setRange] = useState('1Y');
-    const [historyData, setHistoryData] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(false);
-
-    useEffect(() => {
-        let mounted = true;
-        const fetchData = async () => {
-            setLoading(true);
-            setError(false);
-            try {
-                const res = await fetch(`/api/history?ticker=${ticker}&range=${range}`);
-                if (!res.ok) throw new Error('Failed to fetch history');
-                const json = await res.json();
-                if (mounted) setHistoryData(json.points || []);
-            } catch (e) {
-                console.error(e);
-                if (mounted) setError(true);
-            } finally {
-                if (mounted) setLoading(false);
-            }
-        };
-        fetchData();
-        return () => { mounted = false; };
-    }, [ticker, range]);
-
-    return (
-        <div className="space-y-6">
-            <PriceHistoryChart 
-                data={historyData} 
-                loading={loading} 
-                error={error} 
-                ticker={ticker} 
-                range={range} 
-                setRange={setRange} 
-            />
-            <ComparativeChart 
-                data={historyData} 
-                loading={loading} 
-                ticker={ticker} 
-                type={type} 
-                range={range} 
-                setRange={setRange} 
-            />
-            <SimulatorCard 
-                data={historyData} 
-                ticker={ticker} 
-                dividends={marketDividends} 
-            />
         </div>
     );
 };
