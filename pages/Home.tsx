@@ -103,6 +103,16 @@ const StoryViewer = ({
     const [progress, setProgress] = useState(0);
     const [isPaused, setIsPaused] = useState(false);
 
+    const nextStory = stories[currentIndex + 1];
+
+    // Preload next image
+    useEffect(() => {
+        if (nextStory && nextStory.imageUrl) {
+            const img = new Image();
+            img.src = nextStory.imageUrl;
+        }
+    }, [nextStory]);
+
     useEffect(() => {
         if (isOpen && initialStoryId) {
             const idx = stories.findIndex(s => s.id === initialStoryId);
@@ -168,16 +178,6 @@ const StoryViewer = ({
 
     if (!isOpen) return null;
     const story = stories[currentIndex];
-    const nextStory = stories[currentIndex + 1];
-
-    // Preload next image
-    useEffect(() => {
-        if (nextStory && nextStory.imageUrl) {
-            const img = new Image();
-            img.src = nextStory.imageUrl;
-        }
-    }, [nextStory]);
-
     if (!story) return null;
 
     const gradient = getStoryGradient(story.type);
