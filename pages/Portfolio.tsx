@@ -1500,6 +1500,20 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
                 <PositionSummaryCard asset={selectedAsset} privacyMode={privacyMode} />
                 
                 <div className="mt-4">
+                    <ValuationCard asset={selectedAsset} />
+                </div>
+
+                <div className="mt-4">
+                    <DetailedInfoBlock asset={selectedAsset} />
+                </div>
+
+                {selectedAsset.properties && selectedAsset.properties.length > 0 && (
+                    <div className="mt-4">
+                        <PropertiesAnalysis properties={selectedAsset.properties} />
+                    </div>
+                )}
+
+                <div className="mt-4">
                     <ChartsContainer 
                         ticker={selectedAsset.ticker} 
                         type={selectedAsset.assetType} 
@@ -1514,20 +1528,6 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
                         marketHistory={assetMarketHistory} 
                     />
                 </div>
-
-                <div className="mt-4">
-                    <ValuationCard asset={selectedAsset} />
-                </div>
-
-                <div className="mt-4">
-                    <DetailedInfoBlock asset={selectedAsset} />
-                </div>
-
-                {selectedAsset.properties && selectedAsset.properties.length > 0 && (
-                    <div className="mt-4">
-                        <PropertiesAnalysis properties={selectedAsset.properties} />
-                    </div>
-                )}
             </div>
         );
     }
