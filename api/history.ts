@@ -127,6 +127,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (!ticker) return res.status(400).json({ error: 'Ticker required' });
 
+    // Security: Validate ticker format (Alphanumeric + optional suffix + indices like ^BVSP)
+    if (!/^[A-Z0-9^]{3,12}(\.[A-Z]{2})?$/.test(ticker)) {
+        return res.status(400).json({ error: 'Invalid ticker format' });
+    }
+
     try {
         const startDateBCB = getStartDate(range);
 

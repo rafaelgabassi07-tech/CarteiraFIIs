@@ -580,6 +580,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     if (!ticker) return res.status(400).json({ error: 'Ticker required' });
 
+    // Security: Validate ticker format (Alphanumeric + optional suffix)
+    if (!/^[A-Z0-9]{3,6}(\.SA)?(11|11B|3|4|5|6)?$/.test(ticker) && !/^[A-Z]{4}\d{1,2}$/.test(ticker)) {
+        // Allow standard tickers (PETR4, HGLG11) and indices if needed, but restrict special chars
+        // Fallback to a simpler safe regex if the above is too strict for some edge cases
+        if (!/^[A-Z0-9]{3,12}(\.[A-Z]{2})?$/.test(ticker)) {
+            return res.status(400).json({ error: 'Invalid ticker format' });
+        }
+    }
+
     try {
         let shouldScrape = force;
         
