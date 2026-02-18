@@ -172,7 +172,6 @@ const StoryViewer = ({
 
     const gradient = getStoryGradient(story.type);
 
-    // Use createPortal to break out of any parent container padding/margins
     return createPortal(
         <div className="fixed inset-0 z-[99999] bg-black flex flex-col animate-in fade-in duration-300 touch-none">
             <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-20`}></div>
@@ -188,7 +187,6 @@ const StoryViewer = ({
             ></div>
 
             <div className="relative z-20 flex flex-col h-full pointer-events-none">
-                
                 <div className="flex gap-1.5 px-3 pt-safe top-2 mt-2">
                     {stories.map((s, idx) => (
                         <div key={s.id} className="h-1 flex-1 bg-white/20 rounded-full overflow-hidden">
@@ -751,7 +749,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                             <AreaChart data={incomeData.chartData} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
+                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
                                         <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                                     </linearGradient>
                                 </defs>
@@ -759,10 +757,20 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                 <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 600 }} dy={5} />
                                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a' }} tickFormatter={(val) => `R$${val}`} />
                                 <RechartsTooltip 
-                                    contentStyle={{ borderRadius: '8px', border: 'none', backgroundColor: '#18181b', color: '#fff', fontSize: '10px', padding: '8px' }}
+                                    contentStyle={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(24, 24, 27, 0.8)', color: '#fff', fontSize: '10px', padding: '8px', backdropFilter: 'blur(8px)' }}
                                     formatter={(value: number) => [formatBRL(value), '']}
                                 />
-                                <Area type="monotone" dataKey="value" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorIncome)" />
+                                <Area 
+                                    type="monotone" 
+                                    dataKey="value" 
+                                    stroke="#10b981" 
+                                    strokeWidth={2} 
+                                    fillOpacity={1} 
+                                    fill="url(#colorIncome)" 
+                                    animationDuration={1500} 
+                                    animationEasing="ease-out"
+                                    activeDot={{ r: 4, strokeWidth: 0, fill: '#10b981' }}
+                                />
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
@@ -808,7 +816,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
         </SwipeableModal>
 
+        {/* ... (outros modais sem alterações complexas de lógica, apenas de render) ... */}
+        
         <SwipeableModal isOpen={showMagicNumber} onClose={() => setShowMagicNumber(false)}>
+            {/* Mantido o conteúdo original, o usuário não pediu alterações de lógica aqui, apenas gráficos. */}
             <div className="p-4 h-full flex flex-col anim-slide-up">
                 <div className="flex items-center gap-3 mb-4 shrink-0">
                     <div className="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
@@ -996,12 +1007,17 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                     outerRadius={75}
                                     paddingAngle={5}
                                     dataKey="value"
+                                    animationDuration={1500}
+                                    animationEasing="ease-out"
                                 >
                                     {(allocationView === 'CLASS' ? allocationData.byClass : allocationData.byAsset).map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
                                     ))}
                                 </Pie>
-                                <RechartsTooltip formatter={(value: number) => formatBRL(value, privacyMode)} />
+                                <RechartsTooltip 
+                                    formatter={(value: number) => formatBRL(value, privacyMode)} 
+                                    contentStyle={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(24, 24, 27, 0.8)', color: '#fff', fontSize: '10px', padding: '8px', backdropFilter: 'blur(8px)' }}
+                                />
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
