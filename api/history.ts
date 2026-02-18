@@ -12,6 +12,21 @@ const httpsAgent = new https.Agent({
 
 function getYahooParams(range: string) {
     switch (range) {
+        // Intraday
+        case '1m': return { range: '1d', interval: '1m' };
+        case '5m': return { range: '1d', interval: '5m' };
+        case '10m': return { range: '1d', interval: '5m' }; // Yahoo fallback
+        case '15m': return { range: '5d', interval: '15m' };
+        case '30m': return { range: '5d', interval: '30m' };
+        case '1h': return { range: '1mo', interval: '60m' };
+        
+        // Standard
+        case '1d': return { range: '1y', interval: '1d' };
+        case '1wk': return { range: '5y', interval: '1wk' };
+        case '1mo': return { range: '10y', interval: '1mo' };
+        case '3mo': return { range: 'max', interval: '3mo' };
+        
+        // Legacy / Ranges
         case '1D': return { range: '1d', interval: '5m' };
         case '5D': return { range: '5d', interval: '15m' };
         case '1M': return { range: '1mo', interval: '1d' };

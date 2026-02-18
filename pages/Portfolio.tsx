@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, BarChart3, PieChart, Coins, DollarSign, Building2, FileText, MapPin, Zap, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, SquareStack, Map as MapIcon, CandlestickChart, LineChart as LineChartIcon, Award, RefreshCcw, ArrowLeft, Briefcase, MoreHorizontal, LayoutGrid, List, Activity, Scale, Percent, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, BarChart3, PieChart, Coins, DollarSign, Building2, FileText, MapPin, Zap, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, SquareStack, Map as MapIcon, CandlestickChart, LineChart as LineChartIcon, Award, RefreshCcw, ArrowLeft, Briefcase, MoreHorizontal, LayoutGrid, List, Activity, Scale, Percent, ChevronDown, ChevronUp, ListFilter } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, ReferenceLine, ComposedChart, CartesianGrid, AreaChart, Area, YAxis, PieChart as RePieChart, Pie, Cell, LineChart, Line, Label, Legend } from 'recharts';
 import { formatBRL, formatDateShort, getMonthName } from '../utils/formatters';
@@ -225,18 +225,33 @@ const CollapsibleCard = ({ title, icon: Icon, children, defaultOpen = false }: {
 };
 
 // --- COMPONENTES DE GRÁFICO ---
-const PriceHistoryChart = ({ fullData, loading, error, ticker }: any) => {
-    const [range, setRange] = useState('1Y');
+const PriceHistoryChart = ({ fullData, loading, error, ticker, range, onRangeChange }: any) => {
     const [chartType, setChartType] = useState<'AREA' | 'CANDLE'>('AREA');
     const [indicators, setIndicators] = useState({ sma20: false, sma50: false, volume: true });
+    const [showFilterModal, setShowFilterModal] = useState(false);
     
-    const filteredData = useMemo(() => filterDataByRange(fullData, range), [fullData, range]);
-    const { processedData, yDomain, variation, lastPrice } = useMemo(() => processChartData(filteredData), [filteredData]);
+    // Process data directly since API handles filtering
+    const { processedData, yDomain, variation, lastPrice } = useMemo(() => processChartData(fullData), [fullData]);
     const isPositive = variation >= 0;
 
     const toggleIndicator = (key: keyof typeof indicators) => setIndicators(prev => ({ ...prev, [key]: !prev[key] }));
 
+    const INTERVAL_OPTIONS = [
+        { label: '1 Minuto', value: '1m' },
+        { label: '5 Minutos', value: '5m' },
+        { label: '10 Minutos', value: '10m' },
+        { label: '15 Minutos', value: '15m' },
+        { label: '30 Minutos', value: '30m' },
+        { label: '1 Hora', value: '1h' },
+        { label: 'Diário', value: '1d' },
+        { label: 'Semanal', value: '1wk' },
+        { label: 'Mensal', value: '1mo' },
+        { label: 'Trimestral', value: '3mo' },
+        { label: 'Anual', value: '1y' },
+    ];
+
     return (
+        <>
         <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-3 shadow-sm mb-4 relative overflow-hidden">
             <div className="flex flex-col gap-2 mb-3">
                 <div className="flex justify-between items-center">
@@ -250,10 +265,18 @@ const PriceHistoryChart = ({ fullData, loading, error, ticker }: any) => {
                             <button onClick={() => setChartType('CANDLE')} className={`p-1 rounded-md transition-all ${chartType === 'CANDLE' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}><CandlestickChart className="w-3 h-3" /></button>
                         </div>
                     </div>
-                    <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5">
-                        {['1M', '6M', '1Y', '5Y'].map((r) => (
-                            <button key={r} onClick={() => setRange(r)} className={`px-2 py-0.5 text-[8px] font-bold rounded-md transition-all ${range === r ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>{r}</button>
-                        ))}
+                    <div className="flex items-center gap-2">
+                        <button 
+                            onClick={() => setShowFilterModal(true)}
+                            className={`p-1.5 rounded-lg transition-all ${showFilterModal ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                        >
+                            <ListFilter className="w-3.5 h-3.5" />
+                        </button>
+                        <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5">
+                            {['1m', '1h', '1d', '1wk', '1mo'].map((r) => (
+                                <button key={r} onClick={() => onRangeChange(r)} className={`px-2 py-0.5 text-[8px] font-bold rounded-md transition-all ${range === r ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>{r.toUpperCase()}</button>
+                            ))}
+                        </div>
                     </div>
                 </div>
                 <div className="flex gap-1 items-center justify-end">
@@ -302,7 +325,7 @@ const PriceHistoryChart = ({ fullData, loading, error, ticker }: any) => {
                                                 <div className="bg-zinc-900/95 border border-white/10 p-3 rounded-xl shadow-2xl backdrop-blur-md min-w-[160px] animate-in fade-in zoom-in-95 duration-200">
                                                     <div className="flex justify-between items-center mb-3 pb-2 border-b border-white/10">
                                                         <p className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">
-                                                            {new Date(label).toLocaleDateString('pt-BR')}
+                                                            {new Date(label).toLocaleDateString('pt-BR')} {new Date(label).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                                                         </p>
                                                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${isUp ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
                                                             {isUp ? '+' : ''}{changePercent.toFixed(2)}%
@@ -395,6 +418,33 @@ const PriceHistoryChart = ({ fullData, loading, error, ticker }: any) => {
                 )}
             </div>
         </div>
+
+        <SwipeableModal isOpen={showFilterModal} onClose={() => setShowFilterModal(false)}>
+            <div className="p-4">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="w-10 h-10 rounded-2xl bg-indigo-100 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                        <ListFilter className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h2 className="text-xl font-bold text-zinc-900 dark:text-white leading-none">Intervalo de tempo</h2>
+                        <p className="text-xs text-zinc-500 font-medium mt-0.5">Selecione a granularidade do gráfico</p>
+                    </div>
+                </div>
+                
+                <div className="flex flex-wrap gap-2">
+                    {INTERVAL_OPTIONS.map((opt) => (
+                        <button
+                            key={opt.value}
+                            onClick={() => { onRangeChange(opt.value); setShowFilterModal(false); }}
+                            className={`px-4 py-3 rounded-xl text-sm font-bold transition-all flex-grow text-center ${range === opt.value ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'}`}
+                        >
+                            {opt.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+        </SwipeableModal>
+        </>
     );
 };
 
@@ -514,6 +564,7 @@ const ChartsContainer = ({ ticker, type, marketDividends }: { ticker: string, ty
     const [historyData, setHistoryData] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
+    const [range, setRange] = useState('1d'); // Default to 1d
 
     useEffect(() => {
         let mounted = true;
@@ -521,7 +572,7 @@ const ChartsContainer = ({ ticker, type, marketDividends }: { ticker: string, ty
             setLoading(true);
             setError(false);
             try {
-                const res = await fetch(`/api/history?ticker=${ticker}&range=MAX`);
+                const res = await fetch(`/api/history?ticker=${ticker}&range=${range}`);
                 if (!res.ok) throw new Error('Failed to fetch history');
                 const json = await res.json();
                 if (mounted) setHistoryData(json.points || []);
@@ -534,7 +585,7 @@ const ChartsContainer = ({ ticker, type, marketDividends }: { ticker: string, ty
         };
         fetchData();
         return () => { mounted = false; };
-    }, [ticker]);
+    }, [ticker, range]);
 
     return (
         <div className="space-y-4">
@@ -543,6 +594,8 @@ const ChartsContainer = ({ ticker, type, marketDividends }: { ticker: string, ty
                 loading={loading} 
                 error={error} 
                 ticker={ticker} 
+                range={range}
+                onRangeChange={setRange}
             />
             <ComparativeChart 
                 fullData={historyData} 
