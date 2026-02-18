@@ -205,24 +205,83 @@ const PriceHistoryChart = ({ fullData, loading, error, ticker }: any) => {
                                 <XAxis dataKey="date" hide />
                                 <YAxis yAxisId="price" domain={yDomain} hide={false} orientation="right" axisLine={false} tickLine={false} tick={{fontSize: 9, fill: '#71717a'}} width={40} tickFormatter={(val) => val.toFixed(2)} tickMargin={5} />
                                 <YAxis yAxisId="volume" hide={true} domain={[0, 'dataMax * 4']} />
-                                <Tooltip cursor={{ stroke: '#52525b', strokeWidth: 1, strokeDasharray: '3 3' }} content={({ active, payload, label }) => {
-                                    if (active && payload && payload.length) {
-                                        const d = payload[0].payload;
-                                        const isOpenUp = d.close >= d.open;
-                                        return (
-                                            <div className="bg-zinc-900/95 border border-white/10 p-3 rounded-xl shadow-xl backdrop-blur-md min-w-[140px]">
-                                                <p className="text-[10px] text-zinc-400 font-bold mb-2 uppercase tracking-wide border-b border-white/10 pb-1">{new Date(label).toLocaleDateString('pt-BR')}</p>
-                                                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs font-mono mb-2">
-                                                    <span className="text-zinc-500">O:</span><span className="text-white text-right">{formatBRL(d.open)}</span>
-                                                    <span className="text-zinc-500">H:</span><span className="text-emerald-400 text-right">{formatBRL(d.high)}</span>
-                                                    <span className="text-zinc-500">L:</span><span className="text-rose-400 text-right">{formatBRL(d.low)}</span>
-                                                    <span className="text-zinc-500">C:</span><span className={`text-right font-bold ${isOpenUp ? 'text-emerald-500' : 'text-rose-500'}`}>{formatBRL(d.close)}</span>
+                                <Tooltip 
+                                    cursor={{ stroke: '#52525b', strokeWidth: 1, strokeDasharray: '3 3' }} 
+                                    content={({ active, payload, label }) => {
+                                        if (active && payload && payload.length) {
+                                            const d = payload[0].payload;
+                                            const open = d.candleData?.open ?? d.open;
+                                            const close = d.candleData?.close ?? d.close;
+                                            const high = d.candleData?.high ?? d.high;
+                                            const low = d.candleData?.low ?? d.low;
+                                            const volume = d.volume;
+                                            
+                                            const change = close - open;
+                                            const changePercent = open > 0 ? (change / open) * 100 : 0;
+                                            const isUp = change >= 0;
+
+                                            return (
+                                                <div className="bg-zinc-900/95 border border-white/10 p-3 rounded-xl shadow-2xl backdrop-blur-md min-w-[160px] animate-in fade-in zoom-in-95 duration-200">
+                                                    <div className="flex justify-between items-center mb-3 pb-2 border-b border-white/10">
+                                                        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">
+                                                            {new Date(label).toLocaleDateString('pt-BR')}
+                                                        </p>
+                                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${isUp ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
+                                                            {isUp ? '+' : ''}{changePercent.toFixed(2)}%
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-[10px] font-medium mb-3">
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-zinc-500">Abe</span>
+                                                            <span className="text-zinc-300 tabular-nums">{formatBRL(open)}</span>
+                                                        </div>
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-zinc-500">Max</span>
+                                                            <span className="text-emerald-400/90 tabular-nums">{formatBRL(high)}</span>
+                                                        </div>
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-zinc-500">Min</span>
+                                                            <span className="text-rose-400/90 tabular-nums">{formatBRL(low)}</span>
+                                                        </div>
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-zinc-500">Fec</span>
+                                                            <span className={`font-bold tabular-nums ${isUp ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                                                {formatBRL(close)}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+
+                                                    {(volume > 0 || d.sma20 || d.sma50) && (
+                                                        <div className="space-y-1 pt-2 border-t border-white/5">
+                                                            {volume > 0 && (
+                                                                <div className="flex justify-between text-[9px]">
+                                                                    <span className="text-zinc-500 uppercase font-bold">Vol</span>
+                                                                    <span className="text-zinc-400 tabular-nums">
+                                                                        {(volume / 1000000).toFixed(2)}M
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                            {d.sma20 && (
+                                                                <div className="flex justify-between text-[9px]">
+                                                                    <span className="text-amber-500/80 uppercase font-bold">MA20</span>
+                                                                    <span className="text-amber-500 tabular-nums">{formatBRL(d.sma20)}</span>
+                                                                </div>
+                                                            )}
+                                                            {d.sma50 && (
+                                                                <div className="flex justify-between text-[9px]">
+                                                                    <span className="text-violet-500/80 uppercase font-bold">MA50</span>
+                                                                    <span className="text-violet-500 tabular-nums">{formatBRL(d.sma50)}</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            </div>
-                                        );
-                                    }
-                                    return null;
-                                }} />
+                                            );
+                                        }
+                                        return null;
+                                    }} 
+                                />
                                 <ReferenceLine y={lastPrice} yAxisId="price" stroke="#6366f1" strokeDasharray="3 3" strokeOpacity={0.8} ifOverflow="extendDomain"><Label content={<CurrentPriceLabel value={lastPrice} />} position="right" /></ReferenceLine>
                                 {indicators.volume && <Bar dataKey="volume" yAxisId="volume" barSize={range === '1Y' ? 2 : 4} fillOpacity={0.3} radius={[2, 2, 0, 0]}>{processedData.map((entry: any, index: number) => (<Cell key={`cell-${index}`} fill={entry.volColor} />))}</Bar>}
                                 
