@@ -1,11 +1,10 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, BarChart3, PieChart, Coins, DollarSign, Building2, FileText, MapPin, Zap, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, SquareStack, Map as MapIcon, CandlestickChart, LineChart as LineChartIcon, Award, RefreshCcw, ArrowLeft, Briefcase, MoreHorizontal, LayoutGrid, List } from 'lucide-react';
+import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, BarChart3, PieChart, Coins, DollarSign, Building2, FileText, MapPin, Zap, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, SquareStack, Map as MapIcon, CandlestickChart, LineChart as LineChartIcon, Award, RefreshCcw, ArrowLeft, Briefcase, MoreHorizontal, LayoutGrid, List, Activity, Scale, Percent } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, ReferenceLine, ComposedChart, CartesianGrid, AreaChart, Area, YAxis, PieChart as RePieChart, Pie, Cell, LineChart, Line, Label, Legend } from 'recharts';
 import { formatBRL, formatDateShort, getMonthName } from '../utils/formatters';
-import { BrazilMap } from '../components/BrazilMap';
 
 // --- CONSTANTS ---
 const TYPE_COLORS: Record<string, string> = {
@@ -690,33 +689,187 @@ const ValuationCard = ({ asset }: { asset: AssetPosition }) => {
     );
 };
 
-const DetailedInfoBlock = ({ asset }: { asset: AssetPosition }) => (
-    <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-sm">
-        <div className="p-3 border-b border-zinc-100 dark:border-zinc-800 flex items-center gap-2">
-            <FileText className="w-4 h-4 text-zinc-400" />
-            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Informações Detalhadas</h3>
+const DetailedInfoBlock = ({ asset }: { asset: AssetPosition }) => {
+    const InfoRow = ({ label, value }: { label: string, value: string | number | undefined }) => {
+        if (value === undefined || value === null || value === '') return null;
+        return (
+            <div className="flex justify-between py-2 text-xs border-b border-dashed border-zinc-100 dark:border-zinc-800/50 last:border-0">
+                <span className="font-bold text-zinc-500">{label}</span>
+                <span className="font-medium text-zinc-900 dark:text-white text-right max-w-[60%]">{value}</span>
+            </div>
+        );
+    };
+
+    const SectionHeader = ({ title, icon: Icon }: any) => (
+        <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mt-4 mb-2 flex items-center gap-1.5">
+            <Icon className="w-3 h-3" /> {title}
+        </h4>
+    );
+
+    return (
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm p-4">
+            <div className="flex items-center gap-2 mb-2 pb-2 border-b border-zinc-100 dark:border-zinc-800">
+                <FileText className="w-4 h-4 text-zinc-400" />
+                <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Informações Detalhadas</h3>
+            </div>
+
+            <InfoRow label="Razão Social" value={asset.company_name} />
+            <InfoRow label="CNPJ" value={asset.cnpj} />
+            <InfoRow label="Segmento" value={asset.segment} />
+
+            {/* Campos Específicos para AÇÕES */}
+            {asset.assetType === AssetType.STOCK && (
+                <>
+                    <SectionHeader title="Valuation" icon={Scale} />
+                    <InfoRow label="P/L (Preço/Lucro)" value={asset.p_l?.toFixed(2)} />
+                    <InfoRow label="P/VP (Preço/Valor Patr.)" value={asset.p_vp?.toFixed(2)} />
+                    <InfoRow label="VPA (Valor Patr./Ação)" value={formatBRL(asset.vpa)} />
+                    <InfoRow label="EV/EBITDA" value={asset.ev_ebitda?.toFixed(2)} />
+                    <InfoRow label="Valor de Mercado" value={asset.market_cap} />
+
+                    <SectionHeader title="Eficiência & Crescimento" icon={Activity} />
+                    <InfoRow label="Margem Líquida" value={asset.net_margin ? `${asset.net_margin.toFixed(2)}%` : undefined} />
+                    <InfoRow label="Margem Bruta" value={asset.gross_margin ? `${asset.gross_margin.toFixed(2)}%` : undefined} />
+                    <InfoRow label="ROE (Ret. s/ Patr.)" value={asset.roe ? `${asset.roe.toFixed(2)}%` : undefined} />
+                    <InfoRow label="CAGR Lucros (5 anos)" value={asset.cagr_profits ? `${asset.cagr_profits.toFixed(2)}%` : undefined} />
+                    <InfoRow label="Payout" value={asset.payout ? `${asset.payout.toFixed(2)}%` : undefined} />
+
+                    <SectionHeader title="Endividamento" icon={Coins} />
+                    <InfoRow label="Dívida Líq / EBITDA" value={asset.net_debt_ebitda?.toFixed(2)} />
+                    <InfoRow label="Dívida Líq / PL" value={asset.net_debt_equity?.toFixed(2)} />
+                </>
+            )}
+
+            {/* Campos Específicos para FIIs */}
+            {asset.assetType === AssetType.FII && (
+                <>
+                    <SectionHeader title="Indicadores do Fundo" icon={Building2} />
+                    <InfoRow label="Vacância Física" value={asset.vacancy ? `${asset.vacancy.toFixed(2)}%` : undefined} />
+                    <InfoRow label="P/VP" value={asset.p_vp?.toFixed(2)} />
+                    <InfoRow label="Patrimônio Líquido" value={asset.assets_value} />
+                    <InfoRow label="Último Rendimento" value={formatBRL(asset.last_dividend)} />
+                    
+                    <SectionHeader title="Gestão" icon={Briefcase} />
+                    <InfoRow label="Tipo de Gestão" value={asset.manager_type} />
+                    <InfoRow label="Taxa de Adm." value={asset.management_fee} />
+                    <InfoRow label="Público Alvo" value={asset.target_audience} />
+                    <InfoRow label="Mandato" value={asset.mandate} />
+                    <InfoRow label="Prazo" value={asset.duration} />
+                </>
+            )}
         </div>
-        <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
-            {[
-                { label: 'Razão Social', value: asset.company_name },
-                { label: 'CNPJ', value: asset.cnpj },
-                { label: 'Segmento', value: asset.segment },
-                { label: 'Gestão', value: asset.manager_type },
-                { label: 'Taxa Adm.', value: asset.management_fee },
-                { label: 'Público Alvo', value: asset.target_audience },
-                { label: 'Mandato', value: asset.mandate },
-                { label: 'Prazo', value: asset.duration }
-            ].map((item, i) => (
-                item.value && (
-                    <div key={i} className="flex justify-between p-3 text-xs">
-                        <span className="font-bold text-zinc-500">{item.label}</span>
-                        <span className="font-medium text-zinc-900 dark:text-white text-right max-w-[60%]">{item.value}</span>
+    );
+};
+
+const PropertiesAnalysis = ({ properties }: { properties: any[] }) => {
+    // Agrupa imóveis por estado para o gráfico
+    const locationData = useMemo(() => {
+        const counts: Record<string, number> = {};
+        properties.forEach(p => {
+            let loc = p.location || 'Outros';
+            // Simplifica location se for "Cidade - UF" para apenas "UF" se possível, ou usa como está
+            if (loc.length > 2 && loc.includes('-')) {
+                const parts = loc.split('-');
+                const state = parts[parts.length - 1].trim();
+                if (state.length === 2) loc = state;
+            }
+            // Tenta pegar UF se for apenas 2 letras
+            if (loc.length === 2) loc = loc.toUpperCase();
+            
+            counts[loc] = (counts[loc] || 0) + 1;
+        });
+
+        return Object.entries(counts)
+            .map(([name, value]) => ({ name, value }))
+            .sort((a, b) => b.value - a.value);
+    }, [properties]);
+
+    const total = properties.length;
+
+    return (
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm">
+            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <MapPin className="w-3.5 h-3.5" /> Portfólio Imobiliário ({total})
+            </h3>
+
+            <div className="flex flex-col md:flex-row gap-6 mb-6">
+                {/* Gráfico Donut */}
+                <div className="w-full md:w-1/2 h-48 relative">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <RePieChart>
+                            <Pie
+                                data={locationData}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={40}
+                                outerRadius={60}
+                                paddingAngle={5}
+                                dataKey="value"
+                            >
+                                {locationData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} strokeWidth={0} />
+                                ))}
+                            </Pie>
+                            <Tooltip 
+                                formatter={(val: number) => [`${val} imóveis`, 'Quantidade']}
+                                contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '11px' }}
+                            />
+                        </RePieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="text-center">
+                            <span className="block text-2xl font-black text-zinc-900 dark:text-white">{total}</span>
+                            <span className="block text-[9px] font-bold text-zinc-400 uppercase">Imóveis</span>
+                        </div>
                     </div>
-                )
-            ))}
+                </div>
+
+                {/* Legenda Lateral */}
+                <div className="w-full md:w-1/2 flex flex-col justify-center space-y-2">
+                    {locationData.slice(0, 6).map((item, idx) => (
+                        <div key={item.name} className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-2">
+                                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }}></div>
+                                <span className="font-bold text-zinc-600 dark:text-zinc-300">{item.name}</span>
+                            </div>
+                            <div className="flex gap-2">
+                                <span className="font-medium text-zinc-900 dark:text-white">{item.value}</span>
+                                <span className="text-zinc-400 text-[10px]">({((item.value / total) * 100).toFixed(0)}%)</span>
+                            </div>
+                        </div>
+                    ))}
+                    {locationData.length > 6 && (
+                        <p className="text-[10px] text-zinc-400 italic text-center mt-2">+ {locationData.length - 6} outras regiões</p>
+                    )}
+                </div>
+            </div>
+
+            {/* Lista Completa */}
+            <div className="border-t border-zinc-100 dark:border-zinc-800 pt-4">
+                <h4 className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-3">Lista de Ativos</h4>
+                <div className="max-h-60 overflow-y-auto pr-1 space-y-2 custom-scrollbar">
+                    {properties.map((prop, idx) => (
+                        <div key={idx} className="flex justify-between items-start p-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors border border-transparent hover:border-zinc-100 dark:hover:border-zinc-800">
+                            <div>
+                                <p className="text-xs font-bold text-zinc-900 dark:text-white line-clamp-1">{prop.name}</p>
+                                <p className="text-[10px] text-zinc-400 flex items-center gap-1 mt-0.5">
+                                    <MapPin className="w-3 h-3" /> {prop.location || 'N/A'}
+                                </p>
+                            </div>
+                            {prop.abl && (
+                                <div className="text-right">
+                                    <span className="text-[9px] font-bold bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-500">
+                                        ABL: {prop.abl}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            </div>
         </div>
-    </div>
-);
+    );
+};
 
 const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: { asset: AssetPosition, chartData: { data: any[], average: number, activeTypes: string[] }, marketHistory: DividendReceipt[] }) => {
     const totalInvested = asset.quantity * asset.averagePrice;
@@ -1198,14 +1351,8 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
                 </div>
 
                 {selectedAsset.properties && selectedAsset.properties.length > 0 && (
-                    <div className="mt-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm h-80">
-                        <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                            <MapPin className="w-3.5 h-3.5" /> Mapa de Imóveis
-                        </h3>
-                        <BrazilMap data={selectedAsset.properties.map(p => ({ 
-                            name: p.location || 'SP', 
-                            value: 1 
-                        }))} totalProperties={selectedAsset.properties.length} />
+                    <div className="mt-4">
+                        <PropertiesAnalysis properties={selectedAsset.properties} />
                     </div>
                 )}
             </div>
