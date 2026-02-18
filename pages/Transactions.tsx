@@ -29,23 +29,23 @@ const TransactionsSummary = ({ transactions, privacyMode }: { transactions: Tran
     }, [transactions]);
 
     return (
-        <div className="mb-6 px-1">
-            <div className="grid grid-cols-3 gap-3">
+        <div className="mb-4 px-1">
+            <div className="grid grid-cols-3 gap-2">
                 {/* Entradas */}
-                <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-100 dark:border-zinc-800">
-                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Compras</span>
+                <div className="flex flex-col items-center justify-center p-2 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-100 dark:border-zinc-800">
+                    <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Compras</span>
                     <span className="text-xs font-bold text-zinc-900 dark:text-white tracking-tight">{formatBRL(totalInvested, privacyMode)}</span>
                 </div>
 
                 {/* Saídas */}
-                <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-100 dark:border-zinc-800">
-                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Vendas</span>
+                <div className="flex flex-col items-center justify-center p-2 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-100 dark:border-zinc-800">
+                    <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Vendas</span>
                     <span className="text-xs font-bold text-zinc-900 dark:text-white tracking-tight">{formatBRL(totalSold, privacyMode)}</span>
                 </div>
 
                 {/* Líquido */}
-                <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-100 dark:border-zinc-800 relative overflow-hidden">
-                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Líquido</span>
+                <div className="flex flex-col items-center justify-center p-2 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-100 dark:border-zinc-800 relative overflow-hidden">
+                    <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Líquido</span>
                     <span className={`text-xs font-black tracking-tight ${netFlow >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                         {netFlow > 0 ? '+' : ''}{formatBRL(netFlow, privacyMode)}
                     </span>
@@ -73,7 +73,7 @@ const YearFilterChip = ({ years, selectedYear, onChange }: { years: string[], se
             <button 
                 ref={buttonRef}
                 onClick={handleToggle}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all shrink-0 ${selectedYear !== 'ALL' ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-transparent shadow-md' : 'bg-white dark:bg-zinc-900 text-zinc-500 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'}`}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all shrink-0 ${selectedYear !== 'ALL' ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-transparent shadow-md' : 'bg-white dark:bg-zinc-900 text-zinc-500 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'}`}
             >
                 <Calendar className="w-3 h-3" />
                 <span>{selectedYear === 'ALL' ? 'Ano' : selectedYear}</span>
@@ -115,7 +115,7 @@ const YearFilterChip = ({ years, selectedYear, onChange }: { years: string[], se
 const FilterChip = ({ label, active, onClick, icon: Icon }: any) => (
     <button 
         onClick={onClick} 
-        className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all ${active ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-transparent shadow-md' : 'bg-white dark:bg-zinc-900 text-zinc-500 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'}`}
+        className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all ${active ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-transparent shadow-md' : 'bg-white dark:bg-zinc-900 text-zinc-500 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'}`}
     >
         {Icon && <Icon className="w-3 h-3" />}
         {label}
@@ -156,10 +156,10 @@ const TransactionRow = React.memo(({ index, data }: any) => {
   
   if (item.type === 'header') {
       return (
-          <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top)+60px)] z-10 py-3 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-xl -mx-4 px-4 border-b border-zinc-100 dark:border-zinc-800/50 mb-1 mt-2 shadow-sm">
-              <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 flex justify-between items-center">
+          <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top)+52px)] z-10 py-1.5 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-xl -mx-4 px-4 border-b border-zinc-100 dark:border-zinc-800/50 mb-1 mt-1 shadow-sm">
+              <h3 className="text-[9px] font-black uppercase tracking-widest text-zinc-400 flex justify-between items-center">
                   {formatMonthHeader(item.monthKey)}
-                  <span className={`text-[9px] px-2 py-0.5 rounded-md font-bold ${item.monthlyNet >= 0 ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'}`}>
+                  <span className={`text-[8px] px-2 py-0.5 rounded-md font-bold ${item.monthlyNet >= 0 ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'}`}>
                       {item.monthlyNet > 0 ? '+' : ''}{formatBRL(item.monthlyNet, privacyMode)}
                   </span>
               </h3>
@@ -180,32 +180,32 @@ const TransactionRow = React.memo(({ index, data }: any) => {
         onTouchStart={handleStart}
         onTouchEnd={handleEnd}
         onTouchMove={handleCancel}
-        className={`w-full flex items-center justify-between py-3 px-1 group transition-all active:scale-[0.98] border-b border-zinc-50 dark:border-zinc-800/30 last:border-0 select-none ${isSelected ? 'bg-indigo-50/50 dark:bg-indigo-900/20 rounded-xl' : ''}`}
+        className={`w-full flex items-center justify-between py-2 px-1 group transition-all active:scale-[0.98] border-b border-zinc-50 dark:border-zinc-800/30 last:border-0 select-none ${isSelected ? 'bg-indigo-50/50 dark:bg-indigo-900/20 rounded-xl' : ''}`}
       >
-          <div className="flex items-center gap-3.5">
+          <div className="flex items-center gap-3">
               {isSelectionMode ? (
                   <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-all border ${isSelected ? 'bg-zinc-900 dark:bg-white border-transparent text-white dark:text-zinc-900' : 'bg-transparent border-zinc-300 dark:border-zinc-600'}`}>
                       {isSelected && <Check className="w-3 h-3" strokeWidth={3} />}
                   </div>
               ) : (
-                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${isBuy ? 'bg-emerald-100/50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-rose-100/50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400'}`}>
-                      {isBuy ? <ArrowDownLeft className="w-5 h-5" strokeWidth={2.5} /> : <ArrowUpRight className="w-5 h-5" strokeWidth={2.5} />}
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${isBuy ? 'bg-emerald-100/50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-rose-100/50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400'}`}>
+                      {isBuy ? <ArrowDownLeft className="w-4 h-4" strokeWidth={2.5} /> : <ArrowUpRight className="w-4 h-4" strokeWidth={2.5} />}
                   </div>
               )}
               
               <div className="text-left">
-                  <h4 className="font-bold text-sm text-zinc-900 dark:text-white leading-tight">{t.ticker}</h4>
-                  <p className="text-[11px] font-medium text-zinc-400 mt-0.5">
+                  <h4 className="font-bold text-xs text-zinc-900 dark:text-white leading-tight">{t.ticker}</h4>
+                  <p className="text-[9px] font-medium text-zinc-400 mt-0.5">
                       {t.date.split('-').reverse().slice(0,2).join('/')} <span className="mx-1">·</span> {t.quantity} un
                   </p>
               </div>
           </div>
           
           <div className="text-right">
-              <p className={`font-bold text-sm tabular-nums tracking-tight ${isBuy ? 'text-zinc-900 dark:text-white' : 'text-zinc-900 dark:text-white'}`}>
+              <p className={`font-bold text-xs tabular-nums tracking-tight ${isBuy ? 'text-zinc-900 dark:text-white' : 'text-zinc-900 dark:text-white'}`}>
                   {formatBRL(totalValue, privacyMode)}
               </p>
-              <p className="text-[10px] font-medium text-zinc-400 tabular-nums">{formatBRL(t.price)}</p>
+              <p className="text-[9px] font-medium text-zinc-400 tabular-nums">{formatBRL(t.price)}</p>
           </div>
       </button>
   );
@@ -357,7 +357,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     return (
         <div className="anim-fade-in min-h-screen pb-32">
             <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-20 bg-primary-light dark:bg-primary-dark transition-all -mx-4 px-4 pt-2 pb-3 border-b border-zinc-200 dark:border-zinc-800 shadow-sm">
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                         {isSelectionMode ? (
                             <span className="text-sm font-black text-indigo-500">{selectedIds.size} selecionados</span>

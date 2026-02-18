@@ -8,7 +8,6 @@ import { formatBRL, formatDateShort, getMonthName, getDaysUntil } from '../utils
 // --- CONSTANTS ---
 const CHART_COLORS = ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#f43f5e', '#84cc16'];
 
-// --- HELPERS VISUAIS PARA STORIES ---
 const getStoryGradient = (type: PortfolioInsight['type']) => {
     switch (type) {
         case 'success':
@@ -18,15 +17,15 @@ const getStoryGradient = (type: PortfolioInsight['type']) => {
         case 'warning':
         case 'volatility_down':
         case 'risk-concentration':
-            return 'from-orange-500 via-rose-500 to-pink-600'; // Estilo Instagram Warning
+            return 'from-orange-500 via-rose-500 to-pink-600';
         case 'inflation-shield':
         case 'magic-number':
-            return 'from-amber-300 via-yellow-500 to-orange-500'; // Gold
+            return 'from-amber-300 via-yellow-500 to-orange-500';
         case 'news':
         case 'spotlight-fii':
         case 'spotlight-stock':
         default:
-            return 'from-indigo-400 via-purple-500 to-pink-500'; // Estilo Instagram Clássico
+            return 'from-indigo-400 via-purple-500 to-pink-500';
     }
 };
 
@@ -41,13 +40,12 @@ const getStoryIcon = (type: PortfolioInsight['type']) => {
     }
 };
 
-// --- STORIES BAR (Estilo Instagram/Rico) ---
 const StoriesBar = ({ insights, onSelectStory, viewedIds }: { insights: PortfolioInsight[], onSelectStory: (story: PortfolioInsight) => void, viewedIds: Set<string> }) => {
     if (!insights || insights.length === 0) return null;
 
     return (
-        <div className="mb-4 -mt-2 -mx-4 overflow-x-auto no-scrollbar pb-2">
-            <div className="flex gap-4 px-4 pt-1">
+        <div className="mb-3 -mt-2 -mx-4 overflow-x-auto no-scrollbar pb-1">
+            <div className="flex gap-3 px-4 pt-1">
                 {insights.map((story) => {
                     const isViewed = viewedIds.has(story.id);
                     const gradient = isViewed ? 'from-zinc-300 to-zinc-400 dark:from-zinc-700 dark:to-zinc-600' : getStoryGradient(story.type);
@@ -56,13 +54,10 @@ const StoriesBar = ({ insights, onSelectStory, viewedIds }: { insights: Portfoli
                         <button 
                             key={story.id} 
                             onClick={() => onSelectStory(story)}
-                            className="flex flex-col items-center gap-2 group shrink-0 w-[72px] press-effect"
+                            className="flex flex-col items-center gap-1 group shrink-0 w-[64px] press-effect"
                         >
-                            {/* Anel de Gradiente */}
-                            <div className={`w-[68px] h-[68px] p-[2px] rounded-full bg-gradient-to-tr ${gradient} relative transition-all duration-300`}>
-                                {/* Borda Branca/Preta Interna */}
+                            <div className={`w-[60px] h-[60px] p-[2px] rounded-full bg-gradient-to-tr ${gradient} relative transition-all duration-300`}>
                                 <div className="w-full h-full rounded-full border-[3px] border-primary-light dark:border-primary-dark bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center overflow-hidden relative">
-                                    {/* Conteúdo do Círculo */}
                                     <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-20`}></div>
                                     {story.relatedTicker ? (
                                         <span className="text-[10px] font-black uppercase z-10 text-zinc-700 dark:text-zinc-200 tracking-tighter">
@@ -76,8 +71,7 @@ const StoriesBar = ({ insights, onSelectStory, viewedIds }: { insights: Portfoli
                                 </div>
                             </div>
                             
-                            {/* Label */}
-                            <span className={`text-[10px] font-medium truncate w-full text-center leading-tight ${isViewed ? 'text-zinc-400' : 'text-zinc-600 dark:text-zinc-300'}`}>
+                            <span className={`text-[8px] font-medium truncate w-full text-center leading-tight ${isViewed ? 'text-zinc-400' : 'text-zinc-600 dark:text-zinc-300'}`}>
                                 {story.relatedTicker || 'Insight'}
                             </span>
                         </button>
@@ -88,7 +82,6 @@ const StoriesBar = ({ insights, onSelectStory, viewedIds }: { insights: Portfoli
     );
 };
 
-// --- STORY VIEWER (Tela Cheia & Navegação Lateral) ---
 const StoryViewer = ({ 
     isOpen, 
     stories, 
@@ -108,7 +101,6 @@ const StoryViewer = ({
     const [progress, setProgress] = useState(0);
     const [isPaused, setIsPaused] = useState(false);
 
-    // Reset/Init quando abre ou muda o story inicial
     useEffect(() => {
         if (isOpen && initialStoryId) {
             const idx = stories.findIndex(s => s.id === initialStoryId);
@@ -120,12 +112,11 @@ const StoryViewer = ({
         }
     }, [isOpen, initialStoryId]);
 
-    // Timer logic
     useEffect(() => {
         if (!isOpen) return;
 
-        const STORY_DURATION = 6000; // 6 segundos por story
-        const INTERVAL = 50; // Atualiza a cada 50ms
+        const STORY_DURATION = 6000;
+        const INTERVAL = 50; 
         const increment = (INTERVAL / STORY_DURATION) * 100;
 
         const timer = setInterval(() => {
@@ -181,11 +172,9 @@ const StoryViewer = ({
 
     return (
         <div className="fixed inset-0 z-[9999] bg-black flex flex-col animate-in fade-in duration-300">
-            {/* Camadas de Fundo */}
             <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-20`}></div>
             <div className="absolute inset-0 backdrop-blur-3xl"></div>
             
-            {/* Camada de Navegação (Invisível) */}
             <div 
                 className="absolute inset-0 z-10"
                 onClick={handleTap}
@@ -195,10 +184,8 @@ const StoryViewer = ({
                 onTouchEnd={() => setIsPaused(false)}
             ></div>
 
-            {/* Camada de UI (Acima da navegação) */}
             <div className="relative z-20 flex flex-col h-full pointer-events-none">
                 
-                {/* Barras de Progresso */}
                 <div className="flex gap-1.5 px-3 pt-safe top-2 mt-2">
                     {stories.map((s, idx) => (
                         <div key={s.id} className="h-1 flex-1 bg-white/20 rounded-full overflow-hidden">
@@ -210,7 +197,6 @@ const StoryViewer = ({
                     ))}
                 </div>
 
-                {/* Header */}
                 <div className="px-4 py-6 flex justify-between items-center mt-2 pointer-events-auto">
                     <div className="flex items-center gap-3">
                         <div className={`w-9 h-9 rounded-full flex items-center justify-center bg-gradient-to-br ${gradient} shadow-lg ring-2 ring-black/20`}>
@@ -229,7 +215,6 @@ const StoryViewer = ({
                     </button>
                 </div>
 
-                {/* Conteúdo Principal */}
                 <div className="flex-1 flex flex-col justify-center px-8 pb-20">
                     <h1 className="text-3xl font-black text-white leading-tight mb-6 drop-shadow-lg tracking-tight anim-slide-up">
                         {story.title}
@@ -252,7 +237,6 @@ const StoryViewer = ({
                     </div>
                 </div>
 
-                {/* Footer Action */}
                 <div className="p-6 pb-12 pointer-events-auto">
                     {story.relatedTicker ? (
                         <button 
@@ -275,25 +259,23 @@ const StoryViewer = ({
     );
 };
 
-// --- SUB-COMPONENTS ---
-
 const BentoCard = ({ title, value, subtext, icon: Icon, colorClass, onClick, className, info }: any) => (
-    <button onClick={onClick} className={`relative overflow-hidden bg-white dark:bg-zinc-900 p-5 rounded-[1.8rem] flex flex-col justify-between items-start text-left shadow-[0_2px_10px_rgb(0,0,0,0.03)] dark:shadow-none border border-zinc-100 dark:border-zinc-800 press-effect h-full min-h-[150px] ${className}`}>
-        <div className="flex justify-between w-full mb-4 relative z-10">
-            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center ${colorClass}`}>
-                <Icon className="w-5 h-5" strokeWidth={2.5} />
+    <button onClick={onClick} className={`relative overflow-hidden bg-white dark:bg-zinc-900 p-3 rounded-2xl flex flex-col justify-between items-start text-left shadow-[0_2px_8px_rgb(0,0,0,0.03)] dark:shadow-none border border-zinc-100 dark:border-zinc-800 press-effect h-full min-h-[110px] ${className}`}>
+        <div className="flex justify-between w-full mb-2 relative z-10">
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${colorClass}`}>
+                <Icon className="w-4 h-4" strokeWidth={2.5} />
             </div>
-            <div className="w-8 h-8 rounded-full bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-300">
-                <ArrowRight className="w-4 h-4 -rotate-45" />
+            <div className="w-6 h-6 rounded-full bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-300">
+                <ArrowRight className="w-3 h-3 -rotate-45" />
             </div>
         </div>
         <div className="relative z-10 w-full">
-            <div className="flex items-center gap-1.5 mb-1">
-                <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">{title}</h3>
+            <div className="flex items-center gap-1.5 mb-0.5">
+                <h3 className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">{title}</h3>
                 {info && <InfoTooltip title={title} text={info} />}
             </div>
-            <p className="text-2xl font-bold text-zinc-900 dark:text-white tracking-tight leading-none">{typeof value === 'object' ? '' : value}</p>
-            {subtext && <p className="text-[10px] text-zinc-400 font-medium mt-1.5">{subtext}</p>}
+            <p className="text-lg font-black text-zinc-900 dark:text-white tracking-tight leading-none">{typeof value === 'object' ? '' : value}</p>
+            {subtext && <p className="text-[9px] text-zinc-400 font-medium mt-0.5">{subtext}</p>}
         </div>
     </button>
 );
@@ -320,8 +302,6 @@ const ProgressBar = ({ current, target, label, colorClass, privacyMode }: any) =
     );
 };
 
-// --- MAIN COMPONENT ---
-
 interface HomeProps {
   portfolio: AssetPosition[];
   dividendReceipts: DividendReceipt[];
@@ -345,7 +325,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
   const [viewedStories, setViewedStories] = useState<Set<string>>(new Set());
 
-  // Load viewed stories
   useEffect(() => {
       try {
           const saved = localStorage.getItem('investfiis_viewed_stories');
@@ -364,14 +343,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       });
   };
 
-  // --- CALCULATIONS ---
-  
-  // Total Return Breakdown
   const capitalGain = totalAppreciation + salesGain;
   const totalReturn = capitalGain + totalDividendsReceived;
   const totalReturnPercent = invested > 0 ? (totalReturn / invested) * 100 : 0;
   
-  // 1. Alocação Otimizada
   const allocationData = useMemo(() => {
       let fiis = 0, stocks = 0;
       const assetList = portfolio
@@ -397,7 +372,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       return { byClass, byAsset: assetList };
   }, [portfolio, balance]);
 
-  // 2. Agenda Otimizada
   const agendaData = useMemo(() => {
       const todayStr = new Date().toISOString().split('T')[0];
       const validReceipts = dividendReceipts.filter(d => d && (d.paymentDate || d.dateCom));
@@ -410,7 +384,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       const nextPayment = future[0];
       const daysToNext = nextPayment ? getDaysUntil(nextPayment.paymentDate || nextPayment.dateCom) : 0;
 
-      // Group by Month
       const grouped: Record<string, DividendReceipt[]> = {};
       future.forEach(item => {
           const dateRef = item.paymentDate || item.dateCom;
@@ -423,13 +396,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       return { list: future, grouped, totalFuture, nextPayment, daysToNext };
   }, [dividendReceipts]);
 
-  // 3. Renda Aprimorada (Chart + Lista Detalhada)
   const incomeData = useMemo(() => {
       const groups: Record<string, number> = {};
       const historyList: { date: string, ticker: string, type: string, amount: number, paymentDate: string }[] = [];
       const todayStr = new Date().toISOString().split('T')[0];
       
-      // Inicializa últimos 12 meses
       for (let i = 11; i >= 0; i--) {
           const d = new Date();
           d.setMonth(d.getMonth() - i);
@@ -439,7 +410,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       let last12mTotal = 0;
       const oneYearAgoStr = new Date(new Date().setFullYear(new Date().getFullYear() - 1)).toISOString().split('T')[0];
 
-      // Ordena por data mais recente primeiro
       const sortedReceipts = [...dividendReceipts].sort((a, b) => {
           const dateA = a.paymentDate || a.dateCom;
           const dateB = b.paymentDate || b.dateCom;
@@ -447,7 +417,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       });
 
       sortedReceipts.forEach(d => {
-          // Filtra futuros para o histórico de recebimentos
           if (!d.paymentDate || d.paymentDate > todayStr) return;
           
           if (d.paymentDate >= oneYearAgoStr) last12mTotal += d.totalReceived;
@@ -455,7 +424,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           const monthKey = d.paymentDate.substring(0, 7);
           if (groups[monthKey] !== undefined) groups[monthKey] += d.totalReceived;
 
-          // Adiciona ao histórico detalhado
           historyList.push({
               date: d.paymentDate,
               ticker: d.ticker,
@@ -465,7 +433,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           });
       });
       
-      // Dados do Gráfico
       const chartData = Object.entries(groups)
           .map(([date, value]) => ({ 
               date, 
@@ -474,7 +441,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           }))
           .sort((a, b) => a.date.localeCompare(b.date));
 
-      // Agrupa histórico por mês para exibição (Mês -> Lista)
       const groupedHistory: Record<string, typeof historyList> = {};
       historyList.forEach(h => {
           const mKey = h.date.substring(0, 7);
@@ -488,13 +454,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       return { chartData, average, max, last12mTotal, currentMonth: chartData[chartData.length - 1]?.value || 0, groupedHistory };
   }, [dividendReceipts]);
 
-  // 4. Magic Number Aprimorado
   const magicNumberData = useMemo(() => {
       const all = portfolio
           .map(asset => {
               if (asset.quantity <= 0 || !asset.currentPrice) return null;
               
-              // Estimativa segura: Último Dividendo ou Média DY
               let estimatedDiv = asset.last_dividend;
               if ((!estimatedDiv || estimatedDiv <= 0) && asset.dy_12m && asset.dy_12m > 0) {
                   estimatedDiv = (asset.currentPrice * (asset.dy_12m / 100)) / 12;
@@ -505,8 +469,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
               const currentIncome = asset.quantity * estimatedDiv;
               const magicNumber = Math.ceil(asset.currentPrice / estimatedDiv);
               const missing = Math.max(0, magicNumber - asset.quantity);
-              
-              // Quantas cotas consigo comprar HOJE com a renda?
               const buyingPower = currentIncome / asset.currentPrice;
 
               return {
@@ -518,7 +480,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                   estimatedDiv,
                   price: asset.currentPrice,
                   currentIncome,
-                  buyingPower, // Ex: 0.5 (compra meia cota), 1.2 (compra 1.2 cotas)
+                  buyingPower, 
                   assetType: asset.assetType
               };
           })
@@ -533,7 +495,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
   const magicReachedCount = magicNumberData.achieved.length;
 
-  // 5. Goals & Levels
   const goalsData = useMemo(() => {
       const safeBalance = balance || 0;
       const safeIncome = incomeData.currentMonth || 0;
@@ -576,55 +537,51 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   }, [balance, incomeData.currentMonth]);
 
   return (
-    <div className="space-y-5 pb-8">
-        
-        {/* STORIES / INSIGHTS (NOVO DESIGN) */}
+    <div className="space-y-4 pb-8">
         <StoriesBar 
             insights={insights} 
             onSelectStory={(s) => setSelectedStoryId(s.id)} 
             viewedIds={viewedStories}
         />
 
-        {/* HERO CARD (Redesenhado) */}
-        <div className="relative w-full min-h-[240px] rounded-[2.2rem] bg-zinc-950 border border-zinc-800/80 overflow-hidden shadow-2xl group anim-fade-in">
+        <div className="relative w-full min-h-[180px] rounded-2xl bg-zinc-950 border border-zinc-800/80 overflow-hidden shadow-2xl group anim-fade-in">
             <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 bg-zinc-600/10 blur-[80px] rounded-full pointer-events-none"></div>
             <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-64 h-64 bg-white/5 blur-[80px] rounded-full pointer-events-none"></div>
 
-            <div className="relative z-10 p-7 flex flex-col justify-between h-full">
+            <div className="relative z-10 p-4 flex flex-col justify-between h-full">
                 <div>
-                    <div className="flex justify-between items-start mb-6">
-                        <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/5 backdrop-blur-md">
-                            <Wallet className="w-3.5 h-3.5 text-zinc-400" strokeWidth={2.5} />
-                            <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-widest">Patrimônio Total</span>
+                    <div className="flex justify-between items-start mb-3">
+                        <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/5 border border-white/5 backdrop-blur-md">
+                            <Wallet className="w-3 h-3 text-zinc-400" strokeWidth={2.5} />
+                            <span className="text-[9px] font-bold text-zinc-300 uppercase tracking-widest">Patrimônio Total</span>
                         </div>
                     </div>
 
-                    <h1 className="text-[3rem] sm:text-[3.5rem] font-black text-white leading-none tracking-tighter tabular-nums drop-shadow-sm select-none mb-1">
+                    <h1 className="text-4xl font-black text-white leading-none tracking-tighter tabular-nums drop-shadow-sm select-none mb-1">
                         {formatBRL(balance, privacyMode)}
                     </h1>
                     <p className="text-xs text-zinc-500 font-bold ml-1">Custo: {formatBRL(invested, privacyMode)}</p>
                 </div>
 
-                {/* Breakdown de Rentabilidade */}
-                <div className="grid grid-cols-3 gap-2 pt-6 border-t border-white/5 mt-4">
+                <div className="grid grid-cols-3 gap-2 pt-4 border-t border-white/5 mt-2">
                     <div>
-                        <span className="text-[9px] text-zinc-500 uppercase font-bold tracking-wider block mb-1">Valorização</span>
-                        <span className={`text-sm font-bold tabular-nums tracking-tight block ${capitalGain >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        <span className="text-[8px] text-zinc-500 uppercase font-bold tracking-wider block mb-0.5">Valorização</span>
+                        <span className={`text-xs font-bold tabular-nums tracking-tight block ${capitalGain >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                             {capitalGain >= 0 ? '+' : ''}{formatBRL(capitalGain, privacyMode)}
                         </span>
                     </div>
-                    <div className="border-l border-white/5 pl-4">
-                        <span className="text-[9px] text-zinc-500 uppercase font-bold tracking-wider block mb-1">Proventos</span>
-                        <span className="text-sm font-bold text-sky-400 tabular-nums tracking-tight block">
+                    <div className="border-l border-white/5 pl-3">
+                        <span className="text-[8px] text-zinc-500 uppercase font-bold tracking-wider block mb-0.5">Proventos</span>
+                        <span className="text-xs font-bold text-sky-400 tabular-nums tracking-tight block">
                             +{formatBRL(totalDividendsReceived, privacyMode)}
                         </span>
                     </div>
-                    <div className="border-l border-white/5 pl-4">
-                        <span className="text-[9px] text-zinc-500 uppercase font-bold tracking-wider block mb-1">Total</span>
-                        <span className={`text-sm font-bold tabular-nums tracking-tight block ${totalReturn >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    <div className="border-l border-white/5 pl-3">
+                        <span className="text-[8px] text-zinc-500 uppercase font-bold tracking-wider block mb-0.5">Total</span>
+                        <span className={`text-xs font-bold tabular-nums tracking-tight block ${totalReturn >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                             {totalReturn >= 0 ? '+' : ''}{formatBRL(totalReturn, privacyMode)}
                         </span>
-                        <span className={`text-[9px] font-black ${totalReturn >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        <span className={`text-[8px] font-black ${totalReturn >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                             {totalReturnPercent.toFixed(2)}%
                         </span>
                     </div>
@@ -632,8 +589,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
         </div>
 
-        {/* BENTO GRID */}
-        <div className="grid grid-cols-2 gap-3 anim-slide-up">
+        <div className="grid grid-cols-2 gap-2 anim-slide-up">
             <BentoCard 
                 title="Agenda" 
                 value={agendaData.nextPayment ? formatDateShort(agendaData.nextPayment.paymentDate || agendaData.nextPayment.dateCom) : '--'} 
@@ -675,17 +631,17 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             />
 
             <div className="col-span-2">
-                <button onClick={() => setShowAllocation(true)} className="w-full bg-white dark:bg-zinc-900 p-5 rounded-[1.8rem] shadow-[0_2px_10px_rgb(0,0,0,0.03)] dark:shadow-none border border-zinc-100 dark:border-zinc-800 press-effect flex items-center justify-between">
+                <button onClick={() => setShowAllocation(true)} className="w-full bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-[0_2px_8px_rgb(0,0,0,0.03)] dark:shadow-none border border-zinc-100 dark:border-zinc-800 press-effect flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-sky-100 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 flex items-center justify-center">
-                            <PieIcon className="w-6 h-6" />
+                        <div className="w-9 h-9 rounded-xl bg-sky-100 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 flex items-center justify-center">
+                            <PieIcon className="w-4 h-4" />
                         </div>
                         <div className="text-left">
                             <div className="flex items-center gap-1.5">
                                 <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Alocação</h3>
                                 <InfoTooltip title="Alocação" text="Distribuição atual do seu patrimônio por classe de ativo." />
                             </div>
-                            <div className="flex gap-3 mt-1 text-xs text-zinc-500">
+                            <div className="flex gap-2 mt-1 text-[10px] text-zinc-500">
                                 {allocationData.byClass.map(c => (
                                     <span key={c.name} className="flex items-center gap-1">
                                         <div className="w-1.5 h-1.5 rounded-full" style={{backgroundColor: c.color}}></div> 
@@ -695,15 +651,13 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                             </div>
                         </div>
                     </div>
-                    <div className="h-10 w-10 rounded-full bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-300">
-                        <ArrowUpRight className="w-5 h-5" />
+                    <div className="h-7 w-7 rounded-full bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-300">
+                        <ArrowUpRight className="w-3.5 h-3.5" />
                     </div>
                 </button>
             </div>
         </div>
 
-        {/* MODALS */}
-        
         <StoryViewer 
             isOpen={!!selectedStoryId}
             stories={insights}
@@ -713,22 +667,21 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             onMarkAsViewed={handleMarkAsViewed}
         />
         
-        {/* 1. AGENDA */}
         <SwipeableModal isOpen={showAgenda} onClose={() => setShowAgenda(false)}>
-            <div className="p-6 h-full flex flex-col anim-slide-up">
-                <div className="flex items-center gap-4 mb-6 shrink-0">
-                    <div className="w-12 h-12 rounded-2xl bg-violet-100 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 flex items-center justify-center">
-                        <CalendarClock className="w-6 h-6" />
+            <div className="p-4 h-full flex flex-col anim-slide-up">
+                <div className="flex items-center gap-3 mb-4 shrink-0">
+                    <div className="w-10 h-10 rounded-2xl bg-violet-100 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 flex items-center justify-center">
+                        <CalendarClock className="w-5 h-5" />
                     </div>
                     <div>
-                        <h2 className="text-2xl font-bold text-zinc-900 dark:text-white leading-none">Agenda</h2>
-                        <p className="text-xs text-zinc-500 font-medium mt-1">Previsão: {formatBRL(agendaData.totalFuture, privacyMode)}</p>
+                        <h2 className="text-xl font-bold text-zinc-900 dark:text-white leading-none">Agenda</h2>
+                        <p className="text-xs text-zinc-500 font-medium mt-0.5">Previsão: {formatBRL(agendaData.totalFuture, privacyMode)}</p>
                     </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar">
                     {Object.keys(agendaData.grouped).length > 0 ? (
-                        <div className="space-y-6">
+                        <div className="space-y-4">
                             {Object.entries(agendaData.grouped).map(([monthKey, items]) => (
                                 <div key={monthKey}>
                                     <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2 sticky top-0 bg-white dark:bg-zinc-900 py-2 z-10 border-b border-zinc-100 dark:border-zinc-800">
@@ -736,7 +689,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                     </h3>
                                     <div className="space-y-0">
                                         {(items as DividendReceipt[]).map((item, idx) => (
-                                            <div key={idx} className="flex items-center justify-between py-3 border-b border-zinc-50 dark:border-zinc-800/50 last:border-0">
+                                            <div key={idx} className="flex items-center justify-between py-2 border-b border-zinc-50 dark:border-zinc-800/50 last:border-0">
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-black text-zinc-500">
                                                         {item.ticker.substring(0, 2)}
@@ -768,24 +721,22 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
         </SwipeableModal>
 
-        {/* 2. RENDA (Evolução + Histórico Detalhado) */}
         <SwipeableModal isOpen={showProventos} onClose={() => setShowProventos(false)}>
-            <div className="p-6 h-full flex flex-col anim-slide-up">
-                <div className="flex items-center gap-4 mb-4 shrink-0">
-                    <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                        <CircleDollarSign className="w-6 h-6" />
+            <div className="p-4 h-full flex flex-col anim-slide-up">
+                <div className="flex items-center gap-3 mb-4 shrink-0">
+                    <div className="w-10 h-10 rounded-2xl bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                        <CircleDollarSign className="w-5 h-5" />
                     </div>
                     <div>
-                        <h2 className="text-2xl font-bold text-zinc-900 dark:text-white leading-none">Evolução</h2>
-                        <p className="text-xs text-zinc-500 font-medium mt-1">Últimos 12 meses: {formatBRL(incomeData.last12mTotal, privacyMode)}</p>
+                        <h2 className="text-xl font-bold text-zinc-900 dark:text-white leading-none">Evolução</h2>
+                        <p className="text-xs text-zinc-500 font-medium mt-0.5">Últimos 12 meses: {formatBRL(incomeData.last12mTotal, privacyMode)}</p>
                     </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar">
-                    {/* Gráfico */}
-                    <div className="h-48 w-full mb-8 shrink-0 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-2 relative overflow-hidden">
+                    <div className="h-44 w-full mb-6 shrink-0 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-2 relative overflow-hidden">
                         <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={incomeData.chartData} margin={{ top: 20, right: 0, left: -25, bottom: 0 }}>
+                            <AreaChart data={incomeData.chartData} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
@@ -804,23 +755,22 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         </ResponsiveContainer>
                     </div>
 
-                    {/* Histórico Detalhado */}
-                    <div className="space-y-6">
+                    <div className="space-y-4">
                         <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
                             <CalendarClock className="w-3 h-3" /> Histórico de Recebimentos
                         </h3>
                         {Object.keys(incomeData.groupedHistory).sort((a,b) => b.localeCompare(a)).map(monthKey => (
                             <div key={monthKey}>
-                                <div className="sticky top-0 bg-white dark:bg-zinc-900 z-10 py-2 border-b border-zinc-100 dark:border-zinc-800 mb-2">
+                                <div className="sticky top-0 bg-white dark:bg-zinc-900 z-10 py-1.5 border-b border-zinc-100 dark:border-zinc-800 mb-1">
                                     <h4 className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wider">
                                         {getMonthName(monthKey + '-01')}
                                     </h4>
                                 </div>
                                 <div className="space-y-1">
                                     {incomeData.groupedHistory[monthKey].map((item, idx) => (
-                                        <div key={`${item.ticker}-${idx}`} className="flex items-center justify-between py-2.5 px-2 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 rounded-xl transition-colors">
+                                        <div key={`${item.ticker}-${idx}`} className="flex items-center justify-between py-2 px-2 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 rounded-xl transition-colors">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-9 h-9 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-black text-zinc-500 border border-zinc-200 dark:border-zinc-700">
+                                                <div className="w-8 h-8 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-black text-zinc-500 border border-zinc-200 dark:border-zinc-700">
                                                     {item.ticker.substring(0, 2)}
                                                 </div>
                                                 <div>
@@ -846,49 +796,47 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
         </SwipeableModal>
 
-        {/* 3. MAGIC NUMBER (Aprimorado) */}
         <SwipeableModal isOpen={showMagicNumber} onClose={() => setShowMagicNumber(false)}>
-            <div className="p-6 h-full flex flex-col anim-slide-up">
-                <div className="flex items-center gap-4 mb-6 shrink-0">
-                    <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-                        <Sparkles className="w-6 h-6" />
+            <div className="p-4 h-full flex flex-col anim-slide-up">
+                <div className="flex items-center gap-3 mb-4 shrink-0">
+                    <div className="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                        <Sparkles className="w-5 h-5" />
                     </div>
                     <div>
-                        <h2 className="text-2xl font-bold text-zinc-900 dark:text-white leading-none">Bola de Neve</h2>
-                        <div className="flex items-center gap-1.5 mt-1">
+                        <h2 className="text-xl font-bold text-zinc-900 dark:text-white leading-none">Bola de Neve</h2>
+                        <div className="flex items-center gap-1.5 mt-0.5">
                             <p className="text-xs text-zinc-500 font-medium">{magicReachedCount} ativos autossustentáveis.</p>
                             <InfoTooltip title="Número Mágico" text="O ponto onde a renda gerada pelo ativo paga uma nova cota dele mesmo, criando juros compostos automáticos." />
                         </div>
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar space-y-8">
-                    {/* Seção Atingidos */}
+                <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar space-y-6">
                     {magicNumberData.achieved.length > 0 && (
                         <div>
                             <h3 className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-3 flex items-center gap-2">
                                 <Crown className="w-3 h-3" /> Conquistados (Efeito Bola de Neve Ativo)
                             </h3>
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-2 gap-2">
                                 {magicNumberData.achieved.map((item: any) => (
-                                    <div key={item.ticker} className="relative overflow-hidden p-4 rounded-2xl bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-900/20 dark:to-zinc-900 border border-emerald-200 dark:border-emerald-800 shadow-sm">
-                                        <div className="flex justify-between items-start mb-3">
+                                    <div key={item.ticker} className="relative overflow-hidden p-3 rounded-2xl bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-900/20 dark:to-zinc-900 border border-emerald-200 dark:border-emerald-800 shadow-sm">
+                                        <div className="flex justify-between items-start mb-2">
                                             <span className="text-sm font-black text-zinc-900 dark:text-white">{item.ticker}</span>
                                             <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/40 px-2 py-0.5 rounded-full">
                                                 {item.buyingPower.toFixed(1)}x
                                             </span>
                                         </div>
-                                        <div className="space-y-1">
+                                        <div className="space-y-0.5">
                                             <div className="flex justify-between text-[10px]">
-                                                <span className="text-zinc-500">Renda Gerada:</span>
+                                                <span className="text-zinc-500">Renda:</span>
                                                 <span className="font-bold text-zinc-700 dark:text-zinc-300">{formatBRL(item.currentIncome, privacyMode)}</span>
                                             </div>
                                             <div className="flex justify-between text-[10px]">
-                                                <span className="text-zinc-500">Preço Cota:</span>
+                                                <span className="text-zinc-500">Cota:</span>
                                                 <span className="font-bold text-zinc-700 dark:text-zinc-300">{formatBRL(item.price, privacyMode)}</span>
                                             </div>
                                         </div>
-                                        <div className="mt-3 pt-2 border-t border-emerald-100 dark:border-emerald-800/30">
+                                        <div className="mt-2 pt-1.5 border-t border-emerald-100 dark:border-emerald-800/30">
                                             <p className="text-[9px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
                                                 <Zap className="w-2.5 h-2.5" /> Compra +{Math.floor(item.buyingPower)} cotas/mês
                                             </p>
@@ -899,18 +847,17 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         </div>
                     )}
 
-                    {/* Seção Em Progresso */}
                     {magicNumberData.inProgress.length > 0 && (
                         <div>
                             <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-2">
                                 <Target className="w-3 h-3" /> Em Progresso
                             </h3>
-                            <div className="space-y-3">
+                            <div className="space-y-2">
                                 {magicNumberData.inProgress.map((item: any) => (
-                                    <div key={item.ticker} className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                                        <div className="flex justify-between items-start mb-3">
+                                    <div key={item.ticker} className="p-3 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                                        <div className="flex justify-between items-start mb-2">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-xs font-black text-zinc-500">
+                                                <div className="w-9 h-9 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-xs font-black text-zinc-500">
                                                     {item.ticker.substring(0, 2)}
                                                 </div>
                                                 <div>
@@ -923,7 +870,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                             </span>
                                         </div>
                                         
-                                        <div className="h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden mb-3">
+                                        <div className="h-1.5 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden mb-2">
                                             <div className="h-full bg-amber-500 rounded-full transition-all duration-1000" style={{ width: `${item.progress}%` }}></div>
                                         </div>
 
@@ -947,35 +894,34 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
         </SwipeableModal>
 
-        {/* 4. GOALS */}
         <SwipeableModal isOpen={showGoals} onClose={() => setShowGoals(false)}>
-            <div className="p-6 h-full flex flex-col anim-slide-up">
-                <div className="flex items-center gap-4 mb-6 shrink-0">
-                    <div className="w-12 h-12 rounded-2xl bg-rose-100 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 flex items-center justify-center">
-                        <Trophy className="w-6 h-6" />
+            <div className="p-4 h-full flex flex-col anim-slide-up">
+                <div className="flex items-center gap-3 mb-4 shrink-0">
+                    <div className="w-10 h-10 rounded-2xl bg-rose-100 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+                        <Trophy className="w-5 h-5" />
                     </div>
                     <div>
-                        <h2 className="text-2xl font-bold text-zinc-900 dark:text-white leading-none">Objetivos</h2>
-                        <p className="text-xs text-zinc-500 font-medium mt-1">Nível Atual: {goalsData.currentLevel.name}</p>
+                        <h2 className="text-xl font-bold text-zinc-900 dark:text-white leading-none">Objetivos</h2>
+                        <p className="text-xs text-zinc-500 font-medium mt-0.5">Nível Atual: {goalsData.currentLevel.name}</p>
                     </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar">
-                    <div className="mb-8 text-center">
+                    <div className="mb-6 text-center">
                         <p className="text-sm font-medium text-zinc-500 px-8">
                             Faltam <span className="text-rose-500 font-bold">{formatBRL(goalsData.nextLevel.target - (balance || 0), privacyMode)}</span> para atingir o nível <span className="text-zinc-900 dark:text-white font-bold">{goalsData.nextLevel.name}</span>.
                         </p>
                     </div>
 
-                    <div className="space-y-6 mb-8">
+                    <div className="space-y-4 mb-6">
                         <ProgressBar current={goalsData.income.current} target={goalsData.income.target} label="Meta de Renda Mensal" colorClass="bg-emerald-500" privacyMode={privacyMode} />
                         <ProgressBar current={balance} target={goalsData.nextLevel.target} label="Meta de Patrimônio" colorClass="bg-indigo-500" privacyMode={privacyMode} />
                         <ProgressBar current={goalsData.income.current} target={goalsData.freedom.target} label="Liberdade Financeira" colorClass="bg-amber-500" privacyMode={privacyMode} />
                     </div>
 
                     <div>
-                        <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4">Conquistas ({goalsData.unlockedCount}/{goalsData.achievements.length})</h3>
-                        <div className="grid grid-cols-2 gap-3">
+                        <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3">Conquistas ({goalsData.unlockedCount}/{goalsData.achievements.length})</h3>
+                        <div className="grid grid-cols-2 gap-2">
                             {goalsData.achievements.map((achievement: any) => (
                                 <div key={achievement.id} className={`p-3 rounded-2xl border ${achievement.unlocked ? 'bg-white dark:bg-zinc-800 border-zinc-100 dark:border-zinc-700' : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 opacity-50'}`}>
                                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${achievement.unlocked ? achievement.color : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-400'}`}>
@@ -991,32 +937,31 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
         </SwipeableModal>
 
-        {/* 5. ALLOCATION */}
         <SwipeableModal isOpen={showAllocation} onClose={() => setShowAllocation(false)}>
-            <div className="p-6 h-full flex flex-col anim-slide-up">
-                <div className="flex items-center gap-4 mb-6 shrink-0">
-                    <div className="w-12 h-12 rounded-2xl bg-sky-100 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 flex items-center justify-center">
-                        <PieIcon className="w-6 h-6" />
+            <div className="p-4 h-full flex flex-col anim-slide-up">
+                <div className="flex items-center gap-3 mb-4 shrink-0">
+                    <div className="w-10 h-10 rounded-2xl bg-sky-100 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 flex items-center justify-center">
+                        <PieIcon className="w-5 h-5" />
                     </div>
                     <div>
-                        <h2 className="text-2xl font-bold text-zinc-900 dark:text-white leading-none">Alocação</h2>
-                        <p className="text-xs text-zinc-500 font-medium mt-1">Diversificação da Carteira</p>
+                        <h2 className="text-xl font-bold text-zinc-900 dark:text-white leading-none">Alocação</h2>
+                        <p className="text-xs text-zinc-500 font-medium mt-0.5">Diversificação da Carteira</p>
                     </div>
                 </div>
 
-                <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl mb-6 shrink-0">
-                    <button onClick={() => setAllocationView('CLASS')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${allocationView === 'CLASS' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500'}`}>Por Classe</button>
-                    <button onClick={() => setAllocationView('ASSET')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${allocationView === 'ASSET' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500'}`}>Por Ativo</button>
+                <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl mb-4 shrink-0">
+                    <button onClick={() => setAllocationView('CLASS')} className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${allocationView === 'CLASS' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500'}`}>Por Classe</button>
+                    <button onClick={() => setAllocationView('ASSET')} className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${allocationView === 'ASSET' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500'}`}>Por Ativo</button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar">
-                    <div className="h-64 w-full relative mb-6">
+                    <div className="h-56 w-full relative mb-4">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie
                                     data={allocationView === 'CLASS' ? allocationData.byClass : allocationData.byAsset}
-                                    innerRadius={60}
-                                    outerRadius={80}
+                                    innerRadius={55}
+                                    outerRadius={75}
                                     paddingAngle={5}
                                     dataKey="value"
                                 >
@@ -1029,7 +974,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         </ResponsiveContainer>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                         {(allocationView === 'CLASS' ? allocationData.byClass : allocationData.byAsset).map((item, idx) => (
                             <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800">
                                 <div className="flex items-center gap-3">

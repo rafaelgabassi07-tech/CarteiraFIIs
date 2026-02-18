@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { ExternalLink, Clock, TrendingUp, Newspaper, Building2, Globe, RefreshCw, AlertTriangle, Search, Share2, X, Wallet, TrendingDown, Minus, Zap, ShieldAlert, Check } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { RefreshCw, AlertTriangle, Search, X, Wallet, TrendingUp, Building2, Globe, Check, Newspaper, Share2 } from 'lucide-react';
 import { NewsItem, Transaction, NewsSentiment, NewsImpact } from '../types';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -9,7 +9,7 @@ interface NewsProps {
 }
 
 const SkeletonNews = () => (
-    <div className="space-y-4">
+    <div className="space-y-3">
         {[1, 2, 3, 4].map((i) => (
             <div key={i} className="p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 animate-pulse">
                 <div className="flex justify-between items-center mb-3">
@@ -27,33 +27,11 @@ const SkeletonNews = () => (
     </div>
 );
 
-const getCategoryStyle = (category: string) => {
-    switch (category) {
-        case 'FIIs': return 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900/30';
-        case 'Ações': return 'bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 border-sky-100 dark:border-sky-900/30';
-        case 'Macro': return 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-900/30';
-        default: return 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700';
-    }
-};
-
-const getCategoryIcon = (category: string) => {
-    switch (category) {
-        case 'FIIs': return Building2;
-        case 'Ações': return TrendingUp;
-        case 'Macro': return Globe;
-        default: return Newspaper;
-    }
-};
-
-// --- ALGORITMO DE ANÁLISE DE NOTÍCIAS ---
 const analyzeNewsContent = (title: string, summary: string): { sentiment: NewsSentiment, impact: NewsImpact } => {
     const text = (title + ' ' + summary).toLowerCase();
     
-    // Palavras-chave de Sentimento
     const positiveWords = ['lucro', 'dispara', 'sobe', 'alta', 'positivo', 'recorde', 'supera', 'cresce', 'anuncia dividendos', 'bonificação', 'recompra', 'otimista', 'avança', 'pagará', 'jcp', 'proventos', 'dividendos', 'valorização', 'expansion'];
     const negativeWords = ['prejuízo', 'cai', 'queda', 'baixa', 'negativo', 'pessimista', 'recua', 'desaba', 'perda', 'abaixo', 'piora', 'desvaloriza', 'rombo', 'crise'];
-    
-    // Palavras-chave de Risco/Impacto
     const riskWords = ['falência', 'recuperação judicial', 'fraude', 'investigação', 'calote', 'dívida', 'crise', 'alerta', 'risco', 'incerteza', 'suspensão', 'irregularidade', 'rombo', 'polêmica', 'inadimplência'];
     const highImpactWords = ['dispara', 'desaba', 'recorde', 'urgente', 'atenção', 'impacto', 'surpreende', 'fusão', 'aquisição', 'oferta pública', 'selic', 'copom', 'ipca', 'pib', 'fed', 'juros'];
 
@@ -77,13 +55,11 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
     
-    const [copyFeedback, setCopyFeedback] = useState<string | null>(null); // Feedback toast local
+    const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
     
-    // Filtros e Abas
     const [searchTerm, setSearchTerm] = useState('');
     const [activeTab, setActiveTab] = useState<'Carteira' | 'FIIs' | 'Ações'>('Carteira');
 
-    // Tickers únicos da carteira
     const portfolioTickers = useMemo(() => {
         const unique = new Set(transactions.map(t => t.ticker.toUpperCase()));
         return Array.from(unique);
@@ -93,7 +69,6 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
         setLoading(true);
         setError(false);
         try {
-            // Constrói a URL: Se tiver query, usa ela. Se não, usa o endpoint padrão.
             const url = customQuery 
                 ? `/api/news?q=${encodeURIComponent(customQuery)}`
                 : '/api/news';
@@ -112,7 +87,6 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
                         source: item.sourceName || 'Fonte Desconhecida',
                         url: item.link,
                         imageUrl: item.imageUrl,
-                        // Formata data relativa (ex: "há 2 horas")
                         date: item.publicationDate ? formatDistanceToNow(new Date(item.publicationDate), { addSuffix: true, locale: ptBR } as any) : 'Recentemente',
                         category: (item.category as any) || 'Geral',
                         sentiment,
@@ -131,7 +105,6 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
         }
     }, []);
 
-    // Auto-refresh a cada 5 minutos
     useEffect(() => {
         const interval = setInterval(() => {
             const query = activeTab === 'Carteira' && portfolioTickers.length > 0 ? portfolioTickers.slice(0, 15).join(' OR ') : searchTerm;
@@ -140,26 +113,21 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
         return () => clearInterval(interval);
     }, [activeTab, portfolioTickers, searchTerm, fetchNews]);
 
-    // Efeito para carregar notícias quando a aba muda
     useEffect(() => {
         if (activeTab === 'Carteira') {
             if (portfolioTickers.length > 0) {
-                // Monta query OR limitada para não estourar URL (max ~15 tickers)
                 const query = portfolioTickers.slice(0, 15).join(' OR ');
                 fetchNews(query);
             } else {
-                // Se não tiver ativos, carrega padrão mas filtra visualmente (ou mostra aviso)
                 fetchNews(); 
             }
         } else {
-            // Abas FIIs/Ações carregam o feed geral e filtram no frontend (ou backend poderia suportar isso melhor)
             fetchNews();
         }
     }, [activeTab, portfolioTickers, fetchNews]);
 
     const handleSearchSubmit = () => {
         if (!searchTerm.trim()) return;
-        // Ao buscar, ignoramos a aba ativa temporariamente (ou poderíamos ter uma aba 'Busca')
         fetchNews(searchTerm);
     };
 
@@ -187,33 +155,17 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
         }
     };
 
-    const filteredNews = useMemo(() => {
-        const isPortfolioMode = activeTab === 'Carteira' && portfolioTickers.length > 0;
-        const isSearchMode = searchTerm.length > 0 && !loading;
-
-        return news.filter(item => {
-            if (isSearchMode) return true; 
-            if (isPortfolioMode) return true; 
-            const matchesCategory = item.category === activeTab;
-            return matchesCategory;
-        });
-    }, [news, activeTab, portfolioTickers, searchTerm, loading]);
-
     return (
         <div className="pb-32 min-h-screen relative">
             
-            {/* Feedback Toast Local */}
             {copyFeedback && (
                 <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 bg-black/80 text-white px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 anim-scale-in backdrop-blur-md">
                     <Check className="w-3 h-3 text-emerald-400" /> Link copiado!
                 </div>
             )}
 
-            {/* Header Sticky Sólido */}
-            <div className="sticky top-20 z-30 bg-primary-light dark:bg-primary-dark border-b border-zinc-200 dark:border-zinc-800 transition-all -mx-4 px-4 py-3 mb-4">
-                <div className="flex flex-col gap-3">
-                    
-                    {/* Linha 1: Busca e Refresh */}
+            <div className="sticky top-20 z-30 bg-primary-light dark:bg-primary-dark border-b border-zinc-200 dark:border-zinc-800 transition-all -mx-4 px-4 py-2 mb-3">
+                <div className="flex flex-col gap-2">
                     <div className="flex gap-2">
                         <div className="relative group flex-1">
                             <button onClick={handleSearchSubmit} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-indigo-500 transition-colors">
@@ -225,7 +177,7 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 onKeyDown={handleKeyDown}
-                                className="w-full bg-zinc-100 dark:bg-zinc-800 border border-transparent focus:bg-white dark:focus:bg-zinc-900 border-zinc-200 dark:border-zinc-700 pl-10 pr-10 py-2.5 rounded-xl text-sm font-medium text-zinc-900 dark:text-white placeholder:text-zinc-400 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                                className="w-full bg-zinc-100 dark:bg-zinc-800 border border-transparent focus:bg-white dark:focus:bg-zinc-900 border-zinc-200 dark:border-zinc-700 pl-10 pr-10 py-2 rounded-xl text-sm font-medium text-zinc-900 dark:text-white placeholder:text-zinc-400 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
                             />
                             {searchTerm && (
                                 <button onClick={() => { setSearchTerm(''); fetchNews(); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200">
@@ -236,13 +188,12 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
                         <button 
                             onClick={() => fetchNews(searchTerm || (activeTab === 'Carteira' ? portfolioTickers.join(' OR ') : undefined))} 
                             disabled={loading}
-                            className={`w-10 shrink-0 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 flex items-center justify-center transition-all ${loading ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'}`}
+                            className={`w-9 shrink-0 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 flex items-center justify-center transition-all ${loading ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'}`}
                         >
                             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                         </button>
                     </div>
 
-                    {/* Linha 2: Abas (Carteira | FIIs | Ações) */}
                     <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl relative">
                         <div 
                             className={`absolute top-1 bottom-1 w-[calc(33.33%-4px)] rounded-lg shadow-sm transition-all duration-300 ease-out-mola bg-white dark:bg-zinc-900 border border-black/5 dark:border-white/5`}
@@ -254,19 +205,19 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
                         
                         <button 
                             onClick={() => setActiveTab('Carteira')} 
-                            className={`relative z-10 flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest text-center transition-colors flex items-center justify-center gap-2 ${activeTab === 'Carteira' ? 'text-zinc-900 dark:text-white' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                            className={`relative z-10 flex-1 py-1.5 text-[10px] font-black uppercase tracking-widest text-center transition-colors flex items-center justify-center gap-2 ${activeTab === 'Carteira' ? 'text-zinc-900 dark:text-white' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                         >
                             <Wallet className="w-3.5 h-3.5" /> Carteira
                         </button>
                         <button 
                             onClick={() => setActiveTab('FIIs')} 
-                            className={`relative z-10 flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest text-center transition-colors flex items-center justify-center gap-2 ${activeTab === 'FIIs' ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                            className={`relative z-10 flex-1 py-1.5 text-[10px] font-black uppercase tracking-widest text-center transition-colors flex items-center justify-center gap-2 ${activeTab === 'FIIs' ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                         >
                             <Building2 className="w-3.5 h-3.5" /> FIIs
                         </button>
                         <button 
                             onClick={() => setActiveTab('Ações')} 
-                            className={`relative z-10 flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest text-center transition-colors flex items-center justify-center gap-2 ${activeTab === 'Ações' ? 'text-sky-600 dark:text-sky-400' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                            className={`relative z-10 flex-1 py-1.5 text-[10px] font-black uppercase tracking-widest text-center transition-colors flex items-center justify-center gap-2 ${activeTab === 'Ações' ? 'text-sky-600 dark:text-sky-400' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                         >
                             <TrendingUp className="w-3.5 h-3.5" /> Ações
                         </button>
@@ -274,118 +225,75 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
                 </div>
             </div>
 
-            <div className="-mx-2">
+            <div className="-mx-2 px-2">
                 {loading ? (
                     <SkeletonNews />
                 ) : error ? (
                     <div className="flex flex-col items-center justify-center py-20 text-center opacity-60">
                         <AlertTriangle className="w-12 h-12 mb-3 text-zinc-300" strokeWidth={1} />
-                        <p className="text-xs font-bold text-zinc-500 mb-4">Não foi possível carregar as notícias.</p>
-                        <button onClick={() => fetchNews()} className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 rounded-lg text-[10px] font-black uppercase tracking-widest text-zinc-600 dark:text-zinc-400 press-effect">
-                            Tentar Novamente
-                        </button>
+                        <p className="text-sm font-bold text-zinc-500">Erro ao carregar notícias.</p>
+                        <button onClick={() => fetchNews()} className="mt-4 text-xs font-bold text-indigo-500 hover:underline">Tentar novamente</button>
+                    </div>
+                ) : news.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-20 text-center opacity-60">
+                        <Newspaper className="w-12 h-12 mb-3 text-zinc-300" strokeWidth={1} />
+                        <p className="text-sm font-bold text-zinc-500">Nenhuma notícia encontrada.</p>
                     </div>
                 ) : (
-                    <div className="space-y-4">
-                        {activeTab === 'Carteira' && portfolioTickers.length === 0 && !searchTerm && (
-                            <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 text-center mb-4">
-                                <p className="text-xs font-bold text-amber-600 dark:text-amber-400">Sua carteira está vazia.</p>
-                                <p className="text-[10px] text-amber-600/70 dark:text-amber-400/70 mt-1">Adicione ativos para ver notícias personalizadas aqui.</p>
-                            </div>
-                        )}
+                    <div className="space-y-3">
+                        {news.map((item) => (
+                            <a 
+                                key={item.id} 
+                                href={item.url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="block bg-white dark:bg-zinc-900 rounded-2xl p-4 border border-zinc-100 dark:border-zinc-800 shadow-sm active:scale-[0.98] transition-transform duration-150 relative group overflow-hidden"
+                            >
+                                <div className="flex justify-between items-start mb-2">
+                                    <div className="flex items-center gap-2">
+                                        {item.imageUrl ? (
+                                            <img src={item.imageUrl} alt={item.source} className="w-5 h-5 rounded-full object-cover bg-zinc-100" onError={(e) => (e.target as HTMLImageElement).style.display = 'none'} />
+                                        ) : (
+                                            <div className="w-5 h-5 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-bold text-zinc-400 uppercase">
+                                                {item.source.substring(0, 1)}
+                                            </div>
+                                        )}
+                                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wide">{item.source}</span>
+                                    </div>
+                                    <span className="text-[10px] text-zinc-400 font-medium">{item.date}</span>
+                                </div>
 
-                        {filteredNews.length > 0 ? (
-                            filteredNews.map((item, index) => {
-                                const CategoryIcon = getCategoryIcon(item.category);
-                                return (
-                                    <a 
-                                        key={index}
-                                        href={item.url}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="block bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-all press-effect group anim-slide-up relative overflow-hidden"
-                                        style={{ animationDelay: `${index * 50}ms` }}
-                                    >
-                                        <div className="flex justify-between items-start mb-3 relative z-10">
-                                            <div className="flex items-center gap-3">
-                                                {item.imageUrl ? (
-                                                    <img src={item.imageUrl} alt={item.source} className="w-8 h-8 rounded-full object-contain bg-white p-1 border border-zinc-100 dark:border-zinc-800 shadow-sm" />
-                                                ) : (
-                                                    <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-400 border border-zinc-200 dark:border-zinc-700">
-                                                        <Globe className="w-4 h-4" />
-                                                    </div>
-                                                )}
-                                                <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide truncate max-w-[120px]">
-                                                    {item.source}
-                                                </span>
-                                            </div>
-                                            
-                                            <div className="flex items-center gap-2">
-                                                {item.impact === 'risk' && (
-                                                    <div className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30">
-                                                        <ShieldAlert className="w-3 h-3" />
-                                                        <span className="text-[8px] font-black uppercase">Risco</span>
-                                                    </div>
-                                                )}
-                                                {item.impact === 'high' && (
-                                                    <div className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/30">
-                                                        <Zap className="w-3 h-3" />
-                                                        <span className="text-[8px] font-black uppercase">Importante</span>
-                                                    </div>
-                                                )}
-                                                
-                                                <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[9px] font-black uppercase tracking-wider ${getCategoryStyle(item.category)}`}>
-                                                    <CategoryIcon className="w-2.5 h-2.5" />
-                                                    {item.category}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="flex gap-2 items-start mb-2">
-                                            {item.sentiment === 'positive' && <TrendingUp className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />}
-                                            {item.sentiment === 'negative' && <TrendingDown className="w-4 h-4 text-rose-500 mt-0.5 shrink-0" />}
-                                            {item.sentiment === 'neutral' && <Minus className="w-4 h-4 text-zinc-300 mt-0.5 shrink-0" />}
-                                            
-                                            <h3 className={`text-sm font-black leading-snug group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors relative z-10 ${item.impact === 'risk' ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-900 dark:text-white'}`}>
-                                                {item.title}
-                                            </h3>
-                                        </div>
-                                        
-                                        <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium mb-4 line-clamp-2 relative z-10">
-                                            {item.summary}
-                                        </p>
+                                <h3 className="text-sm font-bold text-zinc-900 dark:text-white leading-tight mb-2 line-clamp-2">
+                                    {item.title}
+                                </h3>
 
-                                        <div className="flex items-center justify-between pt-3 border-t border-zinc-100 dark:border-zinc-800 relative z-10">
-                                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-400">
-                                                <Clock className="w-3 h-3" />
-                                                {item.date}
-                                            </div>
-                                            
-                                            <button 
-                                                onClick={(e) => handleShare(item, e)}
-                                                className="flex items-center gap-1 text-[10px] font-bold text-zinc-400 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors px-2 py-1 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
-                                            >
-                                                {copyFeedback === item.id ? <Check className="w-3 h-3 text-emerald-500" /> : <Share2 className="w-3 h-3" />} {copyFeedback === item.id ? 'Copiado!' : 'Compartilhar'}
-                                            </button>
-                                        </div>
-                                    </a>
-                                );
-                            })
-                        ) : (
-                            <div className="text-center py-20 opacity-40 anim-fade-in">
-                                <Search className="w-12 h-12 mx-auto mb-3 text-zinc-300" strokeWidth={1.5} />
-                                <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Nenhuma notícia encontrada</p>
-                                {searchTerm && <p className="text-[10px] text-zinc-400 mt-1">Tente buscar por outros termos</p>}
-                            </div>
-                        )}
-                        
-                        {filteredNews.length > 0 && (
-                            <div className="pt-4 pb-8 text-center">
-                                <p className="text-[9px] text-zinc-400 font-medium uppercase tracking-widest opacity-60">
-                                    Fonte: Google News RSS
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400 line-clamp-2 leading-relaxed mb-3">
+                                    {item.summary.replace(/<[^>]*>?/gm, '')}
                                 </p>
-                            </div>
-                        )}
+
+                                <div className="flex items-center justify-between mt-auto pt-2 border-t border-zinc-50 dark:border-zinc-800/50">
+                                    <div className="flex gap-2">
+                                        {item.impact === 'high' && (
+                                            <span className="px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 text-[9px] font-bold uppercase flex items-center gap-1">
+                                                <AlertTriangle className="w-3 h-3" /> Impacto Alto
+                                            </span>
+                                        )}
+                                        {item.impact === 'risk' && (
+                                            <span className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 text-[9px] font-bold uppercase flex items-center gap-1">
+                                                <AlertTriangle className="w-3 h-3" /> Risco
+                                            </span>
+                                        )}
+                                    </div>
+                                    
+                                    <button 
+                                        onClick={(e) => handleShare(item, e)}
+                                        className="p-1.5 -mr-1 rounded-lg text-zinc-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
+                                    >
+                                        <Share2 className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </a>
+                        ))}
                     </div>
                 )}
             </div>

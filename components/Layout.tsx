@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, Bell, Download, Trash2, Cloud, CloudOff, Loader2, AlertTriangle, Gift, Star, Inbox, RefreshCw, Smartphone, X, Check, Mail, Server, WifiOff, FileText, CheckCircle, Percent, TrendingUp, DollarSign, Activity, Newspaper, CloudLightning, Wifi, CircleHelp } from 'lucide-react';
 import { UpdateReportData } from '../types';
 
-// --- UTILS ---
 const useAnimatedVisibility = (isOpen: boolean, duration: number) => {
   const [isVisible, setIsVisible] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
@@ -27,8 +26,6 @@ const useAnimatedVisibility = (isOpen: boolean, duration: number) => {
   return { isMounted, isVisible };
 };
 
-// --- COMPONENTS ---
-
 export const InfoTooltip = ({ title, text }: { title: string, text: React.ReactNode }) => {
     const [isOpen, setIsOpen] = useState(false);
     
@@ -38,7 +35,7 @@ export const InfoTooltip = ({ title, text }: { title: string, text: React.ReactN
                 onClick={(e) => { e.stopPropagation(); setIsOpen(true); }} 
                 className="text-zinc-400/70 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors p-0.5 rounded-full hover:bg-indigo-50 dark:hover:bg-indigo-900/20 active:scale-95 flex items-center justify-center shrink-0"
                 aria-label="Informação"
-                style={{ marginTop: '-1px' }} // Micro ajuste visual
+                style={{ marginTop: '-1px' }}
             >
                 <CircleHelp className="w-3.5 h-3.5" strokeWidth={2} />
             </button>
@@ -101,13 +98,11 @@ export const Header: React.FC<HeaderProps> = ({
     <header 
       className={`fixed top-0 left-0 right-0 z-40 transition-transform duration-500 cubic-bezier(0.16, 1, 0.3, 1) ${isVisible ? 'translate-y-0' : '-translate-y-full'}`}
     >
-      {/* Unified Blur Background Layer */}
       <div className={`absolute inset-0 bg-primary-light/80 dark:bg-primary-dark/80 backdrop-blur-xl border-b border-zinc-200/50 dark:border-zinc-800/50 transition-opacity duration-300 ${hideBorder ? 'opacity-0' : 'opacity-100'}`}></div>
 
-      <div className="relative z-10 flex flex-col justify-end px-6 h-[calc(3.5rem+env(safe-area-inset-top))] pb-3 pt-safe">
+      <div className="relative z-10 flex flex-col justify-end px-4 h-[calc(3.5rem+env(safe-area-inset-top))] pb-2 pt-safe">
         <div className="flex items-center justify-between">
           
-          {/* Left Section */}
           <div className="flex items-center gap-3 min-w-0">
             {showBack ? (
               <button onClick={onBack} className="flex items-center gap-1 text-zinc-900 dark:text-white -ml-2 press-effect">
@@ -118,7 +113,7 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="flex flex-col">
                  <div className="flex items-center gap-2">
                     {headerIcon && <div className="w-6 h-6 anim-scale-in">{headerIcon}</div>}
-                    <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-white truncate">
+                    <h1 className="text-lg font-bold tracking-tight text-zinc-900 dark:text-white truncate">
                       {title}
                     </h1>
                  </div>
@@ -127,7 +122,6 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
 
-          {/* Right Section */}
           <div className="flex items-center gap-1">
              <HeaderCloudStatus status={cloudStatus} />
              
@@ -184,24 +178,24 @@ const navItems = [
 export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange, isVisible = true }) => {
   return (
     <div 
-        className="fixed bottom-8 left-0 right-0 z-[90] flex justify-center pointer-events-none transition-transform duration-500 cubic-bezier(0.16, 1, 0.3, 1)"
+        className="fixed bottom-6 left-0 right-0 z-[90] flex justify-center pointer-events-none transition-transform duration-500 cubic-bezier(0.16, 1, 0.3, 1)"
         style={{ transform: isVisible ? 'translateY(0)' : 'translateY(200%)' }}
     >
-      <nav className="pointer-events-auto bg-zinc-900/90 dark:bg-zinc-800/90 backdrop-blur-xl border border-white/10 rounded-full px-5 py-3 flex items-center gap-4 shadow-2xl shadow-black/40 ring-1 ring-black/5">
+      <nav className="pointer-events-auto bg-zinc-900/90 dark:bg-zinc-800/90 backdrop-blur-xl border border-white/10 rounded-full px-4 py-2.5 flex items-center gap-3 shadow-2xl shadow-black/40 ring-1 ring-black/5">
           {navItems.map((item) => {
             const isActive = currentTab === item.id;
             return (
               <button
                 key={item.id}
                 onClick={() => onTabChange(item.id)}
-                className={`relative flex items-center justify-center w-14 h-14 rounded-2xl transition-all duration-300 group ${isActive ? 'bg-white/15 text-white shadow-inner' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}
+                className={`relative flex items-center justify-center w-12 h-12 rounded-2xl transition-all duration-300 group ${isActive ? 'bg-white/15 text-white shadow-inner' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}
               >
                 <item.icon 
-                    className={`w-7 h-7 transition-all duration-300 ${isActive ? 'scale-110' : 'scale-100 group-active:scale-90'}`} 
+                    className={`w-6 h-6 transition-all duration-300 ${isActive ? 'scale-110' : 'scale-100 group-active:scale-90'}`} 
                     strokeWidth={isActive ? 2.5 : 2}
                 />
                 {isActive && (
-                  <span className="absolute -bottom-1.5 w-1.5 h-1.5 bg-white rounded-full anim-scale-in shadow-glow"></span>
+                  <span className="absolute -bottom-1 w-1 h-1 bg-white rounded-full anim-scale-in shadow-glow"></span>
                 )}
               </button>
             );
@@ -210,8 +204,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange, i
     </div>
   );
 };
-
-// --- MODALS ---
 
 interface SwipeableModalProps { isOpen: boolean; onClose: () => void; children: React.ReactNode; }
 
@@ -236,7 +228,6 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
         }}
         className={`relative bg-white dark:bg-zinc-900 w-full h-[92dvh] rounded-t-[2.5rem] shadow-2xl shadow-black/50 overflow-hidden flex flex-col`}
       >
-        {/* Handle */}
         <div className="w-full flex justify-center pt-4 pb-2 bg-white dark:bg-zinc-900 shrink-0 cursor-grab active:cursor-grabbing touch-none z-10"
              onTouchMove={(e) => {
                const val = e.touches[0].clientY - (window.innerHeight - (e.currentTarget.parentElement?.clientHeight || 0));
@@ -250,7 +241,6 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
           <div className="w-12 h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full"></div>
         </div>
 
-        {/* Content Wrapper */}
         <div className="flex-1 min-h-0 w-full relative flex flex-col">
             {children}
         </div>
@@ -259,8 +249,6 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
   );
 };
 
-// --- OTHER MODALS ---
-// ... (ConfirmationModal, InstallPromptModal, UpdateReportModal, ChangelogModal, NotificationsModal mantidos iguais)
 export const ConfirmationModal: React.FC<any> = ({ isOpen, title, message, onConfirm, onCancel }) => {
     if (!isOpen) return null;
     return (
@@ -303,7 +291,7 @@ export const InstallPromptModal: React.FC<any> = ({ isOpen, onInstall, onDismiss
 
 export const UpdateReportModal: React.FC<any> = (props) => (
     <SwipeableModal {...props}>
-        <div className="p-6 h-full flex flex-col">
+        <div className="p-4 h-full flex flex-col">
             <h2 className="text-2xl font-bold mb-6 text-zinc-900 dark:text-white shrink-0">Relatório de Atualização</h2>
             <div className="space-y-4 flex-1 overflow-y-auto pb-20">
                  <div className="bg-zinc-50 dark:bg-zinc-800 p-4 rounded-2xl">
@@ -346,12 +334,12 @@ export const ChangelogModal: React.FC<any> = ({ isOpen, onClose, version, notes,
 
 export const NotificationsModal: React.FC<any> = ({ isOpen, onClose, notifications, onClear }) => (
     <SwipeableModal isOpen={isOpen} onClose={onClose}>
-        <div className="p-6 h-full flex flex-col">
+        <div className="p-4 h-full flex flex-col">
             <div className="flex justify-between items-center mb-6 shrink-0">
                 <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">Notificações</h2>
                 {notifications.length > 0 && <button onClick={onClear} className="text-xs font-bold text-zinc-400 uppercase">Limpar</button>}
             </div>
-            <div className="space-y-3 flex-1 overflow-y-auto pb-20">
+            <div className="space-y-2 flex-1 overflow-y-auto pb-20">
                 {notifications.length === 0 ? (
                     <div className="text-center py-10 text-zinc-400">Nenhuma notificação recente.</div>
                 ) : notifications.map((n: any) => (
