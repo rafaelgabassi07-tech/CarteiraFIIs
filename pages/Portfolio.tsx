@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, BarChart3, PieChart, Coins, DollarSign, Building2, FileText, MapPin, Zap, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, SquareStack, Map as MapIcon, CandlestickChart, LineChart as LineChartIcon, Award, RefreshCcw, ArrowLeft, Briefcase, MoreHorizontal, LayoutGrid, List, Activity, Scale, Percent } from 'lucide-react';
+import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, BarChart3, PieChart, Coins, DollarSign, Building2, FileText, MapPin, Zap, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, SquareStack, Map as MapIcon, CandlestickChart, LineChart as LineChartIcon, Award, RefreshCcw, ArrowLeft, Briefcase, MoreHorizontal, LayoutGrid, List, Activity, Scale, Percent, ChevronDown, ChevronUp } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, ReferenceLine, ComposedChart, CartesianGrid, AreaChart, Area, YAxis, PieChart as RePieChart, Pie, Cell, LineChart, Line, Label, Legend } from 'recharts';
 import { formatBRL, formatDateShort, getMonthName } from '../utils/formatters';
@@ -146,6 +146,34 @@ const CurrentPriceLabel = ({ viewBox, value }: any) => {
     );
 };
 
+// --- COMPONENTE ACORDEÃO (COLLAPSIBLE) ---
+const CollapsibleCard = ({ title, icon: Icon, children, defaultOpen = false }: { title: string, icon: any, children: React.ReactNode, defaultOpen?: boolean }) => {
+    const [isOpen, setIsOpen] = useState(defaultOpen);
+
+    return (
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden mb-3">
+            <button 
+                onClick={() => setIsOpen(!isOpen)}
+                className="w-full flex items-center justify-between p-4 bg-transparent active:bg-zinc-50 dark:active:bg-zinc-800/50 transition-colors"
+            >
+                <div className="flex items-center gap-2.5">
+                    <Icon className="w-4 h-4 text-zinc-400" />
+                    <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">{title}</h3>
+                </div>
+                <div className={`text-zinc-400 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}>
+                    <ChevronDown className="w-4 h-4" />
+                </div>
+            </button>
+            <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isOpen ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                <div className="p-4 pt-0 border-t border-zinc-100 dark:border-zinc-800/50">
+                    {children}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// --- COMPONENTES DE GRÁFICO ---
 const PriceHistoryChart = ({ fullData, loading, error, ticker }: any) => {
     const [range, setRange] = useState('1Y');
     const [chartType, setChartType] = useState<'AREA' | 'CANDLE'>('AREA');
@@ -666,11 +694,8 @@ const ValuationCard = ({ asset }: { asset: AssetPosition }) => {
     }
 
     return (
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm mb-4">
-            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                <Calculator className="w-3.5 h-3.5" /> Valuation
-            </h3>
-            <div className="flex items-center justify-between">
+        <CollapsibleCard title="Valuation & Preço Justo" icon={Calculator}>
+            <div className="flex items-center justify-between mt-2">
                 <div>
                     <p className="text-xs font-bold text-zinc-500 mb-1">Preço Justo (Estimado)</p>
                     <p className="text-2xl font-black text-zinc-900 dark:text-white">{formatBRL(fairPrice)}</p>
@@ -685,7 +710,7 @@ const ValuationCard = ({ asset }: { asset: AssetPosition }) => {
             <p className="text-[9px] text-zinc-400 mt-2 leading-relaxed">
                 *Estimativa baseada em {asset.assetType === AssetType.STOCK ? 'Graham (VPA*LPA)' : 'Bazin (Dividendos)'}. Não é recomendação de compra.
             </p>
-        </div>
+        </CollapsibleCard>
     );
 };
 
@@ -700,64 +725,53 @@ const DetailedInfoBlock = ({ asset }: { asset: AssetPosition }) => {
         );
     };
 
-    const SectionHeader = ({ title, icon: Icon }: any) => (
-        <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mt-4 mb-2 flex items-center gap-1.5">
-            <Icon className="w-3 h-3" /> {title}
-        </h4>
-    );
-
     return (
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm p-4">
-            <div className="flex items-center gap-2 mb-2 pb-2 border-b border-zinc-100 dark:border-zinc-800">
-                <FileText className="w-4 h-4 text-zinc-400" />
-                <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Informações Detalhadas</h3>
-            </div>
-
-            <InfoRow label="Razão Social" value={asset.company_name} />
-            <InfoRow label="CNPJ" value={asset.cnpj} />
-            <InfoRow label="Segmento" value={asset.segment} />
+        <>
+            {/* Dados Gerais */}
+            <CollapsibleCard title="Dados Corporativos" icon={FileText} defaultOpen={true}>
+                <InfoRow label="Razão Social" value={asset.company_name} />
+                <InfoRow label="CNPJ" value={asset.cnpj} />
+                <InfoRow label="Segmento" value={asset.segment} />
+                {asset.assetType === AssetType.FII && <InfoRow label="Patrimônio Líquido" value={asset.assets_value} />}
+                {asset.assetType === AssetType.STOCK && <InfoRow label="Valor de Mercado" value={asset.market_cap} />}
+            </CollapsibleCard>
 
             {/* Campos Específicos para AÇÕES */}
             {asset.assetType === AssetType.STOCK && (
-                <>
-                    <SectionHeader title="Valuation" icon={Scale} />
+                <CollapsibleCard title="Análise Fundamentalista" icon={Activity}>
+                    <h5 className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-2 mt-1">Valuation</h5>
                     <InfoRow label="P/L (Preço/Lucro)" value={asset.p_l?.toFixed(2)} />
                     <InfoRow label="P/VP (Preço/Valor Patr.)" value={asset.p_vp?.toFixed(2)} />
                     <InfoRow label="VPA (Valor Patr./Ação)" value={formatBRL(asset.vpa)} />
                     <InfoRow label="EV/EBITDA" value={asset.ev_ebitda?.toFixed(2)} />
-                    <InfoRow label="Valor de Mercado" value={asset.market_cap} />
 
-                    <SectionHeader title="Eficiência & Crescimento" icon={Activity} />
+                    <h5 className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-2 mt-4">Eficiência & Crescimento</h5>
                     <InfoRow label="Margem Líquida" value={asset.net_margin ? `${asset.net_margin.toFixed(2)}%` : undefined} />
                     <InfoRow label="Margem Bruta" value={asset.gross_margin ? `${asset.gross_margin.toFixed(2)}%` : undefined} />
                     <InfoRow label="ROE (Ret. s/ Patr.)" value={asset.roe ? `${asset.roe.toFixed(2)}%` : undefined} />
                     <InfoRow label="CAGR Lucros (5 anos)" value={asset.cagr_profits ? `${asset.cagr_profits.toFixed(2)}%` : undefined} />
                     <InfoRow label="Payout" value={asset.payout ? `${asset.payout.toFixed(2)}%` : undefined} />
 
-                    <SectionHeader title="Endividamento" icon={Coins} />
+                    <h5 className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-2 mt-4">Endividamento</h5>
                     <InfoRow label="Dívida Líq / EBITDA" value={asset.net_debt_ebitda?.toFixed(2)} />
                     <InfoRow label="Dívida Líq / PL" value={asset.net_debt_equity?.toFixed(2)} />
-                </>
+                </CollapsibleCard>
             )}
 
             {/* Campos Específicos para FIIs */}
             {asset.assetType === AssetType.FII && (
-                <>
-                    <SectionHeader title="Indicadores do Fundo" icon={Building2} />
+                <CollapsibleCard title="Dados do Fundo" icon={Building2}>
                     <InfoRow label="Vacância Física" value={asset.vacancy ? `${asset.vacancy.toFixed(2)}%` : undefined} />
                     <InfoRow label="P/VP" value={asset.p_vp?.toFixed(2)} />
-                    <InfoRow label="Patrimônio Líquido" value={asset.assets_value} />
                     <InfoRow label="Último Rendimento" value={formatBRL(asset.last_dividend)} />
-                    
-                    <SectionHeader title="Gestão" icon={Briefcase} />
                     <InfoRow label="Tipo de Gestão" value={asset.manager_type} />
                     <InfoRow label="Taxa de Adm." value={asset.management_fee} />
                     <InfoRow label="Público Alvo" value={asset.target_audience} />
                     <InfoRow label="Mandato" value={asset.mandate} />
                     <InfoRow label="Prazo" value={asset.duration} />
-                </>
+                </CollapsibleCard>
             )}
-        </div>
+        </>
     );
 };
 
@@ -787,12 +801,8 @@ const PropertiesAnalysis = ({ properties }: { properties: any[] }) => {
     const total = properties.length;
 
     return (
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm">
-            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                <MapPin className="w-3.5 h-3.5" /> Portfólio Imobiliário ({total})
-            </h3>
-
-            <div className="flex flex-col md:flex-row gap-6 mb-6">
+        <CollapsibleCard title={`Portfólio Imobiliário (${total})`} icon={MapPin}>
+            <div className="flex flex-col md:flex-row gap-6 mb-6 mt-2">
                 {/* Gráfico Donut */}
                 <div className="w-full md:w-1/2 h-48 relative">
                     <ResponsiveContainer width="100%" height="100%">
@@ -867,7 +877,7 @@ const PropertiesAnalysis = ({ properties }: { properties: any[] }) => {
                     ))}
                 </div>
             </div>
-        </div>
+        </CollapsibleCard>
     );
 };
 
