@@ -17,6 +17,28 @@ export const analyzePortfolio = (
 
     if (!portfolio || portfolio.length === 0) return [];
 
+    // Helper para selecionar imagem de fundo baseada no tema
+    const getThemeImage = (type: PortfolioInsight['type'], ticker?: string) => {
+        // Mapeia tipos para keywords visuais (usando seeds do Picsum para consistência)
+        let seed = 'abstract';
+        
+        if (ticker) seed = ticker;
+        else {
+            switch (type) {
+                case 'success': seed = 'growth'; break;
+                case 'warning': seed = 'alert'; break;
+                case 'opportunity': seed = 'money'; break;
+                case 'inflation-shield': seed = 'shield'; break;
+                case 'magic-number': seed = 'snowball'; break;
+                case 'risk-concentration': seed = 'balance'; break;
+                case 'diversification-good': seed = 'world'; break;
+                default: seed = 'finance';
+            }
+        }
+        
+        return `https://picsum.photos/seed/${seed}/1080/1920?blur=2`;
+    };
+
     // Helper para criar Stories
     const createStory = (
         idSuffix: string, 
@@ -39,7 +61,8 @@ export const analyzePortfolio = (
             relatedTicker: ticker, 
             score: score + randomFactor, 
             timestamp: Date.now(),
-            url: ticker ? `https://investidor10.com.br/${ticker.endsWith('11') || ticker.endsWith('11B') ? 'fiis' : 'acoes'}/${ticker.toLowerCase()}/` : undefined
+            url: ticker ? `https://investidor10.com.br/${ticker.endsWith('11') || ticker.endsWith('11B') ? 'fiis' : 'acoes'}/${ticker.toLowerCase()}/` : undefined,
+            imageUrl: getThemeImage(type, ticker)
         });
     };
 
@@ -118,22 +141,60 @@ export const analyzePortfolio = (
         );
     }
 
-    // --- 3. SEQUÊNCIA DE ALTA (STREAK) - Simulado ---
-    // Como não temos histórico diário persistido aqui, usamos a variação do dia + indicativo técnico se disponível
-    if (assetsWithPositiveChange > (activeAssets.length * 0.7)) {
+    // --- 3. ANÁLISE FUNDAMENTALISTA AVANÇADA (IA) ---
+
+    // Dividend Trap (Armadilha de Dividendos)
+    const dividendTrap = activeAssets.find(a => (a.dy_12m || 0) > 18 && a.assetType === AssetType.STOCK);
+    if (dividendTrap) {
         createStory(
-            'bull-run',
+            'dividend-trap',
+            'warning',
+            'DY Suspeito? ⚠️',
+            `${dividendTrap.ticker} apresenta um Dividend Yield de ${(dividendTrap.dy_12m || 0).toFixed(1)}%. Valores acima de 18% podem indicar risco ou pagamento não recorrente.`,
+            93,
+            dividendTrap.ticker
+        );
+    }
+
+    // Quality Stock (Empresa de Qualidade)
+    const qualityStock = activeAssets.find(a => 
+        a.assetType === AssetType.STOCK && 
+        (a.roe || 0) > 15 && 
+        (a.net_margin || 0) > 10 && 
+        (a.net_debt_equity || 0) < 1
+    );
+    if (qualityStock) {
+        createStory(
+            'quality-stock',
             'success',
-            'Maré Verde 🌊',
-            `Mais de 70% dos seus ativos estão em alta hoje. Um dia de forte valorização generalizada.`,
-            92
+            'Alta Qualidade 💎',
+            `${qualityStock.ticker} combina ROE alto (${(qualityStock.roe || 0).toFixed(1)}%) com margens sólidas e dívida controlada.`,
+            91,
+            qualityStock.ticker
+        );
+    }
+
+    // Turnaround (Recuperação)
+    const turnaround = activeAssets.find(a => 
+        a.assetType === AssetType.STOCK && 
+        (a.p_l || 0) < 0 && 
+        (a.dailyChange || 0) > 2
+    );
+    if (turnaround) {
+        createStory(
+            'turnaround',
+            'neutral',
+            'Recuperação? 🔄',
+            `${turnaround.ticker} sobe forte hoje apesar dos prejuízos recentes. O mercado pode estar precificando uma virada.`,
+            88,
+            turnaround.ticker
         );
     }
 
     // --- 4. RENDA & DIVIDENDOS ---
     
     // Escudo contra Inflação
-    const inflationShield = activeAssets.find(a => (a.dy_12m || 0) > (ipca + 3));
+    const inflationShield = activeAssets.find(a => (a.dy_12m || 0) > (ipca + 4));
     if (inflationShield) {
         createStory(
             'inflation-shield',
@@ -145,9 +206,28 @@ export const analyzePortfolio = (
         );
     }
 
+    // Próximo do Número Mágico
+    const magicNumberClose = activeAssets.find(a => {
+        if (!a.currentPrice || !a.last_dividend) return false;
+        const magicNumber = Math.ceil(a.currentPrice / a.last_dividend);
+        const progress = (a.quantity / magicNumber);
+        return progress >= 0.8 && progress < 1; // Entre 80% e 100%
+    });
+
+    if (magicNumberClose) {
+        createStory(
+            'magic-close',
+            'magic-number',
+            'Quase Lá! ✨',
+            `Falta pouco para o "Efeito Bola de Neve" em ${magicNumberClose.ticker}. Você já atingiu mais de 80% do Número Mágico.`,
+            96,
+            magicNumberClose.ticker
+        );
+    }
+
     // --- 5. VALUATION & OPORTUNIDADES ---
     
-    // Alerta de Vacância
+    // Alerta de Vacância (FIIs)
     const highVacancyFii = activeAssets.find(a => a.assetType === AssetType.FII && (a.vacancy || 0) > 15);
     if (highVacancyFii) {
         createStory(
@@ -162,7 +242,7 @@ export const analyzePortfolio = (
 
     // FII Barato (PVP)
     const cheapFii = activeAssets.find(a => 
-        a.assetType === AssetType.FII && (a.p_vp || 0) > 0.4 && (a.p_vp || 0) < 0.90
+        a.assetType === AssetType.FII && (a.p_vp || 0) > 0.4 && (a.p_vp || 0) < 0.85
     );
     if (cheapFii) {
         createStory(
@@ -177,7 +257,7 @@ export const analyzePortfolio = (
 
     // FII Caro (Alerta)
     const expensiveFii = activeAssets.find(a => 
-        a.assetType === AssetType.FII && (a.p_vp || 0) > 1.15
+        a.assetType === AssetType.FII && (a.p_vp || 0) > 1.20
     );
     if (expensiveFii) {
         createStory(
@@ -194,7 +274,7 @@ export const analyzePortfolio = (
     const grahamStock = activeAssets.find(a => {
         if (a.assetType !== AssetType.STOCK || !a.lpa || !a.vpa || a.lpa < 0 || a.vpa < 0) return false;
         const intrinsicValue = Math.sqrt(22.5 * a.lpa * a.vpa);
-        return (a.currentPrice || 0) < intrinsicValue * 0.7; // Margem de segurança de 30%
+        return (a.currentPrice || 0) < intrinsicValue * 0.6; // Margem de segurança de 40%
     });
 
     if (grahamStock) {
@@ -202,7 +282,7 @@ export const analyzePortfolio = (
             'graham-opportunity',
             'opportunity',
             'Oportunidade Graham 🧠',
-            `${grahamStock.ticker} está abaixo do valor intrínseco de Graham (VPA x LPA). Potencial oportunidade de valor.`,
+            `${grahamStock.ticker} está muito abaixo do valor intrínseco de Graham. Potencial oportunidade de valor profundo.`,
             84,
             grahamStock.ticker
         );
@@ -211,25 +291,25 @@ export const analyzePortfolio = (
     // --- 6. ESTRUTURA DA CARTEIRA ---
 
     // Diversificação
-    if (sectors.size >= 4 && activeAssets.length >= 5) {
+    if (sectors.size >= 5 && activeAssets.length >= 8) {
         createStory(
             'diversification-good',
             'diversification-good',
             'Bem Diversificado 🌐',
-            `Você possui ativos em ${sectors.size} setores diferentes. Isso ajuda a reduzir riscos específicos.`,
+            `Você possui ativos em ${sectors.size} setores diferentes. Isso ajuda a blindar seu patrimônio contra crises setoriais.`,
             75
         );
     }
 
     // Alerta de Concentração
-    const concentrated = activeAssets.find(a => (a.totalValue / totalPortfolioValue) > 0.30);
+    const concentrated = activeAssets.find(a => (a.totalValue / totalPortfolioValue) > 0.35);
     if (concentrated) {
         const pct = ((concentrated.totalValue / totalPortfolioValue) * 100).toFixed(0);
         createStory(
             'risk-concentration',
             'risk-concentration',
             'Risco de Concentração ⚖️',
-            `${concentrated.ticker} representa ${pct}% do seu patrimônio total. Monitore este risco.`,
+            `${concentrated.ticker} representa ${pct}% do seu patrimônio total. Monitore este risco com atenção.`,
             80,
             concentrated.ticker
         );
@@ -264,5 +344,5 @@ export const analyzePortfolio = (
         }
     }
 
-    return insights.sort((a, b) => b.score - a.score).slice(0, 6);
+    return insights.sort((a, b) => b.score - a.score).slice(0, 8);
 };

@@ -174,8 +174,19 @@ const StoryViewer = ({
 
     return createPortal(
         <div className="fixed inset-0 z-[99999] bg-black flex flex-col animate-in fade-in duration-300 touch-none">
-            <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-20`}></div>
-            <div className="absolute inset-0 backdrop-blur-3xl"></div>
+            {story.imageUrl && (
+                <div className="absolute inset-0 z-0">
+                    <img 
+                        src={story.imageUrl} 
+                        className="w-full h-full object-cover opacity-50" 
+                        alt=""
+                    />
+                    <div className="absolute inset-0 bg-black/40"></div>
+                </div>
+            )}
+            
+            <div className={`absolute inset-0 bg-gradient-to-br ${gradient} ${story.imageUrl ? 'opacity-60 mix-blend-overlay' : 'opacity-20'}`}></div>
+            {!story.imageUrl && <div className="absolute inset-0 backdrop-blur-3xl"></div>}
             
             <div 
                 className="absolute inset-0 z-10"
