@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { AssetPosition, DividendReceipt, AssetType, PortfolioInsight } from '../types';
-import { CircleDollarSign, CalendarClock, PieChart as PieIcon, ArrowUpRight, Wallet, ArrowRight, Sparkles, Trophy, Anchor, Coins, Crown, Info, X, Zap, ShieldCheck, AlertTriangle, Play, Pause, TrendingUp, Target, Snowflake, Layers, Medal, Rocket, Gem, Lock, Building2, Briefcase, ShoppingCart, Coffee, Plane, Star, Award, Umbrella, ZapOff, CheckCircle2, Share2, PartyPopper } from 'lucide-react';
+import { CircleDollarSign, CalendarClock, PieChart as PieIcon, ArrowUpRight, Wallet, ArrowRight, Sparkles, Trophy, Anchor, Coins, Crown, Info, X, Zap, ShieldCheck, AlertTriangle, Play, Pause, TrendingUp, Target, Snowflake, Layers, Medal, Rocket, Gem, Lock, Building2, Briefcase, ShoppingCart, Coffee, Plane, Star, Award, Umbrella, ZapOff, CheckCircle2 } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, CartesianGrid, AreaChart, Area, XAxis, YAxis } from 'recharts';
 import { formatBRL, formatDateShort, getMonthName, getDaysUntil } from '../utils/formatters';
@@ -325,7 +325,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [showMagicNumber, setShowMagicNumber] = useState(false);
   const [showGoals, setShowGoals] = useState(false);
   const [goalTab, setGoalTab] = useState<'WEALTH' | 'INCOME' | 'STRATEGY'>('WEALTH');
-  const [selectedAchievement, setSelectedAchievement] = useState<any>(null); // State for detail modal
   
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
   const [viewedStories, setViewedStories] = useState<Set<string>>(new Set());
@@ -504,7 +503,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       const safeBalance = balance || 0;
       const safeIncome = incomeData.currentMonth || 0;
       const sectors = new Set(portfolio.map(p => p.segment));
-      const MIN_WAGE = 1412;
       
       const levels = [
           { level: 1, name: 'Iniciante', target: 1000 },
@@ -524,36 +522,40 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
       const prevTarget = currentLevel.level > 1 ? levels[currentLevel.level - 2].target : 0;
       const progress = Math.min(100, ((safeBalance - prevTarget) / (nextLevel.target - prevTarget)) * 100);
 
+      const MIN_WAGE = 1412;
+      
+      // Conquistas organizadas por categoria (Total 25+)
       const achievements = [
           // PATRIMÔNIO (Wealth)
-          { id: 'start', cat: 'WEALTH', label: 'Primeiro Passo', sub: 'Patrimônio > R$ 0', icon: Wallet, target: 1, current: safeBalance, unlocked: safeBalance > 0, color: 'from-emerald-400 to-emerald-600' },
-          { id: '1k', cat: 'WEALTH', label: 'Semente', sub: 'Patrimônio > 1k', icon: Star, target: 1000, current: safeBalance, unlocked: safeBalance >= 1000, color: 'from-lime-400 to-emerald-500' },
-          { id: '10k', cat: 'WEALTH', label: 'Clube 10k', sub: 'Patrimônio > 10k', icon: Coins, target: 10000, current: safeBalance, unlocked: safeBalance >= 10000, color: 'from-amber-400 to-orange-500' },
-          { id: '25k', cat: 'WEALTH', label: 'Construtor', sub: 'Patrimônio > 25k', icon: Building2, target: 25000, current: safeBalance, unlocked: safeBalance >= 25000, color: 'from-cyan-400 to-blue-500' },
-          { id: '50k', cat: 'WEALTH', label: 'Barão', sub: 'Patrimônio > 50k', icon: Gem, target: 50000, current: safeBalance, unlocked: safeBalance >= 50000, color: 'from-violet-400 to-purple-600' },
-          { id: '100k', cat: 'WEALTH', label: 'Elite 100k', sub: 'Patrimônio > 100k', icon: Trophy, target: 100000, current: safeBalance, unlocked: safeBalance >= 100000, color: 'from-yellow-300 to-amber-500' },
-          { id: '500k', cat: 'WEALTH', label: 'Meio Milhão', sub: 'Patrimônio > 500k', icon: Crown, target: 500000, current: safeBalance, unlocked: safeBalance >= 500000, color: 'from-rose-400 to-red-600' },
-          { id: '1m', cat: 'WEALTH', label: 'Milionário', sub: 'Patrimônio > 1M', icon: Rocket, target: 1000000, current: safeBalance, unlocked: safeBalance >= 1000000, color: 'from-fuchsia-500 to-pink-600' },
+          { id: 'start', cat: 'WEALTH', label: 'Primeiro Passo', sub: 'Patrimônio > R$ 0', icon: Wallet, unlocked: safeBalance > 0, color: 'from-emerald-400 to-emerald-600' },
+          { id: '1k', cat: 'WEALTH', label: 'Semente', sub: 'Patrimônio > 1k', icon: Star, unlocked: safeBalance >= 1000, color: 'from-lime-400 to-emerald-500' },
+          { id: '10k', cat: 'WEALTH', label: 'Clube 10k', sub: 'Patrimônio > 10k', icon: Coins, unlocked: safeBalance >= 10000, color: 'from-amber-400 to-orange-500' },
+          { id: '25k', cat: 'WEALTH', label: 'Construtor', sub: 'Patrimônio > 25k', icon: Building2, unlocked: safeBalance >= 25000, color: 'from-cyan-400 to-blue-500' },
+          { id: '50k', cat: 'WEALTH', label: 'Barão', sub: 'Patrimônio > 50k', icon: Gem, unlocked: safeBalance >= 50000, color: 'from-violet-400 to-purple-600' },
+          { id: '100k', cat: 'WEALTH', label: 'Elite 100k', sub: 'Patrimônio > 100k', icon: Trophy, unlocked: safeBalance >= 100000, color: 'from-yellow-300 to-amber-500' },
+          { id: '500k', cat: 'WEALTH', label: 'Meio Milhão', sub: 'Patrimônio > 500k', icon: Crown, unlocked: safeBalance >= 500000, color: 'from-rose-400 to-red-600' },
+          { id: '1m', cat: 'WEALTH', label: 'Milionário', sub: 'Patrimônio > 1M', icon: Rocket, unlocked: safeBalance >= 1000000, color: 'from-fuchsia-500 to-pink-600' },
 
           // RENDA (Income)
-          { id: 'income_start', cat: 'INCOME', label: 'Renda Viva', sub: 'Recebeu proventos', icon: CircleDollarSign, target: 1, current: safeIncome, unlocked: safeIncome > 0, color: 'from-emerald-400 to-green-600' },
-          { id: 'lunch', cat: 'INCOME', label: 'Almoço Grátis', sub: 'Renda > R$ 20', icon: Coffee, target: 20, current: safeIncome, unlocked: safeIncome >= 20, color: 'from-orange-400 to-amber-600' },
-          { id: 'dinner', cat: 'INCOME', label: 'Jantar Fora', sub: 'Renda > R$ 100', icon: Award, target: 100, current: safeIncome, unlocked: safeIncome >= 100, color: 'from-pink-400 to-rose-500' },
-          { id: 'market', cat: 'INCOME', label: 'Mercado Pago', sub: 'Renda > R$ 500', icon: ShoppingCart, target: 500, current: safeIncome, unlocked: safeIncome >= 500, color: 'from-blue-400 to-indigo-600' },
-          { id: 'half_wage', cat: 'INCOME', label: 'Meio Salário', sub: 'Renda > R$ 700', icon: Anchor, target: 700, current: safeIncome, unlocked: safeIncome >= 700, color: 'from-sky-400 to-cyan-600' },
-          { id: 'wage', cat: 'INCOME', label: 'Aluguel Free', sub: 'Renda > 1 Salário', icon: Umbrella, target: MIN_WAGE, current: safeIncome, unlocked: safeIncome >= MIN_WAGE, color: 'from-violet-400 to-purple-600' },
-          { id: 'freedom', cat: 'INCOME', label: 'Liberdade', sub: 'Renda > R$ 3k', icon: Plane, target: 3000, current: safeIncome, unlocked: safeIncome >= 3000, color: 'from-teal-400 to-emerald-600' },
-          { id: 'retire', cat: 'INCOME', label: 'Aposentado', sub: 'Renda > R$ 5k', icon: CheckCircle2, target: 5000, current: safeIncome, unlocked: safeIncome >= 5000, color: 'from-indigo-500 to-violet-700' },
+          { id: 'income_start', cat: 'INCOME', label: 'Renda Viva', sub: 'Recebeu proventos', icon: CircleDollarSign, unlocked: safeIncome > 0, color: 'from-emerald-400 to-green-600' },
+          { id: 'lunch', cat: 'INCOME', label: 'Almoço Grátis', sub: 'Renda > R$ 20', icon: Coffee, unlocked: safeIncome >= 20, color: 'from-orange-400 to-amber-600' },
+          { id: 'dinner', cat: 'INCOME', label: 'Jantar Fora', sub: 'Renda > R$ 100', icon: Award, unlocked: safeIncome >= 100, color: 'from-pink-400 to-rose-500' },
+          { id: 'market', cat: 'INCOME', label: 'Mercado Pago', sub: 'Renda > R$ 500', icon: ShoppingCart, unlocked: safeIncome >= 500, color: 'from-blue-400 to-indigo-600' },
+          { id: 'half_wage', cat: 'INCOME', label: 'Meio Salário', sub: 'Renda > R$ 700', icon: Anchor, unlocked: safeIncome >= (MIN_WAGE/2), color: 'from-sky-400 to-cyan-600' },
+          { id: 'wage', cat: 'INCOME', label: 'Aluguel Free', sub: 'Renda > 1 Salário', icon: Umbrella, unlocked: safeIncome >= MIN_WAGE, color: 'from-violet-400 to-purple-600' },
+          { id: 'freedom', cat: 'INCOME', label: 'Liberdade', sub: 'Renda > R$ 3k', icon: Plane, unlocked: safeIncome >= 3000, color: 'from-teal-400 to-emerald-600' },
+          { id: 'retire', cat: 'INCOME', label: 'Aposentado', sub: 'Renda > R$ 5k', icon: CheckCircle2, unlocked: safeIncome >= 5000, color: 'from-indigo-500 to-violet-700' },
 
           // ESTRATÉGIA (Strategy)
-          { id: 'diversified', cat: 'STRATEGY', label: 'Iniciante', sub: '5+ Ativos', icon: Layers, target: 5, current: portfolio.length, unlocked: portfolio.length >= 5, color: 'from-blue-400 to-indigo-500' },
-          { id: 'manager', cat: 'STRATEGY', label: 'Gestor', sub: '15+ Ativos', icon: Briefcase, target: 15, current: portfolio.length, unlocked: portfolio.length >= 15, color: 'from-slate-500 to-zinc-700' },
-          { id: 'snowball', cat: 'STRATEGY', label: 'Bola de Neve', sub: '1 Ativo Infinito', icon: Snowflake, target: 1, current: magicReachedCount, unlocked: magicReachedCount >= 1, color: 'from-cyan-400 to-blue-500' },
-          { id: 'avalanche', cat: 'STRATEGY', label: 'Avalanche', sub: '5 Ativos Infinitos', icon: Zap, target: 5, current: magicReachedCount, unlocked: magicReachedCount >= 5, color: 'from-yellow-400 to-orange-500' },
-          { id: 'sectors', cat: 'STRATEGY', label: 'Rei dos Setores', sub: '5+ Setores', icon: PieIcon, target: 5, current: sectors.size, unlocked: sectors.size >= 5, color: 'from-pink-400 to-rose-500' },
-          { id: 'lover', cat: 'STRATEGY', label: 'FII Lover', sub: 'Mais FIIs', icon: Building2, target: 1, current: allocationData.totals.fiis > allocationData.totals.stocks ? 1 : 0, unlocked: allocationData.totals.fiis > allocationData.totals.stocks, color: 'from-indigo-400 to-purple-500' },
-          { id: 'stock_fan', cat: 'STRATEGY', label: 'Ações Fan', sub: 'Mais Ações', icon: TrendingUp, target: 1, current: allocationData.totals.stocks > allocationData.totals.fiis ? 1 : 0, unlocked: allocationData.totals.stocks > allocationData.totals.fiis, color: 'from-sky-400 to-blue-600' },
-          { id: 'balanced', cat: 'STRATEGY', label: 'Híbrido', sub: 'FIIs + Ações', icon: Target, target: 1, current: (allocationData.totals.fiis > 0 && allocationData.totals.stocks > 0) ? 1 : 0, unlocked: allocationData.totals.fiis > 0 && allocationData.totals.stocks > 0, color: 'from-amber-400 to-orange-500' }
+          { id: 'diversified', cat: 'STRATEGY', label: 'Iniciante', sub: '5+ Ativos', icon: Layers, unlocked: portfolio.length >= 5, color: 'from-blue-400 to-indigo-500' },
+          { id: 'manager', cat: 'STRATEGY', label: 'Gestor', sub: '15+ Ativos', icon: Briefcase, unlocked: portfolio.length >= 15, color: 'from-slate-500 to-zinc-700' },
+          { id: 'snowball', cat: 'STRATEGY', label: 'Bola de Neve', sub: '1 Ativo Infinito', icon: Snowflake, unlocked: magicReachedCount >= 1, color: 'from-cyan-400 to-blue-500' },
+          { id: 'avalanche', cat: 'STRATEGY', label: 'Avalanche', sub: '5 Ativos Infinitos', icon: Zap, unlocked: magicReachedCount >= 5, color: 'from-yellow-400 to-orange-500' },
+          { id: 'sectors', cat: 'STRATEGY', label: 'Rei dos Setores', sub: '5+ Setores', icon: PieIcon, unlocked: sectors.size >= 5, color: 'from-pink-400 to-rose-500' },
+          { id: 'lover', cat: 'STRATEGY', label: 'FII Lover', sub: 'Mais FIIs', icon: Building2, unlocked: allocationData.totals.fiis > allocationData.totals.stocks, color: 'from-indigo-400 to-purple-500' },
+          { id: 'stock_fan', cat: 'STRATEGY', label: 'Ações Fan', sub: 'Mais Ações', icon: TrendingUp, unlocked: allocationData.totals.stocks > allocationData.totals.fiis, color: 'from-sky-400 to-blue-600' },
+          { id: 'fii_fan', cat: 'STRATEGY', label: 'Imobiliário', sub: 'Possui FIIs', icon: Building2, unlocked: allocationData.totals.fiis > 0, color: 'from-emerald-400 to-teal-600' },
+          { id: 'balanced', cat: 'STRATEGY', label: 'Híbrido', sub: 'FIIs + Ações', icon: Target, unlocked: allocationData.totals.fiis > 0 && allocationData.totals.stocks > 0, color: 'from-amber-400 to-orange-500' }
       ];
 
       return { 
@@ -940,7 +942,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             </div>
         </SwipeableModal>
 
-        <SwipeableModal isOpen={showGoals} onClose={() => { setShowGoals(false); setSelectedAchievement(null); }}>
+        <SwipeableModal isOpen={showGoals} onClose={() => setShowGoals(false)}>
             <div className="p-4 h-full flex flex-col bg-zinc-50 dark:bg-zinc-950 anim-slide-up">
                 <div className="flex flex-col gap-4 mb-6 shrink-0 bg-white dark:bg-zinc-900 p-5 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm relative overflow-hidden">
                     <div className="flex items-start justify-between">
@@ -977,101 +979,38 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                     <button onClick={() => setGoalTab('STRATEGY')} className={`flex-1 min-w-[90px] py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${goalTab === 'STRATEGY' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}>Estratégia</button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar relative">
+                <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar">
                     <div className="grid grid-cols-2 gap-3">
-                        {filteredAchievements.map((achievement: any) => {
-                            const current = achievement.current || 0;
-                            const target = achievement.target || 1;
-                            const percent = Math.min(100, Math.max(0, (current / target) * 100));
-                            
-                            return (
-                                <button 
-                                    key={achievement.id} 
-                                    onClick={() => setSelectedAchievement({ ...achievement, percent })}
-                                    className={`relative p-4 rounded-3xl flex flex-col items-center text-center transition-all duration-300 border overflow-hidden active:scale-95 group ${
-                                        achievement.unlocked 
-                                            ? 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 shadow-lg shadow-black/5 dark:shadow-black/20' 
-                                            : 'bg-zinc-100 dark:bg-zinc-900/50 border-transparent opacity-80'
-                                    }`}
-                                >
-                                    <div className={`w-14 h-14 rounded-full flex items-center justify-center mb-3 shadow-inner relative z-10 transition-transform duration-300 group-hover:scale-110 ${
-                                        achievement.unlocked 
-                                            ? `bg-gradient-to-br ${achievement.color} text-white ring-4 ring-white dark:ring-zinc-800` 
-                                            : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-400'
-                                    }`}>
-                                        {achievement.unlocked ? <achievement.icon className="w-7 h-7" strokeWidth={2} /> : <Lock className="w-6 h-6" />}
-                                    </div>
-                                    
-                                    <h4 className={`text-xs font-black leading-tight mb-1 ${achievement.unlocked ? 'text-zinc-900 dark:text-white' : 'text-zinc-500'}`}>{achievement.label}</h4>
-                                    <p className="text-[10px] font-medium text-zinc-400 leading-tight mb-2">{achievement.sub}</p>
-                                    
-                                    {!achievement.unlocked && (
-                                        <div className="w-full h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden mt-auto">
-                                            <div className="h-full bg-zinc-400 rounded-full" style={{ width: `${percent}%` }}></div>
-                                        </div>
-                                    )}
-
-                                    {achievement.unlocked && (
-                                        <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${achievement.color}`}></div>
-                                    )}
-                                </button>
-                            );
-                        })}
-                    </div>
-
-                    {/* Achievement Detail Overlay */}
-                    {selectedAchievement && (
-                        <div className="absolute inset-0 z-20 flex items-center justify-center bg-zinc-50/90 dark:bg-zinc-950/90 backdrop-blur-sm anim-fade-in" onClick={() => setSelectedAchievement(null)}>
-                            <div className="bg-white dark:bg-zinc-900 w-full max-w-[280px] p-6 rounded-[2.5rem] shadow-2xl anim-scale-in border border-zinc-100 dark:border-zinc-800 text-center relative overflow-hidden" onClick={e => e.stopPropagation()}>
-                                {selectedAchievement.unlocked && (
-                                    <div className={`absolute top-0 left-0 right-0 h-32 bg-gradient-to-b ${selectedAchievement.color} opacity-20`}></div>
-                                )}
-                                
-                                <button onClick={() => setSelectedAchievement(null)} className="absolute top-4 right-4 p-2 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 transition-colors">
-                                    <X className="w-4 h-4 text-zinc-500 dark:text-zinc-300" />
-                                </button>
-
-                                <div className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-4 relative z-10 shadow-xl ${
-                                    selectedAchievement.unlocked 
-                                        ? `bg-gradient-to-br ${selectedAchievement.color} text-white` 
-                                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400'
+                        {filteredAchievements.map((achievement: any) => (
+                            <div 
+                                key={achievement.id} 
+                                className={`relative p-4 rounded-3xl flex flex-col items-center text-center transition-all duration-500 border overflow-hidden group ${
+                                    achievement.unlocked 
+                                        ? 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 shadow-lg shadow-black/5 dark:shadow-black/20' 
+                                        : 'bg-zinc-100 dark:bg-zinc-900/50 border-transparent opacity-60'
+                                }`}
+                            >
+                                <div className={`w-14 h-14 rounded-full flex items-center justify-center mb-3 shadow-inner relative z-10 transition-transform duration-300 group-hover:scale-110 ${
+                                    achievement.unlocked 
+                                        ? `bg-gradient-to-br ${achievement.color} text-white ring-4 ring-white dark:ring-zinc-800` 
+                                        : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-400'
                                 }`}>
-                                    {selectedAchievement.unlocked ? <selectedAchievement.icon className="w-10 h-10" strokeWidth={1.5} /> : <Lock className="w-8 h-8" />}
-                                    {selectedAchievement.unlocked && <div className="absolute inset-0 bg-white/20 rounded-full animate-pulse"></div>}
+                                    {achievement.unlocked ? <achievement.icon className="w-7 h-7" strokeWidth={2} /> : <Lock className="w-6 h-6" />}
+                                    
+                                    {achievement.unlocked && (
+                                        <div className="absolute inset-0 rounded-full bg-white/20 animate-pulse"></div>
+                                    )}
                                 </div>
-
-                                <h3 className="text-xl font-black text-zinc-900 dark:text-white mb-1 relative z-10">{selectedAchievement.label}</h3>
-                                <p className="text-sm font-medium text-zinc-500 relative z-10 mb-6">{selectedAchievement.sub}</p>
-
-                                <div className="bg-zinc-50 dark:bg-zinc-800 p-4 rounded-2xl mb-4 relative z-10">
-                                    <div className="flex justify-between items-end mb-2">
-                                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Progresso</span>
-                                        <span className="text-xs font-black text-zinc-900 dark:text-white">{selectedAchievement.percent.toFixed(0)}%</span>
-                                    </div>
-                                    <div className="h-2 w-full bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
-                                        <div 
-                                            className={`h-full rounded-full transition-all duration-1000 ${selectedAchievement.unlocked ? `bg-gradient-to-r ${selectedAchievement.color}` : 'bg-zinc-400'}`} 
-                                            style={{ width: `${selectedAchievement.percent}%` }}
-                                        ></div>
-                                    </div>
-                                    <div className="flex justify-between mt-2 text-[10px] font-medium text-zinc-400">
-                                        <span>{typeof selectedAchievement.current === 'number' ? formatBRL(selectedAchievement.current, privacyMode) : selectedAchievement.current}</span>
-                                        <span>{typeof selectedAchievement.target === 'number' ? formatBRL(selectedAchievement.target, privacyMode) : selectedAchievement.target}</span>
-                                    </div>
-                                </div>
-
-                                {selectedAchievement.unlocked ? (
-                                    <div className="flex gap-2">
-                                        <button className="flex-1 py-3 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold text-xs uppercase tracking-wider shadow-lg press-effect flex items-center justify-center gap-2">
-                                            <PartyPopper className="w-4 h-4" /> Comemorar
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <p className="text-xs text-zinc-400 italic">Continue investindo para desbloquear!</p>
+                                
+                                <h4 className={`text-xs font-black leading-tight mb-1 ${achievement.unlocked ? 'text-zinc-900 dark:text-white' : 'text-zinc-500'}`}>{achievement.label}</h4>
+                                <p className="text-[10px] font-medium text-zinc-400 leading-tight">{achievement.sub}</p>
+                                
+                                {achievement.unlocked && (
+                                    <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${achievement.color}`}></div>
                                 )}
                             </div>
-                        </div>
-                    )}
+                        ))}
+                    </div>
                 </div>
             </div>
         </SwipeableModal>
