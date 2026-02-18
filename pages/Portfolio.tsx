@@ -283,11 +283,6 @@ const PriceHistoryChart = ({ fullData, loading, error, ticker, range, onRangeCha
                         >
                             <ListFilter className="w-3.5 h-3.5" />
                         </button>
-                        <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5">
-                            {['1m', '1h', '1d', '1wk', '1mo'].map((r) => (
-                                <button key={r} onClick={() => onRangeChange(r)} className={`px-2 py-0.5 text-[8px] font-bold rounded-md transition-all ${range === r ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>{r.toUpperCase()}</button>
-                            ))}
-                        </div>
                     </div>
                 </div>
                 <div className="flex gap-1 items-center justify-end">
