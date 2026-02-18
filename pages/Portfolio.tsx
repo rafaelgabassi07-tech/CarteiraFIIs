@@ -1010,6 +1010,23 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
         return marketDividends.filter(d => d.ticker === selectedAsset.ticker);
     }, [selectedAsset, marketDividends]);
 
+    // Calcula dados do gráfico de pizza para imóveis (Agrupado por Estado)
+    const propertyStats = useMemo(() => {
+        if (!selectedAsset?.properties) return [];
+        const counts: Record<string, number> = {};
+        selectedAsset.properties.forEach(p => {
+            const loc = p.location ? p.location.split('-')[0].trim().substring(0, 2).toUpperCase() : 'ND';
+            counts[loc] = (counts[loc] || 0) + 1;
+        });
+        return Object.entries(counts)
+            .map(([name, value], idx) => ({ 
+                name, 
+                value, 
+                color: CHART_COLORS[idx % CHART_COLORS.length] 
+            }))
+            .sort((a, b) => b.value - a.value);
+    }, [selectedAsset]);
+
     return (
         <div className="pb-24 -mt-2"> {/* Negative margin to pull closer to main header */}
              
@@ -1092,27 +1109,83 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                                 <div className="anim-fade-in space-y-6">
                                     <PositionSummaryCard asset={selectedAsset} privacyMode={privacyMode} />
                                     <DetailedInfoBlock asset={selectedAsset} />
+                                    
                                     {selectedAsset.properties && selectedAsset.properties.length > 0 && (
                                         <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-sm p-4">
-                                            <div className="flex items-center gap-2 mb-4">
-                                                <MapIcon className="w-4 h-4 text-zinc-400" />
-                                                <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Mapa de Imóveis</h3>
+                                            <div className="flex items-center justify-between mb-4">
+                                                <div className="flex items-center gap-2">
+                                                    <MapIcon className="w-4 h-4 text-zinc-400" />
+                                                    <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Mapa de Imóveis</h3>
+                                                </div>
+                                                <span className="text-[9px] font-bold text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded-full uppercase tracking-wider">
+                                                    {selectedAsset.properties.length} Imóveis
+                                                </span>
                                             </div>
-                                            <div className="h-48 w-full">
-                                                <BrazilMap 
-                                                    data={selectedAsset.properties.map(p => ({ name: p.location || '', value: 1 }))} 
-                                                    totalProperties={selectedAsset.properties.length} 
-                                                />
+
+                                            {/* CAROUSEL: GRÁFICO + MAPA */}
+                                            <div className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar pb-6 -mx-4 px-4">
+                                                {/* Slide 1: Gráfico */}
+                                                <div className="min-w-full snap-center flex items-center justify-center h-56 relative">
+                                                    <div className="absolute top-2 left-0 z-10 px-2 py-1 bg-white/80 dark:bg-black/50 rounded-lg backdrop-blur-sm text-[9px] font-bold uppercase text-zinc-500">
+                                                        Distribuição
+                                                    </div>
+                                                    <ResponsiveContainer width="100%" height="100%">
+                                                        <RePieChart>
+                                                            <Pie
+                                                                data={propertyStats}
+                                                                innerRadius={50}
+                                                                outerRadius={70}
+                                                                paddingAngle={5}
+                                                                dataKey="value"
+                                                            >
+                                                                {propertyStats.map((entry, index) => (
+                                                                    <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
+                                                                ))}
+                                                            </Pie>
+                                                            <Tooltip 
+                                                                contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: 'rgba(24, 24, 27, 0.95)', color: '#fff', fontSize: '10px', padding: '8px 12px' }}
+                                                            />
+                                                            <Legend 
+                                                                layout="vertical" 
+                                                                verticalAlign="middle" 
+                                                                align="right"
+                                                                iconType="circle"
+                                                                iconSize={6}
+                                                                formatter={(val, entry: any) => <span className="text-[10px] font-bold text-zinc-500 ml-1">{val} ({entry.payload.value})</span>}
+                                                            />
+                                                        </RePieChart>
+                                                    </ResponsiveContainer>
+                                                </div>
+
+                                                {/* Slide 2: Mapa */}
+                                                <div className="min-w-full snap-center h-56 relative">
+                                                    <div className="absolute top-2 left-0 z-10 px-2 py-1 bg-white/80 dark:bg-black/50 rounded-lg backdrop-blur-sm text-[9px] font-bold uppercase text-zinc-500">
+                                                        Geolocalização
+                                                    </div>
+                                                    <BrazilMap 
+                                                        data={selectedAsset.properties.map(p => ({ name: p.location || '', value: 1 }))} 
+                                                        totalProperties={selectedAsset.properties.length} 
+                                                    />
+                                                </div>
                                             </div>
-                                            <div className="mt-4 space-y-2">
+
+                                            {/* Paginação */}
+                                            <div className="flex justify-center gap-1.5 mb-6">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-700"></div>
+                                                <div className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-700"></div>
+                                            </div>
+
+                                            <div className="space-y-2 border-t border-zinc-100 dark:border-zinc-800 pt-4">
                                                 {selectedAsset.properties.slice(0, 5).map((prop, idx) => (
-                                                    <div key={idx} className="flex justify-between items-center text-xs p-2 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg">
+                                                    <div key={idx} className="flex justify-between items-center text-xs p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl">
                                                         <span className="font-bold text-zinc-700 dark:text-zinc-300 truncate max-w-[70%]">{prop.name}</span>
-                                                        <span className="text-zinc-400">{prop.location}</span>
+                                                        <span className="text-[10px] font-black text-zinc-400 bg-white dark:bg-zinc-800 px-2 py-1 rounded-lg border border-zinc-100 dark:border-zinc-700 uppercase">{prop.location || 'BR'}</span>
                                                     </div>
                                                 ))}
                                                 {selectedAsset.properties.length > 5 && (
-                                                    <p className="text-[10px] text-center text-zinc-400 mt-2">e mais {selectedAsset.properties.length - 5} imóveis...</p>
+                                                    <button className="w-full py-3 text-[10px] font-bold text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors uppercase tracking-widest bg-zinc-50 dark:bg-zinc-800/30 rounded-xl mt-2">
+                                                        Ver todos ({selectedAsset.properties.length})
+                                                    </button>
                                                 )}
                                             </div>
                                         </div>
