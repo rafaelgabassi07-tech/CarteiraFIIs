@@ -224,6 +224,39 @@ const CollapsibleCard = ({ title, icon: Icon, children, defaultOpen = false }: {
     );
 };
 
+// --- COMPONENTE ACORDEÃO PARA GRUPOS DE ATIVOS ---
+const AssetGroupAccordion = ({ title, icon: Icon, count, totalValue, children, defaultOpen = true, privacyMode }: any) => {
+    const [isOpen, setIsOpen] = useState(defaultOpen);
+
+    return (
+        <div className="mb-3 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-sm">
+            <button 
+                onClick={() => setIsOpen(!isOpen)}
+                className="w-full flex items-center justify-between p-3 bg-zinc-50/50 dark:bg-zinc-800/30 active:bg-zinc-100 dark:active:bg-zinc-800/50 transition-colors"
+            >
+                <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isOpen ? 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400' : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-500'}`}>
+                        <Icon className="w-4 h-4" strokeWidth={2.5} />
+                    </div>
+                    <div className="text-left">
+                        <h3 className="text-xs font-black uppercase tracking-wide text-zinc-700 dark:text-zinc-200">{title}</h3>
+                        <p className="text-[10px] text-zinc-400 font-medium">{count} ativos • {formatBRL(totalValue, privacyMode)}</p>
+                    </div>
+                </div>
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-300 ${isOpen ? 'rotate-180 bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300' : 'text-zinc-400'}`}>
+                    <ChevronDown className="w-4 h-4" />
+                </div>
+            </button>
+            
+            <div className={`transition-all duration-300 ease-in-out ${isOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                <div className="p-2 space-y-3">
+                    {children}
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // --- COMPONENTES DE GRÁFICO ---
 const PriceHistoryChart = ({ fullData, loading, error, ticker }: any) => {
     const [range, setRange] = useState('1Y');
@@ -1320,6 +1353,8 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
         let maxVal = 0;
         let totalVal = 0;
         let totalDailyChange = 0;
+        let fiiTotal = 0;
+        let stockTotal = 0;
 
         sortedPortfolio.forEach(asset => {
             const val = asset.quantity * (asset.currentPrice || 0);
@@ -1332,11 +1367,16 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
                 totalDailyChange += (asset.currentPrice - prevPrice) * asset.quantity;
             }
 
-            if (asset.assetType === AssetType.FII) fiis.push(asset);
-            else stocks.push(asset);
+            if (asset.assetType === AssetType.FII) {
+                fiis.push(asset);
+                fiiTotal += val;
+            } else {
+                stocks.push(asset);
+                stockTotal += val;
+            }
         });
 
-        return { fiis, stocks, maxVal, totalVal, totalDailyChange };
+        return { fiis, stocks, maxVal, totalVal, totalDailyChange, fiiTotal, stockTotal };
     }, [sortedPortfolio]);
 
     const selectedAsset = useMemo(() => 
@@ -1475,49 +1515,49 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
                     <p className="text-xs font-bold text-zinc-500">Sua carteira está vazia</p>
                 </div>
             ) : (
-                <div className="space-y-6">
+                <div className="space-y-4">
                     {/* Grupo FIIs */}
                     {groupedAssets.fiis.length > 0 && (
-                        <div>
-                            <div className="flex items-center gap-2 mb-3 px-1">
-                                <Building2 className="w-4 h-4 text-indigo-500" />
-                                <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest">Fundos Imobiliários ({groupedAssets.fiis.length})</h3>
-                            </div>
-                            <div className="space-y-3">
-                                {groupedAssets.fiis.map(asset => (
-                                    <AssetCard 
-                                        key={asset.ticker} 
-                                        asset={asset} 
-                                        maxVal={groupedAssets.maxVal} 
-                                        totalVal={groupedAssets.totalVal}
-                                        privacyMode={privacyMode} 
-                                        onClick={() => setSelectedTicker(asset.ticker)} 
-                                    />
-                                ))}
-                            </div>
-                        </div>
+                        <AssetGroupAccordion 
+                            title="Fundos Imobiliários" 
+                            icon={Building2} 
+                            count={groupedAssets.fiis.length} 
+                            totalValue={groupedAssets.fiiTotal} 
+                            privacyMode={privacyMode}
+                        >
+                            {groupedAssets.fiis.map(asset => (
+                                <AssetCard 
+                                    key={asset.ticker} 
+                                    asset={asset} 
+                                    maxVal={groupedAssets.maxVal} 
+                                    totalVal={groupedAssets.totalVal}
+                                    privacyMode={privacyMode} 
+                                    onClick={() => setSelectedTicker(asset.ticker)} 
+                                />
+                            ))}
+                        </AssetGroupAccordion>
                     )}
 
                     {/* Grupo Ações */}
                     {groupedAssets.stocks.length > 0 && (
-                        <div>
-                            <div className="flex items-center gap-2 mb-3 px-1 pt-2">
-                                <TrendingUp className="w-4 h-4 text-sky-500" />
-                                <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest">Ações ({groupedAssets.stocks.length})</h3>
-                            </div>
-                            <div className="space-y-3">
-                                {groupedAssets.stocks.map(asset => (
-                                    <AssetCard 
-                                        key={asset.ticker} 
-                                        asset={asset} 
-                                        maxVal={groupedAssets.maxVal} 
-                                        totalVal={groupedAssets.totalVal}
-                                        privacyMode={privacyMode} 
-                                        onClick={() => setSelectedTicker(asset.ticker)} 
-                                    />
-                                ))}
-                            </div>
-                        </div>
+                        <AssetGroupAccordion 
+                            title="Ações" 
+                            icon={TrendingUp} 
+                            count={groupedAssets.stocks.length} 
+                            totalValue={groupedAssets.stockTotal} 
+                            privacyMode={privacyMode}
+                        >
+                            {groupedAssets.stocks.map(asset => (
+                                <AssetCard 
+                                    key={asset.ticker} 
+                                    asset={asset} 
+                                    maxVal={groupedAssets.maxVal} 
+                                    totalVal={groupedAssets.totalVal}
+                                    privacyMode={privacyMode} 
+                                    onClick={() => setSelectedTicker(asset.ticker)} 
+                                />
+                            ))}
+                        </AssetGroupAccordion>
                     )}
                 </div>
             )}
