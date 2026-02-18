@@ -3,7 +3,7 @@ import { AssetPosition, DividendReceipt, AssetType } from '../types';
 import { Wallet, BarChart3, Coins, Zap, CheckCircle, Goal, TrendingUp, TrendingDown, ArrowRight, Search, X, AlertTriangle, Building2, RefreshCw, Filter, PieChart } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { BrazilMap } from '../components/BrazilMap';
-import { formatBRL, formatPercent } from '../utils/formatters';
+import { formatBRL, formatPercent, formatNumber } from '../utils/formatters';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 
 const TYPE_COLORS: Record<string, string> = {

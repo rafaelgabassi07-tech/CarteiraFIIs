@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { AssetPosition, DividendReceipt, AssetType, PortfolioInsight } from '../types';
-import { CircleDollarSign, CalendarClock, PieChart as PieIcon, ArrowUpRight, Wallet, ArrowRight, Sparkles, Trophy, Anchor, Coins, Crown, Info, X, Zap, ShieldCheck, AlertTriangle, Play, Pause, TrendingUp, Target } from 'lucide-react';
+import { CircleDollarSign, CalendarClock, PieChart as PieIcon, ArrowUpRight, Wallet, ArrowRight, Sparkles, Trophy, Anchor, Coins, Crown, Info, X, Zap, ShieldCheck, AlertTriangle, Play, Pause, TrendingUp, Target, Lock, Rocket, Gem, HandCoins, Building2 } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, CartesianGrid, AreaChart, Area, XAxis, YAxis } from 'recharts';
 import { formatBRL, formatDateShort, getMonthName, getDaysUntil } from '../utils/formatters';
@@ -171,7 +171,7 @@ const StoryViewer = ({
     const gradient = getStoryGradient(story.type);
 
     return (
-        <div className="fixed inset-0 z-[9999] bg-black flex flex-col animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[10000] h-[100dvh] w-screen bg-black flex flex-col animate-in fade-in duration-300">
             <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-20`}></div>
             <div className="absolute inset-0 backdrop-blur-3xl"></div>
             
@@ -498,6 +498,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const goalsData = useMemo(() => {
       const safeBalance = balance || 0;
       const safeIncome = incomeData.currentMonth || 0;
+      const assetCount = portfolio.length;
       
       const levels = [
           { level: 1, name: 'Iniciante', target: 1000 },
@@ -520,12 +521,18 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
       const MIN_WAGE = 1412;
       const achievements = [
-          { id: 'start', label: 'Primeiro Aporte', sub: '> 0', icon: Wallet, unlocked: safeBalance > 0, color: 'text-emerald-500 bg-emerald-100 dark:bg-emerald-900/20' },
-          { id: 'income', label: 'Renda Viva', sub: 'Recebeu Div.', icon: CircleDollarSign, unlocked: safeIncome > 0, color: 'text-violet-500 bg-violet-100 dark:bg-violet-900/20' },
-          { id: '10k', label: 'Clube 10k', sub: 'Patrimônio', icon: Coins, unlocked: safeBalance >= 10000, color: 'text-amber-500 bg-amber-100 dark:bg-amber-900/20' },
-          { id: 'half', label: 'Meio Salário', sub: 'Renda Mensal', icon: Anchor, unlocked: safeIncome >= (MIN_WAGE/2), color: 'text-sky-500 bg-sky-100 dark:bg-sky-900/20' },
-          { id: '100k', label: 'Clube 100k', sub: 'Patrimônio', icon: Trophy, unlocked: safeBalance >= 100000, color: 'text-rose-500 bg-rose-100 dark:bg-rose-900/20' },
-          { id: 'wage', label: 'Liberdade I', sub: '1 Salário', icon: Crown, unlocked: safeIncome >= MIN_WAGE, color: 'text-yellow-500 bg-yellow-100 dark:bg-yellow-900/20' },
+          { id: 'start', label: 'Primeiro Aporte', sub: '> 0', icon: Wallet, unlocked: safeBalance > 0, gradient: 'from-emerald-400 to-teal-500' },
+          { id: '1k', label: 'Primeiros 1k', sub: 'Patrimônio', icon: Rocket, unlocked: safeBalance >= 1000, gradient: 'from-blue-400 to-indigo-500' },
+          { id: 'diverse', label: 'Diversificador', sub: '5 Ativos', icon: PieIcon, unlocked: assetCount >= 5, gradient: 'from-violet-400 to-fuchsia-500' },
+          { id: 'income', label: 'Renda Viva', sub: 'Recebeu Div.', icon: CircleDollarSign, unlocked: safeIncome > 0, gradient: 'from-amber-300 to-orange-500' },
+          { id: '10k', label: 'Clube 10k', sub: 'Patrimônio', icon: Coins, unlocked: safeBalance >= 10000, gradient: 'from-cyan-400 to-blue-500' },
+          { id: 'snowball', label: 'Bola de Neve', sub: '1 Mágico', icon: Sparkles, unlocked: magicReachedCount > 0, gradient: 'from-yellow-300 to-amber-500' },
+          { id: '100inc', label: 'FIIs de Elite', sub: 'R$100 Renda', icon: Building2, unlocked: safeIncome >= 100, gradient: 'from-rose-400 to-pink-500' },
+          { id: 'baron', label: 'Barão', sub: '50k', icon: Gem, unlocked: safeBalance >= 50000, gradient: 'from-purple-400 to-indigo-600' },
+          { id: 'half', label: 'Meio Salário', sub: 'Renda Mensal', icon: Anchor, unlocked: safeIncome >= (MIN_WAGE/2), gradient: 'from-teal-400 to-emerald-600' },
+          { id: '100k', label: 'Clube 100k', sub: 'Patrimônio', icon: Trophy, unlocked: safeBalance >= 100000, gradient: 'from-yellow-400 to-orange-600' },
+          { id: 'wage', label: 'Liberdade I', sub: '1 Salário', icon: Crown, unlocked: safeIncome >= MIN_WAGE, gradient: 'from-red-400 to-rose-600' },
+          { id: 'million', label: 'Milionário', sub: '1 Milhão', icon: HandCoins, unlocked: safeBalance >= 1000000, gradient: 'from-indigo-500 via-purple-500 to-pink-500' },
       ];
 
       return { 
@@ -534,7 +541,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           income: { current: safeIncome, target: safeIncome * 1.5 || 100 },
           freedom: { current: safeIncome, target: MIN_WAGE }
       };
-  }, [balance, incomeData.currentMonth]);
+  }, [balance, incomeData.currentMonth, portfolio.length, magicReachedCount]);
 
   return (
     <div className="space-y-4 pb-8">
@@ -668,6 +675,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         />
         
         <SwipeableModal isOpen={showAgenda} onClose={() => setShowAgenda(false)}>
+            {/* Same Agenda Content - kept truncated for brevity as requested */}
             <div className="p-4 h-full flex flex-col anim-slide-up">
                 <div className="flex items-center gap-3 mb-4 shrink-0">
                     <div className="w-10 h-10 rounded-2xl bg-violet-100 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 flex items-center justify-center">
@@ -722,6 +730,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </SwipeableModal>
 
         <SwipeableModal isOpen={showProventos} onClose={() => setShowProventos(false)}>
+            {/* Same Proventos Content */}
             <div className="p-4 h-full flex flex-col anim-slide-up">
                 <div className="flex items-center gap-3 mb-4 shrink-0">
                     <div className="w-10 h-10 rounded-2xl bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
@@ -797,6 +806,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </SwipeableModal>
 
         <SwipeableModal isOpen={showMagicNumber} onClose={() => setShowMagicNumber(false)}>
+            {/* Same Magic Number Content */}
             <div className="p-4 h-full flex flex-col anim-slide-up">
                 <div className="flex items-center gap-3 mb-4 shrink-0">
                     <div className="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
@@ -913,7 +923,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         </p>
                     </div>
 
-                    <div className="space-y-4 mb-6">
+                    <div className="space-y-4 mb-8">
                         <ProgressBar current={goalsData.income.current} target={goalsData.income.target} label="Meta de Renda Mensal" colorClass="bg-emerald-500" privacyMode={privacyMode} />
                         <ProgressBar current={balance} target={goalsData.nextLevel.target} label="Meta de Patrimônio" colorClass="bg-indigo-500" privacyMode={privacyMode} />
                         <ProgressBar current={goalsData.income.current} target={goalsData.freedom.target} label="Liberdade Financeira" colorClass="bg-amber-500" privacyMode={privacyMode} />
@@ -921,14 +931,24 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
                     <div>
                         <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3">Conquistas ({goalsData.unlockedCount}/{goalsData.achievements.length})</h3>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-3 gap-3">
                             {goalsData.achievements.map((achievement: any) => (
-                                <div key={achievement.id} className={`p-3 rounded-2xl border ${achievement.unlocked ? 'bg-white dark:bg-zinc-800 border-zinc-100 dark:border-zinc-700' : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 opacity-50'}`}>
-                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${achievement.unlocked ? achievement.color : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-400'}`}>
-                                        <achievement.icon className="w-4 h-4" />
+                                <div 
+                                    key={achievement.id} 
+                                    className={`relative aspect-square rounded-2xl flex flex-col items-center justify-center p-2 text-center transition-all duration-500 ${achievement.unlocked ? 'bg-gradient-to-br shadow-lg border-transparent text-white scale-[1.02]' : 'bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800 text-zinc-300 dark:text-zinc-600 grayscale'}`}
+                                    style={{
+                                        backgroundImage: achievement.unlocked ? `linear-gradient(135deg, var(--tw-gradient-stops))` : 'none',
+                                    }}
+                                >
+                                    <div className={`mb-1.5 ${achievement.gradient}`}>
+                                        {achievement.unlocked ? (
+                                            <achievement.icon className="w-6 h-6 drop-shadow-md" strokeWidth={2} />
+                                        ) : (
+                                            <Lock className="w-5 h-5" strokeWidth={1.5} />
+                                        )}
                                     </div>
-                                    <h4 className="text-xs font-bold text-zinc-900 dark:text-white">{achievement.label}</h4>
-                                    <p className="text-[10px] text-zinc-500">{achievement.sub}</p>
+                                    <h4 className={`text-[10px] font-bold leading-tight ${achievement.unlocked ? 'text-white' : 'text-zinc-400 dark:text-zinc-500'}`}>{achievement.label}</h4>
+                                    <p className={`text-[8px] font-medium mt-0.5 ${achievement.unlocked ? 'text-white/80' : 'text-zinc-300 dark:text-zinc-600'}`}>{achievement.sub}</p>
                                 </div>
                             ))}
                         </div>
@@ -938,6 +958,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </SwipeableModal>
 
         <SwipeableModal isOpen={showAllocation} onClose={() => setShowAllocation(false)}>
+            {/* Same Allocation Content */}
             <div className="p-4 h-full flex flex-col anim-slide-up">
                 <div className="flex items-center gap-3 mb-4 shrink-0">
                     <div className="w-10 h-10 rounded-2xl bg-sky-100 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 flex items-center justify-center">
