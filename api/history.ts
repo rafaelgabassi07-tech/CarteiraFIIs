@@ -1,3 +1,4 @@
+
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import axios from 'axios';
 import https from 'https';
@@ -81,7 +82,14 @@ async function fetchBcbSeries(seriesCode: number, startDate: Date) {
     const url = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.${seriesCode}/dados?formato=json&dataInicial=${startStr}&dataFinal=${endStr}`;
     
     try {
-        const { data } = await axios.get(url, { httpsAgent, timeout: 6000 });
+        const { data } = await axios.get(url, { 
+            httpsAgent, 
+            timeout: 8000,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'application/json'
+            }
+        });
         // Retorna Map: "YYYY-MM-DD" -> valor
         const map = new Map<string, number>();
         if (Array.isArray(data)) {
@@ -129,7 +137,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             const map = new Map<string, number>();
             if (!data) return map;
             data.timestamps.forEach((t: number, i: number) => {
-                const dateKey = new Date(t * 1000).toISOString().split('T')[0];
+                // Conversão de data do Yahoo (UTC) para Local Date string (YYYY-MM-DD)
+                // Usando offset manual para garantir que caia no dia correto no Brasil
+                // Isso evita o erro de "Off-by-one" onde o CDI do dia X não casava com o preço do dia X
+                const dateObj = new Date(t * 1000);
+                dateObj.setHours(dateObj.getHours() - 3); // Ajuste simples para BRT
+                const dateKey = dateObj.toISOString().split('T')[0];
+                
                 if (data.prices[i] !== null) {
                     map.set(dateKey, data.prices[i]);
                 }
@@ -144,8 +158,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const points = [];
         const { timestamps, prices, opens, highs, lows } = assetData;
         
-        // Find Valid Start Prices (First Non-Null)
-        // Isso corrige o problema onde o primeiro dia do array é null (comum no Yahoo)
         const getFirstValidPrice = (arr: (number|null)[]) => arr ? arr.find(p => p !== null && p !== undefined && p > 0) || 0 : 0;
         
         const startPrice = getFirstValidPrice(prices);
@@ -156,19 +168,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         let accCdi = 1.0;
         let accIpca = 1.0;
         
-        // Helpers for fill forward
         let lastIbovPct = 0;
         let lastIfixPct = 0;
         
+        const toDateKey = (ts: number) => {
+            const date = new Date(ts * 1000);
+            date.setHours(date.getHours() - 3); 
+            return date.toISOString().split('T')[0];
+        };
+
         for (let i = 0; i < timestamps.length; i++) {
             const price = prices[i];
             
-            // Pula pontos nulos do ativo principal, mas mantém a timeline do CDI/IPCA se possível
-            // Simplificação: só adiciona ponto se tiver preço do ativo
             if (price === null) continue;
 
+            const dateKey = toDateKey(timestamps[i]);
             const dateObj = new Date(timestamps[i] * 1000);
-            const dateKey = dateObj.toISOString().split('T')[0];
             
             // --- CDI ACCUMULATION (Daily) ---
             const cdiRate = cdiMap.get(dateKey);
@@ -179,7 +194,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             // --- IPCA ACCUMULATION (Interpolated) ---
             const monthKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-01`;
             const monthRate = ipcaMap.get(monthKey);
-            let ipcaDailyFactor = 1.00015; // default fallback ~0.3% mo
+            let ipcaDailyFactor = 1.00015; 
             
             if (monthRate !== undefined) {
                 ipcaDailyFactor = Math.pow(1 + (monthRate / 100), 1 / 21);
@@ -205,7 +220,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 if (ibovPrice !== undefined) {
                     point.ibovPct = ((ibovPrice - startIbov) / startIbov) * 100;
                     lastIbovPct = point.ibovPct;
-                } else point.ibovPct = lastIbovPct; // Fill forward
+                } else point.ibovPct = lastIbovPct;
             } else point.ibovPct = 0;
 
             // IFIX %
@@ -214,10 +229,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 if (ifixPrice !== undefined) {
                     point.ifixPct = ((ifixPrice - startIfix) / startIfix) * 100;
                     lastIfixPct = point.ifixPct;
-                } else point.ifixPct = lastIfixPct; // Fill forward
+                } else point.ifixPct = lastIfixPct;
             } else point.ifixPct = null;
 
-            // CDI & IPCA % (Based on Accumulation)
+            // CDI & IPCA %
             point.cdiPct = (accCdi - 1) * 100;
             point.ipcaPct = (accIpca - 1) * 100;
 
@@ -231,7 +246,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             const baseIbov = points[0].ibovPct;
             const baseIfix = points[0].ifixPct || 0;
             
-            // Fatores de ajuste baseados no primeiro ponto visível do gráfico
             const valCdi0 = 1 + (baseCdi / 100);
             const valIpca0 = 1 + (baseIpca / 100);
             const valIbov0 = 1 + (baseIbov / 100);
