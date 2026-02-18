@@ -36,10 +36,15 @@ const getMonthLabel = (dateStr: string) => {
 const calculateSMA = (arr: any[], period: number, idx: number) => {
     if (idx < period - 1) return null;
     let sum = 0;
+    let count = 0;
     for (let i = 0; i < period; i++) {
-        sum += arr[idx - i].close || arr[idx - i].price;
+        const val = arr[idx - i].close || arr[idx - i].price;
+        if (val !== null && val !== undefined) {
+            sum += val;
+            count++;
+        }
     }
-    return sum / period;
+    return count === period ? sum / period : null;
 };
 
 // Filter data by Range (Local processing)
@@ -67,19 +72,27 @@ const processChartData = (data: any[]) => {
     let minPrice = Infinity;
     let maxPrice = -Infinity;
 
+    // First pass: find min/max for domain
     data.forEach((d: any) => {
-        const low = d.low || d.price;
-        const high = d.high || d.price;
-        if (low < minPrice) minPrice = low;
+        const price = d.close || d.price || 0;
+        const low = d.low || price;
+        const high = d.high || price;
+        
+        if (low > 0 && low < minPrice) minPrice = low;
         if (high > maxPrice) maxPrice = high;
     });
 
+    if (minPrice === Infinity) minPrice = 0;
+    if (maxPrice === -Infinity) maxPrice = 100;
+
     const processed = data.map((d: any, index: number, arr: any[]) => {
-        const price = d.close || d.price;
-        const low = d.low || price;
-        const high = d.high || price;
-        const open = d.open || price;
-        const close = d.close || price;
+        const price = d.close || d.price || 0;
+        // Fallback robusto: se não tiver OHLC, usa o preço de fechamento para tudo
+        const open = d.open ?? price;
+        const high = d.high ?? price;
+        const low = d.low ?? price;
+        const close = d.close ?? price;
+        
         const isUp = close >= open;
         
         return {
@@ -93,43 +106,81 @@ const processChartData = (data: any[]) => {
         };
     });
 
-    const padding = (maxPrice - minPrice) * 0.05;
-    const first = data[0].close || data[0].price;
-    const last = data[data.length - 1].close || data[data.length - 1].price;
-    const variation = ((last - first) / first) * 100;
+    // Add padding to Y axis so candles don't touch the edges
+    const padding = (maxPrice - minPrice) * 0.1;
+    const first = data[0]?.close || data[0]?.price || 0;
+    const last = data[data.length - 1]?.close || data[data.length - 1]?.price || 0;
+    const variation = first > 0 ? ((last - first) / first) * 100 : 0;
 
     return { 
         processedData: processed, 
-        yDomain: [minPrice - padding, maxPrice + padding],
+        yDomain: [Math.max(0, minPrice - padding), maxPrice + padding],
         variation,
         lastPrice: last
     };
 };
 
+// Componente Visual do Candle (CORRIGIDO)
 const CustomCandleShape = (props: any) => {
     const { x, y, width, height, payload } = props;
     const { open, close, high, low } = payload.candleData || {};
     
+    // Se faltar dados, não renderiza
     if (open == null || close == null || high == null || low == null) return null;
 
     const isUp = close >= open;
     const color = isUp ? '#10b981' : '#f43f5e'; 
+    const strokeWidth = 1.5;
+
+    // Recharts Bar passa 'y' como o topo da barra (valor High) e 'height' como a altura total (High - Low)
+    // Precisamos calcular a posição do corpo (Open/Close) relativo a isso.
     
-    const yRatio = height / (high - low || 1); 
+    const range = high - low;
+    if (range === 0) {
+        // Doji perfeito (High == Low == Open == Close) ou dados faltantes
+        // Desenha apenas um traço horizontal
+        return (
+             <line 
+                x1={x} y1={y + height / 2} 
+                x2={x + width} y2={y + height / 2} 
+                stroke={color} strokeWidth={2} 
+            />
+        );
+    }
+
+    const ratio = height / range;
+
+    // Coordenadas Y relativas ao SVG container
+    // y = posição pixel do High
+    // y + height = posição pixel do Low
     
-    const candleTop = y + (high - Math.max(open, close)) * yRatio;
-    const candleHeight = Math.max(2, Math.abs(open - close) * yRatio);
-    const wickTop = y;
-    const wickBottom = y + height;
+    const bodyTopPrice = Math.max(open, close);
+    const bodyBottomPrice = Math.min(open, close);
     
-    const candleWidth = Math.max(2, width * 0.6);
-    const xCentered = x + (width - candleWidth) / 2;
+    const bodyTopY = y + (high - bodyTopPrice) * ratio;
+    const bodyHeight = Math.max(1, (bodyTopPrice - bodyBottomPrice) * ratio); // Min 1px height
+
+    // Centraliza o pavio e o corpo
+    // Garante largura mínima para visualização em mobile
+    const safeWidth = Math.max(2, width * 0.7); 
+    const xCentered = x + (width - safeWidth) / 2;
     const wickX = x + width / 2;
 
     return (
         <g>
-            <line x1={wickX} y1={wickTop} x2={wickX} y2={wickBottom} stroke={color} strokeWidth={1.5} />
-            <rect x={xCentered} y={candleTop} width={candleWidth} height={candleHeight} fill={color} rx={1} />
+            {/* Pavio (High to Low) */}
+            <line x1={wickX} y1={y} x2={wickX} y2={y + height} stroke={color} strokeWidth={strokeWidth} />
+            
+            {/* Corpo (Open to Close) */}
+            <rect 
+                x={xCentered} 
+                y={bodyTopY} 
+                width={safeWidth} 
+                height={bodyHeight} 
+                fill={color} 
+                stroke={color}
+                strokeWidth={0} // O preenchimento já dá a cor
+            />
         </g>
     );
 };
@@ -326,11 +377,18 @@ const PriceHistoryChart = ({ fullData, loading, error, ticker }: any) => {
                                         activeDot={{ r: 4, strokeWidth: 0, fill: isPositive ? '#10b981' : '#f43f5e' }}
                                     />
                                 ) : (
-                                    <Bar yAxisId="price" dataKey={(d) => [d.low, d.high]} shape={<CustomCandleShape />} isAnimationActive={true} animationDuration={1000} />
+                                    /* Passamos [low, high] para o Recharts calcular a escala Y, mas o shape cuida do corpo */
+                                    <Bar 
+                                        yAxisId="price" 
+                                        dataKey={(d) => [d.low, d.high]} 
+                                        shape={<CustomCandleShape />} 
+                                        isAnimationActive={true} 
+                                        animationDuration={1000} 
+                                    />
                                 )}
 
-                                {indicators.sma20 && <Line yAxisId="price" type="monotone" dataKey="sma20" stroke="#f59e0b" strokeWidth={1.5} dot={false} animationDuration={1500} />}
-                                {indicators.sma50 && <Line yAxisId="price" type="monotone" dataKey="sma50" stroke="#8b5cf6" strokeWidth={1.5} dot={false} animationDuration={1500} />}
+                                {indicators.sma20 && <Line yAxisId="price" type="monotone" dataKey="sma20" stroke="#f59e0b" strokeWidth={1.5} dot={false} connectNulls animationDuration={1500} />}
+                                {indicators.sma50 && <Line yAxisId="price" type="monotone" dataKey="sma50" stroke="#8b5cf6" strokeWidth={1.5} dot={false} connectNulls animationDuration={1500} />}
                             </ComposedChart>
                         </ResponsiveContainer>
                     </>
@@ -412,26 +470,38 @@ const ComparativeChart = ({ fullData, loading, ticker, type }: any) => {
                                 width={35}
                                 tickFormatter={(val) => `${val.toFixed(0)}%`}
                             />
+                            <ReferenceLine y={0} stroke="#71717a" strokeOpacity={0.3} strokeWidth={1} />
                             <Tooltip 
-                                contentStyle={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(24, 24, 27, 0.8)', color: '#fff', fontSize: '11px', padding: '8px 12px', backdropFilter: 'blur(8px)' }}
+                                contentStyle={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '11px', padding: '10px', backdropFilter: 'blur(8px)' }}
                                 labelFormatter={(label) => new Date(label).toLocaleDateString('pt-BR')}
+                                itemSorter={(item) => -(item.value as number)}
                                 formatter={(value: number, name: string) => {
                                     const formattedVal = `${value.toFixed(2)}%`;
-                                    if (name === 'assetPct') return [formattedVal, ticker];
-                                    if (name === 'ibovPct') return [formattedVal, 'IBOV'];
-                                    if (name === 'ifixPct') return [formattedVal, 'IFIX'];
-                                    if (name === 'cdiPct') return [formattedVal, 'CDI'];
-                                    if (name === 'ipcaPct') return [formattedVal, 'IPCA'];
-                                    return [formattedVal, name];
+                                    let color = '#fff';
+                                    let label = name;
+                                    
+                                    if (name === 'assetPct') { label = ticker; color = '#6366f1'; }
+                                    if (name === 'ibovPct') { label = 'IBOV'; color = '#f59e0b'; }
+                                    if (name === 'ifixPct') { label = 'IFIX'; color = '#10b981'; }
+                                    if (name === 'cdiPct') { label = 'CDI'; color = '#52525b'; }
+                                    if (name === 'ipcaPct') { label = 'IPCA'; color = '#06b6d4'; }
+
+                                    return [
+                                        <span className="font-bold tabular-nums" style={{color}}>{formattedVal}</span>,
+                                        <span className="flex items-center gap-1.5 text-zinc-400">
+                                            <span className="w-1.5 h-1.5 rounded-full" style={{backgroundColor: color}}></span>
+                                            {label}
+                                        </span>
+                                    ];
                                 }}
                             />
                             
-                            {visibleBenchmarks.CDI && <Line type="monotone" dataKey="cdiPct" stroke="#52525b" strokeWidth={1.5} dot={false} strokeDasharray="2 2" animationDuration={1000} />}
-                            {visibleBenchmarks.IPCA && <Line type="monotone" dataKey="ipcaPct" stroke="#06b6d4" strokeWidth={1.5} dot={false} strokeDasharray="2 2" animationDuration={1000} />}
-                            {visibleBenchmarks.IBOV && <Line type="monotone" dataKey="ibovPct" stroke="#f59e0b" strokeWidth={1.5} dot={false} animationDuration={1000} />}
-                            {visibleBenchmarks.IFIX && <Line type="monotone" dataKey="ifixPct" stroke="#10b981" strokeWidth={1.5} dot={false} animationDuration={1000} />}
+                            {visibleBenchmarks.CDI && <Line type="monotone" dataKey="cdiPct" stroke="#52525b" strokeWidth={1.5} dot={false} connectNulls strokeDasharray="3 3" animationDuration={1000} />}
+                            {visibleBenchmarks.IPCA && <Line type="monotone" dataKey="ipcaPct" stroke="#06b6d4" strokeWidth={1.5} dot={false} connectNulls strokeDasharray="3 3" animationDuration={1000} />}
+                            {visibleBenchmarks.IBOV && <Line type="monotone" dataKey="ibovPct" stroke="#f59e0b" strokeWidth={1.5} dot={false} connectNulls animationDuration={1000} />}
+                            {visibleBenchmarks.IFIX && <Line type="monotone" dataKey="ifixPct" stroke="#10b981" strokeWidth={1.5} dot={false} connectNulls animationDuration={1000} />}
                             
-                            <Line type="monotone" dataKey="assetPct" stroke="#6366f1" strokeWidth={2.5} dot={false} animationDuration={1500} animationEasing="ease-out" activeDot={{ r: 5, strokeWidth: 0, fill: '#6366f1' }} />
+                            <Line type="monotone" dataKey="assetPct" stroke="#6366f1" strokeWidth={2.5} dot={false} connectNulls animationDuration={1500} animationEasing="ease-out" activeDot={{ r: 5, strokeWidth: 0, fill: '#6366f1' }} />
                         </LineChart>
                     </ResponsiveContainer>
                 )}
