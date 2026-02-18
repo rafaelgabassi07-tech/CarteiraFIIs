@@ -496,9 +496,9 @@ export const Portfolio: React.FC<PortfolioProps> = ({ portfolio, dividends, mark
                                     <span className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter">
                                         {formatBRL(selectedAsset.currentPrice)}
                                     </span>
-                                    {selectedAsset.dailyChange !== 0 && (
-                                        <span className={`px-2 py-1 rounded-lg text-[10px] font-black flex items-center gap-1 ${selectedAsset.dailyChange > 0 ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400'}`}>
-                                            {selectedAsset.dailyChange > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                                    {(selectedAsset.dailyChange || 0) !== 0 && (
+                                        <span className={`px-2 py-1 rounded-lg text-[10px] font-black flex items-center gap-1 ${(selectedAsset.dailyChange || 0) > 0 ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400'}`}>
+                                            {(selectedAsset.dailyChange || 0) > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                                             {Math.abs(selectedAsset.dailyChange || 0).toFixed(2)}%
                                         </span>
                                     )}
@@ -587,7 +587,7 @@ export const Portfolio: React.FC<PortfolioProps> = ({ portfolio, dividends, mark
                                 </div>
                                 <div>
                                     <p className="text-[10px] text-zinc-400 uppercase font-bold mb-1">Valor Atual</p>
-                                    <p className="text-lg font-bold">{formatBRL(selectedAsset.currentPrice * selectedAsset.quantity, privacyMode)}</p>
+                                    <p className="text-lg font-bold">{formatBRL((selectedAsset.currentPrice || 0) * selectedAsset.quantity, privacyMode)}</p>
                                     <div className={`flex items-center gap-1 text-[10px] font-bold ${((selectedAsset.currentPrice || 0) - selectedAsset.averagePrice) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                                         {((selectedAsset.currentPrice || 0) - selectedAsset.averagePrice) >= 0 ? '+' : ''}
                                         {formatBRL(((selectedAsset.currentPrice || 0) - selectedAsset.averagePrice) * selectedAsset.quantity, privacyMode)}
