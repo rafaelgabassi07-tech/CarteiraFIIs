@@ -25,7 +25,7 @@ const TYPE_LABELS: Record<string, string> = {
     'OUTROS': 'Outros'
 };
 
-const CHART_COLORS = ['#10b981', '#0ea5e9', '#f59e0b', '#f43f5e', '#8b5cf6', '#6366f1', '#ec4899', '#14b8a6', '#d946ef', '#84cc16'];
+const CHART_COLORS = ['#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e', '#f59e0b', '#10b981'];
 
 // --- SUB-COMPONENTS & HELPERS ---
 
@@ -239,7 +239,7 @@ const ComparativeChart = ({ data, loading, ticker, type, range, setRange }: any)
     });
 
     const toggleBenchmark = (key: string) => {
-        setVisibleBenchmarks(prev => ({ ...prev, [key]: !prev[key as keyof typeof prev] }));
+        setVisibleBenchmarks(prev => ({ ...prev, [key]: !prev[key] }));
     };
 
     return (
@@ -477,55 +477,6 @@ const SimulatorCard = ({ data, ticker, dividends = [] }: any) => {
                 </div>
             )}
         </div>
-    );
-};
-
-const ChartsContainer = ({ ticker, type, asset, marketDividends = [] }: { ticker: string, type: AssetType, asset: AssetPosition, marketDividends?: DividendReceipt[] }) => {
-    const [range, setRange] = useState('1Y');
-    const [historyData, setHistoryData] = useState<any[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-
-    useEffect(() => {
-        const fetchHistory = async () => {
-            setLoading(true);
-            setError(null);
-            try {
-                const res = await fetch(`/api/history?ticker=${ticker}&range=${range}`);
-                if (!res.ok) throw new Error('Falha ao carregar gráfico');
-                const data = await res.json();
-                if (data.points) setHistoryData(data.points);
-            } catch (err) {
-                setError('Dados indisponíveis');
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchHistory();
-    }, [ticker, range]);
-
-    return (
-        <>
-            <PriceHistoryChart 
-                data={historyData} 
-                loading={loading} 
-                error={error} 
-                ticker={ticker} 
-                range={range} 
-                setRange={setRange} 
-            />
-            
-            <ComparativeChart 
-                data={historyData} 
-                loading={loading} 
-                ticker={ticker} 
-                type={type}
-                range={range}
-                setRange={setRange}
-            />
-
-            <SimulatorCard data={historyData} ticker={ticker} dividends={marketDividends} />
-        </>
     );
 };
 
@@ -816,6 +767,60 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: { asset: Ass
     );
 };
 
+const ChartsContainer = ({ ticker, type, marketDividends }: { ticker: string, type: AssetType, asset: AssetPosition, marketDividends: DividendReceipt[] }) => {
+    const [range, setRange] = useState('1Y');
+    const [historyData, setHistoryData] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
+
+    useEffect(() => {
+        let mounted = true;
+        const fetchData = async () => {
+            setLoading(true);
+            setError(false);
+            try {
+                const res = await fetch(`/api/history?ticker=${ticker}&range=${range}`);
+                if (!res.ok) throw new Error('Failed to fetch history');
+                const json = await res.json();
+                if (mounted) setHistoryData(json.points || []);
+            } catch (e) {
+                console.error(e);
+                if (mounted) setError(true);
+            } finally {
+                if (mounted) setLoading(false);
+            }
+        };
+        fetchData();
+        return () => { mounted = false; };
+    }, [ticker, range]);
+
+    return (
+        <div className="space-y-6">
+            <PriceHistoryChart 
+                data={historyData} 
+                loading={loading} 
+                error={error} 
+                ticker={ticker} 
+                range={range} 
+                setRange={setRange} 
+            />
+            <ComparativeChart 
+                data={historyData} 
+                loading={loading} 
+                ticker={ticker} 
+                type={type} 
+                range={range} 
+                setRange={setRange} 
+            />
+            <SimulatorCard 
+                data={historyData} 
+                ticker={ticker} 
+                dividends={marketDividends} 
+            />
+        </div>
+    );
+};
+
 const PortfolioHeader = ({ totalBalance, totalInvested, privacyMode }: { totalBalance: number, totalInvested: number, privacyMode: boolean }) => {
     const gain = totalBalance - totalInvested;
     const gainPct = totalInvested > 0 ? (gain / totalInvested) * 100 : 0;
@@ -1015,9 +1020,18 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
         if (!selectedAsset?.properties) return [];
         const counts: Record<string, number> = {};
         selectedAsset.properties.forEach(p => {
-            const loc = p.location ? p.location.split('-')[0].trim().substring(0, 2).toUpperCase() : 'ND';
+            let loc = 'ND';
+            if (p.location) {
+                // Tenta pegar os primeiros 2 caracteres como sigla
+                const firstTwo = p.location.trim().substring(0, 2).toUpperCase();
+                // Lista de UFs válidas
+                const ufs = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
+                if (ufs.includes(firstTwo)) loc = firstTwo;
+                else loc = p.location; // Fallback
+            }
             counts[loc] = (counts[loc] || 0) + 1;
         });
+        
         return Object.entries(counts)
             .map(([name, value], idx) => ({ 
                 name, 
@@ -1115,7 +1129,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                                             <div className="flex items-center justify-between mb-4">
                                                 <div className="flex items-center gap-2">
                                                     <MapIcon className="w-4 h-4 text-zinc-400" />
-                                                    <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Mapa de Imóveis</h3>
+                                                    <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Portfólio Imobiliário</h3>
                                                 </div>
                                                 <span className="text-[9px] font-bold text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded-full uppercase tracking-wider">
                                                     {selectedAsset.properties.length} Imóveis
@@ -1124,48 +1138,63 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
 
                                             {/* CAROUSEL: GRÁFICO + MAPA */}
                                             <div className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar pb-6 -mx-4 px-4">
-                                                {/* Slide 1: Gráfico */}
-                                                <div className="min-w-full snap-center flex items-center justify-center h-56 relative">
-                                                    <div className="absolute top-2 left-0 z-10 px-2 py-1 bg-white/80 dark:bg-black/50 rounded-lg backdrop-blur-sm text-[9px] font-bold uppercase text-zinc-500">
-                                                        Distribuição
+                                                {/* Slide 1: Gráfico Donut (Estilo Moderno) */}
+                                                <div className="min-w-full snap-center flex flex-col items-center justify-center h-64 relative">
+                                                    <div className="absolute top-0 left-0 z-10 px-2 py-1 bg-white/80 dark:bg-black/50 rounded-lg backdrop-blur-sm text-[9px] font-bold uppercase text-zinc-500">
+                                                        Distribuição Geográfica
                                                     </div>
-                                                    <ResponsiveContainer width="100%" height="100%">
-                                                        <RePieChart>
-                                                            <Pie
-                                                                data={propertyStats}
-                                                                innerRadius={50}
-                                                                outerRadius={70}
-                                                                paddingAngle={5}
-                                                                dataKey="value"
-                                                            >
-                                                                {propertyStats.map((entry, index) => (
-                                                                    <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
-                                                                ))}
-                                                            </Pie>
-                                                            <Tooltip 
-                                                                contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: 'rgba(24, 24, 27, 0.95)', color: '#fff', fontSize: '10px', padding: '8px 12px' }}
-                                                            />
-                                                            <Legend 
-                                                                layout="vertical" 
-                                                                verticalAlign="middle" 
-                                                                align="right"
-                                                                iconType="circle"
-                                                                iconSize={6}
-                                                                formatter={(val, entry: any) => <span className="text-[10px] font-bold text-zinc-500 ml-1">{val} ({entry.payload.value})</span>}
-                                                            />
-                                                        </RePieChart>
-                                                    </ResponsiveContainer>
+                                                    <div className="h-full w-full relative">
+                                                        <ResponsiveContainer width="100%" height="100%">
+                                                            <RePieChart>
+                                                                <Pie
+                                                                    data={propertyStats}
+                                                                    innerRadius={60}
+                                                                    outerRadius={80}
+                                                                    paddingAngle={4}
+                                                                    dataKey="value"
+                                                                    cornerRadius={4}
+                                                                >
+                                                                    {propertyStats.map((entry, index) => (
+                                                                        <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
+                                                                    ))}
+                                                                    {/* Label central com total */}
+                                                                    <Label 
+                                                                        value={selectedAsset.properties?.length} 
+                                                                        position="center" 
+                                                                        className="text-3xl font-black fill-zinc-900 dark:fill-white" 
+                                                                    />
+                                                                </Pie>
+                                                                <Tooltip 
+                                                                    contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: 'rgba(24, 24, 27, 0.95)', color: '#fff', fontSize: '10px', padding: '8px 12px' }}
+                                                                />
+                                                                <Legend 
+                                                                    layout="vertical" 
+                                                                    verticalAlign="middle" 
+                                                                    align="right"
+                                                                    iconType="circle"
+                                                                    iconSize={8}
+                                                                    formatter={(val, entry: any) => <span className="text-[10px] font-bold text-zinc-500 ml-1">{val} ({entry.payload.value})</span>}
+                                                                />
+                                                            </RePieChart>
+                                                        </ResponsiveContainer>
+                                                        {/* Texto Total abaixo do Label (workaround recharts) */}
+                                                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 mt-4 text-[9px] font-bold text-zinc-400 uppercase tracking-widest pointer-events-none">
+                                                            Total
+                                                        </div>
+                                                    </div>
                                                 </div>
 
                                                 {/* Slide 2: Mapa */}
-                                                <div className="min-w-full snap-center h-56 relative">
-                                                    <div className="absolute top-2 left-0 z-10 px-2 py-1 bg-white/80 dark:bg-black/50 rounded-lg backdrop-blur-sm text-[9px] font-bold uppercase text-zinc-500">
-                                                        Geolocalização
+                                                <div className="min-w-full snap-center h-64 relative flex items-center justify-center">
+                                                    <div className="absolute top-0 left-0 z-10 px-2 py-1 bg-white/80 dark:bg-black/50 rounded-lg backdrop-blur-sm text-[9px] font-bold uppercase text-zinc-500">
+                                                        Mapa de Calor
                                                     </div>
-                                                    <BrazilMap 
-                                                        data={selectedAsset.properties.map(p => ({ name: p.location || '', value: 1 }))} 
-                                                        totalProperties={selectedAsset.properties.length} 
-                                                    />
+                                                    <div className="w-full h-full p-2">
+                                                        <BrazilMap 
+                                                            data={selectedAsset.properties.map(p => ({ name: p.location || '', value: 1 }))} 
+                                                            totalProperties={selectedAsset.properties.length} 
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
 
@@ -1175,14 +1204,47 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                                                 <div className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-700"></div>
                                             </div>
 
-                                            <div className="space-y-2 border-t border-zinc-100 dark:border-zinc-800 pt-4">
-                                                {selectedAsset.properties.slice(0, 5).map((prop, idx) => (
-                                                    <div key={idx} className="flex justify-between items-center text-xs p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl">
-                                                        <span className="font-bold text-zinc-700 dark:text-zinc-300 truncate max-w-[70%]">{prop.name}</span>
-                                                        <span className="text-[10px] font-black text-zinc-400 bg-white dark:bg-zinc-800 px-2 py-1 rounded-lg border border-zinc-100 dark:border-zinc-700 uppercase">{prop.location || 'BR'}</span>
+                                            {/* LISTA DE PROPRIEDADES (Estilo Card Real Estate) */}
+                                            <div className="space-y-3 border-t border-zinc-100 dark:border-zinc-800 pt-4">
+                                                <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2 px-1">Lista de Ativos</h4>
+                                                
+                                                {selectedAsset.properties.slice(0, 10).map((prop, idx) => (
+                                                    <div key={idx} className="flex gap-3 p-3 bg-zinc-50 dark:bg-zinc-800/30 rounded-2xl border border-zinc-100 dark:border-zinc-800 hover:bg-white dark:hover:bg-zinc-800 transition-colors group">
+                                                        {/* Icon Box */}
+                                                        <div className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-800 flex items-center justify-center shrink-0 border border-zinc-200 dark:border-zinc-700 text-zinc-400 group-hover:text-indigo-500 group-hover:border-indigo-200 dark:group-hover:border-indigo-900 transition-colors">
+                                                            <Building2 className="w-5 h-5" strokeWidth={1.5} />
+                                                        </div>
+                                                        
+                                                        {/* Content */}
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex justify-between items-start mb-1">
+                                                                <span className="font-bold text-xs text-zinc-900 dark:text-white truncate max-w-[80%] leading-tight block">
+                                                                    {prop.name}
+                                                                </span>
+                                                                {prop.location && (
+                                                                    <span className="text-[9px] font-black text-zinc-500 bg-white dark:bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-700 uppercase">
+                                                                        {prop.location.substring(0, 2)}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            
+                                                            <div className="flex items-center gap-3">
+                                                                {prop.abl && (
+                                                                    <div className="flex items-center gap-1 text-[9px] text-zinc-400">
+                                                                        <SquareStack className="w-3 h-3" />
+                                                                        <span>{prop.abl} m²</span>
+                                                                    </div>
+                                                                )}
+                                                                <div className="flex items-center gap-1 text-[9px] text-zinc-400">
+                                                                    <MapPin className="w-3 h-3" />
+                                                                    <span>{prop.location || 'Brasil'}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 ))}
-                                                {selectedAsset.properties.length > 5 && (
+                                                
+                                                {selectedAsset.properties.length > 10 && (
                                                     <button className="w-full py-3 text-[10px] font-bold text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors uppercase tracking-widest bg-zinc-50 dark:bg-zinc-800/30 rounded-xl mt-2">
                                                         Ver todos ({selectedAsset.properties.length})
                                                     </button>
