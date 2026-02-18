@@ -434,7 +434,7 @@ const PriceHistoryChart = ({ fullData, loading, error, ticker, range, onRangeCha
             </div>
         </div>
 
-        <SwipeableModal isOpen={showFilterModal} onClose={() => setShowFilterModal(false)}>
+        <SwipeableModal isOpen={showFilterModal} onClose={() => setShowFilterModal(false)} className="h-[50dvh]">
             <div className="p-4">
                 <div className="flex items-center gap-3 mb-6">
                     <div className="w-10 h-10 rounded-2xl bg-indigo-100 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
@@ -840,9 +840,22 @@ const ValuationCard = ({ asset }: { asset: AssetPosition }) => {
     const lpa = asset.lpa ?? 0;
     const vpa = asset.vpa ?? 0;
     
-    if (asset.assetType === AssetType.STOCK && lpa > 0 && vpa > 0) {
-        fairPrice = Math.sqrt(22.5 * lpa * vpa);
+    // Lógica Específica por Tipo de Ativo
+    if (asset.assetType === AssetType.STOCK) {
+        // Graham (VPA * LPA * 22.5)
+        if (lpa > 0 && vpa > 0) {
+            fairPrice = Math.sqrt(22.5 * lpa * vpa);
+        }
+    } else if (asset.assetType === AssetType.FII) {
+        // Bazin (Dividend Discount Model simplificado para FIIs - Cap Rate 6%)
+        // Prioriza DY anualizado, senão usa último rendimento * 12
+        const dividend = (asset.dy_12m && asset.dy_12m > 0) 
+            ? (asset.dy_12m/100) * (asset.currentPrice || 0) 
+            : (asset.last_dividend || 0) * 12;
+            
+        if (dividend > 0) fairPrice = dividend / 0.06;
     } else if (asset.dy_12m && asset.currentPrice) {
+         // Fallback genérico (Bazin)
          const dividend = (asset.dy_12m/100) * asset.currentPrice;
          fairPrice = dividend / 0.06;
     }
@@ -866,7 +879,7 @@ const ValuationCard = ({ asset }: { asset: AssetPosition }) => {
                 </div>
             </div>
             <p className="text-[9px] text-zinc-400 mt-2 leading-relaxed">
-                *Estimativa baseada em {asset.assetType === AssetType.STOCK ? 'Graham (VPA*LPA)' : 'Bazin (Dividendos)'}. Não é recomendação de compra.
+                *Estimativa baseada em {asset.assetType === AssetType.STOCK ? 'Graham (VPA*LPA)' : 'Bazin (Div/0.06)'}. Não é recomendação de compra.
             </p>
         </CollapsibleCard>
     );
@@ -886,7 +899,7 @@ const DetailedInfoBlock = ({ asset }: { asset: AssetPosition }) => {
     return (
         <>
             {/* Dados Gerais */}
-            <CollapsibleCard title="Dados Corporativos" icon={FileText} defaultOpen={true}>
+            <CollapsibleCard title="Dados Corporativos" icon={FileText}>
                 <InfoRow label="Razão Social" value={asset.company_name} />
                 <InfoRow label="CNPJ" value={asset.cnpj} />
                 <InfoRow label="Segmento" value={asset.segment} />
