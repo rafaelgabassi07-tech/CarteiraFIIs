@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, BarChart3, PieChart, Coins, DollarSign, Building2, FileText, MapPin, Zap, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, SquareStack, Map as MapIcon, CandlestickChart, LineChart as LineChartIcon, Award, RefreshCcw, ArrowLeft } from 'lucide-react';
+import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, BarChart3, PieChart, Coins, DollarSign, Building2, FileText, MapPin, Zap, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, SquareStack, Map as MapIcon, CandlestickChart, LineChart as LineChartIcon, Award, RefreshCcw, ArrowLeft, Briefcase, MoreHorizontal, LayoutGrid, List } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, ReferenceLine, ComposedChart, CartesianGrid, AreaChart, Area, YAxis, PieChart as RePieChart, Pie, Cell, LineChart, Line, Label, Legend } from 'recharts';
 import { formatBRL, formatDateShort, getMonthName } from '../utils/formatters';
@@ -981,6 +981,83 @@ interface PortfolioProps {
   onClearTarget: () => void;
 }
 
+// Novo Card de Ativo Aprimorado
+const AssetCard = ({ asset, maxVal, totalVal, privacyMode, onClick }: { asset: AssetPosition, maxVal: number, totalVal: number, privacyMode: boolean, onClick: () => void }) => {
+    const currentVal = asset.quantity * (asset.currentPrice || 0);
+    const invested = asset.quantity * asset.averagePrice;
+    const gainLoss = currentVal - invested;
+    const gainLossPercent = invested > 0 ? (gainLoss / invested) * 100 : 0;
+    const isPositive = gainLoss >= 0;
+    
+    // Percentual relativo ao maior ativo (para a barra de progresso)
+    const relativePercent = maxVal > 0 ? (currentVal / maxVal) * 100 : 0;
+
+    return (
+        <button 
+            onClick={onClick}
+            className="w-full bg-white dark:bg-zinc-900 rounded-[1.25rem] border border-zinc-100 dark:border-zinc-800 shadow-sm active:scale-[0.98] transition-all relative overflow-hidden group hover:border-indigo-100 dark:hover:border-zinc-700 p-4"
+        >
+            <div className="flex justify-between items-start mb-3">
+                <div className="flex items-center gap-3">
+                    {asset.logoUrl ? (
+                        <img src={asset.logoUrl} className="w-10 h-10 rounded-xl object-cover bg-white shadow-sm border border-zinc-100 dark:border-zinc-800" />
+                    ) : (
+                        <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center font-black text-xs text-zinc-400 border border-zinc-200 dark:border-zinc-700">
+                            {asset.ticker.substring(0, 2)}
+                        </div>
+                    )}
+                    <div className="text-left">
+                        <div className="flex items-center gap-2">
+                            <h3 className="font-display font-black text-base text-zinc-900 dark:text-white tracking-tight leading-none">{asset.ticker}</h3>
+                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5 ${(asset.dailyChange || 0) >= 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400'}`}>
+                                {(asset.dailyChange || 0) >= 0 ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
+                                {Math.abs(asset.dailyChange || 0).toFixed(2)}%
+                            </span>
+                        </div>
+                        <p className="text-[10px] font-medium text-zinc-400 mt-1 truncate max-w-[140px]">
+                            {asset.company_name || 'Ativo'}
+                        </p>
+                    </div>
+                </div>
+                <div className="text-right">
+                    <p className="font-black text-base text-zinc-900 dark:text-white tracking-tight">{formatBRL(currentVal, privacyMode)}</p>
+                    <div className="flex items-center justify-end gap-1 mt-0.5">
+                        <span className={`text-[10px] font-bold ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
+                            {isPositive ? '+' : ''}{formatBRL(gainLoss, privacyMode)}
+                        </span>
+                        <span className={`text-[9px] font-medium text-zinc-400`}>
+                            ({isPositive ? '+' : ''}{gainLossPercent.toFixed(1)}%)
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex justify-between items-end pb-3 border-b border-dashed border-zinc-100 dark:border-zinc-800/50 mb-3">
+                <div className="text-left">
+                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Qtde</span>
+                    <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">{asset.quantity}</span>
+                </div>
+                <div className="text-right">
+                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Preço Médio</span>
+                    <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">{formatBRL(asset.averagePrice, privacyMode)}</span>
+                </div>
+                <div className="text-right">
+                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Atual</span>
+                    <span className="text-xs font-bold text-zinc-900 dark:text-white">{formatBRL(asset.currentPrice, privacyMode)}</span>
+                </div>
+            </div>
+
+            {/* Allocation Bar */}
+            <div className="w-full h-1 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                <div 
+                    className="h-full bg-indigo-500 dark:bg-indigo-400 rounded-full transition-all duration-1000 ease-out"
+                    style={{ width: `${relativePercent}%` }}
+                ></div>
+            </div>
+        </button>
+    );
+}
+
 const PortfolioComponent: React.FC<PortfolioProps> = ({ 
     portfolio, dividends, marketDividends, privacyMode, 
     onAssetRefresh, headerVisible, targetAsset, onClearTarget 
@@ -1002,6 +1079,32 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
             .filter(p => p.ticker.includes(filter.toUpperCase()))
             .sort((a, b) => (b.quantity * (b.currentPrice||0)) - (a.quantity * (a.currentPrice||0)));
     }, [portfolio, filter]);
+
+    // Grouping Assets
+    const groupedAssets = useMemo(() => {
+        const fiis: AssetPosition[] = [];
+        const stocks: AssetPosition[] = [];
+        let maxVal = 0;
+        let totalVal = 0;
+        let totalDailyChange = 0;
+
+        sortedPortfolio.forEach(asset => {
+            const val = asset.quantity * (asset.currentPrice || 0);
+            if (val > maxVal) maxVal = val;
+            totalVal += val;
+            
+            // Calculate weighted daily change
+            if (asset.currentPrice) {
+                const prevPrice = asset.currentPrice / (1 + (asset.dailyChange || 0) / 100);
+                totalDailyChange += (asset.currentPrice - prevPrice) * asset.quantity;
+            }
+
+            if (asset.assetType === AssetType.FII) fiis.push(asset);
+            else stocks.push(asset);
+        });
+
+        return { fiis, stocks, maxVal, totalVal, totalDailyChange };
+    }, [sortedPortfolio]);
 
     const selectedAsset = useMemo(() => 
         portfolio.find(p => p.ticker === selectedTicker), 
@@ -1111,8 +1214,8 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
 
     return (
         <div className="pb-24">
-            <div className="mb-4">
-                <div className="relative group">
+            <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-20 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-xl -mx-4 px-4 pb-4 pt-2 transition-all">
+                <div className="relative group mb-3">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 group-focus-within:text-indigo-500 transition-colors" />
                     <input 
                         type="text" 
@@ -1122,40 +1225,75 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
                         className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 pl-10 pr-4 py-3 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
                     />
                 </div>
-            </div>
 
-            <div className="space-y-3">
-                {sortedPortfolio.map(asset => (
-                    <button 
-                        key={asset.ticker} 
-                        onClick={() => setSelectedTicker(asset.ticker)}
-                        className="w-full bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex items-center justify-between active:scale-[0.98] transition-all hover:border-indigo-200 dark:hover:border-indigo-900"
-                    >
-                        <div className="flex items-center gap-3">
-                            {asset.logoUrl ? (
-                                <img src={asset.logoUrl} className="w-10 h-10 rounded-full object-cover bg-white" />
-                            ) : (
-                                <div className="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center font-black text-xs text-zinc-400">
-                                    {asset.ticker.substring(0, 2)}
-                                </div>
-                            )}
-                            <div className="text-left">
-                                <h3 className="font-black text-sm text-zinc-900 dark:text-white">{asset.ticker}</h3>
-                                <p className="text-[10px] font-medium text-zinc-500">{asset.quantity} cotas</p>
-                            </div>
+                {sortedPortfolio.length > 0 && (
+                    <div className="flex justify-between items-center px-1">
+                        <div>
+                            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Total Visível</p>
+                            <p className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">{formatBRL(groupedAssets.totalVal, privacyMode)}</p>
                         </div>
                         <div className="text-right">
-                            <p className="font-black text-sm text-zinc-900 dark:text-white">{formatBRL(asset.quantity * (asset.currentPrice || 0), privacyMode)}</p>
-                            <div className="flex items-center justify-end gap-1">
-                                {(asset.dailyChange || 0) >= 0 ? <TrendingUp className="w-3 h-3 text-emerald-500" /> : <TrendingDown className="w-3 h-3 text-rose-500" />}
-                                <span className={`text-[10px] font-bold ${(asset.dailyChange || 0) >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                    {Math.abs(asset.dailyChange || 0).toFixed(2)}%
-                                </span>
+                            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Variação Dia</p>
+                            <span className={`text-sm font-black ${groupedAssets.totalDailyChange >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                {groupedAssets.totalDailyChange >= 0 ? '+' : ''}{formatBRL(groupedAssets.totalDailyChange, privacyMode)}
+                            </span>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {sortedPortfolio.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-20 opacity-50">
+                    <Briefcase className="w-12 h-12 text-zinc-300 mb-2" strokeWidth={1} />
+                    <p className="text-xs font-bold text-zinc-500">Sua carteira está vazia</p>
+                </div>
+            ) : (
+                <div className="space-y-6">
+                    {/* Grupo FIIs */}
+                    {groupedAssets.fiis.length > 0 && (
+                        <div>
+                            <div className="flex items-center gap-2 mb-3 px-1">
+                                <Building2 className="w-4 h-4 text-indigo-500" />
+                                <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest">Fundos Imobiliários ({groupedAssets.fiis.length})</h3>
+                            </div>
+                            <div className="space-y-3">
+                                {groupedAssets.fiis.map(asset => (
+                                    <AssetCard 
+                                        key={asset.ticker} 
+                                        asset={asset} 
+                                        maxVal={groupedAssets.maxVal} 
+                                        totalVal={groupedAssets.totalVal}
+                                        privacyMode={privacyMode} 
+                                        onClick={() => setSelectedTicker(asset.ticker)} 
+                                    />
+                                ))}
                             </div>
                         </div>
-                    </button>
-                ))}
-            </div>
+                    )}
+
+                    {/* Grupo Ações */}
+                    {groupedAssets.stocks.length > 0 && (
+                        <div>
+                            <div className="flex items-center gap-2 mb-3 px-1 pt-2">
+                                <TrendingUp className="w-4 h-4 text-sky-500" />
+                                <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest">Ações ({groupedAssets.stocks.length})</h3>
+                            </div>
+                            <div className="space-y-3">
+                                {groupedAssets.stocks.map(asset => (
+                                    <AssetCard 
+                                        key={asset.ticker} 
+                                        asset={asset} 
+                                        maxVal={groupedAssets.maxVal} 
+                                        totalVal={groupedAssets.totalVal}
+                                        privacyMode={privacyMode} 
+                                        onClick={() => setSelectedTicker(asset.ticker)} 
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 };
