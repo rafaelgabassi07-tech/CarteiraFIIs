@@ -51,6 +51,25 @@ const calculateSMA = (arr: any[], period: number, idx: number) => {
     return sum / period;
 };
 
+// Filter data by Range (Local processing)
+const filterDataByRange = (data: any[], range: string) => {
+    if (!data || data.length === 0) return [];
+    
+    const now = new Date();
+    const cutoff = new Date();
+    
+    switch(range) {
+        case '1M': cutoff.setMonth(now.getMonth() - 1); break;
+        case '6M': cutoff.setMonth(now.getMonth() - 6); break;
+        case '1Y': cutoff.setFullYear(now.getFullYear() - 1); break;
+        case '5Y': cutoff.setFullYear(now.getFullYear() - 5); break;
+        case 'MAX': return data; // No filter
+        default: cutoff.setFullYear(now.getFullYear() - 1); // Default 1Y
+    }
+    
+    return data.filter(d => new Date(d.date) >= cutoff);
+};
+
 const processChartData = (data: any[]) => {
     if (!data || data.length === 0) return { processedData: [], yDomain: ['auto', 'auto'], variation: 0, lastPrice: 0 };
 
@@ -74,8 +93,11 @@ const processChartData = (data: any[]) => {
         
         return {
             ...d,
-            candleRange: [low, high], 
-            open, close, high, low,
+            // Recharts bar chart expects [min, max] tuple for custom shapes if using range
+            // But we pass object to payload and handle coordinates in CustomCandleShape
+            candleData: { open, close, high, low }, 
+            price: close, // For Area Chart
+            volume: d.volume || 0,
             sma20: calculateSMA(arr, 20, index),
             sma50: calculateSMA(arr, 50, index),
             volColor: isUp ? '#10b981' : '#f43f5e'
@@ -96,34 +118,37 @@ const processChartData = (data: any[]) => {
 };
 
 const CustomCandleShape = (props: any) => {
-    const { x, y, width, height, payload } = props;
-    const { open, close, high, low } = payload;
+    const { x, y, width, height, payload, yAxis } = props;
+    const { open, close, high, low } = payload.candleData || {};
+    
     if (open == null || close == null || high == null || low == null) return null;
 
     const isUp = close >= open;
     const color = isUp ? '#10b981' : '#f43f5e'; 
-    const wickColor = isUp ? '#10b981' : '#f43f5e';
-    const priceRange = high - low;
     
-    if (priceRange === 0) {
-        return <line x1={x} y1={y + height / 2} x2={x + width} y2={y + height / 2} stroke={wickColor} strokeWidth={2} />;
-    }
-
-    const ratio = height / priceRange;
-    const yHigh = y;
-    const yOpen = y + (high - open) * ratio;
-    const yClose = y + (high - close) * ratio;
-    const yLow = y + height;
-    const bodyTop = Math.min(yOpen, yClose);
-    const bodyHeight = Math.max(1, Math.abs(yOpen - yClose));
-    const candleWidth = Math.max(1, width * 0.6);
+    // Calcula coordenadas Y baseadas na escala do eixo Y
+    // Recharts passa a escala no yAxis (se disponível) ou precisamos inferir
+    // No BarChart custom shape, o 'y' e 'height' são baseados no valor da barra
+    // Aqui usamos uma barra "invisível" que vai do Low ao High para definir o espaço
+    
+    // Alternativa robusta: A barra principal vai de Low a High.
+    // O rect 'y' começa em High (menor valor Y visual) e 'height' é (Low - High) visualmente
+    
+    const yRatio = height / (high - low || 1); // Pixels por unidade de preço
+    
+    const candleTop = y + (high - Math.max(open, close)) * yRatio;
+    const candleHeight = Math.max(2, Math.abs(open - close) * yRatio);
+    const wickTop = y;
+    const wickBottom = y + height;
+    
+    const candleWidth = Math.max(2, width * 0.6);
     const xCentered = x + (width - candleWidth) / 2;
     const wickX = x + width / 2;
 
     return (
         <g>
-            <line x1={wickX} y1={yHigh} x2={wickX} y2={yLow} stroke={wickColor} strokeWidth={1} />
-            <rect x={xCentered} y={bodyTop} width={candleWidth} height={bodyHeight} fill={color} rx={0} />
+            <line x1={wickX} y1={wickTop} x2={wickX} y2={wickBottom} stroke={color} strokeWidth={1.5} />
+            <rect x={xCentered} y={candleTop} width={candleWidth} height={candleHeight} fill={color} />
         </g>
     );
 };
@@ -141,10 +166,14 @@ const CurrentPriceLabel = ({ viewBox, value }: any) => {
 };
 
 // --- COMPONENT 1: PriceHistoryChart (Cotação Pura) ---
-const PriceHistoryChart = ({ data, loading, error, ticker, range, setRange }: any) => {
+const PriceHistoryChart = ({ fullData, loading, error, ticker }: any) => {
+    const [range, setRange] = useState('1Y');
     const [chartType, setChartType] = useState<'AREA' | 'CANDLE'>('AREA');
     const [indicators, setIndicators] = useState({ sma20: false, sma50: false, volume: true });
-    const { processedData, yDomain, variation, lastPrice } = useMemo(() => processChartData(data), [data]);
+    
+    // Filter locally
+    const filteredData = useMemo(() => filterDataByRange(fullData, range), [fullData, range]);
+    const { processedData, yDomain, variation, lastPrice } = useMemo(() => processChartData(filteredData), [filteredData]);
     const isPositive = variation >= 0;
 
     const toggleIndicator = (key: keyof typeof indicators) => setIndicators(prev => ({ ...prev, [key]: !prev[key] }));
@@ -179,7 +208,7 @@ const PriceHistoryChart = ({ data, loading, error, ticker, range, setRange }: an
             <div className="h-72 w-full relative">
                 {loading ? (
                     <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm z-10"><div className="animate-pulse text-xs font-bold text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-3 py-1.5 rounded-full">Carregando...</div></div>
-                ) : error || !data || data.length === 0 ? (
+                ) : error || !fullData || fullData.length === 0 ? (
                     <div className="absolute inset-0 flex items-center justify-center text-xs text-zinc-400">Dados indisponíveis</div>
                 ) : (
                     <>
@@ -217,7 +246,15 @@ const PriceHistoryChart = ({ data, loading, error, ticker, range, setRange }: an
                                 }} />
                                 <ReferenceLine y={lastPrice} yAxisId="price" stroke="#6366f1" strokeDasharray="3 3" strokeOpacity={0.8} ifOverflow="extendDomain"><Label content={<CurrentPriceLabel value={lastPrice} />} position="right" /></ReferenceLine>
                                 {indicators.volume && <Bar dataKey="volume" yAxisId="volume" barSize={range === '1Y' ? 2 : 4} fillOpacity={0.3}>{processedData.map((entry: any, index: number) => (<Cell key={`cell-${index}`} fill={entry.volColor} />))}</Bar>}
-                                {chartType === 'AREA' ? <Area yAxisId="price" type="monotone" dataKey="close" stroke={isPositive ? '#10b981' : '#f43f5e'} strokeWidth={2} fillOpacity={1} fill="url(#colorPrice)" /> : <Bar yAxisId="price" dataKey="candleRange" shape={<CustomCandleShape />} isAnimationActive={false} />}
+                                
+                                {chartType === 'AREA' ? (
+                                    <Area yAxisId="price" type="monotone" dataKey="price" stroke={isPositive ? '#10b981' : '#f43f5e'} strokeWidth={2} fillOpacity={1} fill="url(#colorPrice)" />
+                                ) : (
+                                    // Candle: Usamos um BarChart hackeado. dataKey="candleRange" seria [low, high]
+                                    // CustomCandleShape desenha a vela.
+                                    <Bar yAxisId="price" dataKey={(d) => [d.low, d.high]} shape={<CustomCandleShape />} isAnimationActive={false} />
+                                )}
+
                                 {indicators.sma20 && <Line yAxisId="price" type="monotone" dataKey="sma20" stroke="#f59e0b" strokeWidth={1.5} dot={false} isAnimationActive={false} />}
                                 {indicators.sma50 && <Line yAxisId="price" type="monotone" dataKey="sma50" stroke="#8b5cf6" strokeWidth={1.5} dot={false} isAnimationActive={false} />}
                             </ComposedChart>
@@ -230,7 +267,8 @@ const PriceHistoryChart = ({ data, loading, error, ticker, range, setRange }: an
 };
 
 // --- COMPONENT 2: ComparativeChart (Percentual) ---
-const ComparativeChart = ({ data, loading, ticker, type, range, setRange }: any) => {
+const ComparativeChart = ({ fullData, loading, ticker, type }: any) => {
+    const [range, setRange] = useState('1Y');
     const [visibleBenchmarks, setVisibleBenchmarks] = useState({
         'CDI': true,
         'IPCA': true,
@@ -239,10 +277,12 @@ const ComparativeChart = ({ data, loading, ticker, type, range, setRange }: any)
     });
 
     const toggleBenchmark = (key: string) => {
-        // Cast para evitar erro TS7053 ao indexar o objeto de estado
         const k = key as keyof typeof visibleBenchmarks;
         setVisibleBenchmarks(prev => ({ ...prev, [k]: !prev[k] }));
     };
+
+    // Filter locally
+    const filteredData = useMemo(() => filterDataByRange(fullData, range), [fullData, range]);
 
     return (
         <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm mb-6 relative overflow-hidden transition-all duration-300">
@@ -285,11 +325,11 @@ const ComparativeChart = ({ data, loading, ticker, type, range, setRange }: any)
                     <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm z-10">
                         <div className="animate-pulse text-xs font-bold text-zinc-400">Carregando dados...</div>
                     </div>
-                ) : !data || data.length === 0 ? (
+                ) : !filteredData || filteredData.length === 0 ? (
                     <div className="absolute inset-0 flex items-center justify-center text-xs text-zinc-400">Dados insuficientes</div>
                 ) : (
                     <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={data} margin={{ top: 10, right: 5, left: -20, bottom: 0 }}>
+                        <LineChart data={filteredData} margin={{ top: 10, right: 5, left: -20, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
                             <XAxis dataKey="date" hide={false} axisLine={false} tickLine={false} tick={{fontSize: 9, fill: '#71717a'}} tickFormatter={(val) => formatDateShort(val)} minTickGap={40} />
                             <YAxis 
@@ -328,6 +368,58 @@ const ComparativeChart = ({ data, loading, ticker, type, range, setRange }: any)
     );
 };
 
+// --- CHARTS CONTAINER (Wrapper para carregar dados históricos) ---
+const ChartsContainer = ({ ticker, type, marketDividends }: { ticker: string, type: AssetType, asset?: AssetPosition, marketDividends: DividendReceipt[] }) => {
+    // Fetch MAX data once to allow sub-components to filter freely
+    const [historyData, setHistoryData] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
+
+    useEffect(() => {
+        let mounted = true;
+        const fetchData = async () => {
+            setLoading(true);
+            setError(false);
+            try {
+                // Always fetch MAX or 5Y to have enough data for client-side filtering
+                const res = await fetch(`/api/history?ticker=${ticker}&range=MAX`);
+                if (!res.ok) throw new Error('Failed to fetch history');
+                const json = await res.json();
+                if (mounted) setHistoryData(json.points || []);
+            } catch (e) {
+                console.error(e);
+                if (mounted) setError(true);
+            } finally {
+                if (mounted) setLoading(false);
+            }
+        };
+        fetchData();
+        return () => { mounted = false; };
+    }, [ticker]);
+
+    return (
+        <div className="space-y-6">
+            <PriceHistoryChart 
+                fullData={historyData} 
+                loading={loading} 
+                error={error} 
+                ticker={ticker} 
+            />
+            <ComparativeChart 
+                fullData={historyData} 
+                loading={loading} 
+                ticker={ticker} 
+                type={type} 
+            />
+            <SimulatorCard 
+                data={historyData} 
+                ticker={ticker} 
+                dividends={marketDividends} 
+            />
+        </div>
+    );
+};
+
 // --- COMPONENT 3: SimulatorCard (R$) APRIMORADO ---
 const SimulatorCard = ({ data, ticker, dividends = [] }: any) => {
     const [amount, setAmount] = useState(1000);
@@ -336,9 +428,16 @@ const SimulatorCard = ({ data, ticker, dividends = [] }: any) => {
     const result = useMemo(() => {
         if (!data || data.length === 0) return null;
         
+        // Filter last 5 years or less for simulation default
+        const cutoff = new Date();
+        cutoff.setFullYear(cutoff.getFullYear() - 5);
+        const simData = data.filter((d: any) => new Date(d.date) >= cutoff);
+        
+        if (simData.length === 0) return null;
+
         // 1. Encontrar ponto inicial e final
-        const first = data[0];
-        const last = data[data.length - 1];
+        const first = simData[0];
+        const last = simData[simData.length - 1];
         
         const startPrice = first.price || first.close;
         const endPrice = last.price || last.close;
@@ -372,9 +471,7 @@ const SimulatorCard = ({ data, ticker, dividends = [] }: any) => {
                     if (reinvest) {
                         cash += receipt;
                         // Simula preço na data do dividendo (aproximado pela data mais próxima no array de historico)
-                        // Para simplificar e ser rápido, usamos o startPrice se não acharmos (mas vamos tentar achar)
-                        // Acha o preço mais próximo no histórico
-                        const closestPoint = data.find((p: any) => new Date(p.date) >= payDate);
+                        const closestPoint = simData.find((p: any) => new Date(p.date) >= payDate);
                         const reinvestPrice = closestPoint ? (closestPoint.price || closestPoint.close) : endPrice;
                         
                         if (reinvestPrice && cash >= reinvestPrice) {
@@ -412,7 +509,7 @@ const SimulatorCard = ({ data, ticker, dividends = [] }: any) => {
             <div className="flex justify-between items-center mb-4">
                 <div className="flex items-center gap-2">
                     <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
-                        <Award className="w-3.5 h-3.5" /> Simulador
+                        <Award className="w-3.5 h-3.5" /> Simulador (5 Anos)
                     </h3>
                     {reinvest && <span className="text-[9px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-1.5 py-0.5 rounded font-bold">Composto</span>}
                 </div>
@@ -478,60 +575,6 @@ const SimulatorCard = ({ data, ticker, dividends = [] }: any) => {
                     </div>
                 </div>
             )}
-        </div>
-    );
-};
-
-const ChartsContainer = ({ ticker, type, marketDividends }: { ticker: string, type: AssetType, asset?: AssetPosition, marketDividends: DividendReceipt[] }) => {
-    const [range, setRange] = useState('1Y');
-    const [historyData, setHistoryData] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(false);
-
-    useEffect(() => {
-        let mounted = true;
-        const fetchData = async () => {
-            setLoading(true);
-            setError(false);
-            try {
-                const res = await fetch(`/api/history?ticker=${ticker}&range=${range}`);
-                if (!res.ok) throw new Error('Failed to fetch history');
-                const json = await res.json();
-                if (mounted) setHistoryData(json.points || []);
-            } catch (e) {
-                console.error(e);
-                if (mounted) setError(true);
-            } finally {
-                if (mounted) setLoading(false);
-            }
-        };
-        fetchData();
-        return () => { mounted = false; };
-    }, [ticker, range]);
-
-    return (
-        <div className="space-y-6">
-            <PriceHistoryChart 
-                data={historyData} 
-                loading={loading} 
-                error={error} 
-                ticker={ticker} 
-                range={range} 
-                setRange={setRange} 
-            />
-            <ComparativeChart 
-                data={historyData} 
-                loading={loading} 
-                ticker={ticker} 
-                type={type} 
-                range={range} 
-                setRange={setRange} 
-            />
-            <SimulatorCard 
-                data={historyData} 
-                ticker={ticker} 
-                dividends={marketDividends} 
-            />
         </div>
     );
 };
@@ -1141,17 +1184,16 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                                             {/* CAROUSEL: GRÁFICO + MAPA */}
                                             <div className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar pb-6 -mx-4 px-4">
                                                 {/* Slide 1: Gráfico Donut (Estilo Moderno) */}
-                                                <div className="min-w-full snap-center flex flex-col items-center justify-center h-64 relative">
-                                                    <div className="absolute top-0 left-0 z-10 px-2 py-1 bg-white/80 dark:bg-black/50 rounded-lg backdrop-blur-sm text-[9px] font-bold uppercase text-zinc-500">
-                                                        Distribuição Geográfica
-                                                    </div>
-                                                    <div className="h-full w-full relative">
+                                                <div className="min-w-full snap-center flex items-center justify-between h-64 relative px-4">
+                                                    
+                                                    {/* Gráfico (Esquerda) */}
+                                                    <div className="w-[55%] h-full relative">
                                                         <ResponsiveContainer width="100%" height="100%">
                                                             <RePieChart>
                                                                 <Pie
                                                                     data={propertyStats}
-                                                                    innerRadius={60}
-                                                                    outerRadius={80}
+                                                                    innerRadius={55}
+                                                                    outerRadius={75}
                                                                     paddingAngle={4}
                                                                     dataKey="value"
                                                                     cornerRadius={4}
@@ -1159,30 +1201,33 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({ portfolio, dividends = [
                                                                     {propertyStats.map((entry, index) => (
                                                                         <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
                                                                     ))}
-                                                                    {/* Label central com total */}
                                                                     <Label 
                                                                         value={selectedAsset.properties?.length} 
                                                                         position="center" 
-                                                                        className="text-3xl font-black fill-zinc-900 dark:fill-white" 
+                                                                        className="text-2xl font-black fill-zinc-900 dark:fill-white" 
                                                                     />
                                                                 </Pie>
                                                                 <Tooltip 
                                                                     contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: 'rgba(24, 24, 27, 0.95)', color: '#fff', fontSize: '10px', padding: '8px 12px' }}
                                                                 />
-                                                                <Legend 
-                                                                    layout="vertical" 
-                                                                    verticalAlign="middle" 
-                                                                    align="right"
-                                                                    iconType="circle"
-                                                                    iconSize={8}
-                                                                    formatter={(val, entry: any) => <span className="text-[10px] font-bold text-zinc-500 ml-1">{val} ({entry.payload.value})</span>}
-                                                                />
                                                             </RePieChart>
                                                         </ResponsiveContainer>
-                                                        {/* Texto Total abaixo do Label (workaround recharts) */}
-                                                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 mt-4 text-[9px] font-bold text-zinc-400 uppercase tracking-widest pointer-events-none">
+                                                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 mt-3 text-[8px] font-bold text-zinc-400 uppercase tracking-widest pointer-events-none">
                                                             Total
                                                         </div>
+                                                    </div>
+
+                                                    {/* Legenda Lateral (Direita) */}
+                                                    <div className="w-[45%] h-full overflow-y-auto no-scrollbar py-4 pl-2 space-y-2">
+                                                        {propertyStats.map((entry, idx) => (
+                                                            <div key={idx} className="flex items-center justify-between text-[10px]">
+                                                                <div className="flex items-center gap-1.5 min-w-0">
+                                                                    <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: entry.color }}></div>
+                                                                    <span className="font-bold text-zinc-500 truncate">{entry.name}</span>
+                                                                </div>
+                                                                <span className="font-mono font-bold text-zinc-900 dark:text-white">{entry.value}</span>
+                                                            </div>
+                                                        ))}
                                                     </div>
                                                 </div>
 

@@ -29,26 +29,25 @@ const TransactionsSummary = ({ transactions, privacyMode }: { transactions: Tran
     }, [transactions]);
 
     return (
-        <div className="mb-4 px-1">
-            <div className="grid grid-cols-3 gap-2">
+        <div className="mb-6 px-1">
+            <div className="grid grid-cols-3 gap-3">
                 {/* Entradas */}
-                <div className="bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30 rounded-2xl p-3 flex flex-col justify-center items-start min-h-[70px]">
-                    <span className="text-[9px] font-black text-emerald-600/70 dark:text-emerald-400/70 uppercase tracking-wider mb-0.5">Compras</span>
-                    <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 tracking-tight">{formatBRL(totalInvested, privacyMode)}</span>
+                <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-100 dark:border-zinc-800">
+                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Compras</span>
+                    <span className="text-xs font-bold text-zinc-900 dark:text-white tracking-tight">{formatBRL(totalInvested, privacyMode)}</span>
                 </div>
 
                 {/* Saídas */}
-                <div className="bg-rose-50/50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-900/30 rounded-2xl p-3 flex flex-col justify-center items-start min-h-[70px]">
-                    <span className="text-[9px] font-black text-rose-600/70 dark:text-rose-400/70 uppercase tracking-wider mb-0.5">Vendas</span>
-                    <span className="text-xs font-bold text-rose-700 dark:text-rose-400 tracking-tight">{formatBRL(totalSold, privacyMode)}</span>
+                <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-100 dark:border-zinc-800">
+                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Vendas</span>
+                    <span className="text-xs font-bold text-zinc-900 dark:text-white tracking-tight">{formatBRL(totalSold, privacyMode)}</span>
                 </div>
 
                 {/* Líquido */}
-                <div className="bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-2xl p-3 flex flex-col justify-center items-start min-h-[70px] relative overflow-hidden">
-                    <div className={`absolute right-0 top-0 bottom-0 w-1 ${netFlow >= 0 ? 'bg-indigo-500' : 'bg-amber-500'}`}></div>
-                    <span className="text-[9px] font-black text-zinc-400 uppercase tracking-wider mb-0.5">Líquido</span>
-                    <span className={`text-sm font-black tracking-tight ${netFlow >= 0 ? 'text-zinc-900 dark:text-white' : 'text-zinc-900 dark:text-white'}`}>
-                        {formatBRL(netFlow, privacyMode)}
+                <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-100 dark:border-zinc-800 relative overflow-hidden">
+                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Líquido</span>
+                    <span className={`text-xs font-black tracking-tight ${netFlow >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        {netFlow > 0 ? '+' : ''}{formatBRL(netFlow, privacyMode)}
                     </span>
                 </div>
             </div>

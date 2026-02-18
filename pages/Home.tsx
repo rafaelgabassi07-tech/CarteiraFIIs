@@ -42,14 +42,16 @@ const getStoryIcon = (type: PortfolioInsight['type']) => {
 };
 
 // --- STORIES BAR (Estilo Instagram/Rico) ---
-const StoriesBar = ({ insights, onSelectStory }: { insights: PortfolioInsight[], onSelectStory: (story: PortfolioInsight) => void }) => {
+const StoriesBar = ({ insights, onSelectStory, viewedIds }: { insights: PortfolioInsight[], onSelectStory: (story: PortfolioInsight) => void, viewedIds: Set<string> }) => {
     if (!insights || insights.length === 0) return null;
 
     return (
         <div className="mb-4 -mt-2 -mx-4 overflow-x-auto no-scrollbar pb-2">
             <div className="flex gap-4 px-4 pt-1">
                 {insights.map((story) => {
-                    const gradient = getStoryGradient(story.type);
+                    const isViewed = viewedIds.has(story.id);
+                    const gradient = isViewed ? 'from-zinc-300 to-zinc-400 dark:from-zinc-700 dark:to-zinc-600' : getStoryGradient(story.type);
+                    
                     return (
                         <button 
                             key={story.id} 
@@ -57,7 +59,7 @@ const StoriesBar = ({ insights, onSelectStory }: { insights: PortfolioInsight[],
                             className="flex flex-col items-center gap-2 group shrink-0 w-[72px] press-effect"
                         >
                             {/* Anel de Gradiente */}
-                            <div className={`w-[68px] h-[68px] p-[2px] rounded-full bg-gradient-to-tr ${gradient} relative`}>
+                            <div className={`w-[68px] h-[68px] p-[2px] rounded-full bg-gradient-to-tr ${gradient} relative transition-all duration-300`}>
                                 {/* Borda Branca/Preta Interna */}
                                 <div className="w-full h-full rounded-full border-[3px] border-primary-light dark:border-primary-dark bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center overflow-hidden relative">
                                     {/* Conteúdo do Círculo */}
@@ -75,7 +77,7 @@ const StoriesBar = ({ insights, onSelectStory }: { insights: PortfolioInsight[],
                             </div>
                             
                             {/* Label */}
-                            <span className="text-[10px] font-medium text-zinc-600 dark:text-zinc-400 truncate w-full text-center leading-tight">
+                            <span className={`text-[10px] font-medium truncate w-full text-center leading-tight ${isViewed ? 'text-zinc-400' : 'text-zinc-600 dark:text-zinc-300'}`}>
                                 {story.relatedTicker || 'Insight'}
                             </span>
                         </button>
@@ -92,13 +94,15 @@ const StoryViewer = ({
     stories, 
     initialStoryId, 
     onClose, 
-    onViewAsset 
+    onViewAsset,
+    onMarkAsViewed
 }: { 
     isOpen: boolean, 
     stories: PortfolioInsight[], 
     initialStoryId: string | null, 
     onClose: () => void, 
-    onViewAsset: (ticker: string) => void 
+    onViewAsset: (ticker: string) => void,
+    onMarkAsViewed: (id: string) => void
 }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [progress, setProgress] = useState(0);
@@ -111,9 +115,10 @@ const StoryViewer = ({
             if (idx >= 0) {
                 setCurrentIndex(idx);
                 setProgress(0);
+                onMarkAsViewed(stories[idx].id);
             }
         }
-    }, [isOpen, initialStoryId]); // Mantém dependências estáveis para evitar reset indesejado
+    }, [isOpen, initialStoryId]);
 
     // Timer logic
     useEffect(() => {
@@ -141,8 +146,10 @@ const StoryViewer = ({
 
     const handleNext = () => {
         if (currentIndex < stories.length - 1) {
-            setCurrentIndex(prev => prev + 1);
+            const nextIdx = currentIndex + 1;
+            setCurrentIndex(nextIdx);
             setProgress(0);
+            onMarkAsViewed(stories[nextIdx].id);
         } else {
             onClose();
         }
@@ -150,25 +157,20 @@ const StoryViewer = ({
 
     const handlePrev = () => {
         if (currentIndex > 0) {
-            setCurrentIndex(prev => prev - 1);
+            const prevIdx = currentIndex - 1;
+            setCurrentIndex(prevIdx);
             setProgress(0);
+            onMarkAsViewed(stories[prevIdx].id);
         } else {
-            // Reinicia o story atual se for o primeiro
             setProgress(0);
         }
     };
 
     const handleTap = (e: React.MouseEvent) => {
-        // Detecta clique na esquerda ou direita da tela
         const width = window.innerWidth;
         const x = e.clientX;
-        
-        // 35% da esquerda para voltar, o resto avança
-        if (x < width * 0.35) {
-            handlePrev();
-        } else {
-            handleNext();
-        }
+        if (x < width * 0.35) handlePrev();
+        else handleNext();
     };
 
     if (!isOpen) return null;
@@ -178,7 +180,7 @@ const StoryViewer = ({
     const gradient = getStoryGradient(story.type);
 
     return (
-        <div className="fixed inset-0 z-[9999] bg-black flex flex-col animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[9999] bg-black flex flex-col animate-in fade-in duration-300">
             {/* Camadas de Fundo */}
             <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-20`}></div>
             <div className="absolute inset-0 backdrop-blur-3xl"></div>
@@ -229,18 +231,18 @@ const StoryViewer = ({
 
                 {/* Conteúdo Principal */}
                 <div className="flex-1 flex flex-col justify-center px-8 pb-20">
-                    <h1 className="text-3xl font-black text-white leading-tight mb-6 drop-shadow-lg tracking-tight">
+                    <h1 className="text-3xl font-black text-white leading-tight mb-6 drop-shadow-lg tracking-tight anim-slide-up">
                         {story.title}
                     </h1>
                     
-                    <div className="bg-white/10 backdrop-blur-xl border border-white/10 p-6 rounded-[2rem] shadow-2xl mb-8 relative overflow-hidden">
+                    <div className="bg-white/10 backdrop-blur-xl border border-white/10 p-6 rounded-[2rem] shadow-2xl mb-8 relative overflow-hidden anim-scale-in">
                         <div className={`absolute top-0 left-0 w-1 h-full bg-gradient-to-b ${gradient}`}></div>
                         <p className="text-lg font-medium text-white/95 leading-relaxed">
                             {story.message}
                         </p>
                     </div>
 
-                    <div className="flex gap-3 items-center opacity-80 bg-black/20 self-start px-3 py-1.5 rounded-full backdrop-blur-md border border-white/5">
+                    <div className="flex gap-3 items-center opacity-80 bg-black/20 self-start px-3 py-1.5 rounded-full backdrop-blur-md border border-white/5 anim-fade-in">
                         <Info className="w-4 h-4 text-white" />
                         <p className="text-xs text-white font-medium">
                             {story.type === 'opportunity' ? "Analistas indicam revisão." : 
@@ -341,6 +343,26 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   const [showMagicNumber, setShowMagicNumber] = useState(false);
   const [showGoals, setShowGoals] = useState(false);
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
+  const [viewedStories, setViewedStories] = useState<Set<string>>(new Set());
+
+  // Load viewed stories
+  useEffect(() => {
+      try {
+          const saved = localStorage.getItem('investfiis_viewed_stories');
+          if (saved) {
+              setViewedStories(new Set(JSON.parse(saved)));
+          }
+      } catch (e) { console.warn('Failed to load stories'); }
+  }, []);
+
+  const handleMarkAsViewed = (id: string) => {
+      setViewedStories(prev => {
+          const next = new Set(prev);
+          next.add(id);
+          localStorage.setItem('investfiis_viewed_stories', JSON.stringify(Array.from(next)));
+          return next;
+      });
+  };
 
   // --- CALCULATIONS ---
   
@@ -557,7 +579,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
     <div className="space-y-5 pb-8">
         
         {/* STORIES / INSIGHTS (NOVO DESIGN) */}
-        <StoriesBar insights={insights} onSelectStory={(s) => setSelectedStoryId(s.id)} />
+        <StoriesBar 
+            insights={insights} 
+            onSelectStory={(s) => setSelectedStoryId(s.id)} 
+            viewedIds={viewedStories}
+        />
 
         {/* HERO CARD (Redesenhado) */}
         <div className="relative w-full min-h-[240px] rounded-[2.2rem] bg-zinc-950 border border-zinc-800/80 overflow-hidden shadow-2xl group anim-fade-in">
@@ -684,6 +710,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
             initialStoryId={selectedStoryId} 
             onClose={() => setSelectedStoryId(null)} 
             onViewAsset={(t) => { setSelectedStoryId(null); if(onViewAsset) onViewAsset(t); }} 
+            onMarkAsViewed={handleMarkAsViewed}
         />
         
         {/* 1. AGENDA */}

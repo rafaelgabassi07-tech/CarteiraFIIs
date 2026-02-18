@@ -1,4 +1,3 @@
-
 import { AssetPosition, PortfolioInsight, AssetType } from "../types";
 
 /**
@@ -48,6 +47,7 @@ export const analyzePortfolio = (
     let totalPortfolioValue = 0;
     let weightedDailyChange = 0;
     const sectors = new Set<string>();
+    let assetsWithPositiveChange = 0;
 
     const activeAssets = portfolio.map(p => {
         const val = (p.currentPrice || 0) * p.quantity;
@@ -56,6 +56,7 @@ export const analyzePortfolio = (
         totalPortfolioValue += val;
         
         if (p.segment) sectors.add(p.segment);
+        if (change > 0) assetsWithPositiveChange++;
 
         if (p.currentPrice && p.currentPrice > 0) {
             const previousPrice = p.currentPrice / (1 + (change/100));
@@ -117,7 +118,19 @@ export const analyzePortfolio = (
         );
     }
 
-    // --- 3. RENDA & DIVIDENDOS ---
+    // --- 3. SEQUÊNCIA DE ALTA (STREAK) - Simulado ---
+    // Como não temos histórico diário persistido aqui, usamos a variação do dia + indicativo técnico se disponível
+    if (assetsWithPositiveChange > (activeAssets.length * 0.7)) {
+        createStory(
+            'bull-run',
+            'success',
+            'Maré Verde 🌊',
+            `Mais de 70% dos seus ativos estão em alta hoje. Um dia de forte valorização generalizada.`,
+            92
+        );
+    }
+
+    // --- 4. RENDA & DIVIDENDOS ---
     
     // Escudo contra Inflação
     const inflationShield = activeAssets.find(a => (a.dy_12m || 0) > (ipca + 3));
@@ -132,7 +145,7 @@ export const analyzePortfolio = (
         );
     }
 
-    // --- 4. VALUATION & OPORTUNIDADES & RISCOS ---
+    // --- 5. VALUATION & OPORTUNIDADES ---
     
     // Alerta de Vacância
     const highVacancyFii = activeAssets.find(a => a.assetType === AssetType.FII && (a.vacancy || 0) > 15);
@@ -147,25 +160,7 @@ export const analyzePortfolio = (
         );
     }
 
-    // Alerta de Liquidez
-    const lowLiquidityAsset = activeAssets.find(a => {
-        if (!a.liquidity) return false;
-        // Tenta parsear liquidez se for string
-        const liq = typeof a.liquidity === 'string' ? parseFloat(a.liquidity.replace(/\./g, '')) : a.liquidity;
-        return liq < 50000;
-    });
-    if (lowLiquidityAsset) {
-        createStory(
-            'low-liquidity',
-            'warning',
-            'Baixa Liquidez 💧',
-            `${lowLiquidityAsset.ticker} tem liquidez diária reduzida. Pode ser difícil sair da posição rapidamente.`,
-            86,
-            lowLiquidityAsset.ticker
-        );
-    }
-
-    // FII Barato
+    // FII Barato (PVP)
     const cheapFii = activeAssets.find(a => 
         a.assetType === AssetType.FII && (a.p_vp || 0) > 0.4 && (a.p_vp || 0) < 0.90
     );
@@ -213,27 +208,7 @@ export const analyzePortfolio = (
         );
     }
 
-    // Reinvestimento Inteligente (DY Alto + Preço Justo)
-    if (activeAssets.length > 3) {
-        const reinvestTarget = activeAssets.find(a => 
-            (a.dy_12m || 0) > 8 && 
-            ((a.assetType === AssetType.FII && (a.p_vp || 0) < 1.05) || 
-             (a.assetType === AssetType.STOCK && (a.p_l || 0) > 0 && (a.p_l || 0) < 15))
-        );
-        
-        if (reinvestTarget) {
-             createStory(
-                'reinvest-suggestion',
-                'news',
-                'Onde Reinvestir? 💡',
-                `${reinvestTarget.ticker} combina bom Yield (${(reinvestTarget.dy_12m || 0).toFixed(1)}%) com preço atrativo. Considere aumentar posição.`,
-                78,
-                reinvestTarget.ticker
-            );
-        }
-    }
-
-    // --- 5. ESTRUTURA DA CARTEIRA ---
+    // --- 6. ESTRUTURA DA CARTEIRA ---
 
     // Diversificação
     if (sectors.size >= 4 && activeAssets.length >= 5) {
@@ -260,7 +235,7 @@ export const analyzePortfolio = (
         );
     }
 
-    // --- 6. SPOTLIGHT (Preenchimento Inteligente) ---
+    // --- 7. SPOTLIGHT (Preenchimento Inteligente) ---
     if (insights.length < 5 && activeAssets.length > 0) {
         const availableAssets = activeAssets.filter(a => !usedTickers.has(a.ticker));
         

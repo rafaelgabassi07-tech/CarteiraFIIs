@@ -1,35 +1,51 @@
 import React, { useMemo, useState } from 'react';
 
-// Paths de alta precisão (Geometria Real do IBGE simplificada para SVG Web)
-// ViewBox otimizado: 0 0 612 650
+// Paths SVG otimizados e precisos dos estados brasileiros (IBGE/Wikipedia source adaptation)
 const STATE_PATHS: Record<string, string> = {
-  AC: "M56.4,269.7L53.6,274.5L44.8,273.1L37,265.3L41.6,253.8L51.7,251.9L60,259.7L56.4,269.7Z",
-  AL: "M574.3,258.8L578.9,260.1L577.6,265.4L570.3,264.1L569,259.5L574.3,258.8Z",
-  AM: "M163.2,170.5L183.4,177.6L194.5,199.7L193.2,213.9L171.1,225L135.3,221.1L124.2,206.8L119,175L133.3,160.7L158,166L163.2,170.5Z",
-  AP: "M353.7,69.4L367.9,73.3L371.8,91.5L357.6,102.5L346.6,98.6L342.7,80.4L353.7,69.4Z",
-  BA: "M485.6,260.1L499.8,264L510.9,288.7L503.7,317.2L472,328.2L443.5,317.2L439.6,292.6L453.8,267.9L485.6,260.1Z",
-  CE: "M523.2,139.7L537.4,135.8L548.5,142.9L552.4,161.1L541.3,172.1L523.2,168.2L519.3,150L523.2,139.7Z",
-  DF: "M398.5,320.1L403.7,320.1L403.7,325.3L398.5,325.3L398.5,320.1Z",
-  ES: "M542.4,383.1L549.5,387L545.6,401.2L534.6,397.3L538.5,386.3L542.4,383.1Z",
-  GO: "M370.2,315.6L394.8,308.5L419.4,319.5L426.5,351.3L408.4,369.4L376.7,365.5L365.7,340.9L370.2,315.6Z",
-  MA: "M433.8,118.9L458.4,122.8L469.4,147.5L462.3,175.9L426.7,179.8L408.5,161.7L415.6,129.9L433.8,118.9Z",
-  MG: "M460.5,357.7L488.9,346.7L513.5,357.7L520.6,389.5L502.5,407.6L466.9,411.5L448.7,386.9L460.5,357.7Z",
-  MS: "M290.7,392.1L315.3,388.2L333.4,406.3L337.3,441.9L312.7,453L281,434.8L277.1,406.3L290.7,392.1Z",
-  MT: "M282.9,285.8L314.6,278.7L339.2,296.8L343.1,332.4L325,357L289.3,353.1L271.2,328.5L282.9,285.8Z",
-  PA: "M312.5,130.6L344.2,123.5L372.6,134.5L383.6,170.1L365.5,194.7L329.9,198.6L301.4,180.5L312.5,130.6Z",
-  PB: "M566.5,183.1L577.5,184.4L578.8,191.5L567.8,195.4L560.7,191.5L566.5,183.1Z",
-  PE: "M553.6,203.8L578.2,205.1L582.1,212.2L557.5,216.1L546.5,212.2L553.6,203.8Z",
-  PI: "M453.2,165.7L467.4,169.6L471.3,194.2L457.1,205.2L446.1,194.2L453.2,165.7Z",
-  PR: "M368.5,468.2L393.1,464.3L411.2,475.3L407.3,493.4L378.9,497.3L360.8,483.1L368.5,468.2Z",
-  RJ: "M524.3,418.1L538.5,416.8L542.4,425.2L528.2,429.1L521.1,425.2L524.3,418.1Z",
-  RN: "M558.1,161.7L569.1,160.4L573,172.7L562,176.6L554.9,169.5L558.1,161.7Z",
-  RO: "M186.2,302.5L210.8,298.6L221.8,316.7L214.7,334.8L190.1,338.7L179.1,320.6L186.2,302.5Z",
-  RR: "M203.7,70.5L221.8,77.6L225.7,95.1L207.6,106.1L196.6,102.2L203.7,70.5Z",
-  RS: "M347.1,514.8L371.7,510.9L382.7,529L375.6,547.1L347.2,543.2L343.3,529L347.1,514.8Z",
-  SC: "M380.8,492.2L405.4,490.9L412.5,502.5L387.9,509.6L376.9,502.5L380.8,492.2Z",
-  SE: "M563.3,243.3L570.4,244.6L569.1,251.7L562,250.4L563.3,243.3Z",
-  SP: "M416.9,403.8L441.5,396.7L452.5,414.8L434.4,432.9L409.8,429L405.9,414.8L416.9,403.8Z",
-  TO: "M391.8,217.5L406,213.6L417,238.2L409.9,256.3L385.3,260.2L381.4,232.5L391.8,217.5Z"
+  AC: "M103.7,255.9l-10.6,2.3l-5.3-2.6l-2.6-7.3l-7.3-2l-2.6,2.6l-5.3-1.3l-2.6-6l3.3-3.3l-2-7.3l5.3-2.6l4-7.3 l9.9-1.3l2.6-4l5.3,0.7l4.6,5.3l5.3-0.7l2.6,3.3l7.9,0.7l2-4l6.6,2l4-2l4.6,2.6l-1.3,4.6l-3.3,2l-0.7,5.3l-4,3.3l-4.6,9.2 l-7.3,1.3l-4.6,7.3L103.7,255.9z",
+  AL: "M553.3,222.6l-2.6-2l-4.6,0.7l-1.3,4l2,4.6l3.3,2l4.6-2l1.3-4L553.3,222.6z",
+  AM: "M159.2,128.2l-6-4.6l-2-7.9l-11.2-4.6l-6.6,1.3l-4-3.3l-2.6,1.3l-3.3-3.3l-2.6,2.6l-4.6-2.6l-4,2.6l-6.6,1.3 l-2.6,4.6l-5.3-2l-2.6,1.3l-2,4.6l-6.6,2l-4.6-0.7l-4,4l-4.6-1.3l-3.3,3.3l2,4l-2,4.6l3.3,3.3l-2,3.3l-6,1.3l-2.6,4l-3.3-0.7 l-2.6,3.3l-4.6-2l-2.6,2.6l-4-2.6l-2.6,2.6l2,6l-2.6,4.6l2,4l3.3,0.7l3.3,3.3l2.6-1.3l2.6,4l2.6-0.7l2.6,3.3l6.6-2l3.3,4 l-1.3,2l3.3,4l4.6-2l3.3,2.6l4-2.6l4-7.3l6.6,0.7l4-4l4.6,2.6l6-1.3l6.6,4l2.6-2l10.6-2.6l2.6,2l6-4.6l7.3,0.7l4-4l2.6,2 l2.6-2.6l10.6,0.7l1.3-3.3l6.6,0.7l2.6-2.6l2.6,3.3l4.6-4l6.6,2.6l1.3-3.3l4.6-1.3l1.3-6.6l4.6,2l3.3-3.3l-1.3-4.6l2.6-3.3 l-1.3-4.6l-4.6-1.3l-2-6l-4-4l-6.6-0.7L159.2,128.2z",
+  AP: "M337.6,60.8l2-6.6l7.9-2.6l13.9,4l4.6,13.2l-2,7.3l-6.6,4.6l-6-2.6l-4-7.9l-2-2.6l-5.3-2.6L337.6,60.8z",
+  BA: "M472.7,210.7l-7.9-3.3l-2-4l-6.6,0.7l-2-4l-6-2l-4-4.6l-1.3-5.3l-4.6-2l-6,4.6l-2.6-2l-4.6,1.3l-4-3.3l-7.9,1.3 l-1.3,4l-4.6,2l-2.6-1.3l-2.6,2.6l-4.6,0.7l-2.6,3.3l-4.6-0.7l-2.6,4l-4.6-0.7l-1.3,4.6l2.6,6.6l3.3,2.6l-0.7,4l4,4.6l-1.3,6.6 l-6,3.3l-2,4.6l3.3,2.6l2,6.6l2.6,2l10.6-2l4.6,1.3l6-3.3l2.6,2l4.6,0.7l1.3,4.6l4.6,2l2-2.6l4.6,2.6l2-2.6l2.6,2l3.3-2l4-2.6 l2-4.6l7.9-2.6l2-2.6l2.6,1.3l2.6-4l3.3-0.7l4-6l4-2l2-4.6l4.6,0.7L472.7,210.7z",
+  CE: "M505.7,117.7l-4.6-2.6l-6.6-3.3l-4.6,2l-4-3.3l-4.6,2l-2.6,4l-4.6-2l-2.6,3.3l-6.6,2l-1.3,4l3.3,3.3l-0.7,3.3 l6,4.6l6.6-2l3.3,4l4.6,2.6l7.3-3.3l7.9,3.3l6.6-2l2-4l-2.6-6l2.6-3.3l4-2l-1.3-4L505.7,117.7z",
+  DF: "M385.9,266.8l4-1.3l1.3,4.6l-4,2l-3.3-2.6L385.9,266.8z",
+  ES: "M519.6,319.7l-3.3-2.6l-4.6,2.6l-2.6-2l-2.6,2.6l-2-2.6l-4,3.3l2,4l-2,4.6l3.3,3.3l6.6-3.3l3.3-7.3l4-2L519.6,319.7 z",
+  GO: "M362.7,243.7l-4-2.6l-2.6,2l-4.6-2l-1.3-6.6l-2-3.3l-6-2.6l-3.3,2.6l-6.6-3.3l-3.3,3.3l-2.6,6.6l2.6,1.3l-0.7,4.6 l-6,3.3l-3.3,6.6l-4.6,2.6l3.3,4.6l-3.3,2l-2,4l4,4.6l2.6,4l9.2-0.7l4-2.6l4.6,1.3l4-2.6l3.3,2.6l10.6-4.6l2.6-2l4.6,2l4-2.6 l2-4.6l2.6-3.3l6.6-2l-2.6-3.3l2.6-2.6l-2.6-2.6l-3.3,2l-2-2.6l-2.6,2l-2.6-2.6L362.7,243.7z M389.2,270.8l-1.3-4.6l-4,1.3 l-2,2.6l3.3,2.6l4-2L389.2,270.8z",
+  MA: "M431.1,99.9l-4-6l-2-3.3l-3.3,3.3l-7.3-3.3l-1.3,4l-2.6,2.6l-6.6,2l-6.6-3.3l-1.3,4l-4.6,4.6l-6.6,2l-6.6,6l-2,6 l4,4l4.6,4l3.3,6.6l1.3,6.6l4.6,2l4.6-2l4.6,0.7l2.6-3.3l4.6-0.7l2.6-2.6l2.6,1.3l4.6-2l1.3-4l7.9-1.3l4,3.3l4.6-1.3l2.6,2 l6-4.6l4.6,2l1.3,5.3l4,4.6l6,2l2-4l-0.7-6l-6-3.3l-1.3-7.9l-2.6-4l-6.6,0.7l-4.6-4l-3.3-2l-3.3-4l2.6-4L431.1,99.9z",
+  MG: "M422.5,273.4l-2.6-2l-4.6-1.3l-4,2.6l-9.2,0.7l-2.6-4l-4-4.6l2-4l3.3-2l-3.3-4.6l4.6-2.6l3.3-6.6l6-3.3l0.7-4.6 l-2.6-1.3l2.6-6.6l4.6-2.6l4,0.7l2.6,4.6l6.6,1.3l2.6,4l2.6-2l4,2.6l2,4.6l4,2l4-2l2-4.6l2-6l4-4.6l2.6,2.6l-1.3,4l2.6,2 l2-2.6l2.6,4.6l-2,4.6l2,2l2.6-2.6l2.6,2l4.6-2.6l3.3,2.6l-3.3,6.6l-2.6,4l-4-0.7l-4,3.3l-4-1.3l-2.6,3.3l-2.6-0.7l-1.3,4 l-3.3,0.7l-2,4.6l-7.3,1.3l-2.6-2.6l-4,1.3l-4.6-2l-4,2.6l-4-1.3l-3.3,3.3l-2.6-2.6L422.5,273.4z",
+  MS: "M282.7,293.9l-4-2.6l-6.6,3.3l-3.3-1.3l-2.6,3.3l-10.6-1.3l-2.6,3.3l-2.6-1.3l-3.3,2l-2.6,6l2,6.6l-2,2.6l2,6 l2.6,1.3l2.6,4l4.6,2l7.3,2l6.6,7.9l4.6-0.7l4.6-4l1.3-4.6l7.3-2.6l3.3,2.6l4-2.6l2.6,1.3l4-2.6l4.6-0.7l2-4.6l-2.6-2 l-1.3-4.6l-4.6-2.6l-2-6l-2.6-3.3l-2.6-2l-6-2.6L282.7,293.9z",
+  MT: "M268.8,172.4l-4.6,1.3l-1.3,3.3l-6.6-2.6l-4.6,4l-2.6-3.3l-2.6,2.6l-6.6-0.7l-1.3,3.3l-10.6-0.7l-2.6,2.6l-2.6-2 l-4,4l-7.3-0.7l-2.6,4.6l-2.6-2l-2.6,2l-4-2l-3.3,3.3l2,4.6l-3.3,4.6l-1.3,4.6l2.6,2.6l3.3-0.7l2.6,4l7.3,1.3l3.3,4.6l6.6,2 l2.6,3.3l4.6,2l3.3-2l6.6,2.6l4,2.6l3.3,7.3l6,2.6l2.6,2l2.6,3.3l2,6l4.6,2.6l1.3,4.6l3.3-2l4.6,0.7l6.6-4.6l4-3.3l4-4.6 l-2-4l-4-4.6l4.6-4l3.3,2.6l6-3.3l2.6-10.6l2.6-4.6l-4-4l-3.3,2.6l-4-3.3l2-6l-3.3-2.6l-6.6-2.6l-3.3-4.6l2-4.6l-4-4.6l-4.6-2 L268.8,172.4z",
+  PA: "M329.7,67.4l-4.6,4l-3.3-3.3l-4.6,2l-3.3-4l-2-4.6l-6.6-2.6l-4.6,1.3l-3.3-2.6l-4.6,3.3l-2.6,7.9l2,6.6l2.6,2 l3.3,6.6l-2,4.6l2.6,2.6l-1.3,4.6l-3.3,3.3l-4.6-2l1.3,6.6l-4.6,1.3l-1.3,3.3l4.6,2l-2,4.6l3.3,4.6l6.6,2.6l3.3,2.6l-2,6l4,3.3 l3.3-2.6l4,4l-2.6,4.6l-2.6,10.6l-6,3.3l-3.3-2.6l-4.6,4l4,4.6l2,4l-4,4.6l-4,3.3l-6.6,4.6l-4.6-0.7l-3.3,2l-1.3,4.6l2.6,2 l2.6-4l4.6,0.7l2.6-3.3l4.6-0.7l2.6-2.6l2.6,1.3l4.6-2l1.3-4l7.9-1.3l4,3.3l4.6-1.3l2.6,2l6-4.6l4.6,2l1.3,5.3l4,4.6l2.6-3.3 l6-2l3.3-3.3l1.3-4.6l-2.6-2.6l2-4.6l-3.3-6.6l-2.6-2l-2-6.6l2.6-7.9l4.6-3.3l3.3,2.6l4.6-1.3l6.6,2.6l2,4.6l3.3,4l4.6-2l3.3,3.3 l4-4l2-3.3l-2-2.6l-3.3-4l-6.6-4l-2-4.6l-4.6-2l-2-7.3l-4.6-13.2l-13.9-4L329.7,67.4z",
+  PB: "M544.7,159.4l-2-2l-6-2.6l-6.6,2l-6-4.6l-3.3,2l-4-3.3l-2.6,2l-2.6-2l-4.6,2l2.6,4l4.6-2l4,3.3l4.6-2l6.6,3.3l4.6,2.6 l2,4l4.6-2l2.6-2.6L544.7,159.4z",
+  PE: "M542.7,163.4l-2.6,2.6l-4.6,2l-2-4l-4.6-2.6l-6.6-3.3l-3.3,2l-6.6-2l-7.9-3.3l-7.3,3.3l-4.6-2.6l-3.3-4l-6.6,2 l-6-4.6l0.7-3.3l-3.3-3.3l1.3-4l-4.6,1.3l-4.6,3.3l-2.6-2.6l-4.6,3.3l2.6,2.6l-1.3,6l4.6,4.6l2.6,6l3.3,2l2.6,4l4.6,0.7l2.6,2 l6-4.6l4.6,2l1.3,5.3l4,4.6l6,2l2-4l4.6,2l4,4.6l6,2l2,4l6.6-0.7l2,4l7.9,3.3l4-2l2-2.6l2.6-4l2-2L542.7,163.4z",
+  PI: "M433.8,111.8l-1.3,4l-4.6,2l-2.6-1.3l-2.6,2.6l-4.6,0.7l-2.6,3.3l-4.6-0.7l-4.6,2l-4.6-2l-1.3-6.6l-3.3-6.6l-4.6-4 l-4-4l2-6l6.6-6l4.6-4.6l4.6-1.3l4.6,4.6l3.3,6.6l4.6,2l4.6-3.3l2.6,2.6l4.6-3.3l4.6-1.3l6.6,2l2.6-3.3l4.6,2l2.6-4l4.6-2 l4,3.3l4.6-2l6.6,3.3l4.6,2.6L433.8,111.8z",
+  PR: "M331.6,339.6l-6.6-7.9l-7.3-2l-4.6-2l-2.6-4l-2.6-1.3l-2-6l2-2.6l-2-6.6l2.6-6l3.3-2l2.6,1.3l2.6-3.3l10.6,1.3 l2.6-3.3l3.3,1.3l6.6-3.3l4,2.6l2.6,4.6l-3.3,6.6l2.6,4.6l6,2l3.3,3.3l4-2l2.6,2l2.6,3.3l6.6,2l-2.6,3.3l-2,4.6l-4,2l-4-2 l-2-4.6l-4-2.6l-2.6,2l-2.6-4l-6.6-1.3l-2.6-4.6l-4-0.7l-4.6,2.6l-2.6,6.6l-2.6,6l-4,1.3l-3.3,4l-1.3,3.3L331.6,339.6z",
+  RJ: "M483.9,298.5l-4.6,2l-2.6-2l-2.6,2.6l-2-2l-2-4.6l2.6-4.6l-2-2.6l1.3-4l2.6,0.7l2.6-3.3l4,1.3l4-3.3l4,0.7l2.6-4 l3.3-6.6l3.3,7.3l-6.6,3.3l-3.3-3.3l2-4.6l-2-4l4-3.3l2,2.6l2.6-2.6l2.6,2l4.6-2.6l3.3,2.6l-3.3,2.6l-1.3,4.6l-2.6,4 l-1.3,3.3l-2.6,2L483.9,298.5z",
+  RN: "M544.1,135.5l-4-2l-4-4l-2-3.3l-4.6-2.6l-3.3-4l-6.6,2l-6-4.6l0.7-3.3l4,2l2.6-3.3l-2.6-3.3l4.6-2.6l4-2l6.6,4 l4.6,3.3l4,4.6L544.1,135.5z",
+  RO: "M206.1,232.8l-2.6-2l-10.6,2.6l-2.6,2l-6.6-4l-6,1.3l-4.6-2.6l-4,4l-6.6-0.7l-7.3-0.7l-6,4.6l-2.6-2l-10.6,2.6 l-2.6,2l-6.6-4l-1.3,3.3l4.6,1.3l1.3,4.6l-2.6,3.3l1.3,4.6l-3.3,3.3l-4.6-2l-1.3,6.6l4.6,7.3l7.3-1.3l4.6-9.2l4-3.3l0.7-5.3 l3.3-2l1.3-4.6l7.3-3.3l2.6,1.3l1.3-4l4.6-2l3.3,3.3l6.6-1.3l4-2l4.6,2.6l6.6,0.7l2.6-2.6l2.6,3.3l4.6-4l6.6,2.6l1.3-3.3 l4.6-1.3L206.1,232.8z",
+  RR: "M229.3,77.3l-2.6,2.6l-2.6-2l-4-4.6l-1.3-5.3l-4.6-2l-6,4.6l-2.6-2l-4.6,1.3l-4-3.3l-7.9,1.3l-1.3,4l-4.6,2 l-2.6-1.3l-2.6,2.6l-4.6,0.7l-2.6,3.3l-4.6-0.7l-1.3,4.6l-3.3,3.3l-4.6-2l1.3-3.3l-2.6-6.6l-4.6-2.6l-2-4l-3.3-3.3l2-4.6l-2-4 l3.3-3.3l4.6,1.3l4-4l4.6,0.7l6.6-2l2-4.6l2.6-1.3l5.3,2l2.6-4.6l6.6-1.3l4-2.6l4.6,2.6l2.6-2.6l3.3,3.3l2.6-1.3l4,3.3l6.6-1.3 l11.2,4.6l2,7.9l6,4.6l-6.6,4.6l-4.6,2l-3.3,2l-3.3,4.6L229.3,77.3z",
+  RS: "M328.3,391.8l-1.3-6.6l-2.6-2l-3.3,2.6l-4.6,0.7l-7.3-3.3l-4.6,1.3l-2.6-2l-7.9,1.3l-6-3.3l-7.3-0.7l-2.6,2.6 l-6.6,0.7l-2.6-2l-4-2.6l-2.6,2l-2.6-1.3l-2.6,3.3l-2.6,4.6l-4-2.6l-2.6,2l-3.3,4.6l2,2l2.6,6l2.6,2l3.3,4l3.3,2l4.6,0.7l4,4 l4.6,1.3l3.3,4l4.6,4l4.6-2l4.6,2l4.6,0.7l2.6-4l4-0.7l4.6-3.3l7.9-2l6.6,2.6l2-2.6l2.6-0.7l3.3-4.6l6-1.3l4.6-4.6l3.3-6.6 L328.3,391.8z",
+  SC: "M366,359.5l-4.6-2.6l-2.6-2l-2.6,2.6l-2-2l-2-4.6l2.6-4.6l3.3-6.6l-2.6-4.6l-4-2.6l-6.6,3.3l-3.3-1.3l-2.6,3.3 l-10.6-1.3l-1.3,4.6l-4.6,4l-4.6,0.7l-2.6-1.3l-4,2.6l-3.3-2.6l-7.3,2.6l-1.3,4.6l7.3,0.7l6,3.3l7.9-1.3l2.6,2l4.6-1.3l7.3,3.3 l4.6-0.7l3.3-2.6l2.6,2l1.3,6.6l10.6,2.6l4.6-4l4-2l2-4.6l3.3-4l4.6,2l4-2.6L366,359.5z",
+  SE: "M542.7,208.6l-4-3.3l-4.6,2l-2.6-4l4.6-2l2.6,2l2.6-2l4,3.3l3.3-2l6.6,3.3l4.6,2.6l2,4l2.6-2.6l2.6,2.6l-3.3,2.6 l-6.6-2.6l-3.3,2L542.7,208.6z",
+  SP: "M391.2,308.5l-4-2l-2-4.6l-4-2.6l-2.6,2l-2.6-4l-6.6-1.3l-2.6-4.6l-4-0.7l-4.6,2.6l-2.6,6.6l2.6,1.3l-0.7,4.6 l-6,3.3l-3.3,6.6l-4.6,2.6l3.3,4.6l-3.3,2l-2,4l2.6,2l2.6-3.3l4.6,0.7l2.6-4l4.6,0.7l2.6-3.3l4.6-0.7l2.6-2.6l2.6,1.3l2.6,4l4.6,2 l7.3,2l6.6,7.9l1.3-3.3l3.3-4l4-1.3l2.6-6l2.6-6.6l4.6-2.6l4,0.7l2.6,4.6l6.6,1.3l2.6,4l2.6-2l4.6-2.6l4-0.7l-4-1.3l-4,3.3 L391.2,308.5z",
+  TO: "M379.3,169.1l-2-4.6l-3.3-7.3l-4-2.6l-6.6-2.6l-3.3,2l-4.6-2l-2.6-3.3l-6.6-2l-3.3-4.6l-7.3-1.3l-2.6-4l-3.3,0.7 l-2.6-2.6l1.3-4.6l3.3-4.6l-2-4.6l3.3-3.3l4,2l2.6-2l2.6,2l2.6-4.6l7.3,0.7l4-4l2.6,2l2.6-2.6l10.6,0.7l1.3-3.3l6.6,0.7l2.6-2.6 l2.6,3.3l4.6-4l6.6,2.6l1.3-3.3l4.6-1.3l1.3-6.6l-3.3-6.6l-4.6-4l-4.6,1.3l-4.6,4.6l-6.6,6l-2,6l4,4l4.6,4l3.3,6.6l1.3,6.6l4.6,2l4.6-2l4.6,0.7l2.6-3.3l4.6-0.7l2.6-2.6l2.6,1.3l4.6-2l1.3-4l7.9-1.3l4,3.3l4.6-1.3l2.6,2l6-4.6l4.6,2l1.3,5.3l4,4.6l6,2 l2-4l-0.7-6l-6-3.3l-1.3-7.9l-2.6-4l-6.6,0.7l-4.6-4l-3.3-2l-3.3-4l2.6-4l2.6-1.3l4.6-2l4-3.3l4-2l-2.6-4l-2-2l-3.3,3.3 l-2.6-3.3l-2.6,0.7l-2.6-4l-2.6,1.3l-3.3-3.3l-3.3-0.7l-2-4l2.6-4.6l-2-6l2.6-2.6l4,2.6l2.6-2.6l4.6,2l2.6-3.3l3.3,0.7l2.6-4l6-1.3 l2-3.3l3.3-3.3l2-4.6l-2-4l3.3-3.3l4.6,1.3l4-4l4.6,0.7l6.6-2l2-4.6l2.6-1.3l5.3,2l2.6-4.6l6.6-1.3l4-2.6l4.6,2.6l2.6-2.6l3.3,3.3 l2.6-1.3l4,3.3l6.6-1.3l11.2,4.6l2,7.9l6,4.6l-6.6,4.6l-4.6,2l-3.3,2l-3.3,4.6l-2.6,2l-4.6,3.3l-2.6-2.6l-4.6,3.3l-4.6-2l-3.3-6.6 l-4.6-4.6l-4.6,1.3l-4.6,4.6l-6.6,6l-2,6l4,4l4.6,4l3.3,6.6l1.3,6.6l4.6,2l4.6-2l4.6,0.7l2.6-3.3l4.6-0.7l2.6-2.6l2.6,1.3l4.6-2 l1.3-4l7.9-1.3l4,3.3l4.6-1.3l2.6,2l6-4.6l4.6,2l1.3,5.3l4,4.6l6,2l2-4l4.6,2l4,4.6l6,2l2,4l6.6-0.7l2,4l7.9,3.3l4-2l2-2.6l2.6-4 l2-2l3.3,3.3l6.6-3.3l-3.3-7.3l-3.3,6.6l-2.6,4.6l2,4.6l2,2l2.6-2.6l2.6,2l4.6-2l3.3,2.6l-3.3,6.6l-2.6,4l-4-0.7l-4,3.3l-4-1.3 l-2.6,3.3l-2.6-0.7l-1.3,4l-3.3,0.7l-2,4.6l-7.3,1.3l-2.6-2.6l-4,1.3l-4.6-2l-4,2.6l-4-1.3l-3.3,3.3l-2.6-2.6l-2.6,10.6l-6,3.3 l-3.3-2.6l-4.6,4l4,4.6l2,4l-4,4.6l-4,3.3l-6.6,4.6l-4.6-0.7l-3.3,2l-1.3,4.6l2.6,2l2.6-4l4.6,0.7l2.6-3.3l4.6-0.7l2.6-2.6 l2.6,1.3l4.6-2l1.3-4l7.9-1.3l4,3.3l4.6-1.3l2.6,2l6-4.6l4.6,2l1.3,5.3l4,4.6l2.6-3.3l6-2l3.3-3.3l1.3-4.6l-2.6-2.6l2-4.6 l-3.3-6.6l-2.6-2l-2-6.6l2.6-7.9l4.6-3.3l3.3,2.6l4.6-1.3l6.6,2.6l2,4.6l3.3,4l4.6-2l3.3,3.3l4-4l2-3.3l-2-2.6l-3.3-4l-6.6-4 l-2-4.6l-4.6-2l-2-7.3l-4.6-13.2l-13.9-4l-7.9,2.6l-2,6.6l-6.6,1.3L379.3,169.1z"
+};
+
+// Cores das Regiões (Referência IBGE/Escolares)
+const REGION_COLORS: Record<string, string> = {
+    'N': '#a78bfa', // Norte - Violeta
+    'NE': '#f59e0b', // Nordeste - Laranja
+    'CO': '#84cc16', // Centro-Oeste - Verde Lima
+    'SE': '#06b6d4', // Sudeste - Ciano
+    'S': '#f43f5e'  // Sul - Rosa/Vermelho
+};
+
+const STATE_REGION: Record<string, string> = {
+    'AC': 'N', 'AM': 'N', 'AP': 'N', 'PA': 'N', 'RO': 'N', 'RR': 'N', 'TO': 'N',
+    'AL': 'NE', 'BA': 'NE', 'CE': 'NE', 'MA': 'NE', 'PB': 'NE', 'PE': 'NE', 'PI': 'NE', 'RN': 'NE', 'SE': 'NE',
+    'DF': 'CO', 'GO': 'CO', 'MT': 'CO', 'MS': 'CO',
+    'ES': 'SE', 'MG': 'SE', 'RJ': 'SE', 'SP': 'SE',
+    'PR': 'S', 'RS': 'S', 'SC': 'S'
 };
 
 interface BrazilMapProps {
@@ -44,8 +60,6 @@ export const BrazilMap: React.FC<BrazilMapProps> = ({ data, totalProperties }) =
     const map: Record<string, number> = {};
     data.forEach(item => {
       let uf = item.name.toUpperCase().trim();
-      
-      // Mapeamento de nomes completos para siglas
       const states: Record<string, string> = {
           'ACRE': 'AC', 'ALAGOAS': 'AL', 'AMAZONAS': 'AM', 'AMAPÁ': 'AP', 'AMAPA': 'AP',
           'BAHIA': 'BA', 'CEARÁ': 'CE', 'CEARA': 'CE', 'DISTRITO FEDERAL': 'DF',
@@ -58,98 +72,92 @@ export const BrazilMap: React.FC<BrazilMapProps> = ({ data, totalProperties }) =
           'SÃO PAULO': 'SP', 'SAO PAULO': 'SP', 'SERGIPE': 'SE', 'TOCANTINS': 'TO'
       };
       
-      // Normalização
       if (uf.length > 2 && states[uf]) uf = states[uf];
-      
-      // Fallback: Tenta achar sigla dentro da string (ex: "São Paulo - SP")
       if (uf.length > 2) {
           const match = uf.match(/\b([A-Z]{2})\b/);
           if (match && STATE_PATHS[match[1]]) uf = match[1];
       }
 
-      if (STATE_PATHS[uf]) {
-          map[uf] = (map[uf] || 0) + item.value;
-      }
+      if (STATE_PATHS[uf]) map[uf] = (map[uf] || 0) + item.value;
     });
     return map;
   }, [data]);
 
-  const getStateColor = (uf: string) => {
+  const getStateStyle = (uf: string) => {
     const count = stateValues[uf] || 0;
+    const region = STATE_REGION[uf];
+    const isHovered = hoveredState === uf;
+
+    // Se tem imóveis, usa escala de heatmap sobre a cor da região ou neutro
+    if (count > 0) {
+        if (count > 15) return { fill: '#4f46e5', stroke: '#fff', opacity: 1 }; // Indigo Strong
+        if (count > 5) return { fill: '#6366f1', stroke: '#fff', opacity: 0.9 }; // Indigo Base
+        return { fill: '#818cf8', stroke: '#fff', opacity: 0.8 }; // Indigo Light
+    }
+
+    // Se não tem imóveis, usa a cor da região (estilo IBGE) mas suave
+    const regionColor = REGION_COLORS[region] || '#d4d4d8';
     
-    // Estado sem imóveis
-    if (count === 0) return 'fill-zinc-200 dark:fill-zinc-800 stroke-zinc-50 dark:stroke-zinc-900'; 
-    
-    // Heatmap Logic (Escala de Opacidade da Cor Principal)
-    // 1 a 5 imóveis = lighter
-    // 5 a 15 = medium
-    // 15+ = solid
-    
-    // Usando Tailwind classes para interatividade fácil
-    if (count > 15) return 'fill-indigo-600 dark:fill-indigo-500 stroke-white dark:stroke-black';
-    if (count > 5) return 'fill-indigo-400 dark:fill-indigo-600 stroke-indigo-50 dark:stroke-zinc-900';
-    return 'fill-indigo-300 dark:fill-indigo-900 stroke-indigo-50 dark:stroke-zinc-900';
+    return {
+        fill: regionColor,
+        stroke: '#fff',
+        opacity: isHovered ? 0.8 : 0.4, // Mais opaco se hover, transparente default
+        strokeWidth: isHovered ? 2 : 0.5
+    };
   };
 
   return (
-    <div className="relative w-full h-full flex items-center justify-center select-none">
+    <div className="relative w-full h-full flex items-center justify-center select-none overflow-hidden rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800">
       <svg
-        viewBox="0 0 612 650"
-        className="w-full h-full max-h-[280px] drop-shadow-sm filter"
+        viewBox="0 0 600 600"
+        className="w-full h-full max-h-[320px] filter drop-shadow-sm p-4"
         xmlns="http://www.w3.org/2000/svg"
-        style={{ overflow: 'visible' }} // Permite tooltips e scales
+        style={{ overflow: 'visible' }}
       >
         <g className="transition-all duration-500 ease-out-mola">
           {Object.keys(STATE_PATHS).map((uf) => {
-             const count = stateValues[uf] || 0;
+             const style = getStateStyle(uf);
              const isHovered = hoveredState === uf;
              
              return (
-                <g key={uf} 
-                   onMouseEnter={() => setHoveredState(uf)}
-                   onMouseLeave={() => setHoveredState(null)}
-                   className="cursor-pointer group"
-                >
-                    <path
-                      d={STATE_PATHS[uf]}
-                      strokeWidth={isHovered ? 2 : 1}
-                      className={`transition-all duration-300 ${getStateColor(uf)} ${isHovered ? 'brightness-110 -translate-y-0.5 scale-[1.01]' : ''}`}
-                      vectorEffect="non-scaling-stroke" // Mantém borda fina mesmo com scale
-                    />
-                    
-                    {/* Tooltip Nativo SVG (Melhor performance) */}
-                    {isHovered && (
-                        <foreignObject x="0" y="0" width="100%" height="100%" className="pointer-events-none">
-                            <div className="flex h-full items-center justify-center">
-                                {/* Posicionamento aproximado ou centralizado */}
-                            </div>
-                        </foreignObject>
-                    )}
-                </g>
+                <path
+                  key={uf}
+                  d={STATE_PATHS[uf]}
+                  fill={style.fill}
+                  stroke={style.stroke}
+                  strokeWidth={style.strokeWidth || 1}
+                  fillOpacity={style.opacity}
+                  onMouseEnter={() => setHoveredState(uf)}
+                  onMouseLeave={() => setHoveredState(null)}
+                  className={`transition-all duration-200 cursor-pointer ${isHovered ? 'scale-[1.02] z-10' : 'z-0'}`}
+                  vectorEffect="non-scaling-stroke"
+                  style={{ transformOrigin: 'center' }}
+                />
              )
           })}
         </g>
       </svg>
       
-      {/* Tooltip Flutuante Dinâmico */}
+      {/* Tooltip Dinâmico */}
       {hoveredState && (
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-zinc-900/90 dark:bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-xl shadow-xl pointer-events-none anim-scale-in z-20">
-              <span className="text-xs font-bold text-white dark:text-zinc-900">
-                  {hoveredState}: {stateValues[hoveredState] || 0} imóveis
-              </span>
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-zinc-900/95 dark:bg-white/95 backdrop-blur-md px-4 py-2 rounded-xl shadow-xl pointer-events-none anim-scale-in z-20 flex flex-col items-center">
+              <span className="text-xs font-black text-white dark:text-zinc-900 uppercase tracking-widest">{hoveredState}</span>
+              {stateValues[hoveredState] ? (
+                  <span className="text-[10px] font-medium text-emerald-400 dark:text-emerald-600">{stateValues[hoveredState]} Imóveis</span>
+              ) : (
+                  <span className="text-[9px] text-zinc-500">Sem ativos</span>
+              )}
           </div>
       )}
 
-      {/* Legenda Minimalista */}
-      <div className="absolute bottom-0 right-0 flex flex-col gap-1.5 pointer-events-none bg-white/50 dark:bg-black/20 p-2 rounded-lg backdrop-blur-sm border border-zinc-100 dark:border-zinc-800">
-          <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded bg-indigo-600 dark:bg-indigo-500 shadow-sm"></div>
-              <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-wide">Alta Densidade</span>
-          </div>
-          <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded bg-indigo-300 dark:bg-indigo-900 shadow-sm"></div>
-              <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-wide">Baixa Densidade</span>
-          </div>
+      {/* Legenda de Regiões Minimalista */}
+      <div className="absolute bottom-2 left-2 flex gap-2 pointer-events-none opacity-60 scale-90 origin-bottom-left">
+          {Object.entries(REGION_COLORS).map(([region, color]) => (
+              <div key={region} className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }}></div>
+                  <span className="text-[8px] font-bold text-zinc-400">{region}</span>
+              </div>
+          ))}
       </div>
     </div>
   );
