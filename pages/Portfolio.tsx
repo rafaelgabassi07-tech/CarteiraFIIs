@@ -236,19 +236,30 @@ const PriceHistoryChart = ({ fullData, loading, error, ticker, range, onRangeCha
 
     const toggleIndicator = (key: keyof typeof indicators) => setIndicators(prev => ({ ...prev, [key]: !prev[key] }));
 
-    const INTERVAL_OPTIONS = [
-        { label: '1 Minuto', value: '1m' },
-        { label: '5 Minutos', value: '5m' },
-        { label: '10 Minutos', value: '10m' },
-        { label: '15 Minutos', value: '15m' },
-        { label: '30 Minutos', value: '30m' },
+    const INTRADAY_OPTIONS = [
+        { label: '1 Min', value: '1m' },
+        { label: '5 Min', value: '5m' },
+        { label: '10 Min', value: '10m' },
+        { label: '15 Min', value: '15m' },
+        { label: '30 Min', value: '30m' },
         { label: '1 Hora', value: '1h' },
+    ];
+
+    const HISTORY_OPTIONS = [
         { label: 'Diário', value: '1d' },
         { label: 'Semanal', value: '1wk' },
         { label: 'Mensal', value: '1mo' },
         { label: 'Trimestral', value: '3mo' },
         { label: 'Anual', value: '1y' },
     ];
+
+    const formatXAxis = (tickItem: string) => {
+        const date = new Date(tickItem);
+        if (['1m', '5m', '10m', '15m', '30m', '1h', '1d'].includes(range)) {
+            return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        }
+        return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    };
 
     return (
         <>
@@ -285,7 +296,7 @@ const PriceHistoryChart = ({ fullData, loading, error, ticker, range, onRangeCha
                 </div>
             </div>
 
-            <div className="h-60 w-full relative">
+            <div className="h-64 w-full relative">
                 {loading ? (
                     <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm z-10"><div className="animate-pulse text-xs font-bold text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-3 py-1.5 rounded-full">Carregando...</div></div>
                 ) : error || !fullData || fullData.length === 0 ? (
@@ -296,14 +307,23 @@ const PriceHistoryChart = ({ fullData, loading, error, ticker, range, onRangeCha
                             <span className={`text-xs font-black ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>{isPositive ? '+' : ''}{variation.toFixed(2)}%</span>
                         </div>
                         <ResponsiveContainer width="100%" height="100%">
-                            <ComposedChart data={processedData} margin={{ top: 10, right: 0, left: -15, bottom: 0 }}>
+                            <ComposedChart data={processedData} margin={{ top: 10, right: 0, left: -15, bottom: 5 }}>
                                 <defs>
                                     <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor={isPositive ? '#10b981' : '#f43f5e'} stopOpacity={0.2}/>
                                         <stop offset="95%" stopColor={isPositive ? '#10b981' : '#f43f5e'} stopOpacity={0}/>
                                     </linearGradient>
                                 </defs>
-                                <XAxis dataKey="date" hide />
+                                <XAxis 
+                                    dataKey="date" 
+                                    hide={false} 
+                                    axisLine={false} 
+                                    tickLine={false} 
+                                    tick={{fontSize: 9, fill: '#71717a'}} 
+                                    tickFormatter={formatXAxis}
+                                    minTickGap={30}
+                                    height={20}
+                                />
                                 <YAxis yAxisId="price" domain={yDomain} hide={false} orientation="right" axisLine={false} tickLine={false} tick={{fontSize: 9, fill: '#71717a'}} width={40} tickFormatter={(val) => val.toFixed(2)} tickMargin={5} />
                                 <YAxis yAxisId="volume" hide={true} domain={[0, 'dataMax * 4']} />
                                 <Tooltip 
@@ -431,16 +451,36 @@ const PriceHistoryChart = ({ fullData, loading, error, ticker, range, onRangeCha
                     </div>
                 </div>
                 
-                <div className="flex flex-wrap gap-2">
-                    {INTERVAL_OPTIONS.map((opt) => (
-                        <button
-                            key={opt.value}
-                            onClick={() => { onRangeChange(opt.value); setShowFilterModal(false); }}
-                            className={`px-4 py-3 rounded-xl text-sm font-bold transition-all flex-grow text-center ${range === opt.value ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'}`}
-                        >
-                            {opt.label}
-                        </button>
-                    ))}
+                <div className="space-y-4">
+                    <div>
+                        <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">Intraday (Tempo Real)</h4>
+                        <div className="grid grid-cols-3 gap-2">
+                            {INTRADAY_OPTIONS.map((opt) => (
+                                <button
+                                    key={opt.value}
+                                    onClick={() => { onRangeChange(opt.value); setShowFilterModal(false); }}
+                                    className={`px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${range === opt.value ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'}`}
+                                >
+                                    {opt.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">Histórico</h4>
+                        <div className="grid grid-cols-3 gap-2">
+                            {HISTORY_OPTIONS.map((opt) => (
+                                <button
+                                    key={opt.value}
+                                    onClick={() => { onRangeChange(opt.value); setShowFilterModal(false); }}
+                                    className={`px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${range === opt.value ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'}`}
+                                >
+                                    {opt.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                 </div>
             </div>
         </SwipeableModal>
