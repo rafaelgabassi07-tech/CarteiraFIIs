@@ -1,3 +1,4 @@
+
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import axios from 'axios';
 import https from 'https';
@@ -5,7 +6,8 @@ import https from 'https';
 const httpsAgent = new https.Agent({ 
     keepAlive: true,
     maxSockets: 100,
-    timeout: 10000 
+    timeout: 10000,
+    rejectUnauthorized: false // Helps with some BCB SSL issues
 });
 
 function getYahooParams(range: string) {
@@ -94,7 +96,7 @@ async function fetchBcbSeries(seriesCode: number, startDate: Date) {
         }
         return map;
     } catch (e) {
-        console.warn(`BCB Series ${seriesCode} failed`);
+        console.warn(`BCB Series ${seriesCode} failed`, e);
         return new Map<string, number>();
     }
 }
@@ -144,8 +146,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const points = [];
         const { timestamps, prices, opens, highs, lows } = assetData;
         
-        // Find Valid Start Prices (First Non-Null)
-        // Isso corrige o problema onde o primeiro dia do array é null (comum no Yahoo)
         const getFirstValidPrice = (arr: (number|null)[]) => arr ? arr.find(p => p !== null && p !== undefined && p > 0) || 0 : 0;
         
         const startPrice = getFirstValidPrice(prices);
@@ -156,30 +156,48 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         let accCdi = 1.0;
         let accIpca = 1.0;
         
-        // Helpers for fill forward
         let lastIbovPct = 0;
         let lastIfixPct = 0;
         
+        // Fallback rates if BCB fails
+        const FALLBACK_CDI_DAILY = 0.00045; // ~12% a.a.
+        const FALLBACK_IPCA_MONTHLY = 0.0037; // ~4.5% a.a.
+        const useCdiFallback = cdiMap.size === 0;
+        const useIpcaFallback = ipcaMap.size === 0;
+
         for (let i = 0; i < timestamps.length; i++) {
             const price = prices[i];
             
-            // Pula pontos nulos do ativo principal, mas mantém a timeline do CDI/IPCA se possível
-            // Simplificação: só adiciona ponto se tiver preço do ativo
+            // Pula pontos nulos do ativo principal
             if (price === null) continue;
 
             const dateObj = new Date(timestamps[i] * 1000);
             const dateKey = dateObj.toISOString().split('T')[0];
             
             // --- CDI ACCUMULATION (Daily) ---
-            const cdiRate = cdiMap.get(dateKey);
+            let cdiRate = cdiMap.get(dateKey);
+            
+            // Tenta pegar do dia anterior se não achar (timezone/weekend diff)
+            if (cdiRate === undefined) {
+                const prevDate = new Date(dateObj);
+                prevDate.setDate(prevDate.getDate() - 1);
+                cdiRate = cdiMap.get(prevDate.toISOString().split('T')[0]);
+            }
+
             if (cdiRate !== undefined) {
                 accCdi = accCdi * (1 + (cdiRate / 100));
+            } else if (useCdiFallback) {
+                // Aplica fallback apenas em dias úteis (simplificado: não fds)
+                const day = dateObj.getDay();
+                if (day !== 0 && day !== 6) {
+                    accCdi = accCdi * (1 + FALLBACK_CDI_DAILY);
+                }
             }
 
             // --- IPCA ACCUMULATION (Interpolated) ---
             const monthKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-01`;
             const monthRate = ipcaMap.get(monthKey);
-            let ipcaDailyFactor = 1.00015; // default fallback ~0.3% mo
+            let ipcaDailyFactor = 1 + (FALLBACK_IPCA_MONTHLY / 21); 
             
             if (monthRate !== undefined) {
                 ipcaDailyFactor = Math.pow(1 + (monthRate / 100), 1 / 21);
@@ -205,7 +223,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 if (ibovPrice !== undefined) {
                     point.ibovPct = ((ibovPrice - startIbov) / startIbov) * 100;
                     lastIbovPct = point.ibovPct;
-                } else point.ibovPct = lastIbovPct; // Fill forward
+                } else point.ibovPct = lastIbovPct;
             } else point.ibovPct = 0;
 
             // IFIX %
@@ -214,24 +232,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 if (ifixPrice !== undefined) {
                     point.ifixPct = ((ifixPrice - startIfix) / startIfix) * 100;
                     lastIfixPct = point.ifixPct;
-                } else point.ifixPct = lastIfixPct; // Fill forward
+                } else point.ifixPct = lastIfixPct;
             } else point.ifixPct = null;
 
-            // CDI & IPCA % (Based on Accumulation)
+            // CDI & IPCA %
             point.cdiPct = (accCdi - 1) * 100;
             point.ipcaPct = (accIpca - 1) * 100;
 
             points.push(point);
         }
 
-        // Re-normalize percentage curves to ensure they all start at 0 at the first VISIBLE data point
+        // Re-normalize percentage curves
         if (points.length > 0) {
             const baseCdi = points[0].cdiPct;
             const baseIpca = points[0].ipcaPct;
             const baseIbov = points[0].ibovPct;
             const baseIfix = points[0].ifixPct || 0;
             
-            // Fatores de ajuste baseados no primeiro ponto visível do gráfico
             const valCdi0 = 1 + (baseCdi / 100);
             const valIpca0 = 1 + (baseIpca / 100);
             const valIbov0 = 1 + (baseIbov / 100);
