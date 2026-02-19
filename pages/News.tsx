@@ -65,6 +65,38 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
         return Array.from(unique);
     }, [transactions]);
 
+    const analyzeWithAI = useCallback(async (items: NewsItem[]) => {
+        // Analyze top 15 items to save resources and improve latency
+        const toAnalyze = items.slice(0, 15).map(i => ({ id: i.id, title: i.title, summary: i.summary }));
+        
+        if (toAnalyze.length === 0) return;
+
+        try {
+            const res = await fetch('/api/analyze-news', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items: toAnalyze })
+            });
+
+            if (!res.ok) return;
+
+            const analysisResults = await res.json();
+            
+            if (Array.isArray(analysisResults)) {
+                setNews(prev => prev.map(item => {
+                    const result = analysisResults.find((r: any) => r.id === item.id);
+                    if (result) {
+                        return { ...item, sentiment: result.sentiment, impact: result.impact };
+                    }
+                    return item;
+                }));
+            }
+
+        } catch (e) {
+            console.warn('AI Analysis failed (using fallback)', e);
+        }
+    }, []);
+
     const fetchNews = useCallback(async (customQuery?: string) => {
         setLoading(true);
         setError(false);
@@ -94,6 +126,9 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
                     };
                 });
                 setNews(formatted);
+                
+                // Trigger AI analysis in background
+                analyzeWithAI(formatted);
             } else {
                 setNews([]);
             }
@@ -103,7 +138,7 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [analyzeWithAI]);
 
     useEffect(() => {
         const interval = setInterval(() => {

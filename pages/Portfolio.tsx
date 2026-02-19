@@ -483,8 +483,13 @@ const PriceHistoryChart = ({ fullData, loading, error, ticker, range, onRangeCha
     );
 };
 
-const ComparativeChart = ({ fullData, loading, ticker, type }: any) => {
+const ComparativeChart = ({ ticker, type }: any) => {
     const [range, setRange] = useState('1Y');
+    const [chartData, setChartData] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
+    const [showFilterModal, setShowFilterModal] = useState(false);
+    
     const [visibleBenchmarks, setVisibleBenchmarks] = useState({
         'CDI': true,
         'IPCA': true,
@@ -492,24 +497,81 @@ const ComparativeChart = ({ fullData, loading, ticker, type }: any) => {
         'IFIX': type === 'FII' 
     });
 
+    useEffect(() => {
+        let mounted = true;
+        const fetchData = async () => {
+            setLoading(true);
+            setError(false);
+            try {
+                // Fetch data specifically for this chart based on its own range
+                const res = await fetch(`/api/history?ticker=${ticker}&range=${range}`);
+                if (!res.ok) throw new Error('Failed to fetch history');
+                const json = await res.json();
+                if (mounted) setChartData(json.points || []);
+            } catch (e) {
+                console.error(e);
+                if (mounted) setError(true);
+            } finally {
+                if (mounted) setLoading(false);
+            }
+        };
+        fetchData();
+        return () => { mounted = false; };
+    }, [ticker, range]);
+
     const toggleBenchmark = (key: string) => {
         const k = key as keyof typeof visibleBenchmarks;
         setVisibleBenchmarks(prev => ({ ...prev, [k]: !prev[k] }));
     };
 
-    const filteredData = useMemo(() => filterDataByRange(fullData, range), [fullData, range]);
+    // No need to filter locally anymore, API handles it
+    const filteredData = chartData;
+
+    const INTRADAY_OPTIONS = [
+        { label: '1 Min', value: '1m' },
+        { label: '5 Min', value: '5m' },
+        { label: '10 Min', value: '10m' },
+        { label: '15 Min', value: '15m' },
+        { label: '30 Min', value: '30m' },
+        { label: '1 Hora', value: '1h' },
+    ];
+
+    const HISTORY_OPTIONS = [
+        { label: 'Diário', value: '1d' },
+        { label: 'Semanal', value: '1wk' },
+        { label: 'Mensal', value: '1mo' },
+        { label: 'Trimestral', value: '3mo' },
+        { label: 'Anual', value: '1y' },
+    ];
+
+    const formatXAxis = (tickItem: string) => {
+        const date = new Date(tickItem);
+        if (['1m', '5m', '10m', '15m', '30m', '1h', '1d'].includes(range)) {
+            return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        }
+        return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    };
 
     return (
+        <>
         <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-3 shadow-sm mb-4 relative overflow-hidden transition-all duration-300">
             <div className="flex flex-col gap-3 mb-3">
-                <div className="flex justify-between items-start">
+                <div className="flex justify-between items-center">
                     <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
                         <TrendingUp className="w-3.5 h-3.5" /> Rentabilidade
                     </h3>
-                    <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5">
-                        {['1Y', '2Y', '5Y', 'MAX'].map((r) => (
-                            <button key={r} onClick={() => setRange(r)} className={`px-2 py-0.5 text-[8px] font-bold rounded-md transition-all ${range === r ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>{r}</button>
-                        ))}
+                    <div className="flex items-center gap-2">
+                         <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5">
+                            {['1Y', '2Y', '5Y', 'MAX'].map((r) => (
+                                <button key={r} onClick={() => setRange(r)} className={`px-2 py-0.5 text-[8px] font-bold rounded-md transition-all ${range === r ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>{r}</button>
+                            ))}
+                        </div>
+                        <button 
+                            onClick={() => setShowFilterModal(true)}
+                            className={`p-1.5 rounded-lg transition-all ${showFilterModal ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                        >
+                            <ListFilter className="w-3.5 h-3.5" />
+                        </button>
                     </div>
                 </div>
 
@@ -544,9 +606,18 @@ const ComparativeChart = ({ fullData, loading, ticker, type }: any) => {
                     <div className="absolute inset-0 flex items-center justify-center text-xs text-zinc-400">Dados insuficientes</div>
                 ) : (
                     <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={filteredData} margin={{ top: 10, right: 5, left: -20, bottom: 0 }}>
+                        <LineChart data={filteredData} margin={{ top: 10, right: 5, left: -20, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
-                            <XAxis dataKey="date" hide={false} axisLine={false} tickLine={false} tick={{fontSize: 9, fill: '#71717a'}} tickFormatter={(val) => formatDateShort(val)} minTickGap={40} />
+                            <XAxis 
+                                dataKey="date" 
+                                hide={false} 
+                                axisLine={false} 
+                                tickLine={false} 
+                                tick={{fontSize: 9, fill: '#71717a'}} 
+                                tickFormatter={formatXAxis} 
+                                minTickGap={40}
+                                height={20}
+                            />
                             <YAxis 
                                 hide={false} 
                                 axisLine={false} 
@@ -558,7 +629,7 @@ const ComparativeChart = ({ fullData, loading, ticker, type }: any) => {
                             <ReferenceLine y={0} stroke="#71717a" strokeOpacity={0.3} strokeWidth={1} />
                             <Tooltip 
                                 contentStyle={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '11px', padding: '10px', backdropFilter: 'blur(8px)' }}
-                                labelFormatter={(label) => new Date(label).toLocaleDateString('pt-BR')}
+                                labelFormatter={(label) => new Date(label).toLocaleDateString('pt-BR') + ' ' + new Date(label).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}
                                 itemSorter={(item) => -(item.value as number)}
                                 formatter={(value: number, name: string) => {
                                     const formattedVal = `${value.toFixed(2)}%`;
@@ -592,6 +663,53 @@ const ComparativeChart = ({ fullData, loading, ticker, type }: any) => {
                 )}
             </div>
         </div>
+
+        <SwipeableModal isOpen={showFilterModal} onClose={() => setShowFilterModal(false)} className="h-[50dvh]">
+            <div className="p-4">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="w-10 h-10 rounded-2xl bg-indigo-100 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                        <ListFilter className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h2 className="text-xl font-bold text-zinc-900 dark:text-white leading-none">Intervalo de tempo</h2>
+                        <p className="text-xs text-zinc-500 font-medium mt-0.5">Selecione a granularidade do gráfico</p>
+                    </div>
+                </div>
+                
+                <div className="space-y-4">
+                    <div>
+                        <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">Intraday (Tempo Real)</h4>
+                        <div className="grid grid-cols-3 gap-2">
+                            {INTRADAY_OPTIONS.map((opt) => (
+                                <button
+                                    key={opt.value}
+                                    onClick={() => { setRange(opt.value); setShowFilterModal(false); }}
+                                    className={`px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${range === opt.value ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'}`}
+                                >
+                                    {opt.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">Histórico</h4>
+                        <div className="grid grid-cols-3 gap-2">
+                            {HISTORY_OPTIONS.map((opt) => (
+                                <button
+                                    key={opt.value}
+                                    onClick={() => { setRange(opt.value); setShowFilterModal(false); }}
+                                    className={`px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${range === opt.value ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'}`}
+                                >
+                                    {opt.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </SwipeableModal>
+        </>
     );
 };
 
@@ -633,8 +751,6 @@ const ChartsContainer = ({ ticker, type, marketDividends }: { ticker: string, ty
                 onRangeChange={setRange}
             />
             <ComparativeChart 
-                fullData={historyData} 
-                loading={loading} 
                 ticker={ticker} 
                 type={type} 
             />
@@ -1398,13 +1514,18 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
 }) => {
     const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
     const [filter, setFilter] = useState('');
+    const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'ANALYSIS' | 'INCOME'>('OVERVIEW');
 
     useEffect(() => {
-        if (targetAsset) setSelectedTicker(targetAsset);
+        if (targetAsset) {
+            setSelectedTicker(targetAsset);
+            setActiveTab('OVERVIEW');
+        }
     }, [targetAsset]);
 
     const handleBack = () => {
         setSelectedTicker(null);
+        setActiveTab('OVERVIEW');
         if(onClearTarget) onClearTarget();
     };
 
@@ -1491,50 +1612,74 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
     if (selectedAsset) {
         return (
             <div className="pb-24 animate-in slide-in-from-right duration-300">
-                <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-30 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800 -mx-4 px-4 py-2 mb-4 flex items-center justify-between">
-                    <button onClick={handleBack} className="flex items-center gap-1 text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors">
-                        <ArrowLeft className="w-5 h-5" />
-                        <span className="font-bold text-sm">Voltar</span>
-                    </button>
-                    <div className="flex items-center gap-2">
-                        {selectedAsset.logoUrl && <img src={selectedAsset.logoUrl} className="w-6 h-6 rounded-full" />}
-                        <span className="font-black text-lg">{selectedAsset.ticker}</span>
+                <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-30 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800 -mx-4 px-4 py-2 mb-4">
+                    <div className="flex items-center justify-between mb-3">
+                        <button onClick={handleBack} className="flex items-center gap-1 text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors">
+                            <ArrowLeft className="w-5 h-5" />
+                            <span className="font-bold text-sm">Voltar</span>
+                        </button>
+                        <div className="flex items-center gap-2">
+                            {selectedAsset.logoUrl && <img src={selectedAsset.logoUrl} className="w-6 h-6 rounded-full" />}
+                            <span className="font-black text-lg">{selectedAsset.ticker}</span>
+                        </div>
+                        <button onClick={() => onAssetRefresh(selectedAsset.ticker)} className="p-2 bg-zinc-100 dark:bg-zinc-800 rounded-full active:scale-95 transition-transform">
+                            <RefreshCcw className="w-4 h-4 text-zinc-500" />
+                        </button>
                     </div>
-                    <button onClick={() => onAssetRefresh(selectedAsset.ticker)} className="p-2 bg-zinc-100 dark:bg-zinc-800 rounded-full active:scale-95 transition-transform">
-                        <RefreshCcw className="w-4 h-4 text-zinc-500" />
-                    </button>
-                </div>
 
-                <PositionSummaryCard asset={selectedAsset} privacyMode={privacyMode} />
-                
-                <div className="mt-4">
-                    <ValuationCard asset={selectedAsset} />
-                </div>
-
-                <div className="mt-4">
-                    <DetailedInfoBlock asset={selectedAsset} />
-                </div>
-
-                {selectedAsset.properties && selectedAsset.properties.length > 0 && (
-                    <div className="mt-4">
-                        <PropertiesAnalysis properties={selectedAsset.properties} />
+                    <div className="flex p-1 bg-zinc-100 dark:bg-zinc-800 rounded-xl">
+                        <button 
+                            onClick={() => setActiveTab('OVERVIEW')} 
+                            className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'OVERVIEW' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+                        >
+                            <LayoutGrid className="w-3.5 h-3.5" /> Resumo
+                        </button>
+                        <button 
+                            onClick={() => setActiveTab('ANALYSIS')} 
+                            className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'ANALYSIS' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+                        >
+                            <FileText className="w-3.5 h-3.5" /> Análises
+                        </button>
+                        <button 
+                            onClick={() => setActiveTab('INCOME')} 
+                            className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'INCOME' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+                        >
+                            <Coins className="w-3.5 h-3.5" /> Renda
+                        </button>
                     </div>
-                )}
-
-                <div className="mt-4">
-                    <ChartsContainer 
-                        ticker={selectedAsset.ticker} 
-                        type={selectedAsset.assetType} 
-                        marketDividends={assetMarketHistory}
-                    />
                 </div>
 
-                <div className="mt-4">
-                    <IncomeAnalysisSection 
-                        asset={selectedAsset} 
-                        chartData={incomeChartData} 
-                        marketHistory={assetMarketHistory} 
-                    />
+                <div className="space-y-4">
+                    {activeTab === 'OVERVIEW' && (
+                        <div className="anim-fade-in space-y-4">
+                            <PositionSummaryCard asset={selectedAsset} privacyMode={privacyMode} />
+                            <ChartsContainer 
+                                ticker={selectedAsset.ticker} 
+                                type={selectedAsset.assetType} 
+                                marketDividends={assetMarketHistory}
+                            />
+                        </div>
+                    )}
+
+                    {activeTab === 'ANALYSIS' && (
+                        <div className="anim-fade-in space-y-4">
+                            <ValuationCard asset={selectedAsset} />
+                            <DetailedInfoBlock asset={selectedAsset} />
+                            {selectedAsset.properties && selectedAsset.properties.length > 0 && (
+                                <PropertiesAnalysis properties={selectedAsset.properties} />
+                            )}
+                        </div>
+                    )}
+
+                    {activeTab === 'INCOME' && (
+                        <div className="anim-fade-in space-y-4">
+                            <IncomeAnalysisSection 
+                                asset={selectedAsset} 
+                                chartData={incomeChartData} 
+                                marketHistory={assetMarketHistory} 
+                            />
+                        </div>
+                    )}
                 </div>
             </div>
         );

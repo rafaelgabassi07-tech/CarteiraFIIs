@@ -965,39 +965,53 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
 
         <SwipeableModal isOpen={showGoals} onClose={() => setShowGoals(false)}>
             <div className="p-4 h-full flex flex-col bg-zinc-50 dark:bg-zinc-950 anim-slide-up">
-                <div className="flex flex-col gap-4 mb-6 shrink-0 bg-white dark:bg-zinc-900 p-5 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm relative overflow-hidden">
-                    <div className="flex items-start justify-between">
+                <div className="flex flex-col gap-4 mb-6 shrink-0 bg-white dark:bg-zinc-900 p-5 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-xl shadow-indigo-500/5 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+                    <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl -ml-10 -mb-10 pointer-events-none"></div>
+                    
+                    <div className="flex items-start justify-between relative z-10">
                         <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-100 to-indigo-200 dark:from-indigo-900/30 dark:to-indigo-800/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-                                <Trophy className="w-6 h-6" />
+                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center shrink-0 shadow-lg shadow-indigo-500/20 ring-4 ring-indigo-50 dark:ring-indigo-900/20">
+                                <Trophy className="w-6 h-6" strokeWidth={2.5} />
                             </div>
                             <div>
-                                <h2 className="text-xl font-black text-zinc-900 dark:text-white leading-none tracking-tight">Objetivos</h2>
-                                <p className="text-xs text-zinc-500 font-medium mt-1">Nível {goalsData.currentLevel.level}: {goalsData.currentLevel.name}</p>
+                                <h2 className="text-xl font-black text-zinc-900 dark:text-white leading-none tracking-tight">Nível {goalsData.currentLevel.level}</h2>
+                                <p className="text-sm font-bold text-indigo-600 dark:text-indigo-400 mt-0.5">{goalsData.currentLevel.name}</p>
                             </div>
                         </div>
                         <div className="text-right">
-                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-0.5">Próximo Nível</span>
+                            <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block mb-0.5">Próximo</span>
                             <span className="text-sm font-black text-zinc-900 dark:text-white">{goalsData.nextLevel.name}</span>
                         </div>
                     </div>
                     
-                    <div className="w-full h-3 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden relative">
-                        <div 
-                            className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 transition-all duration-1000 shadow-[0_0_10px_rgba(99,102,241,0.5)]" 
-                            style={{ width: `${goalsData.progress}%` }}
-                        ></div>
-                    </div>
-                    <div className="flex justify-between text-[10px] font-bold text-zinc-400">
-                        <span>{formatBRL(balance, privacyMode)}</span>
-                        <span>Meta: {formatBRL(goalsData.nextLevel.target, privacyMode)}</span>
+                    <div className="relative z-10 mt-2">
+                        <div className="flex justify-between text-[10px] font-bold text-zinc-400 mb-1.5">
+                            <span>{formatBRL(balance, privacyMode)}</span>
+                            <span className="text-indigo-500 dark:text-indigo-400">{goalsData.progress.toFixed(0)}%</span>
+                            <span>{formatBRL(goalsData.nextLevel.target, privacyMode)}</span>
+                        </div>
+                        <div className="w-full h-4 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden relative shadow-inner">
+                            <div 
+                                className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 transition-all duration-1000 relative" 
+                                style={{ width: `${goalsData.progress}%` }}
+                            >
+                                <div className="absolute inset-0 bg-white/20 animate-[shimmer_2s_infinite] skew-x-12"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div className="flex bg-zinc-200 dark:bg-zinc-800/50 p-1 rounded-2xl mb-4 shrink-0 overflow-x-auto no-scrollbar">
-                    <button onClick={() => setGoalTab('WEALTH')} className={`flex-1 min-w-[90px] py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${goalTab === 'WEALTH' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}>Patrimônio</button>
-                    <button onClick={() => setGoalTab('INCOME')} className={`flex-1 min-w-[90px] py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${goalTab === 'INCOME' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}>Renda</button>
-                    <button onClick={() => setGoalTab('STRATEGY')} className={`flex-1 min-w-[90px] py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${goalTab === 'STRATEGY' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}>Estratégia</button>
+                <div className="flex bg-white dark:bg-zinc-900 p-1.5 rounded-2xl mb-4 shrink-0 shadow-sm border border-zinc-100 dark:border-zinc-800">
+                    <button onClick={() => setGoalTab('WEALTH')} className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${goalTab === 'WEALTH' ? 'bg-zinc-100 dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>
+                        <Wallet className="w-3.5 h-3.5" /> Patrimônio
+                    </button>
+                    <button onClick={() => setGoalTab('INCOME')} className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${goalTab === 'INCOME' ? 'bg-zinc-100 dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>
+                        <CircleDollarSign className="w-3.5 h-3.5" /> Renda
+                    </button>
+                    <button onClick={() => setGoalTab('STRATEGY')} className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${goalTab === 'STRATEGY' ? 'bg-zinc-100 dark:bg-zinc-800 text-amber-600 dark:text-amber-400 shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>
+                        <Target className="w-3.5 h-3.5" /> Estratégia
+                    </button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar">
@@ -1007,19 +1021,19 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                 key={achievement.id} 
                                 className={`relative p-4 rounded-3xl flex flex-col items-center text-center transition-all duration-500 border overflow-hidden group ${
                                     achievement.unlocked 
-                                        ? 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 shadow-lg shadow-black/5 dark:shadow-black/20' 
-                                        : 'bg-zinc-100 dark:bg-zinc-900/50 border-transparent opacity-60'
+                                        ? 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 shadow-lg shadow-black/5 dark:shadow-black/20 scale-[1.02]' 
+                                        : 'bg-zinc-100 dark:bg-zinc-900/50 border-transparent opacity-50 grayscale'
                                 }`}
                             >
-                                <div className={`w-14 h-14 rounded-full flex items-center justify-center mb-3 shadow-inner relative z-10 transition-transform duration-300 group-hover:scale-110 ${
+                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-3 shadow-sm relative z-10 transition-transform duration-300 group-hover:scale-110 ${
                                     achievement.unlocked 
-                                        ? `bg-gradient-to-br ${achievement.color} text-white ring-4 ring-white dark:ring-zinc-800` 
+                                        ? `bg-gradient-to-br ${achievement.color} text-white shadow-lg` 
                                         : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-400'
                                 }`}>
                                     {achievement.unlocked ? <achievement.icon className="w-7 h-7" strokeWidth={2} /> : <Lock className="w-6 h-6" />}
                                     
                                     {achievement.unlocked && (
-                                        <div className="absolute inset-0 rounded-full bg-white/20 animate-pulse"></div>
+                                        <div className="absolute inset-0 rounded-2xl bg-white/20 animate-pulse"></div>
                                     )}
                                 </div>
                                 
@@ -1027,7 +1041,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                 <p className="text-[10px] font-medium text-zinc-400 leading-tight">{achievement.sub}</p>
                                 
                                 {achievement.unlocked && (
-                                    <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${achievement.color}`}></div>
+                                    <div className={`absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r ${achievement.color} opacity-50`}></div>
                                 )}
                             </div>
                         ))}
