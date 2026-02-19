@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { AssetPosition, DividendReceipt, AssetType, PortfolioInsight } from '../types';
-import { CircleDollarSign, CalendarClock, PieChart as PieIcon, ArrowUpRight, Wallet, ArrowRight, Sparkles, Trophy, Anchor, Coins, Crown, Info, X, Zap, ShieldCheck, AlertTriangle, Play, Pause, TrendingUp, Target, Snowflake, Layers, Medal, Rocket, Gem, Lock, Building2, Briefcase, ShoppingCart, Coffee, Plane, Star, Award, Umbrella, ZapOff, CheckCircle2 } from 'lucide-react';
+import { CircleDollarSign, CalendarClock, PieChart as PieIcon, ArrowUpRight, Wallet, ArrowRight, Sparkles, Trophy, Anchor, Coins, Crown, Info, X, Zap, ShieldCheck, AlertTriangle, Play, Pause, TrendingUp, Target, Snowflake, Layers, Medal, Rocket, Gem, Lock, Building2, Briefcase, ShoppingCart, Coffee, Plane, Star, Award, Umbrella, ZapOff, CheckCircle2, ListFilter } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, CartesianGrid, AreaChart, Area, XAxis, YAxis, ComposedChart, Bar, Line, ReferenceLine, Label } from 'recharts';
 import { formatBRL, formatDateShort, getMonthName, getDaysUntil } from '../utils/formatters';
@@ -1058,57 +1058,136 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
         </SwipeableModal>
 
         <SwipeableModal isOpen={showAllocation} onClose={() => setShowAllocation(false)}>
-            <div className="p-4 h-full flex flex-col anim-slide-up">
-                <div className="flex items-center gap-3 mb-4 shrink-0">
-                    <div className="w-10 h-10 rounded-2xl bg-sky-100 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 flex items-center justify-center">
-                        <PieIcon className="w-5 h-5" />
+            <div className="p-4 h-full flex flex-col anim-slide-up bg-zinc-50 dark:bg-zinc-950">
+                <div className="flex items-center justify-between mb-6 shrink-0">
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-sky-400 to-blue-600 text-white flex items-center justify-center shadow-lg shadow-sky-500/20 ring-4 ring-sky-50 dark:ring-sky-900/20">
+                            <PieIcon className="w-6 h-6" strokeWidth={2.5} />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-black text-zinc-900 dark:text-white leading-none tracking-tight">Alocação</h2>
+                            <p className="text-sm font-bold text-sky-600 dark:text-sky-400 mt-0.5">Diversificação da Carteira</p>
+                        </div>
                     </div>
-                    <div>
-                        <h2 className="text-xl font-bold text-zinc-900 dark:text-white leading-none">Alocação</h2>
-                        <p className="text-xs text-zinc-500 font-medium mt-0.5">Diversificação da Carteira</p>
+                    <div className="flex bg-white dark:bg-zinc-900 p-1 rounded-xl shadow-sm border border-zinc-100 dark:border-zinc-800">
+                        <button 
+                            onClick={() => setAllocationView('CLASS')} 
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${allocationView === 'CLASS' ? 'bg-zinc-100 dark:bg-zinc-800 text-sky-600 dark:text-sky-400 shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                        >
+                            Classe
+                        </button>
+                        <button 
+                            onClick={() => setAllocationView('ASSET')} 
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${allocationView === 'ASSET' ? 'bg-zinc-100 dark:bg-zinc-800 text-sky-600 dark:text-sky-400 shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                        >
+                            Ativo
+                        </button>
                     </div>
-                </div>
-
-                <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl mb-4 shrink-0">
-                    <button onClick={() => setAllocationView('CLASS')} className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${allocationView === 'CLASS' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500'}`}>Por Classe</button>
-                    <button onClick={() => setAllocationView('ASSET')} className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${allocationView === 'ASSET' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500'}`}>Por Ativo</button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar">
-                    <div className="h-56 w-full relative mb-4">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={allocationView === 'CLASS' ? allocationData.byClass : allocationData.byAsset}
-                                    innerRadius={55}
-                                    outerRadius={75}
-                                    paddingAngle={5}
-                                    dataKey="value"
-                                    animationDuration={1500}
-                                    animationEasing="ease-out"
-                                >
-                                    {(allocationView === 'CLASS' ? allocationData.byClass : allocationData.byAsset).map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
-                                    ))}
-                                </Pie>
-                                <RechartsTooltip 
-                                    formatter={(value: number) => formatBRL(value, privacyMode)} 
-                                    contentStyle={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(24, 24, 27, 0.8)', color: '#fff', fontSize: '10px', padding: '8px', backdropFilter: 'blur(8px)' }}
-                                />
-                            </PieChart>
-                        </ResponsiveContainer>
+                    <div className="bg-white dark:bg-zinc-900 rounded-[2rem] p-6 mb-6 border border-zinc-100 dark:border-zinc-800 shadow-xl shadow-sky-500/5 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-sky-500/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+                        <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl -ml-10 -mb-10 pointer-events-none"></div>
+                        
+                        <div className="h-64 w-full relative z-10">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={allocationView === 'CLASS' ? allocationData.byClass : allocationData.byAsset}
+                                        innerRadius={80}
+                                        outerRadius={100}
+                                        paddingAngle={4}
+                                        dataKey="value"
+                                        cornerRadius={6}
+                                        stroke="none"
+                                        animationDuration={1500}
+                                        animationEasing="ease-out"
+                                    >
+                                        {(allocationView === 'CLASS' ? allocationData.byClass : allocationData.byAsset).map((entry, index) => (
+                                            <Cell 
+                                                key={`cell-${index}`} 
+                                                fill={entry.color} 
+                                                strokeWidth={0}
+                                                className="hover:opacity-80 transition-opacity cursor-pointer"
+                                            />
+                                        ))}
+                                    </Pie>
+                                    <RechartsTooltip 
+                                        cursor={{fill: 'transparent'}}
+                                        content={({ active, payload }) => {
+                                            if (active && payload && payload.length) {
+                                                const data = payload[0].payload;
+                                                return (
+                                                    <div className="bg-zinc-900/95 border border-white/10 p-3 rounded-xl shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-200">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: data.color }}></div>
+                                                            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">{data.name}</span>
+                                                        </div>
+                                                        <p className="text-lg font-black text-white tabular-nums">{formatBRL(data.value, privacyMode)}</p>
+                                                        <p className="text-xs font-bold text-zinc-400">{(data.percent || 0).toFixed(1)}%</p>
+                                                    </div>
+                                                );
+                                            }
+                                            return null;
+                                        }}
+                                    />
+                                </PieChart>
+                            </ResponsiveContainer>
+                            
+                            {/* Central Info */}
+                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Total Investido</span>
+                                <span className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">{formatBRL(balance, privacyMode)}</span>
+                                <div className="flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
+                                    <TrendingUp className="w-3 h-3" />
+                                    <span className="text-[10px] font-bold">100%</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-3">
+                        <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1 flex items-center gap-2">
+                            <ListFilter className="w-3 h-3" /> Detalhamento
+                        </h3>
                         {(allocationView === 'CLASS' ? allocationData.byClass : allocationData.byAsset).map((item, idx) => (
-                            <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: item.color }}></div>
-                                    <span className="text-sm font-bold text-zinc-900 dark:text-white">{item.name}</span>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-sm font-bold text-zinc-900 dark:text-white">{formatBRL(item.value, privacyMode)}</p>
-                                    <p className="text-[10px] font-medium text-zinc-500">{(item as any).percent?.toFixed(1) || 0}%</p>
+                            <div 
+                                key={idx} 
+                                className="group relative bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm hover:shadow-md transition-all active:scale-[0.98] duration-200 overflow-hidden"
+                                style={{ animationDelay: `${idx * 50}ms` }}
+                            >
+                                <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: item.color }}></div>
+                                <div className="absolute right-0 top-0 w-24 h-24 bg-gradient-to-bl from-zinc-50 to-transparent dark:from-zinc-800/20 rounded-bl-full -mr-4 -mt-4 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+
+                                <div className="flex items-center justify-between relative z-10">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-xs shadow-sm" style={{ backgroundColor: item.color }}>
+                                            {item.name.substring(0, 2).toUpperCase()}
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-sm text-zinc-900 dark:text-white">{item.name}</h4>
+                                            <div className="flex items-center gap-2 mt-0.5">
+                                                <div className="h-1.5 w-16 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                                                    <div className="h-full rounded-full" style={{ width: `${(item as any).percent}%`, backgroundColor: item.color }}></div>
+                                                </div>
+                                                <span className="text-[10px] font-medium text-zinc-400">{((item as any).percent || 0).toFixed(1)}%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-sm font-black text-zinc-900 dark:text-white tabular-nums">{formatBRL(item.value, privacyMode)}</p>
+                                        {allocationView === 'CLASS' && (
+                                            <p className="text-[10px] font-medium text-zinc-400">
+                                                {portfolio.filter(p => p.assetType === (item.name === 'Ações' ? 'STOCK' : 'FII')).length} ativos
+                                            </p>
+                                        )}
+                                        {allocationView === 'ASSET' && (
+                                            <p className="text-[10px] font-medium text-zinc-400">
+                                                {formatBRL(portfolio.find(p => p.ticker === item.name)?.currentPrice || 0, privacyMode)}
+                                            </p>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         ))}
