@@ -136,8 +136,8 @@ const CustomCandleShape = (props: any) => {
     const strokeWidth = 1.5;
 
     // Largura segura para o candle (evita sumir em mobile ou muitos dados)
-    // Garante pelo menos 3px de largura
-    const safeWidth = Math.max(3, width * 0.7); 
+    // Garante pelo menos 4px de largura para visibilidade
+    const safeWidth = Math.max(4, width * 0.8); 
     const xCentered = x + (width - safeWidth) / 2;
     const wickX = x + width / 2;
 
@@ -165,7 +165,7 @@ const CustomCandleShape = (props: any) => {
     
     // Altura do corpo (mínimo de 1px para visibilidade)
     let bodyHeight = (bodyTopPrice - bodyBottomPrice) * ratio;
-    if (bodyHeight < 1) bodyHeight = 1;
+    if (bodyHeight < 1.5) bodyHeight = 1.5; // Aumentado para 1.5px
 
     return (
         <g>
@@ -179,9 +179,7 @@ const CustomCandleShape = (props: any) => {
                 width={safeWidth} 
                 height={bodyHeight} 
                 fill={color} 
-                stroke={color}
-                strokeWidth={0.5} // Adiciona borda sutil para garantir visibilidade
-                rx={1} // Leve arredondamento
+                // Removido stroke e rx para evitar problemas visuais em escalas pequenas
             />
         </g>
     );
@@ -189,15 +187,16 @@ const CustomCandleShape = (props: any) => {
 
 const CurrentPriceLabel = ({ viewBox, value }: any) => {
     const { y } = viewBox;
-    // Ajustado para ficar centralizado verticalmente na linha pontilhada
-    // E movido para a direita para não sobrepor o gráfico
+    // Posicionado dentro do gráfico, alinhado à direita
+    // Desenha da direita para a esquerda
     return (
-        <g transform={`translate(${viewBox.width + 8}, ${y})`}>
+        <g transform={`translate(${viewBox.width}, ${y})`}>
             <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
                 <feDropShadow dx="0" dy="1" stdDeviation="1" floodColor="#000" floodOpacity="0.2" />
             </filter>
-            <path d="M0,0 L6,-11 H46 A4,4 0 0 1 50,-7 V7 A4,4 0 0 1 46,11 H6 L0,0 Z" fill="#6366f1" filter="url(#shadow)" />
-            <text x={28} y={4} textAnchor="middle" fill="#fff" fontSize={10} fontWeight="bold" fontFamily="Inter, sans-serif">
+            {/* Seta apontando para a esquerda (linha do preço) */}
+            <path d="M0,0 L-6,-11 H-46 A4,4 0 0 0 -50,-7 V7 A4,4 0 0 0 -46,11 H-6 L0,0 Z" fill="#6366f1" filter="url(#shadow)" />
+            <text x={-28} y={4} textAnchor="middle" fill="#fff" fontSize={10} fontWeight="bold" fontFamily="Inter, sans-serif">
                 {value.toFixed(2)}
             </text>
         </g>
@@ -309,7 +308,7 @@ const PriceHistoryChart = ({ fullData, loading, error, ticker, range, onRangeCha
                             <span className={`text-xs font-black ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>{isPositive ? '+' : ''}{variation.toFixed(2)}%</span>
                         </div>
                         <ResponsiveContainer width="100%" height="100%">
-                            <ComposedChart data={processedData} margin={{ top: 10, right: 55, left: -15, bottom: 5 }}>
+                            <ComposedChart data={processedData} margin={{ top: 10, right: 0, left: -15, bottom: 5 }}>
                                 <defs>
                                     <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor={isPositive ? '#10b981' : '#f43f5e'} stopOpacity={0.2}/>
