@@ -120,29 +120,35 @@ const processChartData = (data: any[]) => {
     };
 };
 
-// Componente Visual do Candle (CORRIGIDO)
+// Componente Visual do Candle (CORRIGIDO E ROBUSTO)
 const CustomCandleShape = (props: any) => {
     const { x, y, width, height, payload } = props;
-    const { open, close, high, low } = payload.candleData || {};
     
-    // Se faltar dados, não renderiza
+    // Fallback seguro para dados
+    const candleData = payload?.candleData || {};
+    const { open, close, high, low } = candleData;
+    
+    // Se faltar dados essenciais, não renderiza
     if (open == null || close == null || high == null || low == null) return null;
 
     const isUp = close >= open;
     const color = isUp ? '#10b981' : '#f43f5e'; 
     const strokeWidth = 1.5;
 
-    // Recharts Bar passa 'y' como o topo da barra (valor High) e 'height' como a altura total (High - Low)
-    // Precisamos calcular a posição do corpo (Open/Close) relativo a isso.
-    
+    // Largura segura para o candle (evita sumir em mobile ou muitos dados)
+    // Garante pelo menos 3px de largura
+    const safeWidth = Math.max(3, width * 0.7); 
+    const xCentered = x + (width - safeWidth) / 2;
+    const wickX = x + width / 2;
+
     const range = high - low;
+    
+    // Se range for zero (Doji perfeito ou dados flat), desenha linha horizontal
     if (range === 0) {
-        // Doji perfeito (High == Low == Open == Close) ou dados faltantes
-        // Desenha apenas um traço horizontal
         return (
              <line 
-                x1={x} y1={y + height / 2} 
-                x2={x + width} y2={y + height / 2} 
+                x1={xCentered} y1={y + height / 2} 
+                x2={xCentered + safeWidth} y2={y + height / 2} 
                 stroke={color} strokeWidth={2} 
             />
         );
@@ -150,26 +156,21 @@ const CustomCandleShape = (props: any) => {
 
     const ratio = height / range;
 
-    // Coordenadas Y relativas ao SVG container
-    // y = posição pixel do High
-    // y + height = posição pixel do Low
-    
     const bodyTopPrice = Math.max(open, close);
     const bodyBottomPrice = Math.min(open, close);
     
+    // Cálculo preciso da posição Y do corpo
+    // y do Recharts é o topo (High). Adicionamos o offset do High até o topo do corpo.
     const bodyTopY = y + (high - bodyTopPrice) * ratio;
-    const bodyHeight = Math.max(1, (bodyTopPrice - bodyBottomPrice) * ratio); // Min 1px height
-
-    // Centraliza o pavio e o corpo
-    // Garante largura mínima para visualização em mobile
-    const safeWidth = Math.max(2, width * 0.7); 
-    const xCentered = x + (width - safeWidth) / 2;
-    const wickX = x + width / 2;
+    
+    // Altura do corpo (mínimo de 1px para visibilidade)
+    let bodyHeight = (bodyTopPrice - bodyBottomPrice) * ratio;
+    if (bodyHeight < 1) bodyHeight = 1;
 
     return (
         <g>
             {/* Pavio (High to Low) */}
-            <line x1={wickX} y1={y} x2={wickX} y2={y + height} stroke={color} strokeWidth={strokeWidth} />
+            <line x1={wickX} y1={y} x2={wickX} y2={y + height} stroke={color} strokeWidth={strokeWidth} opacity={0.8} />
             
             {/* Corpo (Open to Close) */}
             <rect 
@@ -179,7 +180,8 @@ const CustomCandleShape = (props: any) => {
                 height={bodyHeight} 
                 fill={color} 
                 stroke={color}
-                strokeWidth={0} // O preenchimento já dá a cor
+                strokeWidth={0.5} // Adiciona borda sutil para garantir visibilidade
+                rx={1} // Leve arredondamento
             />
         </g>
     );
@@ -187,10 +189,15 @@ const CustomCandleShape = (props: any) => {
 
 const CurrentPriceLabel = ({ viewBox, value }: any) => {
     const { y } = viewBox;
+    // Ajustado para ficar centralizado verticalmente na linha pontilhada
+    // E movido para a direita para não sobrepor o gráfico
     return (
-        <g transform={`translate(${viewBox.width + 2}, ${y})`}>
-            <path d="M0,0 L5,-10 H42 A4,4 0 0 1 46,-6 V6 A4,4 0 0 1 42,10 H5 L0,0 Z" fill="#6366f1" />
-            <text x={24} y={3} textAnchor="middle" fill="#fff" fontSize={9} fontWeight="bold" fontFamily="Inter, sans-serif">
+        <g transform={`translate(${viewBox.width + 8}, ${y})`}>
+            <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="1" stdDeviation="1" floodColor="#000" floodOpacity="0.2" />
+            </filter>
+            <path d="M0,0 L6,-11 H46 A4,4 0 0 1 50,-7 V7 A4,4 0 0 1 46,11 H6 L0,0 Z" fill="#6366f1" filter="url(#shadow)" />
+            <text x={28} y={4} textAnchor="middle" fill="#fff" fontSize={10} fontWeight="bold" fontFamily="Inter, sans-serif">
                 {value.toFixed(2)}
             </text>
         </g>
@@ -302,7 +309,7 @@ const PriceHistoryChart = ({ fullData, loading, error, ticker, range, onRangeCha
                             <span className={`text-xs font-black ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>{isPositive ? '+' : ''}{variation.toFixed(2)}%</span>
                         </div>
                         <ResponsiveContainer width="100%" height="100%">
-                            <ComposedChart data={processedData} margin={{ top: 10, right: 0, left: -15, bottom: 5 }}>
+                            <ComposedChart data={processedData} margin={{ top: 10, right: 55, left: -15, bottom: 5 }}>
                                 <defs>
                                     <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor={isPositive ? '#10b981' : '#f43f5e'} stopOpacity={0.2}/>
@@ -741,7 +748,7 @@ const ChartsContainer = ({ ticker, type, marketDividends }: { ticker: string, ty
     }, [ticker, range]);
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-6">
             <PriceHistoryChart 
                 fullData={historyData} 
                 loading={loading} 
@@ -1678,9 +1685,9 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
                     </div>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-6">
                     {activeTab === 'OVERVIEW' && (
-                        <div className="anim-fade-in space-y-4">
+                        <div className="anim-fade-in space-y-8">
                             <PositionSummaryCard asset={selectedAsset} privacyMode={privacyMode} />
                             <ChartsContainer 
                                 ticker={selectedAsset.ticker} 
@@ -1691,7 +1698,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
                     )}
 
                     {activeTab === 'ANALYSIS' && (
-                        <div className="anim-fade-in space-y-4">
+                        <div className="anim-fade-in space-y-8">
                             <ValuationCard asset={selectedAsset} />
                             <DetailedInfoBlock asset={selectedAsset} />
                             {selectedAsset.properties && selectedAsset.properties.length > 0 && (
@@ -1701,7 +1708,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
                     )}
 
                     {activeTab === 'INCOME' && (
-                        <div className="anim-fade-in space-y-4">
+                        <div className="anim-fade-in space-y-8">
                             <IncomeAnalysisSection 
                                 asset={selectedAsset} 
                                 chartData={incomeChartData} 
