@@ -106,16 +106,16 @@ export const analyzePortfolio = (
         createStory(
             'market-summary', 
             isPositive ? 'success' : 'warning',
-            isPositive ? 'Mercado em Alta 📈' : 'Correção de Mercado 📉',
-            `Sua carteira ${isPositive ? 'registra valorização de' : 'apresenta recuo de'} ${Math.abs(portfolioPercentChange).toFixed(2)}% hoje. ${isPositive ? 'O movimento reflete o otimismo geral dos investidores.' : 'Movimentos corretivos são naturais e podem abrir janelas de aporte.'}`,
+            isPositive ? 'Carteira em Alta 🟢' : 'Carteira em Baixa 🔴',
+            `Sua carteira ${isPositive ? 'valoriza' : 'recua'} aproximadamente ${Math.abs(portfolioPercentChange).toFixed(2)}% hoje. ${isPositive ? 'O mercado está favorável.' : 'Movimento natural de correção.'}`,
             100 
         );
     } else {
         createStory(
             'market-stable',
             'neutral',
-            'Estabilidade Patrimonial ⚓',
-            'Sua carteira opera com baixa volatilidade hoje. A estabilidade é fundamental para a preservação de capital no longo prazo.',
+            'Dia Estável ⚓',
+            'Sua carteira opera com estabilidade hoje, sem grandes variações no patrimônio total.',
             100
         );
     }
@@ -129,8 +129,8 @@ export const analyzePortfolio = (
         createStory(
             'top-gainer',
             'volatility_up',
-            'Líder de Alta 🚀',
-            `${topGainer.ticker} dispara +${(topGainer.dailyChange || 0).toFixed(2)}% no pregão. Movimentos fortes de alta podem indicar fatos relevantes ou euforia momentânea.`,
+            'Destaque de Alta 🚀',
+            `${topGainer.ticker} lidera seus ganhos com uma alta de +${(topGainer.dailyChange || 0).toFixed(2)}% no pregão.`,
             95,
             topGainer.ticker
         );
@@ -142,8 +142,8 @@ export const analyzePortfolio = (
         createStory(
             'top-loser',
             'volatility_down',
-            'Maior Baixa do Dia 🔻',
-            `${topLoser.ticker} recua ${(topLoser.dailyChange || 0).toFixed(2)}%. Quedas acentuadas podem representar oportunidades de compra se os fundamentos permanecerem sólidos.`,
+            'Correção 🔻',
+            `${topLoser.ticker} apresenta a maior queda do dia na sua carteira: ${(topLoser.dailyChange || 0).toFixed(2)}%.`,
             94,
             topLoser.ticker
         );
@@ -157,8 +157,8 @@ export const analyzePortfolio = (
         createStory(
             'dividend-trap',
             'warning',
-            'Alerta: Dividend Trap? ⚠️',
-            `${dividendTrap.ticker} exibe um Dividend Yield de ${(dividendTrap.dy_12m || 0).toFixed(1)}%. Cuidado: rendimentos acima de 18% frequentemente sinalizam receitas não recorrentes ou desvalorização severa da cota.`,
+            'DY Suspeito? ⚠️',
+            `${dividendTrap.ticker} apresenta um Dividend Yield de ${(dividendTrap.dy_12m || 0).toFixed(1)}%. Valores acima de 18% podem indicar risco ou pagamento não recorrente.`,
             93,
             dividendTrap.ticker
         );
@@ -175,8 +175,8 @@ export const analyzePortfolio = (
         createStory(
             'quality-stock',
             'success',
-            'Alta Qualidade (Quality) 💎',
-            `${qualityStock.ticker} destaca-se pelos fundamentos robustos: ROE de ${(qualityStock.roe || 0).toFixed(1)}% e margens sólidas. Empresas com alta rentabilidade e dívida controlada tendem a performar bem no longo prazo.`,
+            'Alta Qualidade 💎',
+            `${qualityStock.ticker} combina ROE alto (${(qualityStock.roe || 0).toFixed(1)}%) com margens sólidas e dívida controlada.`,
             91,
             qualityStock.ticker
         );
@@ -192,8 +192,8 @@ export const analyzePortfolio = (
         createStory(
             'turnaround',
             'neutral',
-            'Potencial Turnaround 🔄',
-            `${turnaround.ticker} sobe forte hoje apesar dos prejuízos recentes. O mercado pode estar antecipando uma reestruturação ou virada nos resultados operacionais.`,
+            'Recuperação? 🔄',
+            `${turnaround.ticker} sobe forte hoje apesar dos prejuízos recentes. O mercado pode estar precificando uma virada.`,
             88,
             turnaround.ticker
         );
@@ -207,8 +207,8 @@ export const analyzePortfolio = (
         createStory(
             'inflation-shield',
             'inflation-shield',
-            'Ganho Real vs Inflação 🛡️',
-            `${inflationShield.ticker} entrega um DY de ${(inflationShield.dy_12m || 0).toFixed(1)}%, garantindo um spread confortável acima do IPCA (${ipca}%). Isso protege seu poder de compra.`,
+            'Vencendo a Inflação 🛡️',
+            `${inflationShield.ticker} possui um DY de ${(inflationShield.dy_12m || 0).toFixed(1)}%, superando o IPCA (${ipca}%) com folga.`,
             89,
             inflationShield.ticker
         );
@@ -223,13 +223,11 @@ export const analyzePortfolio = (
     });
 
     if (magicNumberClose) {
-        const magicNumber = Math.ceil((magicNumberClose.currentPrice || 0) / (magicNumberClose.last_dividend || 1));
-        const missing = magicNumber - magicNumberClose.quantity;
         createStory(
             'magic-close',
             'magic-number',
-            'Efeito Bola de Neve ❄️',
-            `Faltam apenas ${missing} cotas de ${magicNumberClose.ticker} para atingir o Número Mágico. Ao alcançar essa meta, os dividendos comprarão uma nova cota automaticamente todo mês.`,
+            'Quase Lá! ✨',
+            `Falta pouco para o "Efeito Bola de Neve" em ${magicNumberClose.ticker}. Você já atingiu mais de 80% do Número Mágico.`,
             96,
             magicNumberClose.ticker
         );
@@ -243,8 +241,8 @@ export const analyzePortfolio = (
         createStory(
             'high-vacancy',
             'warning',
-            'Risco de Vacância 🏚️',
-            `${highVacancyFii.ticker} reporta vacância física de ${(highVacancyFii.vacancy || 0).toFixed(1)}%. Imóveis vazios geram custos e não pagam aluguel, pressionando os dividendos para baixo.`,
+            'Vacância Elevada 🏚️',
+            `${highVacancyFii.ticker} está com vacância física de ${(highVacancyFii.vacancy || 0).toFixed(1)}%. Isso pode impactar rendimentos futuros.`,
             88,
             highVacancyFii.ticker
         );
@@ -259,7 +257,7 @@ export const analyzePortfolio = (
             'opportunity-pvp',
             'opportunity',
             'Desconto Patrimonial 🏷️',
-            `${cheapFii.ticker} negocia a ${(cheapFii.p_vp || 0).toFixed(2)}x do seu Valor Patrimonial. O mercado está precificando os imóveis do fundo com ${(100 - (cheapFii.p_vp || 0)*100).toFixed(0)}% de desconto.`,
+            `${cheapFii.ticker} está negociado com desconto de ${(100 - (cheapFii.p_vp || 0)*100).toFixed(0)}% sobre o valor patrimonial.`,
             85,
             cheapFii.ticker
         );
@@ -273,8 +271,8 @@ export const analyzePortfolio = (
         createStory(
             'expensive-pvp',
             'warning',
-            'Ágio Excessivo ⚠️',
-            `${expensiveFii.ticker} está caro, custando ${(expensiveFii.p_vp || 0).toFixed(2)}x o valor real dos seus imóveis. Comprar com ágio reduz seu Yield e aumenta o risco de perda de capital.`,
+            'Ágio Elevado ⚠️',
+            `${expensiveFii.ticker} está caro, custando ${(expensiveFii.p_vp || 0).toFixed(2)}x o seu valor patrimonial. Cuidado com novos aportes.`,
             83,
             expensiveFii.ticker
         );
@@ -291,8 +289,8 @@ export const analyzePortfolio = (
          createStory(
             'graham-opportunity',
             'opportunity',
-            'Oportunidade de Valor (Graham) 🧠',
-            `${grahamStock.ticker} está descontada segundo a fórmula de Benjamin Graham. O preço atual oferece uma margem de segurança significativa em relação ao valor intrínseco calculado.`,
+            'Oportunidade Graham 🧠',
+            `${grahamStock.ticker} está muito abaixo do valor intrínseco de Graham. Potencial oportunidade de valor profundo.`,
             84,
             grahamStock.ticker
         );
@@ -305,8 +303,8 @@ export const analyzePortfolio = (
         createStory(
             'diversification-good',
             'diversification-good',
-            'Diversificação Inteligente 🌐',
-            `Sua carteira está exposta a ${sectors.size} setores diferentes. A diversificação é a única "almoço grátis" do mercado, reduzindo riscos não-sistêmicos sem necessariamente sacrificar o retorno.`,
+            'Bem Diversificado 🌐',
+            `Você possui ativos em ${sectors.size} setores diferentes. Isso ajuda a blindar seu patrimônio contra crises setoriais.`,
             75
         );
     }
@@ -319,7 +317,7 @@ export const analyzePortfolio = (
             'risk-concentration',
             'risk-concentration',
             'Risco de Concentração ⚖️',
-            `${concentrated.ticker} representa ${pct}% do seu patrimônio total. Uma exposição tão alta a um único ativo aumenta drasticamente a volatilidade e o risco da sua carteira.`,
+            `${concentrated.ticker} representa ${pct}% do seu patrimônio total. Monitore este risco com atenção.`,
             80,
             concentrated.ticker
         );
@@ -336,8 +334,8 @@ export const analyzePortfolio = (
                 createStory(
                     'spotlight-fii',
                     'spotlight-fii',
-                    'Raio-X do Ativo: FII 🏢',
-                    `${randomAsset.ticker} | Cotação: R$ ${randomAsset.currentPrice?.toFixed(2)} | P/VP: ${(randomAsset.p_vp || 0).toFixed(2)}. O P/VP indica quanto o mercado paga por cada real de patrimônio do fundo.`,
+                    'Raio-X: FII 🏢',
+                    `${randomAsset.ticker}: Cotação R$ ${randomAsset.currentPrice?.toFixed(2)} | P/VP ${(randomAsset.p_vp || 0).toFixed(2)}.`,
                     60,
                     randomAsset.ticker
                 );
@@ -345,8 +343,8 @@ export const analyzePortfolio = (
                 createStory(
                     'spotlight-stock',
                     'spotlight-stock',
-                    'Raio-X do Ativo: Ação 📊',
-                    `${randomAsset.ticker} | ROE: ${(randomAsset.roe || 0).toFixed(1)}% | P/L: ${(randomAsset.p_l || 0).toFixed(1)}x. O ROE mede a capacidade da empresa de gerar valor com o dinheiro dos acionistas.`,
+                    'Raio-X: Ação 📊',
+                    `${randomAsset.ticker}: ROE de ${(randomAsset.roe || 0).toFixed(1)}% e P/L ${(randomAsset.p_l || 0).toFixed(1)}x.`,
                     60,
                     randomAsset.ticker
                 );
