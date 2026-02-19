@@ -833,26 +833,30 @@ const SimulatorCard = ({ data, ticker, dividends = [] }: any) => {
             profit: finalTotal - amount,
             cdi: finalCDI,
             roi: ((finalTotal - amount) / amount) * 100,
-            reinvestedAmount: dividendsUsedForReinvest
+            reinvestedAmount: dividendsUsedForReinvest,
+            initialShares: Math.floor(amount / startPrice)
         };
     }, [data, amount, dividends, reinvest]);
 
     return (
-        <div className="bg-gradient-to-br from-zinc-50 to-white dark:from-zinc-900 dark:to-zinc-950 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm mb-4">
-            <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center gap-2">
-                    <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
-                        <Award className="w-3.5 h-3.5" /> Simulador (5 Anos)
-                    </h3>
-                    {reinvest && <span className="text-[9px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-1.5 py-0.5 rounded font-bold">Composto</span>}
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 shadow-sm mb-4">
+            <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                        <Calculator className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Simulador de Retorno</h3>
+                        <p className="text-xs text-zinc-500 font-medium">Histórico de 5 Anos</p>
+                    </div>
                 </div>
                 
-                <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5">
+                <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-lg p-1">
                     {[1000, 5000, 10000].map(val => (
                         <button 
                             key={val} 
                             onClick={() => setAmount(val)} 
-                            className={`px-2 py-0.5 text-[9px] font-bold rounded-md transition-all ${amount === val ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                            className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${amount === val ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                         >
                             {val/1000}k
                         </button>
@@ -860,54 +864,50 @@ const SimulatorCard = ({ data, ticker, dividends = [] }: any) => {
                 </div>
             </div>
 
-            <div className="mb-4">
-                <p className="text-[10px] text-zinc-400 mb-1">Resultado final ({reinvest ? 'Reinvestindo' : 'Sacando'}):</p>
-                <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter">
-                        {result ? formatBRL(result.total) : '...'}
-                    </span>
-                    {result && (
-                        <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${result.profit >= 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400'}`}>
-                            {result.profit > 0 ? '+' : ''}{result.roi.toFixed(1)}%
-                        </span>
-                    )}
-                </div>
-                <button 
-                    onClick={() => setReinvest(!reinvest)} 
-                    className="mt-3 flex items-center gap-2 text-[10px] font-bold text-zinc-500 hover:text-indigo-500 transition-colors"
-                >
-                    <RefreshCcw className={`w-3 h-3 ${reinvest ? 'text-indigo-500' : ''}`} />
-                    {reinvest ? 'Desativar Reinvestimento' : 'Ativar Juros Compostos'}
-                </button>
-            </div>
-
-            {result && (
-                <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="bg-white dark:bg-zinc-800/50 p-2 rounded-xl border border-zinc-100 dark:border-zinc-800">
-                            <span className="text-[9px] font-bold text-zinc-400 uppercase block mb-0.5">Cotas Finais</span>
-                            <span className="font-bold text-zinc-900 dark:text-white block">{result.shares} un</span>
-                            {reinvest && <span className="text-[9px] text-emerald-500 font-bold">+{(result.shares - Math.floor(amount / (data[0]?.price || 1)))} ganhas</span>}
+            <div className="flex flex-col gap-6">
+                <div className="flex items-center justify-between bg-zinc-50 dark:bg-zinc-800/30 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                    <div>
+                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Resultado Final</p>
+                        <div className="flex items-baseline gap-2">
+                            <span className="text-3xl font-black text-zinc-900 dark:text-white tracking-tight">
+                                {result ? formatBRL(result.total) : '...'}
+                            </span>
                         </div>
-                        <div className="bg-white dark:bg-zinc-800/50 p-2 rounded-xl border border-zinc-100 dark:border-zinc-800">
-                            <span className="text-[9px] font-bold text-zinc-400 uppercase block mb-0.5">Dividendos Totais</span>
-                            <span className="font-bold text-emerald-600 dark:text-emerald-400 block">+{formatBRL(result.dividends)}</span>
-                        </div>
-                    </div>
-                    
-                    <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/50">
-                        <div className="flex justify-between items-center text-xs">
-                            <span className="text-zinc-500 font-medium">Comparativo CDI</span>
-                            <div className="flex items-center gap-2">
-                                <span className="text-zinc-400 line-through decoration-zinc-300 dark:decoration-zinc-700">{formatBRL(result.cdi)}</span>
-                                <span className={`font-bold ${result.total >= result.cdi ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                    {result.total >= result.cdi ? 'Superou' : 'Perdeu'}
+                        {result && (
+                            <div className="flex items-center gap-2 mt-1">
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${result.profit >= 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400'}`}>
+                                    {result.profit > 0 ? '+' : ''}{result.roi.toFixed(1)}%
                                 </span>
+                                <span className="text-[10px] text-zinc-400">vs CDI: {result.cdi ? formatBRL(result.cdi) : '...'}</span>
+                            </div>
+                        )}
+                    </div>
+                    <button 
+                        onClick={() => setReinvest(!reinvest)} 
+                        className={`flex flex-col items-center justify-center w-12 h-12 rounded-xl border-2 transition-all ${reinvest ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' : 'border-zinc-200 dark:border-zinc-700 text-zinc-400'}`}
+                    >
+                        <RefreshCcw className={`w-5 h-5 mb-0.5 ${reinvest ? 'animate-spin-slow' : ''}`} />
+                    </button>
+                </div>
+
+                {result && (
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="p-3 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                            <span className="text-[9px] font-bold text-zinc-400 uppercase block mb-1">Cotas Acumuladas</span>
+                            <div className="flex items-end justify-between">
+                                <span className="text-lg font-black text-zinc-900 dark:text-white">{result.shares}</span>
+                                {reinvest && result.shares > result.initialShares && (
+                                    <span className="text-[10px] font-bold text-emerald-500 mb-1">+{result.shares - result.initialShares}</span>
+                                )}
                             </div>
                         </div>
+                        <div className="p-3 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                            <span className="text-[9px] font-bold text-zinc-400 uppercase block mb-1">Dividendos Totais</span>
+                            <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">{formatBRL(result.dividends)}</span>
+                        </div>
                     </div>
-                </div>
-            )}
+                )}
+            </div>
         </div>
     );
 };
@@ -981,7 +981,12 @@ const ValuationCard = ({ asset }: { asset: AssetPosition }) => {
     }
 
     return (
-        <CollapsibleCard title="Valuation & Preço Justo" icon={Calculator}>
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 shadow-sm mb-4">
+            <div className="flex items-center gap-2 mb-4">
+                <Calculator className="w-4 h-4 text-zinc-400" />
+                <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest">Valuation & Preço Justo</h3>
+            </div>
+            
             <div className="flex items-center justify-between mt-2">
                 <div>
                     <p className="text-xs font-bold text-zinc-500 mb-1">Preço Justo (Estimado)</p>
@@ -994,10 +999,10 @@ const ValuationCard = ({ asset }: { asset: AssetPosition }) => {
                      </span>
                 </div>
             </div>
-            <p className="text-[9px] text-zinc-400 mt-2 leading-relaxed">
+            <p className="text-[9px] text-zinc-400 mt-3 leading-relaxed border-t border-zinc-100 dark:border-zinc-800 pt-2">
                 *Estimativa baseada em {asset.assetType === AssetType.STOCK ? 'Graham (VPA*LPA)' : 'Bazin (Div/0.06)'}. Não é recomendação de compra.
             </p>
-        </CollapsibleCard>
+        </div>
     );
 };
 
@@ -1005,7 +1010,7 @@ const DetailedInfoBlock = ({ asset }: { asset: AssetPosition }) => {
     const InfoRow = ({ label, value }: { label: string, value: string | number | undefined }) => {
         if (value === undefined || value === null || value === '') return null;
         return (
-            <div className="flex justify-between py-2 text-xs border-b border-dashed border-zinc-100 dark:border-zinc-800/50 last:border-0">
+            <div className="flex justify-between py-2.5 text-xs border-b border-dashed border-zinc-100 dark:border-zinc-800 last:border-0 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 px-2 rounded-lg transition-colors">
                 <span className="font-bold text-zinc-500">{label}</span>
                 <span className="font-medium text-zinc-900 dark:text-white text-right max-w-[60%]">{value}</span>
             </div>
@@ -1013,52 +1018,71 @@ const DetailedInfoBlock = ({ asset }: { asset: AssetPosition }) => {
     };
 
     return (
-        <>
+        <div className="space-y-4">
             {/* Dados Gerais */}
-            <CollapsibleCard title="Dados Corporativos" icon={FileText}>
-                <InfoRow label="Razão Social" value={asset.company_name} />
-                <InfoRow label="CNPJ" value={asset.cnpj} />
-                <InfoRow label="Segmento" value={asset.segment} />
-                {asset.assetType === AssetType.FII && <InfoRow label="Patrimônio Líquido" value={asset.assets_value} />}
-                {asset.assetType === AssetType.STOCK && <InfoRow label="Valor de Mercado" value={asset.market_cap} />}
-            </CollapsibleCard>
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm">
+                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-zinc-100 dark:border-zinc-800">
+                    <FileText className="w-4 h-4 text-zinc-400" />
+                    <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Dados Corporativos</h3>
+                </div>
+                <div className="-mx-2">
+                    <InfoRow label="Razão Social" value={asset.company_name} />
+                    <InfoRow label="CNPJ" value={asset.cnpj} />
+                    <InfoRow label="Segmento" value={asset.segment} />
+                    {asset.assetType === AssetType.FII && <InfoRow label="Patrimônio Líquido" value={asset.assets_value} />}
+                    {asset.assetType === AssetType.STOCK && <InfoRow label="Valor de Mercado" value={asset.market_cap} />}
+                </div>
+            </div>
 
             {/* Campos Específicos para AÇÕES */}
             {asset.assetType === AssetType.STOCK && (
-                <CollapsibleCard title="Análise Fundamentalista" icon={Activity}>
-                    <h5 className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-2 mt-1">Valuation</h5>
-                    <InfoRow label="P/L (Preço/Lucro)" value={asset.p_l?.toFixed(2)} />
-                    <InfoRow label="P/VP (Preço/Valor Patr.)" value={asset.p_vp?.toFixed(2)} />
-                    <InfoRow label="VPA (Valor Patr./Ação)" value={formatBRL(asset.vpa)} />
-                    <InfoRow label="EV/EBITDA" value={asset.ev_ebitda?.toFixed(2)} />
+                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm">
+                    <div className="flex items-center gap-2 mb-3 pb-2 border-b border-zinc-100 dark:border-zinc-800">
+                        <Activity className="w-4 h-4 text-zinc-400" />
+                        <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Análise Fundamentalista</h3>
+                    </div>
+                    
+                    <div className="-mx-2">
+                        <h5 className="px-2 text-[9px] font-black text-indigo-500 uppercase tracking-widest mb-1 mt-1">Valuation</h5>
+                        <InfoRow label="P/L (Preço/Lucro)" value={asset.p_l?.toFixed(2)} />
+                        <InfoRow label="P/VP (Preço/Valor Patr.)" value={asset.p_vp?.toFixed(2)} />
+                        <InfoRow label="VPA (Valor Patr./Ação)" value={formatBRL(asset.vpa)} />
+                        <InfoRow label="EV/EBITDA" value={asset.ev_ebitda?.toFixed(2)} />
 
-                    <h5 className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-2 mt-4">Eficiência & Crescimento</h5>
-                    <InfoRow label="Margem Líquida" value={asset.net_margin ? `${asset.net_margin.toFixed(2)}%` : undefined} />
-                    <InfoRow label="Margem Bruta" value={asset.gross_margin ? `${asset.gross_margin.toFixed(2)}%` : undefined} />
-                    <InfoRow label="ROE (Ret. s/ Patr.)" value={asset.roe ? `${asset.roe.toFixed(2)}%` : undefined} />
-                    <InfoRow label="CAGR Lucros (5 anos)" value={asset.cagr_profits ? `${asset.cagr_profits.toFixed(2)}%` : undefined} />
-                    <InfoRow label="Payout" value={asset.payout ? `${asset.payout.toFixed(2)}%` : undefined} />
+                        <h5 className="px-2 text-[9px] font-black text-indigo-500 uppercase tracking-widest mb-1 mt-4">Eficiência & Crescimento</h5>
+                        <InfoRow label="Margem Líquida" value={asset.net_margin ? `${asset.net_margin.toFixed(2)}%` : undefined} />
+                        <InfoRow label="Margem Bruta" value={asset.gross_margin ? `${asset.gross_margin.toFixed(2)}%` : undefined} />
+                        <InfoRow label="ROE (Ret. s/ Patr.)" value={asset.roe ? `${asset.roe.toFixed(2)}%` : undefined} />
+                        <InfoRow label="CAGR Lucros (5 anos)" value={asset.cagr_profits ? `${asset.cagr_profits.toFixed(2)}%` : undefined} />
+                        <InfoRow label="Payout" value={asset.payout ? `${asset.payout.toFixed(2)}%` : undefined} />
 
-                    <h5 className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-2 mt-4">Endividamento</h5>
-                    <InfoRow label="Dívida Líq / EBITDA" value={asset.net_debt_ebitda?.toFixed(2)} />
-                    <InfoRow label="Dívida Líq / PL" value={asset.net_debt_equity?.toFixed(2)} />
-                </CollapsibleCard>
+                        <h5 className="px-2 text-[9px] font-black text-indigo-500 uppercase tracking-widest mb-1 mt-4">Endividamento</h5>
+                        <InfoRow label="Dívida Líq / EBITDA" value={asset.net_debt_ebitda?.toFixed(2)} />
+                        <InfoRow label="Dívida Líq / PL" value={asset.net_debt_equity?.toFixed(2)} />
+                    </div>
+                </div>
             )}
 
             {/* Campos Específicos para FIIs */}
             {asset.assetType === AssetType.FII && (
-                <CollapsibleCard title="Dados do Fundo" icon={Building2}>
-                    <InfoRow label="Vacância Física" value={asset.vacancy ? `${asset.vacancy.toFixed(2)}%` : undefined} />
-                    <InfoRow label="P/VP" value={asset.p_vp?.toFixed(2)} />
-                    <InfoRow label="Último Rendimento" value={formatBRL(asset.last_dividend)} />
-                    <InfoRow label="Tipo de Gestão" value={asset.manager_type} />
-                    <InfoRow label="Taxa de Adm." value={asset.management_fee} />
-                    <InfoRow label="Público Alvo" value={asset.target_audience} />
-                    <InfoRow label="Mandato" value={asset.mandate} />
-                    <InfoRow label="Prazo" value={asset.duration} />
-                </CollapsibleCard>
+                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm">
+                    <div className="flex items-center gap-2 mb-3 pb-2 border-b border-zinc-100 dark:border-zinc-800">
+                        <Building2 className="w-4 h-4 text-zinc-400" />
+                        <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Dados do Fundo</h3>
+                    </div>
+                    <div className="-mx-2">
+                        <InfoRow label="Vacância Física" value={asset.vacancy ? `${asset.vacancy.toFixed(2)}%` : undefined} />
+                        <InfoRow label="P/VP" value={asset.p_vp?.toFixed(2)} />
+                        <InfoRow label="Último Rendimento" value={formatBRL(asset.last_dividend)} />
+                        <InfoRow label="Tipo de Gestão" value={asset.manager_type} />
+                        <InfoRow label="Taxa de Adm." value={asset.management_fee} />
+                        <InfoRow label="Público Alvo" value={asset.target_audience} />
+                        <InfoRow label="Mandato" value={asset.mandate} />
+                        <InfoRow label="Prazo" value={asset.duration} />
+                    </div>
+                </div>
             )}
-        </>
+        </div>
     );
 };
 
@@ -1088,7 +1112,12 @@ const PropertiesAnalysis = ({ properties }: { properties: any[] }) => {
     const total = properties.length;
 
     return (
-        <CollapsibleCard title={`Portfólio Imobiliário (${total})`} icon={MapPin}>
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm mb-4">
+            <div className="flex items-center gap-2 mb-4 pb-2 border-b border-zinc-100 dark:border-zinc-800">
+                <MapPin className="w-4 h-4 text-zinc-400" />
+                <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Portfólio Imobiliário ({total})</h3>
+            </div>
+
             <div className="flex flex-col md:flex-row gap-6 mb-6 mt-2">
                 {/* Gráfico Donut */}
                 <div className="w-full md:w-1/2 h-48 relative">
@@ -1164,7 +1193,7 @@ const PropertiesAnalysis = ({ properties }: { properties: any[] }) => {
                     ))}
                 </div>
             </div>
-        </CollapsibleCard>
+        </div>
     );
 };
 

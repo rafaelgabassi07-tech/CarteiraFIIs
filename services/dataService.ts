@@ -236,23 +236,30 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[]): Prom
                 const asset = portfolio.find(p => normalizeTicker(p.ticker) === normalizedTicker);
                 if (!asset || asset.quantity <= 0) return;
 
-                // --- LÓGICA DE AGENDA ---
-                // Verifica se é um evento relevante (Futuro ou Recente)
+                // --- LÓGICA DE AGENDA APRIMORADA ---
                 let isRelevant = false;
                 
-                // Pagamento
+                // 1. Pagamento Futuro ou Recente
                 if (div.payment_date) {
                     const payDate = parseDateToLocal(div.payment_date);
-                    if (payDate && payDate.getTime() >= cutoffTime) isRelevant = true;
+                    // Mostra se for futuro ou se foi nos últimos 3 dias (para dar tempo de ver que caiu)
+                    const recentCutoff = new Date(now);
+                    recentCutoff.setDate(recentCutoff.getDate() - 3);
+                    
+                    if (payDate && payDate >= recentCutoff) isRelevant = true;
                 } else {
-                    // Sem data de pagamento = A Definir (Relevante)
-                    isRelevant = true;
-                }
-
-                // Data Com (Se não pagou ainda, data com futura também é relevante)
-                if (!isRelevant && div.date_com) {
-                    const dCom = parseDateToLocal(div.date_com);
-                    if (dCom && dCom.getTime() >= cutoffTime) isRelevant = true;
+                    // 2. Sem data de pagamento = A Definir (Relevante se Data Com for recente ou futura)
+                    if (div.date_com) {
+                        const dCom = parseDateToLocal(div.date_com);
+                        // Se data com foi nos últimos 60 dias e ainda não pagou, é relevante
+                        const comCutoff = new Date(now);
+                        comCutoff.setDate(comCutoff.getDate() - 60);
+                        
+                        if (dCom && dCom >= comCutoff) isRelevant = true;
+                    } else {
+                        // Sem data com e sem data pag? Estranho, mas mostra.
+                        isRelevant = true;
+                    }
                 }
 
                 if (!isRelevant) return;
@@ -283,9 +290,15 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[]): Prom
         }
 
         return predictions.sort((a,b) => {
-            const dateA = a.paymentDate !== 'A Definir' ? a.paymentDate : (a.dateCom !== 'Já ocorreu' ? a.dateCom : '9999-99-99');
-            const dateB = b.paymentDate !== 'A Definir' ? b.paymentDate : (b.dateCom !== 'Já ocorreu' ? b.dateCom : '9999-99-99');
-            return dateA.localeCompare(dateB);
+            // Ordena por data de pagamento (A Definir vai pro final ou inicio dependendo da logica, aqui queremos proximo)
+            // Se A Definir, usa Data Com + 15 dias como estimativa para ordenação
+            const getSortDate = (p: FutureDividendPrediction) => {
+                if (p.paymentDate !== 'A Definir') return p.paymentDate;
+                if (p.dateCom !== 'Já ocorreu') return p.dateCom; // Fallback
+                return '9999-99-99'; // Fim da fila
+            };
+            
+            return getSortDate(a).localeCompare(getSortDate(b));
         });
 
     } catch (e) {

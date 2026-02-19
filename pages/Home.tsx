@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { AssetPosition, DividendReceipt, AssetType, PortfolioInsight } from '../types';
 import { CircleDollarSign, CalendarClock, PieChart as PieIcon, ArrowUpRight, Wallet, ArrowRight, Sparkles, Trophy, Anchor, Coins, Crown, Info, X, Zap, ShieldCheck, AlertTriangle, Play, Pause, TrendingUp, Target, Snowflake, Layers, Medal, Rocket, Gem, Lock, Building2, Briefcase, ShoppingCart, Coffee, Plane, Star, Award, Umbrella, ZapOff, CheckCircle2 } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, CartesianGrid, AreaChart, Area, XAxis, YAxis } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, CartesianGrid, AreaChart, Area, XAxis, YAxis, ComposedChart, Bar, Line, ReferenceLine, Label } from 'recharts';
 import { formatBRL, formatDateShort, getMonthName, getDaysUntil } from '../utils/formatters';
 
 // --- CONSTANTS ---
@@ -790,34 +790,45 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 </div>
 
                 <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar">
-                    <div className="h-44 w-full mb-6 shrink-0 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-2 relative overflow-hidden">
+                    <div className="h-56 w-full mb-6 shrink-0 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-2 relative overflow-hidden bg-white dark:bg-zinc-900 shadow-sm">
                         <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={incomeData.chartData} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
+                            <ComposedChart data={incomeData.chartData} margin={{ top: 10, right: 5, left: -20, bottom: 0 }}>
                                 <defs>
-                                    <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                    <linearGradient id="colorIncomeBar" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0.3}/>
                                     </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
-                                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 600 }} dy={5} />
+                                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 700 }} dy={5} />
                                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a' }} tickFormatter={(val) => `R$${val}`} />
                                 <RechartsTooltip 
-                                    contentStyle={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(24, 24, 27, 0.8)', color: '#fff', fontSize: '10px', padding: '8px', backdropFilter: 'blur(8px)' }}
-                                    formatter={(value: number) => [formatBRL(value), '']}
+                                    cursor={{fill: 'rgba(16, 185, 129, 0.05)'}}
+                                    contentStyle={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '10px', padding: '8px 12px', backdropFilter: 'blur(8px)' }}
+                                    formatter={(value: number) => [formatBRL(value), 'Proventos']}
                                 />
-                                <Area 
+                                <Bar 
+                                    dataKey="value" 
+                                    fill="url(#colorIncomeBar)" 
+                                    radius={[4, 4, 0, 0]}
+                                    maxBarSize={32}
+                                    animationDuration={1500}
+                                />
+                                <Line 
                                     type="monotone" 
                                     dataKey="value" 
-                                    stroke="#10b981" 
+                                    stroke="#059669" 
                                     strokeWidth={2} 
-                                    fillOpacity={1} 
-                                    fill="url(#colorIncome)" 
-                                    animationDuration={1500} 
-                                    animationEasing="ease-out"
-                                    activeDot={{ r: 4, strokeWidth: 0, fill: '#10b981' }}
+                                    dot={{r: 3, fill: "#059669", strokeWidth: 2, stroke: "#fff"}} 
+                                    activeDot={{ r: 5, strokeWidth: 0, fill: '#059669' }}
+                                    animationDuration={2000}
                                 />
-                            </AreaChart>
+                                {incomeData.average > 0 && (
+                                    <ReferenceLine y={incomeData.average} stroke="#f59e0b" strokeDasharray="3 3" strokeOpacity={0.8}>
+                                        <Label value="Média" position="insideBottomRight" fill="#f59e0b" fontSize={9} fontWeight="bold" />
+                                    </ReferenceLine>
+                                )}
+                            </ComposedChart>
                         </ResponsiveContainer>
                     </div>
 
@@ -1015,33 +1026,29 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                 </div>
 
                 <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar">
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-3 gap-2">
                         {filteredAchievements.map((achievement: any) => (
                             <div 
                                 key={achievement.id} 
-                                className={`relative p-4 rounded-3xl flex flex-col items-center text-center transition-all duration-500 border overflow-hidden group ${
+                                className={`relative p-3 rounded-2xl flex flex-col items-center text-center transition-all duration-500 border overflow-hidden group aspect-square justify-center ${
                                     achievement.unlocked 
-                                        ? 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 shadow-lg shadow-black/5 dark:shadow-black/20 scale-[1.02]' 
+                                        ? 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 shadow-sm' 
                                         : 'bg-zinc-100 dark:bg-zinc-900/50 border-transparent opacity-50 grayscale'
                                 }`}
                             >
-                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-3 shadow-sm relative z-10 transition-transform duration-300 group-hover:scale-110 ${
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 shadow-sm relative z-10 transition-transform duration-300 group-hover:scale-110 ${
                                     achievement.unlocked 
-                                        ? `bg-gradient-to-br ${achievement.color} text-white shadow-lg` 
+                                        ? `bg-gradient-to-br ${achievement.color} text-white shadow-md` 
                                         : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-400'
                                 }`}>
-                                    {achievement.unlocked ? <achievement.icon className="w-7 h-7" strokeWidth={2} /> : <Lock className="w-6 h-6" />}
-                                    
-                                    {achievement.unlocked && (
-                                        <div className="absolute inset-0 rounded-2xl bg-white/20 animate-pulse"></div>
-                                    )}
+                                    {achievement.unlocked ? <achievement.icon className="w-5 h-5" strokeWidth={2} /> : <Lock className="w-4 h-4" />}
                                 </div>
                                 
-                                <h4 className={`text-xs font-black leading-tight mb-1 ${achievement.unlocked ? 'text-zinc-900 dark:text-white' : 'text-zinc-500'}`}>{achievement.label}</h4>
-                                <p className="text-[10px] font-medium text-zinc-400 leading-tight">{achievement.sub}</p>
+                                <h4 className={`text-[10px] font-black leading-tight mb-0.5 ${achievement.unlocked ? 'text-zinc-900 dark:text-white' : 'text-zinc-500'}`}>{achievement.label}</h4>
+                                <p className="text-[8px] font-medium text-zinc-400 leading-tight line-clamp-2">{achievement.sub}</p>
                                 
                                 {achievement.unlocked && (
-                                    <div className={`absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r ${achievement.color} opacity-50`}></div>
+                                    <div className={`absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r ${achievement.color} opacity-50`}></div>
                                 )}
                             </div>
                         ))}
