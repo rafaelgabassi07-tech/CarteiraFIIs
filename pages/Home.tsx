@@ -87,9 +87,6 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends }: { isOpen: 
             timeline[month].monthlyContribution = monthlyNet;
             
             // Running Invested (Cost Basis)
-            // Note: This logic assumes we process strictly month by month. 
-            // Better: Sum all previous months + current.
-            // Actually, runningInvested should just add monthlyNet.
             runningInvested += monthlyNet;
             timeline[month].accumulatedInvested = runningInvested;
         });
@@ -124,13 +121,25 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends }: { isOpen: 
 
     }, [transactions, dividends]);
 
-    const totals = useMemo(() => {
-        if (evolutionData.length === 0) return { invested: 0, dividends: 0, total: 0 };
+    const stats = useMemo(() => {
+        if (evolutionData.length === 0) return { invested: 0, dividends: 0, total: 0, avgContribution: 0, avgDividend: 0, maxContribution: 0 };
         const last = evolutionData[evolutionData.length - 1];
+        
+        const contributions = evolutionData.map(d => d.contribution).filter(c => c > 0);
+        const avgContribution = contributions.length > 0 ? contributions.reduce((a, b) => a + b, 0) / contributions.length : 0;
+        
+        const divs = evolutionData.map(d => d.dividend).filter(d => d > 0);
+        const avgDividend = divs.length > 0 ? divs.reduce((a, b) => a + b, 0) / divs.length : 0;
+
+        const maxContribution = Math.max(...evolutionData.map(d => d.contribution));
+
         return {
             invested: last.invested,
             dividends: last.dividends,
-            total: last.total
+            total: last.total,
+            avgContribution,
+            avgDividend,
+            maxContribution
         };
     }, [evolutionData]);
 
@@ -153,17 +162,17 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends }: { isOpen: 
                         <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm relative overflow-hidden">
                             <div className="absolute top-0 right-0 w-16 h-16 bg-indigo-500/10 rounded-full blur-xl -mr-8 -mt-8 pointer-events-none"></div>
                             <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Total Aportado</p>
-                            <p className="text-sm font-black text-indigo-600 dark:text-indigo-400 truncate">{formatBRL(totals.invested)}</p>
+                            <p className="text-sm font-black text-indigo-600 dark:text-indigo-400 truncate">{formatBRL(stats.invested)}</p>
                         </div>
                         <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm relative overflow-hidden">
                             <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/10 rounded-full blur-xl -mr-8 -mt-8 pointer-events-none"></div>
                             <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Total Proventos</p>
-                            <p className="text-sm font-black text-emerald-600 dark:text-emerald-400 truncate">{formatBRL(totals.dividends)}</p>
+                            <p className="text-sm font-black text-emerald-600 dark:text-emerald-400 truncate">{formatBRL(stats.dividends)}</p>
                         </div>
                         <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm relative overflow-hidden">
                             <div className="absolute top-0 right-0 w-16 h-16 bg-amber-500/10 rounded-full blur-xl -mr-8 -mt-8 pointer-events-none"></div>
                             <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Patrimônio (Custo)</p>
-                            <p className="text-sm font-black text-zinc-900 dark:text-white truncate">{formatBRL(totals.total)}</p>
+                            <p className="text-sm font-black text-zinc-900 dark:text-white truncate">{formatBRL(stats.total)}</p>
                         </div>
                     </div>
 
@@ -245,6 +254,17 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends }: { isOpen: 
                                     </BarChart>
                                 )}
                             </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 mb-6">
+                        <div className="bg-zinc-50 dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+                            <p className="text-[9px] font-bold text-zinc-400 uppercase mb-1">Média de Aportes</p>
+                            <p className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(stats.avgContribution)}<span className="text-[10px] text-zinc-400 font-medium ml-1">/mês</span></p>
+                        </div>
+                        <div className="bg-zinc-50 dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+                            <p className="text-[9px] font-bold text-zinc-400 uppercase mb-1">Média de Proventos</p>
+                            <p className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(stats.avgDividend)}<span className="text-[10px] text-zinc-400 font-medium ml-1">/mês</span></p>
                         </div>
                     </div>
 
@@ -929,18 +949,16 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                 info="Seu nível na jornada de investidor, baseado no patrimônio acumulado e metas atingidas."
             />
 
-            <div className="col-span-2">
-                <BentoCard 
-                    title="Evolução" 
-                    value="Histórico" 
-                    subtext="Ver Crescimento"
-                    icon={TrendingUp} 
-                    colorClass="bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400"
-                    onClick={() => setShowEvolution(true)}
-                    info="Acompanhe a evolução do seu patrimônio e proventos acumulados ao longo do tempo."
-                />
-            </div>
-
+            <BentoCard 
+                title="Evolução" 
+                value="Histórico" 
+                subtext="Ver Crescimento"
+                icon={TrendingUp} 
+                colorClass="bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400"
+                onClick={() => setShowEvolution(true)}
+                info="Acompanhe a evolução do seu patrimônio e proventos acumulados ao longo do tempo."
+            />
+            
             <div className="col-span-2">
                 <button onClick={() => setShowAllocation(true)} className="w-full bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-[0_2px_8px_rgb(0,0,0,0.03)] dark:shadow-none border border-zinc-100 dark:border-zinc-800 press-effect flex items-center justify-between">
                     <div className="flex items-center gap-4">
