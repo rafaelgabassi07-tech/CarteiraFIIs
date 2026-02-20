@@ -690,6 +690,7 @@ const App: React.FC = () => {
                   {currentTab === 'home' && (
                       <Home 
                           {...memoizedPortfolioData} 
+                          transactions={transactions}
                           totalAppreciation={memoizedPortfolioData.balance - memoizedPortfolioData.invested} 
                           privacyMode={privacyMode} 
                           onViewAsset={handleViewAsset}

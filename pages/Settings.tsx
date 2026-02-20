@@ -4,6 +4,7 @@ import { triggerScraperUpdate } from '../services/dataService';
 import { ConfirmationModal } from '../components/Layout';
 import { ThemeType, ServiceMetric, Transaction, DividendReceipt } from '../types';
 import { parseB3Excel } from '../services/excelService';
+import { CompoundInterestCalculator, AveragePriceCalculator, YieldOnCostCalculator } from '../components/Calculators';
 
 const formatCurrency = (value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -67,148 +68,6 @@ const ToggleSwitch = ({ checked, onChange }: { checked: boolean; onChange: () =>
         <div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform duration-300 ease-in-out ${checked ? 'translate-x-4' : 'translate-x-0'}`} />
     </div>
 );
-
-const CeilingPriceTool = () => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [ticker, setTicker] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const [result, setResult] = useState<number | null>(null);
-    const [dividend, setDividend] = useState('');
-    const [yieldTarget, setYieldTarget] = useState('6');
-    const [searchError, setSearchError] = useState('');
-    const [assetPrice, setAssetPrice] = useState(0);
-
-    const handleSearch = async () => {
-        if (ticker.length < 4) return;
-        setIsLoading(true);
-        setSearchError('');
-        setResult(null);
-        try {
-            const res = await triggerScraperUpdate([ticker], true);
-            const data = res[0];
-            if (data && data.status === 'success') {
-                const price = data.details?.price || 0;
-                setAssetPrice(price);
-                
-                let divTotal = 0;
-                if (data.dividendsFound && data.dividendsFound.length > 0) {
-                    const now = new Date();
-                    const yearAgo = new Date();
-                    yearAgo.setFullYear(now.getFullYear() - 1);
-                    data.dividendsFound.forEach((d: any) => {
-                        const date = new Date(d.paymentDate || d.dateCom);
-                        if (date >= yearAgo) divTotal += Number(d.rate);
-                    });
-                }
-                
-                if (divTotal === 0 && data.details?.dy && price) {
-                    divTotal = (data.details.dy / 100) * price;
-                }
-
-                if (divTotal > 0) {
-                    setDividend(divTotal.toFixed(2).replace('.', ','));
-                } else {
-                    setSearchError('Sem histórico de proventos.');
-                }
-            } else {
-                setSearchError('Ativo não encontrado.');
-            }
-        } catch (e) {
-            setSearchError('Erro de conexão.');
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        const divVal = parseFloat(dividend.replace(',', '.')) || 0;
-        const yieldVal = parseFloat(yieldTarget) || 0;
-        if (divVal > 0 && yieldVal > 0) {
-            setResult((divVal / yieldVal) * 100);
-        } else {
-            setResult(null);
-        }
-    }, [dividend, yieldTarget]);
-
-    return (
-        <div className="border-t border-zinc-100 dark:border-zinc-800">
-            <SettingsItem 
-                icon={Calculator} 
-                label="Calculadora Preço Teto" 
-                description="Método Bazin"
-                onClick={() => setIsOpen(!isOpen)}
-                rightElement={isOpen ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
-            />
-            
-            {isOpen && (
-                <div className="p-4 bg-zinc-50/50 dark:bg-zinc-800/20 border-t border-zinc-100 dark:border-zinc-800 anim-slide-up">
-                    <div className="flex gap-2 mb-4">
-                        <input 
-                            type="text" 
-                            className="flex-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm font-bold uppercase outline-none focus:border-indigo-500 transition-all"
-                            placeholder="TICKER (EX: BBAS3)"
-                            value={ticker}
-                            onChange={e => setTicker(e.target.value.toUpperCase())}
-                            onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                        />
-                        <button 
-                            onClick={handleSearch}
-                            disabled={isLoading}
-                            className="bg-indigo-600 text-white rounded-xl px-4 flex items-center justify-center disabled:opacity-50"
-                        >
-                            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-                        </button>
-                    </div>
-
-                    {searchError && <p className="text-xs text-rose-500 font-bold mb-3">{searchError}</p>}
-
-                    <div className="grid grid-cols-2 gap-3 mb-4">
-                        <div>
-                            <label className="text-[10px] font-bold text-zinc-400 uppercase ml-1 mb-1 block">Dividendos (12m)</label>
-                            <input 
-                                type="text" 
-                                className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3 py-2.5 text-sm font-bold outline-none focus:border-indigo-500"
-                                value={dividend}
-                                onChange={e => setDividend(e.target.value)}
-                                placeholder="0,00"
-                            />
-                        </div>
-                        <div>
-                            <label className="text-[10px] font-bold text-zinc-400 uppercase ml-1 mb-1 block">Yield Esperado (%)</label>
-                            <input 
-                                type="number" 
-                                className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3 py-2.5 text-sm font-bold outline-none focus:border-indigo-500"
-                                value={yieldTarget}
-                                onChange={e => setYieldTarget(e.target.value)}
-                                placeholder="6"
-                            />
-                        </div>
-                    </div>
-
-                    {result !== null && (
-                        <div className="bg-white dark:bg-zinc-900 rounded-xl p-4 border border-zinc-200 dark:border-zinc-700 shadow-sm flex items-center justify-between">
-                            <div>
-                                <p className="text-[10px] font-bold text-zinc-400 uppercase">Preço Teto</p>
-                                <p className="text-xl font-black text-indigo-600 dark:text-indigo-400">{formatCurrency(result)}</p>
-                            </div>
-                            {assetPrice > 0 && (
-                                <div className="text-right">
-                                    <p className="text-[10px] font-bold text-zinc-400 uppercase">Atual</p>
-                                    <p className={`text-sm font-bold ${assetPrice <= result ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                        {formatCurrency(assetPrice)}
-                                    </p>
-                                    <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${assetPrice <= result ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30' : 'bg-rose-100 text-rose-600 dark:bg-rose-900/30'}`}>
-                                        {assetPrice <= result ? 'Compra' : 'Aguardar'}
-                                    </span>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-            )}
-        </div>
-    );
-};
 
 interface SettingsProps {
   onLogout: () => void;
@@ -343,7 +202,9 @@ export const Settings: React.FC<SettingsProps> = ({
             </SettingsSection>
 
             <SettingsSection title="Ferramentas">
-                <CeilingPriceTool />
+                <CompoundInterestCalculator />
+                <AveragePriceCalculator />
+                <YieldOnCostCalculator />
             </SettingsSection>
 
             <SettingsSection title="Dados & Nuvem">

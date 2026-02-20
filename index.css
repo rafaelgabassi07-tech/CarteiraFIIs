@@ -11,18 +11,24 @@
     --ease-out-mola: cubic-bezier(0.34, 1.56, 0.64, 1); 
     --ease-out-soft: cubic-bezier(0.25, 0.8, 0.25, 1); 
     --ease-in-out-expo: cubic-bezier(0.87, 0, 0.13, 1);
-    --color-accent-rgb: 14 165 233;
     
-    /* Premium Surface Colors */
-    --bg-main: #F4F4F5; /* Zinc 100 */
+    /* Modern Fintech Palette - Light */
+    --color-accent-rgb: 79 70 229; /* Indigo 600 */
+    --bg-main: #F8FAFC; /* Slate 50 */
     --bg-surface: #FFFFFF;
-    --border-subtle: #E4E4E7;
+    --border-subtle: #E2E8F0; /* Slate 200 */
+    --text-primary: #0F172A; /* Slate 900 */
+    --text-secondary: #64748B; /* Slate 500 */
   }
 
   .dark {
-    --bg-main: #000000; /* Pure Black for OLED contrast */
-    --bg-surface: #18181b; /* Zinc 900 */
-    --border-subtle: #27272a;
+    /* Modern Fintech Palette - Dark */
+    --color-accent-rgb: 99 102 241; /* Indigo 500 */
+    --bg-main: #09090B; /* Zinc 950 */
+    --bg-surface: #18181B; /* Zinc 900 */
+    --border-subtle: #27272A; /* Zinc 800 */
+    --text-primary: #F8FAFC; /* Slate 50 */
+    --text-secondary: #94A3B8; /* Slate 400 */
   }
 
   html {
@@ -39,13 +45,9 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     background-color: var(--bg-main);
-    color: #18181b;
+    color: var(--text-primary);
   }
   
-  .dark body {
-    color: #f4f4f5;
-  }
-
   /* Root Container */
   #root {
     transition: opacity var(--duration-slow) var(--ease-out-soft);
@@ -83,9 +85,22 @@
     @apply bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border border-white/20 dark:border-white/5;
   }
   
+  /* Standard Card Style */
+  .card-standard {
+    @apply bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden;
+  }
+
   /* Input Fields Style */
   .input-field {
-    @apply w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl px-4 py-3.5 text-sm font-bold outline-none focus:border-zinc-400 dark:focus:border-zinc-600 focus:ring-4 focus:ring-zinc-100 dark:focus:ring-zinc-800 transition-all placeholder:text-zinc-400 dark:placeholder:text-zinc-600;
+    @apply w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-sm font-semibold text-zinc-900 dark:text-white outline-none focus:border-indigo-500 dark:focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-zinc-400 dark:placeholder:text-zinc-600;
+  }
+
+  .btn-primary {
+    @apply bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-indigo-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2;
+  }
+
+  .btn-secondary {
+    @apply bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold py-3.5 px-4 rounded-xl hover:bg-zinc-200 dark:hover:bg-zinc-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2;
   }
 
   /* Animations */

@@ -1,8 +1,8 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { AssetPosition, DividendReceipt, AssetType, PortfolioInsight } from '../types';
-import { CircleDollarSign, CalendarClock, PieChart as PieIcon, ArrowUpRight, Wallet, ArrowRight, Sparkles, Trophy, Anchor, Coins, Crown, Info, X, Zap, ShieldCheck, AlertTriangle, Play, Pause, TrendingUp, Target, Snowflake, Layers, Medal, Rocket, Gem, Lock, Building2, Briefcase, ShoppingCart, Coffee, Plane, Star, Award, Umbrella, ZapOff, CheckCircle2, ListFilter } from 'lucide-react';
+import { AssetPosition, DividendReceipt, AssetType, PortfolioInsight, Transaction } from '../types';
+import { CircleDollarSign, CalendarClock, PieChart as PieIcon, ArrowUpRight, Wallet, ArrowRight, Sparkles, Trophy, Anchor, Coins, Crown, Info, X, Zap, ShieldCheck, AlertTriangle, Play, Pause, TrendingUp, Target, Snowflake, Layers, Medal, Rocket, Gem, Lock, Building2, Briefcase, ShoppingCart, Coffee, Plane, Star, Award, Umbrella, ZapOff, CheckCircle2, ListFilter, History } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, CartesianGrid, AreaChart, Area, XAxis, YAxis, ComposedChart, Bar, Line, ReferenceLine, Label } from 'recharts';
 import { formatBRL, formatDateShort, getMonthName, getDaysUntil } from '../utils/formatters';
@@ -40,6 +40,142 @@ const getStoryIcon = (type: PortfolioInsight['type']) => {
         case 'opportunity': return <Sparkles className="w-5 h-5 text-white" />;
         default: return <Zap className="w-5 h-5 text-white" />;
     }
+};
+
+const EvolutionModal = ({ isOpen, onClose, transactions, dividends }: { isOpen: boolean, onClose: () => void, transactions: Transaction[], dividends: DividendReceipt[] }) => {
+    const evolutionData = useMemo(() => {
+        if (!transactions || transactions.length === 0) return [];
+
+        // 1. Group by Month
+        const timeline: Record<string, { invested: number, dividends: number }> = {};
+        
+        // Find range
+        const dates = transactions.map(t => new Date(t.date));
+        const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
+        const maxDate = new Date();
+        
+        // Initialize all months from start to now
+        let current = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
+        while (current <= maxDate) {
+            const key = current.toISOString().slice(0, 7); // YYYY-MM
+            timeline[key] = { invested: 0, dividends: 0 };
+            current.setMonth(current.getMonth() + 1);
+        }
+
+        // 2. Process Transactions (Cumulative Invested)
+        // Sort transactions by date
+        const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
+        
+        let runningInvested = 0;
+        let txIndex = 0;
+        
+        const months = Object.keys(timeline).sort();
+        
+        months.forEach(month => {
+            // Process all transactions up to the end of this month
+            while (txIndex < sortedTxs.length) {
+                const tx = sortedTxs[txIndex];
+                if (tx.date.slice(0, 7) > month) break;
+                
+                const val = tx.quantity * tx.price;
+                if (tx.type === 'BUY') runningInvested += val;
+                else runningInvested -= val;
+                
+                txIndex++;
+            }
+            timeline[month].invested = runningInvested;
+        });
+
+        // 3. Process Dividends (Cumulative)
+        let runningDivs = 0;
+        const sortedDivs = [...dividends].filter(d => d.paymentDate).sort((a, b) => a.paymentDate!.localeCompare(b.paymentDate!));
+        let divIndex = 0;
+
+        months.forEach(month => {
+             while (divIndex < sortedDivs.length) {
+                const div = sortedDivs[divIndex];
+                if (!div.paymentDate) { divIndex++; continue; }
+                if (div.paymentDate.slice(0, 7) > month) break;
+                
+                runningDivs += div.totalReceived;
+                divIndex++;
+            }
+            timeline[month].dividends = runningDivs;
+        });
+
+        return months.map(m => ({
+            month: m,
+            label: getMonthName(m),
+            invested: timeline[m].invested,
+            dividends: timeline[m].dividends,
+            total: timeline[m].invested + timeline[m].dividends // Proxy for "Wealth" if we assume reinvestment
+        }));
+
+    }, [transactions, dividends]);
+
+    return (
+        <SwipeableModal isOpen={isOpen} onClose={onClose}>
+            <div className="p-4 h-full flex flex-col bg-zinc-50 dark:bg-zinc-950">
+                <div className="flex justify-between items-center mb-6 shrink-0">
+                    <div>
+                        <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Evolução Patrimonial</h2>
+                        <p className="text-xs text-zinc-500 font-medium">Histórico de aportes e proventos acumulados</p>
+                    </div>
+                    <button onClick={onClose} className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-zinc-500">
+                        <X className="w-4 h-4" />
+                    </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto pb-20 no-scrollbar">
+                    <div className="bg-white dark:bg-zinc-900 rounded-[2rem] p-4 border border-zinc-200 dark:border-zinc-800 shadow-sm mb-6">
+                        <div className="h-72 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <ComposedChart data={evolutionData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                                    <defs>
+                                        <linearGradient id="gradInvested" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
+                                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
+                                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a' }} minTickGap={30} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a' }} tickFormatter={(v) => `R$${(v/1000).toFixed(0)}k`} />
+                                    <RechartsTooltip 
+                                        contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '11px' }}
+                                        formatter={(value: number, name: string) => [formatBRL(value), name === 'invested' ? 'Aportes Acum.' : name === 'dividends' ? 'Proventos Acum.' : 'Total']}
+                                        labelStyle={{ color: '#a1a1aa', marginBottom: '4px' }}
+                                    />
+                                    <Area type="monotone" dataKey="invested" stroke="#6366f1" strokeWidth={3} fill="url(#gradInvested)" name="invested" />
+                                    <Area type="monotone" dataKey="dividends" stackId="1" stroke="#10b981" strokeWidth={2} fill="#10b981" fillOpacity={0.6} name="dividends" />
+                                </ComposedChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-3">
+                                <Wallet className="w-5 h-5" />
+                            </div>
+                            <p className="text-xs text-zinc-500 font-medium mb-1">Total Aportado</p>
+                            <p className="text-lg font-black text-zinc-900 dark:text-white">
+                                {formatBRL(evolutionData[evolutionData.length - 1]?.invested || 0)}
+                            </p>
+                        </div>
+                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-3">
+                                <Coins className="w-5 h-5" />
+                            </div>
+                            <p className="text-xs text-zinc-500 font-medium mb-1">Proventos Acumulados</p>
+                            <p className="text-lg font-black text-zinc-900 dark:text-white">
+                                {formatBRL(evolutionData[evolutionData.length - 1]?.dividends || 0)}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </SwipeableModal>
+    );
 };
 
 const StoriesBar = ({ insights, onSelectStory, viewedIds }: { insights: PortfolioInsight[], onSelectStory: (story: PortfolioInsight) => void, viewedIds: Set<string> }) => {
@@ -327,6 +463,7 @@ const ProgressBar = ({ current, target, label, colorClass, privacyMode }: any) =
 
 interface HomeProps {
   portfolio: AssetPosition[];
+  transactions: Transaction[];
   dividendReceipts: DividendReceipt[];
   salesGain: number;
   totalDividendsReceived: number;
@@ -338,11 +475,12 @@ interface HomeProps {
   insights?: PortfolioInsight[];
 }
 
-const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, salesGain, totalDividendsReceived, invested, balance, totalAppreciation, privacyMode = false, onViewAsset, insights = [] }) => {
+const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendReceipts, salesGain, totalDividendsReceived, invested, balance, totalAppreciation, privacyMode = false, onViewAsset, insights = [] }) => {
   const [showAgenda, setShowAgenda] = useState(false);
   const [showProventos, setShowProventos] = useState(false);
   const [showAllocation, setShowAllocation] = useState(false);
-  const [allocationView, setAllocationView] = useState<'CLASS' | 'ASSET'>('CLASS');
+  const [showEvolution, setShowEvolution] = useState(false);
+  const [allocationView, setAllocationView] = useState<'CLASS' | 'ASSET' | 'SECTOR'>('CLASS');
   const [showMagicNumber, setShowMagicNumber] = useState(false);
   const [showGoals, setShowGoals] = useState(false);
   const [goalTab, setGoalTab] = useState<'WEALTH' | 'INCOME' | 'STRATEGY'>('WEALTH');
@@ -374,15 +512,22 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
   
   const allocationData = useMemo(() => {
       let fiis = 0, stocks = 0;
+      const sectorMap: Record<string, number> = {};
+
       const assetList = portfolio
           .map((p, idx) => {
               const v = p.quantity * (p.currentPrice || 0);
               if (p.assetType === AssetType.FII) fiis += v; else stocks += v;
+              
+              const sector = p.segment || 'Outros';
+              sectorMap[sector] = (sectorMap[sector] || 0) + v;
+
               return { 
                   name: p.ticker, 
                   value: v, 
                   color: CHART_COLORS[idx % CHART_COLORS.length],
                   percent: (v / (balance || 1)) * 100,
+                  sector
               };
           })
           .filter(d => d.value > 0)
@@ -390,11 +535,20 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
           .slice(0, 15);
 
       const byClass = [
-          { name: 'FIIs', value: fiis, color: '#6366f1' }, 
-          { name: 'Ações', value: stocks, color: '#0ea5e9' }
+          { name: 'FIIs', value: fiis, color: '#6366f1', percent: (fiis / (balance || 1)) * 100 }, 
+          { name: 'Ações', value: stocks, color: '#0ea5e9', percent: (stocks / (balance || 1)) * 100 }
       ].filter(d => d.value > 0);
 
-      return { byClass, byAsset: assetList, totals: { fiis, stocks } };
+      const bySector = Object.entries(sectorMap)
+          .map(([name, value], idx) => ({
+              name,
+              value,
+              color: CHART_COLORS[(idx + 2) % CHART_COLORS.length], // Offset colors slightly
+              percent: (value / (balance || 1)) * 100
+          }))
+          .sort((a, b) => b.value - a.value);
+
+      return { byClass, byAsset: assetList, bySector, totals: { fiis, stocks } };
   }, [portfolio, balance]);
 
   const agendaData = useMemo(() => {
@@ -1069,20 +1223,27 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                             <p className="text-sm font-bold text-sky-600 dark:text-sky-400 mt-0.5">Diversificação da Carteira</p>
                         </div>
                     </div>
-                    <div className="flex bg-white dark:bg-zinc-900 p-1 rounded-xl shadow-sm border border-zinc-100 dark:border-zinc-800">
-                        <button 
-                            onClick={() => setAllocationView('CLASS')} 
-                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${allocationView === 'CLASS' ? 'bg-zinc-100 dark:bg-zinc-800 text-sky-600 dark:text-sky-400 shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
-                        >
-                            Classe
-                        </button>
-                        <button 
-                            onClick={() => setAllocationView('ASSET')} 
-                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${allocationView === 'ASSET' ? 'bg-zinc-100 dark:bg-zinc-800 text-sky-600 dark:text-sky-400 shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
-                        >
-                            Ativo
-                        </button>
-                    </div>
+                </div>
+
+                <div className="flex bg-white dark:bg-zinc-900 p-1 rounded-xl shadow-sm border border-zinc-100 dark:border-zinc-800 mb-6 shrink-0">
+                    <button 
+                        onClick={() => setAllocationView('CLASS')} 
+                        className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${allocationView === 'CLASS' ? 'bg-zinc-100 dark:bg-zinc-800 text-sky-600 dark:text-sky-400 shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                    >
+                        Classe
+                    </button>
+                    <button 
+                        onClick={() => setAllocationView('SECTOR')} 
+                        className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${allocationView === 'SECTOR' ? 'bg-zinc-100 dark:bg-zinc-800 text-sky-600 dark:text-sky-400 shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                    >
+                        Setor
+                    </button>
+                    <button 
+                        onClick={() => setAllocationView('ASSET')} 
+                        className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${allocationView === 'ASSET' ? 'bg-zinc-100 dark:bg-zinc-800 text-sky-600 dark:text-sky-400 shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                    >
+                        Ativo
+                    </button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar">
@@ -1094,7 +1255,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
                                     <Pie
-                                        data={allocationView === 'CLASS' ? allocationData.byClass : allocationData.byAsset}
+                                        data={allocationView === 'CLASS' ? allocationData.byClass : allocationView === 'SECTOR' ? allocationData.bySector : allocationData.byAsset}
                                         innerRadius={80}
                                         outerRadius={100}
                                         paddingAngle={4}
@@ -1104,7 +1265,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                         animationDuration={1500}
                                         animationEasing="ease-out"
                                     >
-                                        {(allocationView === 'CLASS' ? allocationData.byClass : allocationData.byAsset).map((entry, index) => (
+                                        {(allocationView === 'CLASS' ? allocationData.byClass : allocationView === 'SECTOR' ? allocationData.bySector : allocationData.byAsset).map((entry, index) => (
                                             <Cell 
                                                 key={`cell-${index}`} 
                                                 fill={entry.color} 
@@ -1151,7 +1312,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                         <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1 flex items-center gap-2">
                             <ListFilter className="w-3 h-3" /> Detalhamento
                         </h3>
-                        {(allocationView === 'CLASS' ? allocationData.byClass : allocationData.byAsset).map((item, idx) => (
+                        {(allocationView === 'CLASS' ? allocationData.byClass : allocationView === 'SECTOR' ? allocationData.bySector : allocationData.byAsset).map((item, idx) => (
                             <div 
                                 key={idx} 
                                 className="group relative bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm hover:shadow-md transition-all active:scale-[0.98] duration-200 overflow-hidden"
@@ -1166,7 +1327,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                             {item.name.substring(0, 2).toUpperCase()}
                                         </div>
                                         <div>
-                                            <h4 className="font-bold text-sm text-zinc-900 dark:text-white">{item.name}</h4>
+                                            <h4 className="font-bold text-sm text-zinc-900 dark:text-white line-clamp-1">{item.name}</h4>
                                             <div className="flex items-center gap-2 mt-0.5">
                                                 <div className="h-1.5 w-16 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
                                                     <div className="h-full rounded-full" style={{ width: `${(item as any).percent}%`, backgroundColor: item.color }}></div>
@@ -1180,6 +1341,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, dividendReceipts, sales
                                         {allocationView === 'CLASS' && (
                                             <p className="text-[10px] font-medium text-zinc-400">
                                                 {portfolio.filter(p => p.assetType === (item.name === 'Ações' ? 'STOCK' : 'FII')).length} ativos
+                                            </p>
+                                        )}
+                                        {allocationView === 'SECTOR' && (
+                                            <p className="text-[10px] font-medium text-zinc-400">
+                                                {portfolio.filter(p => (p.segment || 'Outros') === item.name).length} ativos
                                             </p>
                                         )}
                                         {allocationView === 'ASSET' && (

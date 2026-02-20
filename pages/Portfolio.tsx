@@ -1408,10 +1408,10 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: { asset: Ass
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-sm">
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
                 <div className="bg-zinc-50 dark:bg-zinc-800/50 p-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-2">
                     <Zap className="w-4 h-4 text-amber-500" />
-                    <h4 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Raio-X de Renda</h4>
+                    <h4 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Simulador de Renda Passiva</h4>
                 </div>
                 <div className="p-4 space-y-4">
                     <div>
