@@ -1213,6 +1213,33 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: { asset: Ass
     const missingForMagic = Math.max(0, magicNumber - asset.quantity);
     const paybackYears = monthlyReturn > 0 ? (currentPrice / (monthlyReturn * 12)) : 0;
 
+    // State for interactive simulator
+    const [simMonthlyInvest, setSimMonthlyInvest] = useState<string>('1000');
+    const [simYears, setSimYears] = useState<string>('5');
+    const [simResult, setSimResult] = useState<{ qty: number, income: number } | null>(null);
+
+    useEffect(() => {
+        const monthlyInvest = parseFloat(simMonthlyInvest) || 0;
+        const years = parseFloat(simYears) || 0;
+        
+        if (monthlyInvest > 0 && years > 0 && currentPrice > 0) {
+            // Simple projection: assumes price stays same (buying power) and yield stays same
+            // Future: could add price appreciation rate
+            const months = years * 12;
+            const totalInvestedFuture = monthlyInvest * months;
+            const sharesBought = totalInvestedFuture / currentPrice;
+            const totalSharesFuture = asset.quantity + sharesBought;
+            const projectedIncome = totalSharesFuture * monthlyReturn;
+            
+            setSimResult({
+                qty: Math.floor(totalSharesFuture),
+                income: projectedIncome
+            });
+        } else {
+            setSimResult(null);
+        }
+    }, [simMonthlyInvest, simYears, currentPrice, monthlyReturn, asset.quantity]);
+
     const perShareChartData = useMemo(() => {
         if (!marketHistory || marketHistory.length === 0) return [];
         
@@ -1439,6 +1466,45 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: { asset: Ass
                             })}
                         </div>
                     </div>
+
+                    <div className="border-t border-zinc-100 dark:border-zinc-800 pt-3">
+                        <h5 className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-3">Projeção Futura</h5>
+                        <div className="bg-zinc-50 dark:bg-zinc-800/30 rounded-xl p-3 border border-zinc-100 dark:border-zinc-800">
+                            <div className="grid grid-cols-2 gap-3 mb-3">
+                                <div>
+                                    <label className="text-[9px] font-bold text-zinc-400 uppercase mb-1 block">Aporte Mensal</label>
+                                    <input 
+                                        type="number" 
+                                        value={simMonthlyInvest} 
+                                        onChange={(e) => setSimMonthlyInvest(e.target.value)}
+                                        className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-xs font-bold text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[9px] font-bold text-zinc-400 uppercase mb-1 block">Anos</label>
+                                    <input 
+                                        type="number" 
+                                        value={simYears} 
+                                        onChange={(e) => setSimYears(e.target.value)}
+                                        className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-xs font-bold text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                                    />
+                                </div>
+                            </div>
+                            {simResult && (
+                                <div className="flex justify-between items-center pt-2 border-t border-dashed border-zinc-200 dark:border-zinc-700">
+                                    <div>
+                                        <p className="text-[9px] text-zinc-400 font-medium">Renda Futura</p>
+                                        <p className="text-sm font-black text-emerald-500">{formatBRL(simResult.income)}</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-[9px] text-zinc-400 font-medium">Total Cotas</p>
+                                        <p className="text-sm font-black text-zinc-900 dark:text-white">{simResult.qty}</p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
                     <div className="grid grid-cols-2 gap-3 pt-1">
                         <div className="p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800">
                             <p className="text-[9px] font-bold text-zinc-400 uppercase mb-1">Payback Estimado</p>

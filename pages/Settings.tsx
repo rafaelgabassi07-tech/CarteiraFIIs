@@ -4,7 +4,6 @@ import { triggerScraperUpdate } from '../services/dataService';
 import { ConfirmationModal } from '../components/Layout';
 import { ThemeType, ServiceMetric, Transaction, DividendReceipt } from '../types';
 import { parseB3Excel } from '../services/excelService';
-import { CompoundInterestCalculator, AveragePriceCalculator, YieldOnCostCalculator } from '../components/Calculators';
 
 const formatCurrency = (value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -202,9 +201,9 @@ export const Settings: React.FC<SettingsProps> = ({
             </SettingsSection>
 
             <SettingsSection title="Ferramentas">
-                <CompoundInterestCalculator />
-                <AveragePriceCalculator />
-                <YieldOnCostCalculator />
+                <div className="p-4 text-sm text-zinc-500 text-center italic">
+                    Calculadoras movidas para a página inicial.
+                </div>
             </SettingsSection>
 
             <SettingsSection title="Dados & Nuvem">

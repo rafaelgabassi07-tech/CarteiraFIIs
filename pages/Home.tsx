@@ -841,6 +841,18 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
             />
 
             <div className="col-span-2">
+                <BentoCard 
+                    title="Evolução" 
+                    value="Histórico" 
+                    subtext="Ver Crescimento"
+                    icon={TrendingUp} 
+                    colorClass="bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400"
+                    onClick={() => setShowEvolution(true)}
+                    info="Acompanhe a evolução do seu patrimônio e proventos acumulados ao longo do tempo."
+                />
+            </div>
+
+            <div className="col-span-2">
                 <button onClick={() => setShowAllocation(true)} className="w-full bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-[0_2px_8px_rgb(0,0,0,0.03)] dark:shadow-none border border-zinc-100 dark:border-zinc-800 press-effect flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <div className="w-9 h-9 rounded-xl bg-sky-100 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 flex items-center justify-center">
