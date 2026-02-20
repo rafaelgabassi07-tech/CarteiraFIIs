@@ -68,46 +68,56 @@ export const CompoundInterestCalculator = () => {
     };
 
     return (
-        <CalculatorCard title="Juros Compostos" icon={TrendingUp}>
-            <div className="grid grid-cols-2 gap-3 mb-4">
-                <div>
-                    <label className="text-[10px] font-bold text-zinc-400 uppercase ml-1 mb-1 block">Inicial (R$)</label>
-                    <input type="number" className="input-field" placeholder="0,00" value={initial} onChange={e => setInitial(e.target.value)} />
+        <CalculatorCard title="Simulador de Retorno" icon={TrendingUp}>
+            <div className="p-1">
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div>
+                        <label className="text-[10px] font-bold text-zinc-400 uppercase ml-1 mb-1 block">Inicial (R$)</label>
+                        <input type="number" className="input-field" placeholder="0,00" value={initial} onChange={e => setInitial(e.target.value)} />
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-bold text-zinc-400 uppercase ml-1 mb-1 block">Mensal (R$)</label>
+                        <input type="number" className="input-field" placeholder="0,00" value={monthly} onChange={e => setMonthly(e.target.value)} />
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-bold text-zinc-400 uppercase ml-1 mb-1 block">Taxa Anual (%)</label>
+                        <input type="number" className="input-field" placeholder="10" value={rate} onChange={e => setRate(e.target.value)} />
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-bold text-zinc-400 uppercase ml-1 mb-1 block">Anos</label>
+                        <input type="number" className="input-field" placeholder="10" value={years} onChange={e => setYears(e.target.value)} />
+                    </div>
                 </div>
-                <div>
-                    <label className="text-[10px] font-bold text-zinc-400 uppercase ml-1 mb-1 block">Mensal (R$)</label>
-                    <input type="number" className="input-field" placeholder="0,00" value={monthly} onChange={e => setMonthly(e.target.value)} />
-                </div>
-                <div>
-                    <label className="text-[10px] font-bold text-zinc-400 uppercase ml-1 mb-1 block">Taxa Anual (%)</label>
-                    <input type="number" className="input-field" placeholder="10" value={rate} onChange={e => setRate(e.target.value)} />
-                </div>
-                <div>
-                    <label className="text-[10px] font-bold text-zinc-400 uppercase ml-1 mb-1 block">Anos</label>
-                    <input type="number" className="input-field" placeholder="10" value={years} onChange={e => setYears(e.target.value)} />
-                </div>
+                <button onClick={calculate} className="w-full btn-primary mb-6 shadow-lg shadow-indigo-500/20">
+                    Simular Resultado <ArrowRight className="w-4 h-4 ml-1" />
+                </button>
+                
+                {result && (
+                    <div className="bg-gradient-to-br from-white to-zinc-50 dark:from-zinc-900 dark:to-zinc-950 rounded-2xl p-5 border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-4 relative overflow-hidden anim-scale-in">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+                        
+                        <div className="relative z-10">
+                            <div className="flex justify-between items-end mb-4 pb-4 border-b border-dashed border-zinc-200 dark:border-zinc-800">
+                                <span className="text-sm font-bold text-zinc-500 dark:text-zinc-400">Patrimônio Final</span>
+                                <span className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-indigo-400 dark:from-indigo-400 dark:to-indigo-300">
+                                    {formatCurrency(result.total)}
+                                </span>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p className="text-[10px] font-bold text-zinc-400 uppercase mb-0.5">Total Investido</p>
+                                    <p className="text-sm font-bold text-zinc-700 dark:text-zinc-300">{formatCurrency(result.invested)}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-bold text-zinc-400 uppercase mb-0.5">Juros Acumulados</p>
+                                    <p className="text-sm font-bold text-emerald-500">+{formatCurrency(result.interest)}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
-            <button onClick={calculate} className="w-full btn-primary mb-6">
-                Calcular Futuro <ArrowRight className="w-4 h-4 ml-1" />
-            </button>
-            
-            {result && (
-                <div className="bg-white dark:bg-zinc-950 rounded-2xl p-5 border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-3 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-500/10 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
-                    <div className="flex justify-between items-center">
-                        <span className="text-xs font-medium text-zinc-500">Total Investido</span>
-                        <span className="text-sm font-bold text-zinc-900 dark:text-white">{formatCurrency(result.invested)}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                        <span className="text-xs font-medium text-zinc-500">Juros Recebidos</span>
-                        <span className="text-sm font-bold text-emerald-500">+{formatCurrency(result.interest)}</span>
-                    </div>
-                    <div className="pt-3 border-t border-dashed border-zinc-200 dark:border-zinc-800 flex justify-between items-end">
-                        <span className="text-sm font-bold text-zinc-900 dark:text-white">Patrimônio Final</span>
-                        <span className="text-2xl font-black text-indigo-600 dark:text-indigo-400">{formatCurrency(result.total)}</span>
-                    </div>
-                </div>
-            )}
         </CalculatorCard>
     );
 };
