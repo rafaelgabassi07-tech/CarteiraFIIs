@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { AssetPosition, DividendReceipt, AssetType, PortfolioInsight, Transaction } from '../types';
 import { CircleDollarSign, CalendarClock, PieChart as PieIcon, ArrowUpRight, Wallet, ArrowRight, Sparkles, Trophy, Anchor, Coins, Crown, Info, X, Zap, ShieldCheck, AlertTriangle, Play, Pause, TrendingUp, Target, Snowflake, Layers, Medal, Rocket, Gem, Lock, Building2, Briefcase, ShoppingCart, Coffee, Plane, Star, Award, Umbrella, ZapOff, CheckCircle2, ListFilter, History } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, CartesianGrid, AreaChart, Area, XAxis, YAxis, ComposedChart, Bar, Line, ReferenceLine, Label } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, CartesianGrid, AreaChart, Area, XAxis, YAxis, ComposedChart, Bar, Line, ReferenceLine, Label, BarChart } from 'recharts';
 import { formatBRL, formatDateShort, getMonthName, getDaysUntil } from '../utils/formatters';
 
 // --- CONSTANTS ---
@@ -43,75 +43,96 @@ const getStoryIcon = (type: PortfolioInsight['type']) => {
 };
 
 const EvolutionModal = ({ isOpen, onClose, transactions, dividends }: { isOpen: boolean, onClose: () => void, transactions: Transaction[], dividends: DividendReceipt[] }) => {
+    const [viewType, setViewType] = useState<'ACCUMULATED' | 'MONTHLY'>('ACCUMULATED');
+
     const evolutionData = useMemo(() => {
         if (!transactions || transactions.length === 0) return [];
 
-        // 1. Group by Month
-        const timeline: Record<string, { invested: number, dividends: number }> = {};
-        
-        // Find range
+        // 1. Setup Timeline
         const dates = transactions.map(t => new Date(t.date));
+        if (dividends.length > 0) {
+            const divDates = dividends.filter(d => d.paymentDate).map(d => new Date(d.paymentDate!));
+            dates.push(...divDates);
+        }
+        
         const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
         const maxDate = new Date();
         
-        // Initialize all months from start to now
+        const timeline: Record<string, { 
+            monthlyContribution: number, 
+            monthlyDividend: number,
+            accumulatedInvested: number,
+            accumulatedDividends: number 
+        }> = {};
+
         let current = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
         while (current <= maxDate) {
-            const key = current.toISOString().slice(0, 7); // YYYY-MM
-            timeline[key] = { invested: 0, dividends: 0 };
+            const key = current.toISOString().slice(0, 7);
+            timeline[key] = { monthlyContribution: 0, monthlyDividend: 0, accumulatedInvested: 0, accumulatedDividends: 0 };
             current.setMonth(current.getMonth() + 1);
         }
 
-        // 2. Process Transactions (Cumulative Invested)
-        // Sort transactions by date
+        // 2. Process Transactions
         const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
-        
         let runningInvested = 0;
-        let txIndex = 0;
-        
-        const months = Object.keys(timeline).sort();
-        
-        months.forEach(month => {
-            // Process all transactions up to the end of this month
-            while (txIndex < sortedTxs.length) {
-                const tx = sortedTxs[txIndex];
-                if (tx.date.slice(0, 7) > month) break;
-                
+
+        Object.keys(timeline).sort().forEach(month => {
+            // Monthly Contributions
+            const monthTxs = sortedTxs.filter(t => t.date.startsWith(month));
+            const monthlyNet = monthTxs.reduce((acc, tx) => {
                 const val = tx.quantity * tx.price;
-                if (tx.type === 'BUY') runningInvested += val;
-                else runningInvested -= val;
-                
-                txIndex++;
-            }
-            timeline[month].invested = runningInvested;
+                return tx.type === 'BUY' ? acc + val : acc - val;
+            }, 0);
+
+            timeline[month].monthlyContribution = monthlyNet;
+            
+            // Running Invested (Cost Basis)
+            // Note: This logic assumes we process strictly month by month. 
+            // Better: Sum all previous months + current.
+            // Actually, runningInvested should just add monthlyNet.
+            runningInvested += monthlyNet;
+            timeline[month].accumulatedInvested = runningInvested;
         });
 
-        // 3. Process Dividends (Cumulative)
-        let runningDivs = 0;
+        // 3. Process Dividends
         const sortedDivs = [...dividends].filter(d => d.paymentDate).sort((a, b) => a.paymentDate!.localeCompare(b.paymentDate!));
-        let divIndex = 0;
+        let runningDivs = 0;
 
-        months.forEach(month => {
-             while (divIndex < sortedDivs.length) {
-                const div = sortedDivs[divIndex];
-                if (!div.paymentDate) { divIndex++; continue; }
-                if (div.paymentDate.slice(0, 7) > month) break;
-                
-                runningDivs += div.totalReceived;
-                divIndex++;
-            }
-            timeline[month].dividends = runningDivs;
+        Object.keys(timeline).sort().forEach(month => {
+            const monthDivs = sortedDivs.filter(d => d.paymentDate?.startsWith(month));
+            const monthlyDivTotal = monthDivs.reduce((acc, d) => acc + d.totalReceived, 0);
+
+            timeline[month].monthlyDividend = monthlyDivTotal;
+            runningDivs += monthlyDivTotal;
+            timeline[month].accumulatedDividends = runningDivs;
         });
 
-        return months.map(m => ({
+        return Object.keys(timeline).sort().map(m => ({
             month: m,
-            label: getMonthName(m),
-            invested: timeline[m].invested,
-            dividends: timeline[m].dividends,
-            total: timeline[m].invested + timeline[m].dividends // Proxy for "Wealth" if we assume reinvestment
+            label: getMonthName(m).substring(0, 3).toUpperCase(),
+            fullLabel: getMonthName(m),
+            
+            // Monthly Data
+            contribution: timeline[m].monthlyContribution,
+            dividend: timeline[m].monthlyDividend,
+            
+            // Accumulated Data
+            invested: timeline[m].accumulatedInvested,
+            dividends: timeline[m].accumulatedDividends,
+            total: timeline[m].accumulatedInvested + timeline[m].accumulatedDividends
         }));
 
     }, [transactions, dividends]);
+
+    const totals = useMemo(() => {
+        if (evolutionData.length === 0) return { invested: 0, dividends: 0, total: 0 };
+        const last = evolutionData[evolutionData.length - 1];
+        return {
+            invested: last.invested,
+            dividends: last.dividends,
+            total: last.total
+        };
+    }, [evolutionData]);
 
     return (
         <SwipeableModal isOpen={isOpen} onClose={onClose}>
@@ -119,57 +140,125 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends }: { isOpen: 
                 <div className="flex justify-between items-center mb-6 shrink-0">
                     <div>
                         <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Evolução Patrimonial</h2>
-                        <p className="text-xs text-zinc-500 font-medium">Histórico de aportes e proventos acumulados</p>
+                        <p className="text-xs text-zinc-500 font-medium">Crescimento via Aportes e Proventos</p>
                     </div>
-                    <button onClick={onClose} className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-zinc-500">
+                    <button onClick={onClose} className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors">
                         <X className="w-4 h-4" />
                     </button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto pb-20 no-scrollbar">
-                    <div className="bg-white dark:bg-zinc-900 rounded-[2rem] p-4 border border-zinc-200 dark:border-zinc-800 shadow-sm mb-6">
+                    {/* Summary Cards */}
+                    <div className="grid grid-cols-3 gap-3 mb-6">
+                        <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-16 h-16 bg-indigo-500/10 rounded-full blur-xl -mr-8 -mt-8 pointer-events-none"></div>
+                            <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Total Aportado</p>
+                            <p className="text-sm font-black text-indigo-600 dark:text-indigo-400 truncate">{formatBRL(totals.invested)}</p>
+                        </div>
+                        <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/10 rounded-full blur-xl -mr-8 -mt-8 pointer-events-none"></div>
+                            <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Total Proventos</p>
+                            <p className="text-sm font-black text-emerald-600 dark:text-emerald-400 truncate">{formatBRL(totals.dividends)}</p>
+                        </div>
+                        <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-16 h-16 bg-amber-500/10 rounded-full blur-xl -mr-8 -mt-8 pointer-events-none"></div>
+                            <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Patrimônio (Custo)</p>
+                            <p className="text-sm font-black text-zinc-900 dark:text-white truncate">{formatBRL(totals.total)}</p>
+                        </div>
+                    </div>
+
+                    {/* Chart Controls */}
+                    <div className="flex justify-center mb-4">
+                        <div className="bg-zinc-200 dark:bg-zinc-800 p-1 rounded-xl flex gap-1">
+                            <button 
+                                onClick={() => setViewType('ACCUMULATED')}
+                                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${viewType === 'ACCUMULATED' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-500 dark:text-zinc-400'}`}
+                            >
+                                Acumulado
+                            </button>
+                            <button 
+                                onClick={() => setViewType('MONTHLY')}
+                                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${viewType === 'MONTHLY' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-500 dark:text-zinc-400'}`}
+                            >
+                                Mensal
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Main Chart */}
+                    <div className="bg-white dark:bg-zinc-900 rounded-[2rem] p-4 border border-zinc-200 dark:border-zinc-800 shadow-sm mb-6 relative">
+                        <div className="flex items-center justify-between mb-4 px-2">
+                            <h3 className="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                                <TrendingUp className="w-4 h-4 text-indigo-500" />
+                                {viewType === 'ACCUMULATED' ? 'Crescimento Patrimonial' : 'Aportes vs Proventos'}
+                            </h3>
+                            <div className="flex gap-3">
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
+                                    <span className="text-[9px] font-medium text-zinc-500">Aportes</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                                    <span className="text-[9px] font-medium text-zinc-500">Proventos</span>
+                                </div>
+                            </div>
+                        </div>
+
                         <div className="h-72 w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                <ComposedChart data={evolutionData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-                                    <defs>
-                                        <linearGradient id="gradInvested" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
-                                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
-                                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a' }} minTickGap={30} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a' }} tickFormatter={(v) => `R$${(v/1000).toFixed(0)}k`} />
-                                    <RechartsTooltip 
-                                        contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '11px' }}
-                                        formatter={(value: number, name: string) => [formatBRL(value), name === 'invested' ? 'Aportes Acum.' : name === 'dividends' ? 'Proventos Acum.' : 'Total']}
-                                        labelStyle={{ color: '#a1a1aa', marginBottom: '4px' }}
-                                    />
-                                    <Area type="monotone" dataKey="invested" stroke="#6366f1" strokeWidth={3} fill="url(#gradInvested)" name="invested" />
-                                    <Area type="monotone" dataKey="dividends" stackId="1" stroke="#10b981" strokeWidth={2} fill="#10b981" fillOpacity={0.6} name="dividends" />
-                                </ComposedChart>
+                                {viewType === 'ACCUMULATED' ? (
+                                    <AreaChart data={evolutionData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                                        <defs>
+                                            <linearGradient id="gradInvested" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
+                                                <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                                            </linearGradient>
+                                            <linearGradient id="gradDividends" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                                                <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
+                                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a' }} minTickGap={30} />
+                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a' }} tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
+                                        <RechartsTooltip 
+                                            contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '11px' }}
+                                            formatter={(value: number, name: string) => [formatBRL(value), name === 'invested' ? 'Aportes Acum.' : name === 'dividends' ? 'Proventos Acum.' : 'Total']}
+                                            labelStyle={{ color: '#a1a1aa', marginBottom: '4px' }}
+                                        />
+                                        <Area type="monotone" dataKey="invested" stackId="1" stroke="#6366f1" strokeWidth={2} fill="url(#gradInvested)" name="invested" />
+                                        <Area type="monotone" dataKey="dividends" stackId="1" stroke="#10b981" strokeWidth={2} fill="url(#gradDividends)" name="dividends" />
+                                    </AreaChart>
+                                ) : (
+                                    <BarChart data={evolutionData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
+                                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a' }} minTickGap={30} />
+                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a' }} tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
+                                        <RechartsTooltip 
+                                            cursor={{fill: 'transparent'}}
+                                            contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '11px' }}
+                                            formatter={(value: number, name: string) => [formatBRL(value), name === 'contribution' ? 'Aporte Mensal' : name === 'dividend' ? 'Proventos' : 'Total']}
+                                            labelStyle={{ color: '#a1a1aa', marginBottom: '4px' }}
+                                        />
+                                        <Bar dataKey="contribution" stackId="a" fill="#6366f1" radius={[0, 0, 4, 4]} name="contribution" />
+                                        <Bar dataKey="dividend" stackId="a" fill="#10b981" radius={[4, 4, 0, 0]} name="dividend" />
+                                    </BarChart>
+                                )}
                             </ResponsiveContainer>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
-                            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-3">
-                                <Wallet className="w-5 h-5" />
+                    <div className="bg-indigo-50 dark:bg-indigo-900/10 rounded-2xl p-4 border border-indigo-100 dark:border-indigo-800/30">
+                        <div className="flex items-start gap-3">
+                            <Info className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
+                            <div>
+                                <h4 className="text-xs font-bold text-indigo-900 dark:text-indigo-300 mb-1">Sobre a Evolução</h4>
+                                <p className="text-[10px] text-indigo-700 dark:text-indigo-400 leading-relaxed">
+                                    O gráfico registra o crescimento do seu patrimônio baseado exclusivamente no <strong>Custo de Aquisição</strong> (Aportes) e <strong>Proventos Recebidos</strong>. 
+                                    <br/><br/>
+                                    A valorização de mercado (ganho de capital não realizado) não é contabilizada no histórico, pois depende da cotação do ativo no momento da visualização.
+                                </p>
                             </div>
-                            <p className="text-xs text-zinc-500 font-medium mb-1">Total Aportado</p>
-                            <p className="text-lg font-black text-zinc-900 dark:text-white">
-                                {formatBRL(evolutionData[evolutionData.length - 1]?.invested || 0)}
-                            </p>
-                        </div>
-                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
-                            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-3">
-                                <Coins className="w-5 h-5" />
-                            </div>
-                            <p className="text-xs text-zinc-500 font-medium mb-1">Proventos Acumulados</p>
-                            <p className="text-lg font-black text-zinc-900 dark:text-white">
-                                {formatBRL(evolutionData[evolutionData.length - 1]?.dividends || 0)}
-                            </p>
                         </div>
                     </div>
                 </div>
