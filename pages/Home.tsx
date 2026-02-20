@@ -1374,6 +1374,13 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
             </div>
         </SwipeableModal>
 
+        <EvolutionModal 
+            isOpen={showEvolution} 
+            onClose={() => setShowEvolution(false)} 
+            transactions={transactions} 
+            dividends={dividendReceipts} 
+        />
+
     </div>
   );
 };
