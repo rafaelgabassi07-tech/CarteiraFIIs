@@ -191,40 +191,53 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                 <div className="flex-1 overflow-y-auto pb-20 no-scrollbar">
                     {/* Summary Cards */}
                     <div className="grid grid-cols-2 gap-3 mb-3">
-                        <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm relative overflow-hidden">
-                            <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Patrimônio Atual</p>
-                            <p className="text-xl font-black text-zinc-900 dark:text-white truncate">{formatBRL(stats.marketValue)}</p>
-                            <div className="flex items-center gap-1 mt-1">
-                                <span className="text-[10px] font-bold text-emerald-500 bg-emerald-100 dark:bg-emerald-500/10 px-1.5 py-0.5 rounded">
-                                    +{formatBRL(stats.appreciation)}
-                                </span>
-                                <span className="text-[9px] text-zinc-400 font-medium">Valorização</span>
+                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 shadow-xl shadow-zinc-200/50 dark:shadow-black/20 relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-500/5 rounded-full blur-2xl -mr-6 -mt-6 group-hover:bg-emerald-500/10 transition-colors"></div>
+                            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Patrimônio Atual</p>
+                            <p className="text-2xl font-black text-zinc-900 dark:text-white truncate tracking-tight">{formatBRL(stats.marketValue)}</p>
+                            <div className="flex items-center gap-1.5 mt-2">
+                                <div className="flex items-center gap-1 bg-emerald-100 dark:bg-emerald-500/10 px-2 py-1 rounded-lg">
+                                    <ArrowUpRight className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                                        {formatBRL(stats.appreciation)}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                         <div className="space-y-3">
-                            <div className="bg-white dark:bg-zinc-900 p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex justify-between items-center">
-                                <span className="text-[9px] font-bold text-zinc-400 uppercase">Aportado</span>
-                                <span className="text-xs font-black text-indigo-600 dark:text-indigo-400">{formatBRL(stats.invested)}</span>
+                            <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex justify-between items-center">
+                                <div className="flex flex-col">
+                                    <span className="text-[9px] font-bold text-zinc-400 uppercase">Aportado</span>
+                                    <span className="text-sm font-black text-indigo-600 dark:text-indigo-400">{formatBRL(stats.invested)}</span>
+                                </div>
+                                <div className="w-8 h-8 rounded-full bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-500">
+                                    <Wallet className="w-4 h-4" />
+                                </div>
                             </div>
-                            <div className="bg-white dark:bg-zinc-900 p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex justify-between items-center">
-                                <span className="text-[9px] font-bold text-zinc-400 uppercase">Proventos</span>
-                                <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">{formatBRL(stats.dividends)}</span>
+                            <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex justify-between items-center">
+                                <div className="flex flex-col">
+                                    <span className="text-[9px] font-bold text-zinc-400 uppercase">Proventos</span>
+                                    <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">{formatBRL(stats.dividends)}</span>
+                                </div>
+                                <div className="w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-500">
+                                    <Coins className="w-4 h-4" />
+                                </div>
                             </div>
                         </div>
                     </div>
 
                     {/* Chart Controls */}
-                    <div className="flex justify-center mb-4">
-                        <div className="bg-zinc-200 dark:bg-zinc-800 p-1 rounded-xl flex gap-1">
+                    <div className="flex justify-center mb-6">
+                        <div className="bg-zinc-100 dark:bg-zinc-800/50 p-1 rounded-xl flex gap-1 ring-1 ring-zinc-200 dark:ring-zinc-700/50">
                             <button 
                                 onClick={() => setViewType('ACCUMULATED')}
-                                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${viewType === 'ACCUMULATED' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-500 dark:text-zinc-400'}`}
+                                className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase transition-all ${viewType === 'ACCUMULATED' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm ring-1 ring-black/5' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'}`}
                             >
                                 Patrimônio
                             </button>
                             <button 
                                 onClick={() => setViewType('MONTHLY')}
-                                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${viewType === 'MONTHLY' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-500 dark:text-zinc-400'}`}
+                                className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase transition-all ${viewType === 'MONTHLY' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm ring-1 ring-black/5' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'}`}
                             >
                                 Mensal
                             </button>
@@ -232,17 +245,17 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                     </div>
 
                     {/* Main Chart */}
-                    <div className="bg-white dark:bg-zinc-900 rounded-[2rem] p-4 border border-zinc-200 dark:border-zinc-800 shadow-sm mb-6 relative">
-                        <div className="flex items-center justify-between mb-4 px-2">
-                            <h3 className="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                    <div className="bg-white dark:bg-zinc-900 rounded-[2rem] p-5 border border-zinc-100 dark:border-zinc-800 shadow-xl shadow-zinc-200/50 dark:shadow-black/20 mb-6 relative overflow-hidden">
+                        <div className="flex items-center justify-between mb-6 px-1">
+                            <h3 className="text-sm font-black text-zinc-900 dark:text-white flex items-center gap-2">
                                 <TrendingUp className="w-4 h-4 text-indigo-500" />
                                 {viewType === 'ACCUMULATED' ? 'Crescimento Patrimonial' : 'Aportes vs Proventos'}
                             </h3>
                             {viewType === 'ACCUMULATED' && (
                                 <div className="flex gap-3">
-                                    <div className="flex items-center gap-1.5">
+                                    <div className="flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded-md">
                                         <div className="w-2 h-0.5 bg-zinc-400 border-t border-dashed border-zinc-400"></div>
-                                        <span className="text-[9px] font-medium text-zinc-500">Tendência</span>
+                                        <span className="text-[9px] font-bold text-zinc-500 uppercase">Tendência</span>
                                     </div>
                                 </div>
                             )}
@@ -569,22 +582,24 @@ const StoryViewer = ({
 };
 
 const BentoCard = ({ title, value, subtext, icon: Icon, colorClass, onClick, className, info }: any) => (
-    <button onClick={onClick} className={`relative overflow-hidden bg-white dark:bg-zinc-900 p-3 rounded-2xl flex flex-col justify-between items-start text-left shadow-[0_2px_8px_rgb(0,0,0,0.03)] dark:shadow-none border border-zinc-100 dark:border-zinc-800 press-effect h-full min-h-[110px] ${className}`}>
-        <div className="flex justify-between w-full mb-2 relative z-10">
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${colorClass}`}>
-                <Icon className="w-4 h-4" strokeWidth={2.5} />
+    <button onClick={onClick} className={`relative overflow-hidden bg-white dark:bg-zinc-900 p-4 rounded-[1.5rem] flex flex-col justify-between items-start text-left shadow-lg shadow-zinc-200/50 dark:shadow-black/20 border border-zinc-100 dark:border-zinc-800 press-effect h-full min-h-[120px] group transition-all duration-300 hover:border-zinc-200 dark:hover:border-zinc-700 ${className}`}>
+        <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-white/0 to-zinc-100/50 dark:to-zinc-800/50 rounded-bl-[3rem] -mr-4 -mt-4 transition-transform group-hover:scale-110 duration-500"></div>
+        
+        <div className="flex justify-between w-full mb-3 relative z-10">
+            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${colorClass} shadow-sm ring-4 ring-white dark:ring-zinc-900`}>
+                <Icon className="w-5 h-5" strokeWidth={2.5} />
             </div>
-            <div className="w-6 h-6 rounded-full bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-300">
-                <ArrowRight className="w-3 h-3 -rotate-45" />
+            <div className="w-8 h-8 rounded-full bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-300 group-hover:text-zinc-500 dark:group-hover:text-zinc-200 transition-colors">
+                <ArrowRight className="w-4 h-4 -rotate-45 group-hover:rotate-0 transition-transform duration-300" />
             </div>
         </div>
         <div className="relative z-10 w-full">
-            <div className="flex items-center gap-1.5 mb-0.5">
-                <h3 className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">{title}</h3>
+            <div className="flex items-center gap-1.5 mb-1">
+                <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{title}</h3>
                 {info && <InfoTooltip title={title} text={info} />}
             </div>
-            <p className="text-lg font-black text-zinc-900 dark:text-white tracking-tight leading-none">{typeof value === 'object' ? '' : value}</p>
-            {subtext && <p className="text-[9px] text-zinc-400 font-medium mt-0.5">{subtext}</p>}
+            <p className="text-xl font-black text-zinc-900 dark:text-white tracking-tight leading-none">{typeof value === 'object' ? '' : value}</p>
+            {subtext && <p className="text-[10px] text-zinc-500 font-bold mt-1">{subtext}</p>}
         </div>
     </button>
 );

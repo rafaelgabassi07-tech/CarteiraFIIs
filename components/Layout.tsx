@@ -181,22 +181,19 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange, i
         className="fixed bottom-6 left-0 right-0 z-[90] flex justify-center pointer-events-none transition-transform duration-500 cubic-bezier(0.16, 1, 0.3, 1)"
         style={{ transform: isVisible ? 'translateY(0)' : 'translateY(200%)' }}
     >
-      <nav className="pointer-events-auto bg-zinc-900/90 dark:bg-zinc-800/90 backdrop-blur-xl border border-white/10 rounded-full px-4 py-2.5 flex items-center gap-3 shadow-2xl shadow-black/40 ring-1 ring-black/5">
+      <nav className="pointer-events-auto bg-zinc-900/80 dark:bg-zinc-900/80 backdrop-blur-2xl border border-white/10 rounded-full px-2 py-2 flex items-center gap-1 shadow-2xl shadow-black/40 ring-1 ring-white/5">
           {navItems.map((item) => {
             const isActive = currentTab === item.id;
             return (
               <button
                 key={item.id}
                 onClick={() => onTabChange(item.id)}
-                className={`relative flex items-center justify-center w-12 h-12 rounded-2xl transition-all duration-300 group ${isActive ? 'bg-white/15 text-white shadow-inner' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}
+                className={`relative flex items-center justify-center w-12 h-12 rounded-full transition-all duration-300 group ${isActive ? 'bg-white text-black shadow-lg shadow-white/20' : 'text-zinc-400 hover:text-white hover:bg-white/10'}`}
               >
                 <item.icon 
-                    className={`w-6 h-6 transition-all duration-300 ${isActive ? 'scale-110' : 'scale-100 group-active:scale-90'}`} 
+                    className={`w-5 h-5 transition-all duration-300 ${isActive ? 'scale-100' : 'scale-100 group-active:scale-90'}`} 
                     strokeWidth={isActive ? 2.5 : 2}
                 />
-                {isActive && (
-                  <span className="absolute -bottom-1 w-1 h-1 bg-white rounded-full anim-scale-in shadow-glow"></span>
-                )}
               </button>
             );
           })}
@@ -217,7 +214,7 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
     <div className={`fixed inset-0 z-[9999] flex flex-col justify-end isolate`}>
       <div 
           onClick={onClose} 
-          className="absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity duration-500"
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-500"
           style={{ opacity: isVisible ? 1 : 0 }} 
       ></div>
       
@@ -226,9 +223,9 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
             transform: isVisible ? `translateY(${dragY}px)` : 'translateY(100%)',
             transition: dragY === 0 ? 'transform 500ms cubic-bezier(0.32, 0.72, 0, 1)' : 'none',
         }}
-        className={`relative bg-white dark:bg-zinc-900 w-full ${className} rounded-t-[2.5rem] shadow-2xl shadow-black/50 overflow-hidden flex flex-col`}
+        className={`relative bg-white dark:bg-zinc-900 w-full ${className} rounded-t-[2.5rem] shadow-2xl shadow-black/50 overflow-hidden flex flex-col ring-1 ring-black/5 dark:ring-white/5`}
       >
-        <div className="w-full flex justify-center pt-4 pb-2 bg-white dark:bg-zinc-900 shrink-0 cursor-grab active:cursor-grabbing touch-none z-10"
+        <div className="w-full flex justify-center pt-3 pb-3 bg-white dark:bg-zinc-900 shrink-0 cursor-grab active:cursor-grabbing touch-none z-10"
              onTouchMove={(e) => {
                const val = e.touches[0].clientY - (window.innerHeight - (e.currentTarget.parentElement?.clientHeight || 0));
                if(val > 0) setDragY(val);
@@ -238,7 +235,7 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
                setDragY(0);
              }}
         >
-          <div className="w-12 h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full"></div>
+          <div className="w-12 h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full transition-colors hover:bg-zinc-300 dark:hover:bg-zinc-700"></div>
         </div>
 
         <div className="flex-1 min-h-0 w-full relative flex flex-col">
