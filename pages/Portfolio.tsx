@@ -1548,70 +1548,59 @@ const AssetCard = ({ asset, maxVal, totalVal, privacyMode, onClick }: { asset: A
     const gainLossPercent = invested > 0 ? (gainLoss / invested) * 100 : 0;
     const isPositive = gainLoss >= 0;
     
-    // Percentual relativo ao maior ativo (para a barra de progresso)
     const relativePercent = maxVal > 0 ? (currentVal / maxVal) * 100 : 0;
 
     return (
         <button 
             onClick={onClick}
-            className="w-full bg-white dark:bg-zinc-900 rounded-[1.25rem] border border-zinc-100 dark:border-zinc-800 shadow-sm active:scale-[0.98] transition-all relative overflow-hidden group hover:border-indigo-100 dark:hover:border-zinc-700 p-4"
+            className="w-full bg-white dark:bg-zinc-900 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 shadow-sm active:scale-[0.98] transition-all relative overflow-hidden group hover:border-indigo-200 dark:hover:border-zinc-700 p-4"
         >
-            <div className="flex justify-between items-start mb-3">
-                <div className="flex items-center gap-3">
-                    {asset.logoUrl ? (
-                        <img src={asset.logoUrl} className="w-10 h-10 rounded-xl object-cover bg-white shadow-sm border border-zinc-100 dark:border-zinc-800" />
-                    ) : (
-                        <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center font-black text-xs text-zinc-400 border border-zinc-200 dark:border-zinc-700">
-                            {asset.ticker.substring(0, 2)}
+            {/* Progress Bar Background */}
+            <div className="absolute bottom-0 left-0 h-1 bg-indigo-500/20 dark:bg-indigo-400/20 transition-all duration-1000" style={{ width: `${relativePercent}%` }}></div>
+
+            <div className="flex justify-between items-center mb-3">
+                <div className="flex items-center gap-3.5">
+                    <div className="relative">
+                        {asset.logoUrl ? (
+                            <img src={asset.logoUrl} className="w-11 h-11 rounded-2xl object-cover bg-white shadow-sm border border-zinc-100 dark:border-zinc-800" />
+                        ) : (
+                            <div className="w-11 h-11 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center font-black text-xs text-zinc-400 border border-zinc-200 dark:border-zinc-700">
+                                {asset.ticker.substring(0, 2)}
+                            </div>
+                        )}
+                        <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white dark:border-zinc-900 flex items-center justify-center text-[8px] font-black ${isPositive ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
+                            {isPositive ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
                         </div>
-                    )}
+                    </div>
+                    
                     <div className="text-left">
-                        <div className="flex items-center gap-2">
-                            <h3 className="font-display font-black text-base text-zinc-900 dark:text-white tracking-tight leading-none">{asset.ticker}</h3>
-                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5 ${(asset.dailyChange || 0) >= 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400'}`}>
-                                {(asset.dailyChange || 0) >= 0 ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
-                                {Math.abs(asset.dailyChange || 0).toFixed(2)}%
-                            </span>
-                        </div>
-                        <p className="text-[10px] font-medium text-zinc-400 mt-1 truncate max-w-[140px]">
+                        <h3 className="font-display font-black text-lg text-zinc-900 dark:text-white tracking-tight leading-none mb-0.5">{asset.ticker}</h3>
+                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider truncate max-w-[120px]">
                             {asset.company_name || 'Ativo'}
                         </p>
                     </div>
                 </div>
+
                 <div className="text-right">
-                    <p className="font-black text-base text-zinc-900 dark:text-white tracking-tight">{formatBRL(currentVal, privacyMode)}</p>
-                    <div className="flex items-center justify-end gap-1 mt-0.5">
-                        <span className={`text-[10px] font-bold ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
-                            {isPositive ? '+' : ''}{formatBRL(gainLoss, privacyMode)}
-                        </span>
-                        <span className={`text-[9px] font-medium text-zinc-400`}>
-                            ({isPositive ? '+' : ''}{gainLossPercent.toFixed(1)}%)
+                    <p className="font-black text-lg text-zinc-900 dark:text-white tracking-tight leading-none mb-0.5">{formatBRL(currentVal, privacyMode)}</p>
+                    <div className="flex items-center justify-end gap-1.5">
+                        <span className="text-[10px] font-medium text-zinc-400">{asset.quantity} un</span>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${isPositive ? 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-rose-100 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400'}`}>
+                            {isPositive ? '+' : ''}{gainLossPercent.toFixed(1)}%
                         </span>
                     </div>
                 </div>
             </div>
 
-            <div className="flex justify-between items-end pb-3 border-b border-dashed border-zinc-100 dark:border-zinc-800/50 mb-3">
-                <div className="text-left">
-                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Qtde</span>
-                    <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">{asset.quantity}</span>
+            <div className="flex items-center justify-between pt-3 border-t border-dashed border-zinc-100 dark:border-zinc-800/50">
+                <div className="flex flex-col items-start">
+                    <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Preço Médio</span>
+                    <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400">{formatBRL(asset.averagePrice, privacyMode)}</span>
                 </div>
-                <div className="text-right">
-                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Preço Médio</span>
-                    <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">{formatBRL(asset.averagePrice, privacyMode)}</span>
-                </div>
-                <div className="text-right">
-                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block mb-0.5">Atual</span>
+                <div className="flex flex-col items-end">
+                    <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Preço Atual</span>
                     <span className="text-xs font-bold text-zinc-900 dark:text-white">{formatBRL(asset.currentPrice, privacyMode)}</span>
                 </div>
-            </div>
-
-            {/* Allocation Bar */}
-            <div className="w-full h-1 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                <div 
-                    className="h-full bg-indigo-500 dark:bg-indigo-400 rounded-full transition-all duration-1000 ease-out"
-                    style={{ width: `${relativePercent}%` }}
-                ></div>
             </div>
         </button>
     );

@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { AssetPosition, DividendReceipt, AssetType, PortfolioInsight, Transaction } from '../types';
-import { CircleDollarSign, CalendarClock, PieChart as PieIcon, ArrowUpRight, Wallet, ArrowRight, Sparkles, Trophy, Anchor, Coins, Crown, Info, X, Zap, ShieldCheck, AlertTriangle, Play, Pause, TrendingUp, Target, Snowflake, Layers, Medal, Rocket, Gem, Lock, Building2, Briefcase, ShoppingCart, Coffee, Plane, Star, Award, Umbrella, ZapOff, CheckCircle2, ListFilter, History } from 'lucide-react';
+import { CircleDollarSign, CalendarClock, PieChart as PieIcon, ArrowUpRight, ArrowDownLeft, Wallet, ArrowRight, Sparkles, Trophy, Anchor, Coins, Crown, Info, X, Zap, ShieldCheck, AlertTriangle, Play, Pause, TrendingUp, TrendingDown, Target, Snowflake, Layers, Medal, Rocket, Gem, Lock, Building2, Briefcase, ShoppingCart, Coffee, Plane, Star, Award, Umbrella, ZapOff, CheckCircle2, ListFilter, History } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, CartesianGrid, AreaChart, Area, XAxis, YAxis, ComposedChart, Bar, Line, ReferenceLine, Label, BarChart } from 'recharts';
 import { formatBRL, formatDateShort, getMonthName, getDaysUntil } from '../utils/formatters';
@@ -919,46 +919,61 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
             viewedIds={viewedStories}
         />
 
-        <div className="relative w-full min-h-[180px] rounded-2xl bg-zinc-950 border border-zinc-800/80 overflow-hidden shadow-2xl group anim-fade-in">
-            <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 bg-zinc-600/10 blur-[80px] rounded-full pointer-events-none"></div>
-            <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-64 h-64 bg-white/5 blur-[80px] rounded-full pointer-events-none"></div>
+        <div className="relative w-full min-h-[200px] rounded-[2rem] bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl shadow-black/40 group anim-fade-in">
+            {/* Background Effects */}
+            <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-indigo-600/20 blur-[100px] rounded-full pointer-events-none -mr-20 -mt-20 mix-blend-screen animate-pulse-slow"></div>
+            <div className="absolute bottom-0 left-0 w-[250px] h-[250px] bg-emerald-600/10 blur-[80px] rounded-full pointer-events-none -ml-20 -mb-20 mix-blend-screen"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-50"></div>
 
-            <div className="relative z-10 p-4 flex flex-col justify-between h-full">
+            <div className="relative z-10 p-6 flex flex-col justify-between h-full">
                 <div>
-                    <div className="flex justify-between items-start mb-3">
-                        <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/5 border border-white/5 backdrop-blur-md">
-                            <Wallet className="w-3 h-3 text-zinc-400" strokeWidth={2.5} />
-                            <span className="text-[9px] font-bold text-zinc-300 uppercase tracking-widest">Patrimônio Total</span>
+                    <div className="flex justify-between items-start mb-4">
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/10 backdrop-blur-md shadow-lg">
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
+                            <span className="text-[10px] font-black text-zinc-200 uppercase tracking-widest">Patrimônio Total</span>
+                        </div>
+                        <button className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center backdrop-blur-md transition-colors border border-white/5">
+                            <Wallet className="w-4 h-4 text-zinc-300" />
+                        </button>
+                    </div>
+
+                    <div className="flex flex-col">
+                        <h1 className="text-[2.75rem] font-black text-white leading-none tracking-tighter tabular-nums drop-shadow-lg select-none">
+                            {formatBRL(balance, privacyMode)}
+                        </h1>
+                        <div className="flex items-center gap-2 mt-2 ml-1">
+                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Custo Total</span>
+                            <span className="text-xs font-bold text-zinc-300 tabular-nums">{formatBRL(invested, privacyMode)}</span>
                         </div>
                     </div>
-
-                    <h1 className="text-4xl font-black text-white leading-none tracking-tighter tabular-nums drop-shadow-sm select-none mb-1">
-                        {formatBRL(balance, privacyMode)}
-                    </h1>
-                    <p className="text-xs text-zinc-500 font-bold ml-1">Custo: {formatBRL(invested, privacyMode)}</p>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 pt-4 border-t border-white/5 mt-2">
-                    <div>
-                        <span className="text-[8px] text-zinc-500 uppercase font-bold tracking-wider block mb-0.5">Valorização</span>
-                        <span className={`text-xs font-bold tabular-nums tracking-tight block ${capitalGain >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                            {capitalGain >= 0 ? '+' : ''}{formatBRL(capitalGain, privacyMode)}
-                        </span>
+                <div className="grid grid-cols-3 gap-4 pt-6 mt-2">
+                    <div className="relative">
+                        <span className="text-[9px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Valorização</span>
+                        <div className={`flex items-center gap-1.5 ${capitalGain >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            {capitalGain >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                            <span className="text-sm font-black tabular-nums tracking-tight">
+                                {capitalGain >= 0 ? '+' : ''}{formatBRL(capitalGain, privacyMode)}
+                            </span>
+                        </div>
                     </div>
-                    <div className="border-l border-white/5 pl-3">
-                        <span className="text-[8px] text-zinc-500 uppercase font-bold tracking-wider block mb-0.5">Proventos</span>
-                        <span className="text-xs font-bold text-sky-400 tabular-nums tracking-tight block">
-                            +{formatBRL(totalDividendsReceived, privacyMode)}
-                        </span>
+                    <div className="relative pl-4 border-l border-white/10">
+                        <span className="text-[9px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Proventos</span>
+                        <div className="flex items-center gap-1.5 text-sky-400">
+                            <Coins className="w-3.5 h-3.5" />
+                            <span className="text-sm font-black tabular-nums tracking-tight">
+                                +{formatBRL(totalDividendsReceived, privacyMode)}
+                            </span>
+                        </div>
                     </div>
-                    <div className="border-l border-white/5 pl-3">
-                        <span className="text-[8px] text-zinc-500 uppercase font-bold tracking-wider block mb-0.5">Total</span>
-                        <span className={`text-xs font-bold tabular-nums tracking-tight block ${totalReturn >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                            {totalReturn >= 0 ? '+' : ''}{formatBRL(totalReturn, privacyMode)}
-                        </span>
-                        <span className={`text-[8px] font-black ${totalReturn >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                            {totalReturnPercent.toFixed(2)}%
-                        </span>
+                    <div className="relative pl-4 border-l border-white/10">
+                        <span className="text-[9px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Retorno</span>
+                        <div className={`flex items-center gap-1.5 ${totalReturn >= 0 ? 'text-indigo-400' : 'text-rose-400'}`}>
+                            <span className="text-sm font-black tabular-nums tracking-tight">
+                                {totalReturnPercent.toFixed(2)}%
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>
