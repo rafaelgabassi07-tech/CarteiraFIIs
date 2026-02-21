@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
 import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, BarChart3, PieChart, Coins, DollarSign, Building2, FileText, MapPin, Zap, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, SquareStack, Map as MapIcon, CandlestickChart, LineChart as LineChartIcon, Award, RefreshCcw, ArrowLeft, Briefcase, MoreHorizontal, LayoutGrid, List, Activity, Scale, Percent, ChevronDown, ChevronUp, ListFilter } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
-import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, ReferenceLine, ComposedChart, CartesianGrid, AreaChart, Area, YAxis, PieChart as RePieChart, Pie, Cell, LineChart, Line, Label, Legend } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, ReferenceLine, ComposedChart, CartesianGrid, AreaChart, Area, YAxis, PieChart as RePieChart, Pie, Cell, LineChart, Line, Label, Legend, Scatter } from 'recharts';
 import { formatBRL, formatDateShort, getMonthName } from '../utils/formatters';
 
 // --- CONSTANTS ---
@@ -99,8 +99,6 @@ const processChartData = (data: any[]) => {
         return {
             ...d,
             open, high, low, close,
-            // Recharts Bar com range [min, max] para calcular y e height automaticamente
-            candleRange: [low, high],
             price: close, 
             volume: d.volume || 0,
             sma20: calculateSMA(arr, 20, index),
@@ -122,63 +120,50 @@ const processChartData = (data: any[]) => {
     };
 };
 
-// Componente Visual do Candle (REATORADO PARA MÁXIMA COMPATIBILIDADE)
+// Componente Visual do Candle (USANDO SCATTER PARA MÁXIMA CONFIABILIDADE)
 const CustomCandleShape = (props: any) => {
-    const { x, y, width, height, payload } = props;
+    const { cx, cy, payload, yAxis } = props;
     
-    // Se Recharts não passou as coordenadas básicas, aborta
-    if (x == null || y == null || width == null || height == null) return null;
+    if (!yAxis || !yAxis.scale || cx == null || cy == null) return null;
 
     const { open, close, high, low } = payload;
     if (open == null || close == null || high == null || low == null) return null;
 
+    const scale = yAxis.scale;
     const isUp = close >= open;
     const color = isUp ? '#10b981' : '#f43f5e'; 
 
-    // No Recharts Bar com dataKey=[low, high]:
-    // y é a coordenada do valor mais alto (high)
-    // height é a distância em pixels entre high e low (sempre positivo se high > low)
-    
-    const priceRange = Math.abs(high - low);
-    const pixelRange = Math.abs(height);
-    
-    // Centro do candle
-    const centerX = x + width / 2;
-    const bodyWidth = Math.max(4, width * 0.8);
-    const bodyX = x + (width - bodyWidth) / 2;
+    // Coordenadas Y em pixels
+    const yO = scale(open);
+    const yC = scale(close);
+    const yH = scale(high);
+    const yL = scale(low);
 
-    // Se não houver variação de preço, desenha uma linha horizontal
-    if (priceRange === 0 || pixelRange === 0) {
-        return <line x1={bodyX} y1={y} x2={bodyX + bodyWidth} y2={y} stroke={color} strokeWidth={2} />;
-    }
+    // Largura fixa otimizada para 50 pontos
+    const candleWidth = 6;
+    const halfWidth = candleWidth / 2;
 
-    const ratio = pixelRange / priceRange;
-    const bodyTopPrice = Math.max(open, close);
-    const bodyBottomPrice = Math.min(open, close);
-
-    // O corpo começa no maior preço entre Open/Close
-    // A distância do topo (High) até o topo do corpo é (high - bodyTopPrice) * ratio
-    const bodyTopY = y + (high - bodyTopPrice) * ratio;
-    const bodyHeight = Math.max(2, (bodyTopPrice - bodyBottomPrice) * ratio);
+    const bodyTop = Math.min(yO, yC);
+    const bodyBottom = Math.max(yO, yC);
+    const bodyHeight = Math.max(2, bodyBottom - bodyTop);
 
     return (
-        <g className="candle-group">
-            {/* Pavio (Wick) - Do High ao Low */}
+        <g>
+            {/* Pavio */}
             <line 
-                x1={centerX} 
-                y1={y} 
-                x2={centerX} 
-                y2={y + pixelRange} 
+                x1={cx} 
+                y1={yH} 
+                x2={cx} 
+                y2={yL} 
                 stroke={color} 
                 strokeWidth={1.5} 
                 strokeOpacity={0.8}
             />
-            
-            {/* Corpo (Body) - Do Open ao Close */}
+            {/* Corpo */}
             <rect 
-                x={bodyX} 
-                y={bodyTopY} 
-                width={bodyWidth} 
+                x={cx - halfWidth} 
+                y={bodyTop} 
+                width={candleWidth} 
                 height={bodyHeight} 
                 fill={color}
                 stroke={color}
@@ -433,9 +418,9 @@ const PriceHistoryChart = ({ fullData, loading, error, ticker, range, onRangeCha
                                     />
                                 ) : (
                                     /* Passamos [low, high] para o Recharts calcular a escala Y, mas o shape cuida do corpo */
-                                    <Bar 
+                                    <Scatter 
                                         yAxisId="price" 
-                                        dataKey="candleRange" 
+                                        data={processedData} 
                                         shape={<CustomCandleShape />} 
                                         isAnimationActive={false} 
                                     />
