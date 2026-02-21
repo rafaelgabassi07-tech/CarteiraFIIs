@@ -172,13 +172,18 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
 
     return (
         <SwipeableModal isOpen={isOpen} onClose={onClose}>
-            <div className="p-4 h-full flex flex-col bg-zinc-50 dark:bg-zinc-950">
-                <div className="flex justify-between items-center mb-6 shrink-0">
-                    <div>
-                        <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Evolução Patrimonial</h2>
-                        <p className="text-xs text-zinc-500 font-medium">Crescimento, Valorização e Tendência</p>
+            <div className="p-4 h-full flex flex-col bg-zinc-50 dark:bg-zinc-950 anim-slide-up">
+                <div className="flex items-center justify-between mb-6 shrink-0">
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-violet-500/20 ring-4 ring-violet-50 dark:ring-violet-900/20">
+                            <TrendingUp className="w-6 h-6" strokeWidth={2.5} />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-black text-zinc-900 dark:text-white leading-none tracking-tight">Evolução</h2>
+                            <p className="text-sm font-bold text-violet-600 dark:text-violet-400 mt-0.5">Crescimento Patrimonial</p>
+                        </div>
                     </div>
-                    <button onClick={onClose} className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors">
+                    <button onClick={onClose} className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">
                         <X className="w-4 h-4" />
                     </button>
                 </div>
@@ -995,32 +1000,15 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                 info="Acompanhe a evolução do seu patrimônio e proventos acumulados ao longo do tempo."
             />
             
-            <div className="col-span-2">
-                <button onClick={() => setShowAllocation(true)} className="w-full bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-[0_2px_8px_rgb(0,0,0,0.03)] dark:shadow-none border border-zinc-100 dark:border-zinc-800 press-effect flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <div className="w-9 h-9 rounded-xl bg-sky-100 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 flex items-center justify-center">
-                            <PieIcon className="w-4 h-4" />
-                        </div>
-                        <div className="text-left">
-                            <div className="flex items-center gap-1.5">
-                                <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Alocação</h3>
-                                <InfoTooltip title="Alocação" text="Distribuição atual do seu patrimônio por classe de ativo." />
-                            </div>
-                            <div className="flex gap-2 mt-1 text-[10px] text-zinc-500">
-                                {allocationData.byClass.map(c => (
-                                    <span key={c.name} className="flex items-center gap-1">
-                                        <div className="w-1.5 h-1.5 rounded-full" style={{backgroundColor: c.color}}></div> 
-                                        {c.name} {((c.value/(balance || 1))*100).toFixed(0)}%
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                    <div className="h-7 w-7 rounded-full bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-300">
-                        <ArrowUpRight className="w-3.5 h-3.5" />
-                    </div>
-                </button>
-            </div>
+            <BentoCard 
+                title="Alocação" 
+                value="Carteira" 
+                subtext="Ver Distribuição"
+                icon={PieIcon} 
+                colorClass="bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400"
+                onClick={() => setShowAllocation(true)}
+                info="Visualize a distribuição do seu patrimônio por classe de ativos, setores e ativos individuais."
+            />
         </div>
 
         <StoryViewer 

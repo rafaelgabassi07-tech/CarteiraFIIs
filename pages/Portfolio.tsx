@@ -1752,8 +1752,17 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
 
                 <div className="space-y-6">
                     {activeTab === 'OVERVIEW' && (
-                        <div className="anim-fade-in space-y-8">
+                        <div className="anim-fade-in space-y-6">
+                            <div className="flex items-center gap-3 mb-2">
+                                <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Sua Posição</h3>
+                                <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
+                            </div>
                             <PositionSummaryCard asset={selectedAsset} privacyMode={privacyMode} />
+                            
+                            <div className="flex items-center gap-3 mt-8 mb-2">
+                                <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Gráficos</h3>
+                                <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
+                            </div>
                             <ChartsContainer 
                                 ticker={selectedAsset.ticker} 
                                 type={selectedAsset.assetType} 
@@ -1763,17 +1772,37 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
                     )}
 
                     {activeTab === 'ANALYSIS' && (
-                        <div className="anim-fade-in space-y-8">
+                        <div className="anim-fade-in space-y-6">
+                            <div className="flex items-center gap-3 mb-2">
+                                <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Valuation</h3>
+                                <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
+                            </div>
                             <ValuationCard asset={selectedAsset} />
+                            
+                            <div className="flex items-center gap-3 mt-8 mb-2">
+                                <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Indicadores</h3>
+                                <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
+                            </div>
                             <DetailedInfoBlock asset={selectedAsset} />
+                            
                             {selectedAsset.properties && selectedAsset.properties.length > 0 && (
-                                <PropertiesAnalysis properties={selectedAsset.properties} />
+                                <>
+                                    <div className="flex items-center gap-3 mt-8 mb-2">
+                                        <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Portfólio Físico</h3>
+                                        <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
+                                    </div>
+                                    <PropertiesAnalysis properties={selectedAsset.properties} />
+                                </>
                             )}
                         </div>
                     )}
 
                     {activeTab === 'INCOME' && (
-                        <div className="anim-fade-in space-y-8">
+                        <div className="anim-fade-in space-y-6">
+                            <div className="flex items-center gap-3 mb-2">
+                                <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Geração de Renda</h3>
+                                <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
+                            </div>
                             <IncomeAnalysisSection 
                                 asset={selectedAsset} 
                                 chartData={incomeChartData} 
