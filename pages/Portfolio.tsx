@@ -97,6 +97,7 @@ const processChartData = (data: any[]) => {
         
         return {
             ...d,
+            open, high, low, close, // Garante que estejam no topo para o dataKey do Recharts
             candleData: { open, close, high, low }, 
             price: close, // For Area Chart
             volume: d.volume || 0,
@@ -120,66 +121,78 @@ const processChartData = (data: any[]) => {
     };
 };
 
-// Componente Visual do Candle (CORRIGIDO E ROBUSTO)
+// Componente Visual do Candle (REATORADO PARA MÁXIMA VISIBILIDADE)
 const CustomCandleShape = (props: any) => {
     const { x, y, width, height, payload } = props;
     
-    // Fallback seguro para dados
+    // Se x ou y forem inválidos, aborta
+    if (x == null || y == null || isNaN(x) || isNaN(y)) return null;
+
     const candleData = payload?.candleData || {};
     const { open, close, high, low } = candleData;
     
-    // Se faltar dados essenciais, não renderiza
     if (open == null || close == null || high == null || low == null) return null;
 
     const isUp = close >= open;
     const color = isUp ? '#10b981' : '#f43f5e'; 
     const strokeWidth = 1.5;
 
-    // Largura segura para o candle (evita sumir em mobile ou muitos dados)
-    // Garante pelo menos 4px de largura para visibilidade
-    const safeWidth = Math.max(4, width * 0.8); 
-    const xCentered = x + (width - safeWidth) / 2;
-    const wickX = x + width / 2;
+    // Largura do corpo (80% do espaço disponível, min 4px)
+    const bodyWidth = Math.max(4, width * 0.8);
+    const xOffset = (width - bodyWidth) / 2;
+    const centerX = x + width / 2;
 
-    const range = high - low;
+    // O 'height' do Recharts para Bar com range [low, high] é a distância em pixels entre low e high.
+    // O 'y' é a coordenada do valor mais alto (high).
+    // Se range for 0, height será 0.
     
-    // Se range for zero (Doji perfeito ou dados flat), desenha linha horizontal
-    if (range === 0) {
+    const priceRange = Math.abs(high - low);
+    const pixelRange = Math.abs(height);
+    
+    // Se não houver variação de preço ou pixels, desenha apenas uma linha horizontal
+    if (priceRange === 0 || pixelRange === 0) {
         return (
-             <line 
-                x1={xCentered} y1={y + height / 2} 
-                x2={xCentered + safeWidth} y2={y + height / 2} 
-                stroke={color} strokeWidth={2} 
+            <line 
+                x1={x + xOffset} 
+                y1={y} 
+                x2={x + xOffset + bodyWidth} 
+                y2={y} 
+                stroke={color} 
+                strokeWidth={2} 
             />
         );
     }
 
-    const ratio = height / range;
-
+    const ratio = pixelRange / priceRange;
+    
+    // Posição do corpo relativa ao topo (high)
     const bodyTopPrice = Math.max(open, close);
     const bodyBottomPrice = Math.min(open, close);
     
-    // Cálculo preciso da posição Y do corpo
-    // y do Recharts é o topo (High). Adicionamos o offset do High até o topo do corpo.
     const bodyTopY = y + (high - bodyTopPrice) * ratio;
-    
-    // Altura do corpo (mínimo de 1px para visibilidade)
-    let bodyHeight = (bodyTopPrice - bodyBottomPrice) * ratio;
-    if (bodyHeight < 1.5) bodyHeight = 1.5; // Aumentado para 1.5px
+    let bodyHeight = Math.max(1.5, (bodyTopPrice - bodyBottomPrice) * ratio);
 
     return (
-        <g>
-            {/* Pavio (High to Low) */}
-            <line x1={wickX} y1={y} x2={wickX} y2={y + height} stroke={color} strokeWidth={strokeWidth} opacity={0.8} />
+        <g className="candle-group">
+            {/* Pavio (Wick) */}
+            <line 
+                x1={centerX} 
+                y1={y} 
+                x2={centerX} 
+                y2={y + pixelRange} 
+                stroke={color} 
+                strokeWidth={strokeWidth} 
+                strokeOpacity={0.7}
+            />
             
-            {/* Corpo (Open to Close) */}
+            {/* Corpo (Body) */}
             <rect 
-                x={xCentered} 
+                x={x + xOffset} 
                 y={bodyTopY} 
-                width={safeWidth} 
+                width={bodyWidth} 
                 height={bodyHeight} 
-                fill={color} 
-                // Removido stroke e rx para evitar problemas visuais em escalas pequenas
+                fill={color}
+                className="transition-all duration-300"
             />
         </g>
     );
