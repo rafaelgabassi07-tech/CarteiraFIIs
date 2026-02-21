@@ -269,43 +269,43 @@ const PriceHistoryChart = ({ fullData, loading, error, ticker, range, onRangeCha
 
     return (
         <>
-        <div className="bg-white dark:bg-zinc-900 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 p-4 shadow-xl shadow-zinc-200/50 dark:shadow-black/20 mb-6 relative overflow-hidden">
-            <div className="flex flex-col gap-4 mb-4">
+        <div className="bg-white dark:bg-zinc-900 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 p-3 shadow-xl shadow-zinc-200/50 dark:shadow-black/20 mb-6 relative overflow-hidden">
+            <div className="flex flex-col gap-3 mb-3">
                 <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-                            <CandlestickChart className="w-5 h-5" />
+                    <div className="flex items-center gap-2.5">
+                        <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                            <CandlestickChart className="w-4.5 h-4.5" />
                         </div>
                         <div>
-                            <h3 className="text-sm font-black text-zinc-900 dark:text-white leading-none">Histórico de Preço</h3>
-                            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mt-0.5">Análise Técnica</p>
+                            <h3 className="text-xs font-black text-zinc-900 dark:text-white leading-none">Histórico de Preço</h3>
+                            <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mt-0.5">Análise Técnica</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-xl p-1">
-                            <button onClick={() => setChartType('AREA')} className={`p-2 rounded-lg transition-all ${chartType === 'AREA' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}><LineChartIcon className="w-4 h-4" /></button>
-                            <button onClick={() => setChartType('CANDLE')} className={`p-2 rounded-lg transition-all ${chartType === 'CANDLE' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}><CandlestickChart className="w-4 h-4" /></button>
+                    <div className="flex items-center gap-1.5">
+                        <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5">
+                            <button onClick={() => setChartType('AREA')} className={`p-1.5 rounded-md transition-all ${chartType === 'AREA' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}><LineChartIcon className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => setChartType('CANDLE')} className={`p-1.5 rounded-md transition-all ${chartType === 'CANDLE' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}><CandlestickChart className="w-3.5 h-3.5" /></button>
                         </div>
                         <button 
                             onClick={() => setShowFilterModal(true)}
-                            className={`p-2.5 rounded-xl transition-all ${showFilterModal ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                            className={`p-2 rounded-lg transition-all ${showFilterModal ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                         >
-                            <ListFilter className="w-4 h-4" />
+                            <ListFilter className="w-3.5 h-3.5" />
                         </button>
                     </div>
                 </div>
-                <div className="flex gap-2 items-center justify-between bg-zinc-50 dark:bg-zinc-800/50 p-2 rounded-xl">
-                    <div className="flex gap-2">
-                         <button onClick={() => toggleIndicator('sma20')} className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border transition-all ${indicators.sma20 ? 'bg-amber-100 border-amber-200 text-amber-700 dark:bg-amber-900/30 dark:border-amber-800 dark:text-amber-400' : 'border-transparent text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'}`}>MA20</button>
-                         <button onClick={() => toggleIndicator('sma50')} className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border transition-all ${indicators.sma50 ? 'bg-violet-100 border-violet-200 text-violet-700 dark:bg-violet-900/30 dark:border-violet-800 dark:text-violet-400' : 'border-transparent text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'}`}>MA50</button>
+                <div className="flex gap-2 items-center justify-between bg-zinc-50 dark:bg-zinc-800/50 p-1.5 rounded-lg">
+                    <div className="flex gap-1.5">
+                         <button onClick={() => toggleIndicator('sma20')} className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider border transition-all ${indicators.sma20 ? 'bg-amber-100 border-amber-200 text-amber-700 dark:bg-amber-900/30 dark:border-amber-800 dark:text-amber-400' : 'border-transparent text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'}`}>MA20</button>
+                         <button onClick={() => toggleIndicator('sma50')} className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider border transition-all ${indicators.sma50 ? 'bg-violet-100 border-violet-200 text-violet-700 dark:bg-violet-900/30 dark:border-violet-800 dark:text-violet-400' : 'border-transparent text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'}`}>MA50</button>
                     </div>
-                    <div className={`text-xs font-black px-2 py-1 rounded-lg ${isPositive ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'}`}>
+                    <div className={`text-[10px] font-black px-1.5 py-0.5 rounded-md ${isPositive ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'}`}>
                         {isPositive ? '+' : ''}{variation.toFixed(2)}%
                     </div>
                 </div>
             </div>
 
-            <div className="h-64 w-full relative">
+            <div className="h-60 w-full relative">
                 {loading ? (
                     <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm z-10"><div className="animate-pulse text-xs font-bold text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-3 py-1.5 rounded-full">Carregando...</div></div>
                 ) : error || !fullData || fullData.length === 0 ? (

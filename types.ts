@@ -261,6 +261,7 @@ export interface ScrapeResult {
 export interface UpdateReportData {
     results: ScrapeResult[];
     inflationRate: number;
+    cdiRate?: number;
     totalDividendsFound: number;
 }
 

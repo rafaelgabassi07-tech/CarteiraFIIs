@@ -117,11 +117,11 @@ const App: React.FC = () => {
   
   const [dividends, setDividends] = useState<DividendReceipt[]>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.DIVS); return s ? JSON.parse(s) : []; } catch { return []; } });
   
-  const [marketIndicators, setMarketIndicators] = useState<{ipca: number, startDate: string}>(() => { 
+  const [marketIndicators, setMarketIndicators] = useState<{ipca: number, cdi: number, startDate: string}>(() => { 
       try { 
           const s = localStorage.getItem(STORAGE_KEYS.INDICATORS); 
-          return s ? JSON.parse(s) : { ipca: 4.62, startDate: '' }; 
-      } catch { return { ipca: 4.62, startDate: '' }; } 
+          return s ? JSON.parse(s) : { ipca: 4.62, cdi: 11.25, startDate: '' }; 
+      } catch { return { ipca: 4.62, cdi: 11.25, startDate: '' }; } 
   });
   
   const [assetsMetadata, setAssetsMetadata] = useState<Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }>>(() => {
@@ -357,6 +357,7 @@ const App: React.FC = () => {
       if (data.indicators) {
          setMarketIndicators({ 
              ipca: data.indicators.ipca_cumulative || 4.62, 
+             cdi: data.indicators.cdi_cumulative || 11.25,
              startDate: data.indicators.start_date_used 
          });
       }
@@ -560,6 +561,21 @@ const App: React.FC = () => {
                   return next;
               });
           }
+
+          // Atualiza relatório e mostra modal
+          const results = tickers.map(t => ({
+              ticker: t,
+              status: 'success' as const,
+          }));
+
+          setLastUpdateReport({
+              results: results as any,
+              inflationRate: data.indicators?.ipca_cumulative || 0,
+              cdiRate: data.indicators?.cdi_cumulative || 0,
+              totalDividendsFound: data.dividends.length
+          });
+          setShowUpdateReport(true);
+
           showToast('success', 'Carteira atualizada com sucesso!');
       } catch (e) {
           console.error(e);

@@ -288,16 +288,68 @@ export const InstallPromptModal: React.FC<any> = ({ isOpen, onInstall, onDismiss
 
 export const UpdateReportModal: React.FC<any> = (props) => (
     <SwipeableModal {...props}>
-        <div className="p-4 h-full flex flex-col">
-            <h2 className="text-2xl font-bold mb-6 text-zinc-900 dark:text-white shrink-0">Relatório de Atualização</h2>
-            <div className="space-y-4 flex-1 overflow-y-auto pb-20">
-                 <div className="bg-zinc-50 dark:bg-zinc-800 p-4 rounded-2xl">
+        <div className="p-6 h-full flex flex-col">
+            <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600">
+                    <CheckCircle className="w-6 h-6" />
+                </div>
+                <div>
+                    <h2 className="text-xl font-black text-zinc-900 dark:text-white leading-tight">Atualização Concluída</h2>
+                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Resumo de Mercado</p>
+                </div>
+            </div>
+
+            <div className="space-y-3 flex-1 overflow-y-auto pb-20">
+                 <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                        <p className="text-[9px] font-bold text-zinc-400 uppercase mb-1">Ativos</p>
+                        <p className="text-xl font-black text-zinc-900 dark:text-white">{props.results?.results?.length || 0}</p>
+                    </div>
+                    <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                        <p className="text-[9px] font-bold text-zinc-400 uppercase mb-1">Proventos</p>
+                        <p className="text-xl font-black text-emerald-500">+{props.results?.totalDividendsFound || 0}</p>
+                    </div>
+                 </div>
+
+                 <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                     <div className="flex justify-between items-center mb-3 pb-3 border-b border-zinc-100 dark:border-zinc-800/50">
+                         <div className="flex items-center gap-2">
+                             <TrendingUp className="w-3.5 h-3.5 text-indigo-500" />
+                             <span className="text-xs font-bold text-zinc-600 dark:text-zinc-300">CDI (12m)</span>
+                         </div>
+                         <span className="text-sm font-black text-zinc-900 dark:text-white">{props.results?.cdiRate?.toFixed(2)}%</span>
+                     </div>
                      <div className="flex justify-between items-center">
-                         <span className="text-sm font-medium text-zinc-500">Ativos Processados</span>
-                         <span className="text-lg font-bold text-zinc-900 dark:text-white">{props.results?.results?.length || 0}</span>
+                         <div className="flex items-center gap-2">
+                             <Activity className="w-3.5 h-3.5 text-cyan-500" />
+                             <span className="text-xs font-bold text-zinc-600 dark:text-zinc-300">IPCA (12m)</span>
+                         </div>
+                         <span className="text-sm font-black text-zinc-900 dark:text-white">{props.results?.inflationRate?.toFixed(2)}%</span>
                      </div>
                  </div>
+
+                 <div className="pt-2">
+                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-3 ml-1">Ativos Sincronizados</p>
+                    <div className="space-y-2">
+                        {props.results?.results?.slice(0, 10).map((r: any, i: number) => (
+                            <div key={i} className="flex items-center justify-between p-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                                <span className="text-xs font-black text-zinc-700 dark:text-zinc-200">{r.ticker}</span>
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                                    <span className="text-[10px] font-bold text-zinc-400 uppercase">OK</span>
+                                </div>
+                            </div>
+                        ))}
+                        {props.results?.results?.length > 10 && (
+                            <p className="text-center text-[10px] text-zinc-400 font-medium py-2">E mais {props.results.results.length - 10} ativos...</p>
+                        )}
+                    </div>
+                 </div>
             </div>
+
+            <button onClick={props.onClose} className="w-full py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl press-effect mt-auto">
+                Entendido
+            </button>
         </div>
     </SwipeableModal>
 );

@@ -7,7 +7,7 @@ import { normalizeTicker, preciseMul, parseDateToLocal } from "./portfolioRules"
 export interface UnifiedMarketData {
   dividends: DividendReceipt[];
   metadata: Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }>;
-  indicators?: MarketIndicators;
+  indicators?: { ipca_cumulative: number; cdi_cumulative?: number; start_date_used: string };
   error?: string;
 }
 
@@ -128,28 +128,30 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
     };
 };
 
-const fetchInflationData = async (): Promise<number> => {
-    let lastKnownReal = 0;
+const fetchMarketIndicators = async (): Promise<{ ipca: number, cdi: number }> => {
+    let lastKnown = { ipca: 4.50, cdi: 11.25 };
     try {
         const s = localStorage.getItem('investfiis_v4_indicators');
         if (s) {
             const p = JSON.parse(s);
-            if (p.ipca && typeof p.ipca === 'number' && p.ipca > 0) lastKnownReal = p.ipca;
+            if (p.ipca && typeof p.ipca === 'number') lastKnown.ipca = p.ipca;
+            if (p.cdi && typeof p.cdi === 'number') lastKnown.cdi = p.cdi;
         }
     } catch {}
-    if (lastKnownReal === 0) lastKnownReal = 4.50; 
 
     try {
         const response = await fetch('/api/indicators', { 
             headers: { 'Accept': 'application/json' },
             signal: AbortSignal.timeout(5000) 
         });
-        if (!response.ok) return lastKnownReal;
+        if (!response.ok) return lastKnown;
         const data = await response.json();
-        if (data && typeof data.value === 'number' && !data.isError && data.value > 0) return data.value;
-        return lastKnownReal;
+        return {
+            ipca: data.ipca || lastKnown.ipca,
+            cdi: data.cdi || lastKnown.cdi
+        };
     } catch (e) {
-        return lastKnownReal;
+        return lastKnown;
     }
 };
 
@@ -391,12 +393,12 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
           };
       });
 
-      const ipca = await fetchInflationData();
+      const indicators = await fetchMarketIndicators();
 
       return { 
           dividends: uniqueDividends, 
           metadata, 
-          indicators: { ipca_cumulative: ipca, start_date_used: startDate || '' }
+          indicators: { ipca_cumulative: indicators.ipca, cdi_cumulative: indicators.cdi, start_date_used: startDate || '' }
       };
 
   } catch (error: any) {
