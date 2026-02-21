@@ -69,11 +69,14 @@ const filterDataByRange = (data: any[], range: string) => {
 const processChartData = (data: any[]) => {
     if (!data || data.length === 0) return { processedData: [], yDomain: ['auto', 'auto'], variation: 0, lastPrice: 0 };
 
+    // Limita a 50 pontos para manter a legibilidade dos Candles
+    // Se houver mais de 50, pegamos os últimos 50 para focar no movimento recente
+    const limitedData = data.length > 50 ? data.slice(-50) : data;
+
     let minPrice = Infinity;
     let maxPrice = -Infinity;
 
-    // First pass: find min/max for domain
-    data.forEach((d: any) => {
+    limitedData.forEach((d: any) => {
         const price = d.close || d.price || 0;
         const low = d.low || price;
         const high = d.high || price;
@@ -85,9 +88,8 @@ const processChartData = (data: any[]) => {
     if (minPrice === Infinity) minPrice = 0;
     if (maxPrice === -Infinity) maxPrice = 100;
 
-    const processed = data.map((d: any, index: number, arr: any[]) => {
+    const processed = limitedData.map((d: any, index: number, arr: any[]) => {
         const price = d.close || d.price || 0;
-        // Fallback robusto: se não tiver OHLC, usa o preço de fechamento para tudo
         const open = d.open ?? price;
         const high = d.high ?? price;
         const low = d.low ?? price;
@@ -97,9 +99,9 @@ const processChartData = (data: any[]) => {
         
         return {
             ...d,
-            open, high, low, close, // Garante que estejam no topo para o dataKey do Recharts
-            candleData: { open, close, high, low }, 
-            price: close, // For Area Chart
+            open, high, low, close,
+            candleRange: [low, high],
+            price: close, 
             volume: d.volume || 0,
             sma20: calculateSMA(arr, 20, index),
             sma50: calculateSMA(arr, 50, index),
@@ -107,10 +109,9 @@ const processChartData = (data: any[]) => {
         };
     });
 
-    // Add padding to Y axis so candles don't touch the edges
-    const padding = (maxPrice - minPrice) * 0.1;
-    const first = data[0]?.close || data[0]?.price || 0;
-    const last = data[data.length - 1]?.close || data[data.length - 1]?.price || 0;
+    const padding = (maxPrice - minPrice) * 0.2; // Aumentado padding para evitar que toque as bordas
+    const first = limitedData[0]?.close || limitedData[0]?.price || 0;
+    const last = limitedData[limitedData.length - 1]?.close || limitedData[limitedData.length - 1]?.price || 0;
     const variation = first > 0 ? ((last - first) / first) * 100 : 0;
 
     return { 
@@ -125,11 +126,13 @@ const processChartData = (data: any[]) => {
 const CustomCandleShape = (props: any) => {
     const { x, y, width, height, payload } = props;
     
-    // Se x ou y forem inválidos, aborta
     if (x == null || y == null || isNaN(x) || isNaN(y)) return null;
 
-    const candleData = payload?.candleData || {};
-    const { open, close, high, low } = candleData;
+    // Usamos os dados diretamente do payload para evitar erros de mapeamento
+    const open = payload.open;
+    const close = payload.close;
+    const high = payload.high;
+    const low = payload.low;
     
     if (open == null || close == null || high == null || low == null) return null;
 
@@ -137,17 +140,15 @@ const CustomCandleShape = (props: any) => {
     const color = isUp ? '#10b981' : '#f43f5e'; 
     const strokeWidth = 1.5;
 
-    // Largura do corpo (80% do espaço disponível, min 4px)
+    // Largura do corpo (80% do espaço disponível, min 4px para ser visível)
     const bodyWidth = Math.max(4, width * 0.8);
     const xOffset = (width - bodyWidth) / 2;
     const centerX = x + width / 2;
 
     // O 'height' do Recharts para Bar com range [low, high] é a distância em pixels entre low e high.
     // O 'y' é a coordenada do valor mais alto (high).
-    // Se range for 0, height será 0.
-    
-    const priceRange = Math.abs(high - low);
     const pixelRange = Math.abs(height);
+    const priceRange = Math.abs(high - low);
     
     // Se não houver variação de preço ou pixels, desenha apenas uma linha horizontal
     if (priceRange === 0 || pixelRange === 0) {
@@ -170,11 +171,11 @@ const CustomCandleShape = (props: any) => {
     const bodyBottomPrice = Math.min(open, close);
     
     const bodyTopY = y + (high - bodyTopPrice) * ratio;
-    let bodyHeight = Math.max(1.5, (bodyTopPrice - bodyBottomPrice) * ratio);
+    let bodyHeight = Math.max(2, (bodyTopPrice - bodyBottomPrice) * ratio); // Mínimo 2px para o corpo
 
     return (
         <g className="candle-group">
-            {/* Pavio (Wick) */}
+            {/* Pavio (Wick) - Do High ao Low */}
             <line 
                 x1={centerX} 
                 y1={y} 
@@ -182,17 +183,18 @@ const CustomCandleShape = (props: any) => {
                 y2={y + pixelRange} 
                 stroke={color} 
                 strokeWidth={strokeWidth} 
-                strokeOpacity={0.7}
+                strokeOpacity={0.8}
             />
             
-            {/* Corpo (Body) */}
+            {/* Corpo (Body) - Do Open ao Close */}
             <rect 
                 x={x + xOffset} 
                 y={bodyTopY} 
                 width={bodyWidth} 
                 height={bodyHeight} 
                 fill={color}
-                className="transition-all duration-300"
+                stroke={color}
+                strokeWidth={0.5}
             />
         </g>
     );
@@ -445,7 +447,7 @@ const PriceHistoryChart = ({ fullData, loading, error, ticker, range, onRangeCha
                                     /* Passamos [low, high] para o Recharts calcular a escala Y, mas o shape cuida do corpo */
                                     <Bar 
                                         yAxisId="price" 
-                                        dataKey={(d) => [d.low, d.high]} 
+                                        dataKey="candleRange" 
                                         shape={<CustomCandleShape />} 
                                         isAnimationActive={true} 
                                         animationDuration={1000} 
