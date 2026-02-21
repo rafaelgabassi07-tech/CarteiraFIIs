@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { AssetPosition, DividendReceipt, AssetType, PortfolioInsight, Transaction } from '../types';
-import { CircleDollarSign, CalendarClock, PieChart as PieIcon, ArrowUpRight, ArrowDownLeft, Wallet, ArrowRight, Sparkles, Trophy, Anchor, Coins, Crown, Info, X, Zap, ShieldCheck, AlertTriangle, Play, Pause, TrendingUp, TrendingDown, Target, Snowflake, Layers, Medal, Rocket, Gem, Lock, Building2, Briefcase, ShoppingCart, Coffee, Plane, Star, Award, Umbrella, ZapOff, CheckCircle2, ListFilter, History, Activity, Calendar, Percent, BarChart3 } from 'lucide-react';
+import { CircleDollarSign, CalendarClock, PieChart as PieIcon, ArrowUpRight, ArrowDownLeft, Wallet, ArrowRight, Sparkles, Trophy, Anchor, Coins, Crown, Info, X, Zap, ShieldCheck, AlertTriangle, Play, Pause, TrendingUp, TrendingDown, Target, Snowflake, Layers, Medal, Rocket, Gem, Lock, Building2, Briefcase, ShoppingCart, Coffee, Plane, Star, Award, Umbrella, ZapOff, CheckCircle2, ListFilter, History, Activity, Calendar, Percent, BarChart3, Share2 } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, CartesianGrid, AreaChart, Area, XAxis, YAxis, ComposedChart, Bar, Line, ReferenceLine, Label, BarChart } from 'recharts';
 import { formatBRL, formatDateShort, getMonthName, getDaysUntil } from '../utils/formatters';
@@ -168,9 +168,11 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
         const years = filteredData.length / 12;
         const cagr = years >= 1 && first.marketValue > 0 ? (Math.pow(totalValue / first.marketValue, 1 / years) - 1) * 100 : roi;
 
-        // Best/Worst Month (by % change in market value vs invested)
+        // Best/Worst Month & Win Rate
         let bestMonth = { ...filteredData[0], change: 0 };
         let worstMonth = { ...filteredData[0], change: 0 };
+        let positiveMonths = 0;
+        let negativeMonths = 0;
 
         for (let i = 1; i < filteredData.length; i++) {
             const prev = filteredData[i-1];
@@ -181,6 +183,9 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
             
             if (pct > bestMonth.change) bestMonth = { ...curr, change: pct };
             if (pct < worstMonth.change) worstMonth = { ...curr, change: pct };
+            
+            if (pct > 0) positiveMonths++;
+            else if (pct < 0) negativeMonths++;
         }
 
         return {
@@ -193,7 +198,10 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
             avgDividend,
             bestMonth,
             worstMonth,
-            totalDividends: last.dividends
+            totalDividends: last.dividends,
+            positiveMonths,
+            negativeMonths,
+            winRate: (positiveMonths + negativeMonths) > 0 ? (positiveMonths / (positiveMonths + negativeMonths)) * 100 : 0
         };
     }, [filteredData]);
 
@@ -209,13 +217,18 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                             <TrendingUp className="w-6 h-6" strokeWidth={2.5} />
                         </div>
                         <div>
-                            <h2 className="text-xl font-black text-zinc-900 dark:text-white leading-none tracking-tight">Evolução</h2>
+                            <h2 className="text-xl font-black text-zinc-900 dark:text-white leading-none tracking-tight">Evolução Patrimonial</h2>
                             <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mt-1">Análise de Performance</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="w-9 h-9 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors shadow-sm">
-                        <X className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button className="w-9 h-9 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-500 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors shadow-sm">
+                            <Share2 className="w-4 h-4" />
+                        </button>
+                        <button onClick={onClose} className="w-9 h-9 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors shadow-sm">
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto pb-24 no-scrollbar space-y-6">
@@ -389,16 +402,21 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                         </div>
                     </div>
 
-                    {/* CAGR Insight */}
-                    <div className="bg-gradient-to-br from-zinc-900 to-zinc-800 dark:from-zinc-800 dark:to-zinc-900 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-3xl -mr-10 -mt-10"></div>
-                        <div className="relative z-10 flex justify-between items-center">
-                            <div>
-                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">CAGR (Cresc. Anual Composto)</p>
-                                <h4 className="text-2xl font-black">{stats.cagr.toFixed(2)}% <span className="text-sm font-medium text-zinc-400">ao ano</span></h4>
+                    {/* Win Rate & CAGR */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-gradient-to-br from-zinc-900 to-zinc-800 dark:from-zinc-800 dark:to-zinc-900 rounded-2xl p-4 text-white shadow-lg relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full blur-3xl -mr-8 -mt-8"></div>
+                            <div className="relative z-10">
+                                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">CAGR</p>
+                                <h4 className="text-xl font-black">{stats.cagr.toFixed(2)}%</h4>
+                                <p className="text-[9px] text-zinc-500 mt-0.5">Cresc. Anual</p>
                             </div>
-                            <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
-                                <Activity className="w-5 h-5 text-emerald-400" />
+                        </div>
+                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm relative overflow-hidden">
+                            <div className="relative z-10">
+                                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Win Rate</p>
+                                <h4 className="text-xl font-black text-emerald-500">{stats.winRate.toFixed(0)}%</h4>
+                                <p className="text-[9px] text-zinc-400 mt-0.5">{stats.positiveMonths} meses positivos</p>
                             </div>
                         </div>
                     </div>
@@ -1178,7 +1196,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                         <CircleDollarSign className="w-5 h-5" />
                     </div>
                     <div>
-                        <h2 className="text-xl font-bold text-zinc-900 dark:text-white leading-none">Evolução</h2>
+                        <h2 className="text-xl font-bold text-zinc-900 dark:text-white leading-none">Renda</h2>
                         <p className="text-xs text-zinc-500 font-medium mt-0.5">Últimos 12 meses: {formatBRL(incomeData.last12mTotal, privacyMode)}</p>
                     </div>
                 </div>
