@@ -381,8 +381,11 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
           }
 
           const normalizedTicker = normalizeTicker(m.ticker);
+          // Tenta encontrar o segmento em várias chaves possíveis
+          const rawSegment = m.segment || m.setor || m.segmento || m.sector || 'Geral';
+          
           metadata[normalizedTicker] = {
-              segment: m.segment || 'Geral',
+              segment: rawSegment,
               type: assetType,
               fundamentals: mapScraperToFundamentals(m)
           };
