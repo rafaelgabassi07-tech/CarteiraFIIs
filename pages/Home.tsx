@@ -172,7 +172,7 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
 
     return (
         <SwipeableModal isOpen={isOpen} onClose={onClose}>
-            <div className="p-4 h-full flex flex-col bg-zinc-50 dark:bg-zinc-950 anim-slide-up">
+            <div className="p-4 h-full flex flex-col anim-slide-up">
                 <div className="flex items-center justify-between mb-6 shrink-0">
                     <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-violet-500/20 ring-4 ring-violet-50 dark:ring-violet-900/20">
@@ -1272,7 +1272,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
         </SwipeableModal>
 
         <SwipeableModal isOpen={showGoals} onClose={() => setShowGoals(false)}>
-            <div className="p-4 h-full flex flex-col bg-zinc-50 dark:bg-zinc-950 anim-slide-up">
+            <div className="p-4 h-full flex flex-col anim-slide-up">
                 <div className="flex flex-col gap-4 mb-6 shrink-0 bg-white dark:bg-zinc-900 p-5 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-xl shadow-indigo-500/5 relative overflow-hidden group">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
                     <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl -ml-10 -mb-10 pointer-events-none"></div>
@@ -1355,7 +1355,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
         </SwipeableModal>
 
         <SwipeableModal isOpen={showAllocation} onClose={() => setShowAllocation(false)}>
-            <div className="p-4 h-full flex flex-col anim-slide-up bg-zinc-50 dark:bg-zinc-950">
+            <div className="p-4 h-full flex flex-col anim-slide-up">
                 <div className="flex items-center justify-between mb-6 shrink-0">
                     <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-sky-400 to-blue-600 text-white flex items-center justify-center shadow-lg shadow-sky-500/20 ring-4 ring-sky-50 dark:ring-sky-900/20">
