@@ -224,7 +224,7 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto no-scrollbar px-6 pb-10">
+                <div className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar px-6 pb-10">
                     
                     {/* Main Value Section - Very Clean */}
                     <div className="mt-4 mb-8">
@@ -257,7 +257,7 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                     <div className="flex flex-col gap-4 mb-6">
                         <div className="flex justify-between items-center">
                              {/* Type Selector */}
-                            <div className="flex p-1 bg-zinc-100 dark:bg-zinc-900 rounded-xl">
+                            <div className="flex p-1 bg-zinc-100 dark:bg-zinc-900 rounded-xl overflow-hidden">
                                 <button onClick={() => setChartType('WEALTH')} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${chartType === 'WEALTH' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}>Patrimônio</button>
                                 <button onClick={() => setChartType('CASHFLOW')} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${chartType === 'CASHFLOW' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}>Fluxo</button>
                                 <button onClick={() => setChartType('RETURN')} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${chartType === 'RETURN' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}>Retorno</button>
@@ -297,7 +297,7 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
 
                         {/* Chart Container - Minimalist */}
                         <div className="h-64 w-full">
-                            <ResponsiveContainer width="100%" height="100%">
+                            <ResponsiveContainer width="99%" height="100%">
                                 {chartType === 'WEALTH' ? (
                                     <AreaChart data={filteredData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                                         <defs>
