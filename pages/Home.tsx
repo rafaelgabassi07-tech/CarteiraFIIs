@@ -45,6 +45,7 @@ const getStoryIcon = (type: PortfolioInsight['type']) => {
 const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalance }: { isOpen: boolean, onClose: () => void, transactions: Transaction[], dividends: DividendReceipt[], currentBalance: number }) => {
     const [timeRange, setTimeRange] = useState<'6M' | '1Y' | '2Y' | '5Y' | 'MAX'>('MAX');
     const [chartType, setChartType] = useState<'WEALTH' | 'CASHFLOW' | 'RETURN'>('WEALTH');
+    const [showTimeFilter, setShowTimeFilter] = useState(false);
 
     // 1. Process Full History
     const fullHistory = useMemo(() => {
@@ -262,22 +263,40 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                                 <button onClick={() => setChartType('RETURN')} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${chartType === 'RETURN' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}>Retorno</button>
                             </div>
                             
-                            {/* Time Range */}
-                            <div className="flex gap-1">
-                                {(['6M', '1Y', '2Y', '5Y', 'MAX'] as const).map(range => (
-                                    <button
-                                        key={range}
-                                        onClick={() => setTimeRange(range)}
-                                        className={`px-2 py-1 rounded-md text-[9px] font-bold transition-colors ${timeRange === range ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20' : 'text-zinc-400 hover:text-zinc-600'}`}
-                                    >
-                                        {range}
-                                    </button>
-                                ))}
+                            {/* Time Range Filter Button */}
+                            <div className="relative">
+                                <button 
+                                    onClick={() => setShowTimeFilter(!showTimeFilter)}
+                                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-xs font-bold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"
+                                >
+                                    <Calendar className="w-3.5 h-3.5" />
+                                    {timeRange === 'MAX' ? 'Tudo' : timeRange}
+                                </button>
+                                
+                                {showTimeFilter && (
+                                    <>
+                                        <div className="fixed inset-0 z-10" onClick={() => setShowTimeFilter(false)}></div>
+                                        <div className="absolute right-0 top-full mt-2 w-32 bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-zinc-100 dark:border-zinc-800 p-1 z-20 flex flex-col gap-1 anim-scale-in">
+                                            {(['6M', '1Y', '2Y', '5Y', 'MAX'] as const).map(range => (
+                                                <button
+                                                    key={range}
+                                                    onClick={() => {
+                                                        setTimeRange(range);
+                                                        setShowTimeFilter(false);
+                                                    }}
+                                                    className={`px-3 py-2 rounded-lg text-xs font-bold text-left transition-colors ${timeRange === range ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' : 'text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}
+                                                >
+                                                    {range === 'MAX' ? 'Desde o início' : range}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </div>
 
                         {/* Chart Container - Minimalist */}
-                        <div className="h-64 w-full -mx-2">
+                        <div className="h-64 w-full">
                             <ResponsiveContainer width="100%" height="100%">
                                 {chartType === 'WEALTH' ? (
                                     <AreaChart data={filteredData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
