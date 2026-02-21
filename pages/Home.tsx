@@ -209,96 +209,75 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
 
     return (
         <SwipeableModal isOpen={isOpen} onClose={onClose}>
-            <div className="p-4 h-full flex flex-col anim-slide-up bg-zinc-50 dark:bg-black">
-                {/* Header Section */}
-                <div className="flex items-center justify-between mb-6 shrink-0">
-                    <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-violet-500/20 ring-4 ring-white dark:ring-zinc-900">
-                            <TrendingUp className="w-6 h-6" strokeWidth={2.5} />
-                        </div>
-                        <div>
-                            <h2 className="text-xl font-black text-zinc-900 dark:text-white leading-none tracking-tight">Evolução Patrimonial</h2>
-                            <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mt-1">Análise de Performance</p>
-                        </div>
+            <div className="h-full flex flex-col bg-white dark:bg-zinc-950">
+                {/* Clean Header */}
+                <div className="px-6 pt-6 pb-2 flex items-center justify-between shrink-0">
+                    <div>
+                        <h2 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">Evolução Patrimonial</h2>
+                        <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Análise Detalhada</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <button className="w-9 h-9 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-500 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors shadow-sm">
-                            <Share2 className="w-4 h-4" />
-                        </button>
-                        <button onClick={onClose} className="w-9 h-9 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors shadow-sm">
+                    <div className="flex gap-2">
+                         <button onClick={onClose} className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors">
                             <X className="w-4 h-4" />
                         </button>
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto pb-24 no-scrollbar space-y-6">
-                    {/* Hero Stats Card */}
-                    <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-xl shadow-zinc-200/50 dark:shadow-black/40 relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-500/5 rounded-full blur-3xl -mr-10 -mt-10 group-hover:bg-indigo-500/10 transition-colors duration-500"></div>
-                        <div className="absolute bottom-0 left-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl -ml-10 -mb-10 group-hover:bg-emerald-500/10 transition-colors duration-500"></div>
-                        
-                        <div className="relative z-10">
-                            <div className="flex justify-between items-start mb-4">
-                                <div>
-                                    <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Patrimônio Total</p>
-                                    <h3 className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter">{formatBRL(stats.marketValue)}</h3>
-                                </div>
-                                <div className={`px-3 py-1.5 rounded-xl border flex items-center gap-1.5 ${stats.roi >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-800/30 text-emerald-600 dark:text-emerald-400' : 'bg-rose-50 dark:bg-rose-900/20 border-rose-100 dark:border-rose-800/30 text-rose-600 dark:text-rose-400'}`}>
-                                    {stats.roi >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-                                    <span className="text-xs font-black">{stats.roi >= 0 ? '+' : ''}{stats.roi.toFixed(2)}%</span>
-                                </div>
+                <div className="flex-1 overflow-y-auto no-scrollbar px-6 pb-10">
+                    
+                    {/* Main Value Section - Very Clean */}
+                    <div className="mt-4 mb-8">
+                        <p className="text-sm font-bold text-zinc-400 mb-1">Patrimônio Total</p>
+                        <div className="flex items-baseline gap-3">
+                            <h3 className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter">
+                                {formatBRL(stats.marketValue)}
+                            </h3>
+                            <div className={`flex items-center gap-1 px-2 py-1 rounded-lg ${stats.roi >= 0 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'}`}>
+                                {stats.roi >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                                <span className="text-xs font-black">{stats.roi >= 0 ? '+' : ''}{stats.roi.toFixed(2)}%</span>
                             </div>
-
-                            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
-                                <div>
-                                    <p className="text-[9px] font-bold text-zinc-400 uppercase mb-0.5">Lucro Líquido</p>
-                                    <p className={`text-sm font-black ${stats.totalReturn >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                        {stats.totalReturn >= 0 ? '+' : ''}{formatBRL(stats.totalReturn)}
-                                    </p>
-                                </div>
-                                <div>
-                                    <p className="text-[9px] font-bold text-zinc-400 uppercase mb-0.5">Total Investido</p>
-                                    <p className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(stats.invested)}</p>
-                                </div>
+                        </div>
+                        <div className="flex items-center gap-4 mt-3 text-xs">
+                            <div>
+                                <span className="text-zinc-400 font-medium">Lucro: </span>
+                                <span className={`font-bold ${stats.totalReturn >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                    {stats.totalReturn >= 0 ? '+' : ''}{formatBRL(stats.totalReturn)}
+                                </span>
+                            </div>
+                            <div className="w-px h-3 bg-zinc-200 dark:bg-zinc-800"></div>
+                            <div>
+                                <span className="text-zinc-400 font-medium">Investido: </span>
+                                <span className="font-bold text-zinc-700 dark:text-zinc-300">{formatBRL(stats.invested)}</span>
                             </div>
                         </div>
                     </div>
 
-                    {/* Chart Section */}
-                    <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-lg overflow-hidden">
-                        <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex flex-col gap-4">
-                            <div className="flex items-center justify-between">
-                                <h3 className="text-sm font-black text-zinc-900 dark:text-white flex items-center gap-2">
-                                    <Activity className="w-4 h-4 text-indigo-500" />
-                                    Análise Gráfica
-                                </h3>
-                                <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl">
-                                    {(['6M', '1Y', '2Y', '5Y', 'MAX'] as const).map(range => (
-                                        <button
-                                            key={range}
-                                            onClick={() => setTimeRange(range)}
-                                            className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase transition-all ${timeRange === range ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
-                                        >
-                                            {range}
-                                        </button>
-                                    ))}
-                                </div>
+                    {/* Chart Controls - Segmented */}
+                    <div className="flex flex-col gap-4 mb-6">
+                        <div className="flex justify-between items-center">
+                             {/* Type Selector */}
+                            <div className="flex p-1 bg-zinc-100 dark:bg-zinc-900 rounded-xl">
+                                <button onClick={() => setChartType('WEALTH')} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${chartType === 'WEALTH' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}>Patrimônio</button>
+                                <button onClick={() => setChartType('CASHFLOW')} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${chartType === 'CASHFLOW' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}>Fluxo</button>
+                                <button onClick={() => setChartType('RETURN')} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${chartType === 'RETURN' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}>Retorno</button>
                             </div>
                             
-                            <div className="flex p-1 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl overflow-x-auto no-scrollbar">
-                                <button onClick={() => setChartType('WEALTH')} className={`flex-1 min-w-[80px] py-2 rounded-lg text-[10px] font-black uppercase tracking-wide flex items-center justify-center gap-1.5 transition-all ${chartType === 'WEALTH' ? 'bg-white dark:bg-zinc-700 text-indigo-600 dark:text-indigo-400 shadow-sm ring-1 ring-black/5' : 'text-zinc-400'}`}>
-                                    <TrendingUp className="w-3.5 h-3.5" /> Patrimônio
-                                </button>
-                                <button onClick={() => setChartType('CASHFLOW')} className={`flex-1 min-w-[80px] py-2 rounded-lg text-[10px] font-black uppercase tracking-wide flex items-center justify-center gap-1.5 transition-all ${chartType === 'CASHFLOW' ? 'bg-white dark:bg-zinc-700 text-emerald-600 dark:text-emerald-400 shadow-sm ring-1 ring-black/5' : 'text-zinc-400'}`}>
-                                    <BarChart3 className="w-3.5 h-3.5" /> Fluxo
-                                </button>
-                                <button onClick={() => setChartType('RETURN')} className={`flex-1 min-w-[80px] py-2 rounded-lg text-[10px] font-black uppercase tracking-wide flex items-center justify-center gap-1.5 transition-all ${chartType === 'RETURN' ? 'bg-white dark:bg-zinc-700 text-amber-600 dark:text-amber-400 shadow-sm ring-1 ring-black/5' : 'text-zinc-400'}`}>
-                                    <Percent className="w-3.5 h-3.5" /> Retorno
-                                </button>
+                            {/* Time Range */}
+                            <div className="flex gap-1">
+                                {(['6M', '1Y', '2Y', '5Y', 'MAX'] as const).map(range => (
+                                    <button
+                                        key={range}
+                                        onClick={() => setTimeRange(range)}
+                                        className={`px-2 py-1 rounded-md text-[9px] font-bold transition-colors ${timeRange === range ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20' : 'text-zinc-400 hover:text-zinc-600'}`}
+                                    >
+                                        {range}
+                                    </button>
+                                ))}
                             </div>
                         </div>
 
-                        <div className="h-72 w-full p-4 pt-6">
+                        {/* Chart Container - Minimalist */}
+                        <div className="h-64 w-full -mx-2">
                             <ResponsiveContainer width="100%" height="100%">
                                 {chartType === 'WEALTH' ? (
                                     <AreaChart data={filteredData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
@@ -312,7 +291,7 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                                         <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 700 }} dy={10} minTickGap={30} />
                                         <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a' }} tickFormatter={(val) => `R$${val/1000}k`} />
                                         <RechartsTooltip 
-                                            contentStyle={{ borderRadius: '16px', border: 'none', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '11px', padding: '12px', backdropFilter: 'blur(12px)', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)' }}
+                                            contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '11px', padding: '12px', backdropFilter: 'blur(12px)' }}
                                             formatter={(value: number, name: string) => [formatBRL(value), name === 'marketValue' ? 'Patrimônio' : 'Investido']}
                                             labelStyle={{ color: '#a1a1aa', marginBottom: '4px', fontWeight: 700 }}
                                         />
@@ -325,7 +304,7 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                                         <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 700 }} dy={10} minTickGap={30} />
                                         <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a' }} tickFormatter={(val) => `R$${val/1000}k`} />
                                         <RechartsTooltip 
-                                            contentStyle={{ borderRadius: '16px', border: 'none', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '11px', padding: '12px', backdropFilter: 'blur(12px)', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)' }}
+                                            contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '11px', padding: '12px', backdropFilter: 'blur(12px)' }}
                                             formatter={(value: number, name: string) => [formatBRL(value), name === 'contribution' ? 'Aporte Líquido' : 'Dividendos']}
                                             labelStyle={{ color: '#a1a1aa', marginBottom: '4px', fontWeight: 700 }}
                                         />
@@ -344,7 +323,7 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                                         <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 700 }} dy={10} minTickGap={30} />
                                         <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a' }} tickFormatter={(val) => `${val}%`} />
                                         <RechartsTooltip 
-                                            contentStyle={{ borderRadius: '16px', border: 'none', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '11px', padding: '12px', backdropFilter: 'blur(12px)', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)' }}
+                                            contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '11px', padding: '12px', backdropFilter: 'blur(12px)' }}
                                             formatter={(value: number) => [`${value.toFixed(2)}%`, 'Rentabilidade Acumulada']}
                                             labelStyle={{ color: '#a1a1aa', marginBottom: '4px', fontWeight: 700 }}
                                         />
@@ -355,71 +334,40 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                         </div>
                     </div>
 
-                    {/* Detailed Stats Grid */}
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                            <div className="flex items-center gap-2 mb-2">
-                                <div className="w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-500">
-                                    <ArrowUpRight className="w-4 h-4" />
-                                </div>
-                                <span className="text-[9px] font-bold text-zinc-400 uppercase">Melhor Mês</span>
-                            </div>
-                            <p className="text-sm font-black text-zinc-900 dark:text-white">{stats.bestMonth?.fullLabel || '-'}</p>
-                            <p className="text-xs font-bold text-emerald-500">+{stats.bestMonth?.change.toFixed(2)}%</p>
+                    {/* Metrics Grid - Clean & Flat */}
+                    <div className="grid grid-cols-2 gap-x-8 gap-y-6 border-t border-zinc-100 dark:border-zinc-900 pt-6">
+                        <div>
+                            <p className="text-[10px] font-bold text-zinc-400 uppercase mb-1">CAGR (Anual)</p>
+                            <p className="text-lg font-black text-zinc-900 dark:text-white">{stats.cagr.toFixed(2)}%</p>
                         </div>
-
-                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                            <div className="flex items-center gap-2 mb-2">
-                                <div className="w-8 h-8 rounded-full bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center text-rose-500">
-                                    <ArrowDownLeft className="w-4 h-4" />
-                                </div>
-                                <span className="text-[9px] font-bold text-zinc-400 uppercase">Pior Mês</span>
-                            </div>
-                            <p className="text-sm font-black text-zinc-900 dark:text-white">{stats.worstMonth?.fullLabel || '-'}</p>
-                            <p className="text-xs font-bold text-rose-500">{stats.worstMonth?.change.toFixed(2)}%</p>
+                        <div>
+                            <p className="text-[10px] font-bold text-zinc-400 uppercase mb-1">Win Rate</p>
+                            <p className="text-lg font-black text-emerald-500">{stats.winRate.toFixed(0)}% <span className="text-xs text-zinc-400 font-medium">positivos</span></p>
                         </div>
-
-                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                            <div className="flex items-center gap-2 mb-2">
-                                <div className="w-8 h-8 rounded-full bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-500">
-                                    <Wallet className="w-4 h-4" />
-                                </div>
-                                <span className="text-[9px] font-bold text-zinc-400 uppercase">Aporte Médio</span>
-                            </div>
-                            <p className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(stats.avgContribution)}</p>
-                            <p className="text-[9px] font-medium text-zinc-400">Mensal</p>
+                        <div>
+                            <p className="text-[10px] font-bold text-zinc-400 uppercase mb-1">Aporte Médio</p>
+                            <p className="text-base font-bold text-zinc-700 dark:text-zinc-300">{formatBRL(stats.avgContribution)}</p>
                         </div>
-
-                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                            <div className="flex items-center gap-2 mb-2">
-                                <div className="w-8 h-8 rounded-full bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center text-amber-500">
-                                    <Coins className="w-4 h-4" />
-                                </div>
-                                <span className="text-[9px] font-bold text-zinc-400 uppercase">Proventos Totais</span>
-                            </div>
-                            <p className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(stats.totalDividends)}</p>
-                            <p className="text-[9px] font-medium text-zinc-400">Acumulado</p>
+                        <div>
+                            <p className="text-[10px] font-bold text-zinc-400 uppercase mb-1">Proventos Totais</p>
+                            <p className="text-base font-bold text-zinc-700 dark:text-zinc-300">{formatBRL(stats.totalDividends)}</p>
                         </div>
-                    </div>
-
-                    {/* Win Rate & CAGR */}
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-gradient-to-br from-zinc-900 to-zinc-800 dark:from-zinc-800 dark:to-zinc-900 rounded-2xl p-4 text-white shadow-lg relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full blur-3xl -mr-8 -mt-8"></div>
-                            <div className="relative z-10">
-                                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">CAGR</p>
-                                <h4 className="text-xl font-black">{stats.cagr.toFixed(2)}%</h4>
-                                <p className="text-[9px] text-zinc-500 mt-0.5">Cresc. Anual</p>
+                        <div>
+                            <p className="text-[10px] font-bold text-zinc-400 uppercase mb-1">Melhor Mês</p>
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-sm font-bold text-zinc-700 dark:text-zinc-300">{stats.bestMonth.label}</span>
+                                <span className="text-xs font-bold text-emerald-500">+{stats.bestMonth.change.toFixed(2)}%</span>
                             </div>
                         </div>
-                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm relative overflow-hidden">
-                            <div className="relative z-10">
-                                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Win Rate</p>
-                                <h4 className="text-xl font-black text-emerald-500">{stats.winRate.toFixed(0)}%</h4>
-                                <p className="text-[9px] text-zinc-400 mt-0.5">{stats.positiveMonths} meses positivos</p>
+                        <div>
+                            <p className="text-[10px] font-bold text-zinc-400 uppercase mb-1">Pior Mês</p>
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-sm font-bold text-zinc-700 dark:text-zinc-300">{stats.worstMonth.label}</span>
+                                <span className="text-xs font-bold text-rose-500">{stats.worstMonth.change.toFixed(2)}%</span>
                             </div>
                         </div>
                     </div>
+
                 </div>
             </div>
         </SwipeableModal>
