@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { AssetPosition, DividendReceipt, AssetType, PortfolioInsight, Transaction } from '../types';
-import { CircleDollarSign, CalendarClock, PieChart as PieIcon, ArrowUpRight, ArrowDownLeft, Wallet, ArrowRight, Sparkles, Trophy, Anchor, Coins, Crown, Info, X, Zap, ShieldCheck, AlertTriangle, Play, Pause, TrendingUp, TrendingDown, Target, Snowflake, Layers, Medal, Rocket, Gem, Lock, Building2, Briefcase, ShoppingCart, Coffee, Plane, Star, Award, Umbrella, ZapOff, CheckCircle2, ListFilter, History, Activity } from 'lucide-react';
+import { CircleDollarSign, CalendarClock, PieChart as PieIcon, ArrowUpRight, ArrowDownLeft, Wallet, ArrowRight, Sparkles, Trophy, Anchor, Coins, Crown, Info, X, Zap, ShieldCheck, AlertTriangle, Play, Pause, TrendingUp, TrendingDown, Target, Snowflake, Layers, Medal, Rocket, Gem, Lock, Building2, Briefcase, ShoppingCart, Coffee, Plane, Star, Award, Umbrella, ZapOff, CheckCircle2, ListFilter, History, Activity, Calendar, Percent, BarChart3 } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, CartesianGrid, AreaChart, Area, XAxis, YAxis, ComposedChart, Bar, Line, ReferenceLine, Label, BarChart } from 'recharts';
 import { formatBRL, formatDateShort, getMonthName, getDaysUntil } from '../utils/formatters';
@@ -43,12 +43,14 @@ const getStoryIcon = (type: PortfolioInsight['type']) => {
 };
 
 const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalance }: { isOpen: boolean, onClose: () => void, transactions: Transaction[], dividends: DividendReceipt[], currentBalance: number }) => {
-    const [viewType, setViewType] = useState<'ACCUMULATED' | 'MONTHLY'>('ACCUMULATED');
+    const [timeRange, setTimeRange] = useState<'6M' | '1Y' | '2Y' | '5Y' | 'MAX'>('MAX');
+    const [chartType, setChartType] = useState<'WEALTH' | 'CASHFLOW' | 'RETURN'>('WEALTH');
 
-    const evolutionData = useMemo(() => {
+    // 1. Process Full History
+    const fullHistory = useMemo(() => {
         if (!transactions || transactions.length === 0) return [];
 
-        // 1. Setup Timeline
+        // Collect all relevant dates
         const dates = transactions.map(t => new Date(t.date));
         if (dividends.length > 0) {
             const divDates = dividends.filter(d => d.paymentDate).map(d => new Date(d.paymentDate!));
@@ -58,6 +60,7 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
         const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
         const maxDate = new Date();
         
+        // Initialize Timeline
         const timeline: Record<string, { 
             monthlyContribution: number, 
             monthlyDividend: number,
@@ -74,7 +77,7 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
             current.setMonth(current.getMonth() + 1);
         }
 
-        // 2. Process Transactions
+        // Process Transactions
         const sortedTxs = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
         let runningInvested = 0;
 
@@ -90,7 +93,7 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
             timeline[month].accumulatedInvested = runningInvested;
         });
 
-        // 3. Process Dividends
+        // Process Dividends
         const sortedDivs = [...dividends].filter(d => d.paymentDate).sort((a, b) => a.paymentDate!.localeCompare(b.paymentDate!));
         let runningDivs = 0;
 
@@ -103,235 +106,299 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
             timeline[month].accumulatedDividends = runningDivs;
         });
 
-        // 4. Calculate Market Value & Trend Approximation
-        // We only know the FINAL Market Value (currentBalance).
-        // We will approximate the historical Market Value curve by distributing the total appreciation 
-        // proportionally to the time-weighted invested capital.
-        
+        // Calculate Market Value Approximation
         const finalInvested = runningInvested;
-        const totalAppreciation = Math.max(0, currentBalance - finalInvested); // Simple diff
-        
-        // Linear Trend Calculation (Simple Regression)
-        // y = mx + b
+        const totalAppreciation = Math.max(0, currentBalance - finalInvested);
         const n = allMonths.length;
-        const xSum = (n * (n - 1)) / 2;
-        const ySum = runningInvested; // Approximation
         
         return allMonths.map((m, i) => {
             const data = timeline[m];
             
-            // Interpolated Market Value
-            // This is a heuristic: Market Value = Invested + (TotalAppreciation * (Invested / FinalInvested) * TimeFactor)
-            // It assumes appreciation is correlated with amount invested and time.
+            // Heuristic for Market Value Curve
             const timeFactor = (i + 1) / n;
             const investedFactor = finalInvested > 0 ? data.accumulatedInvested / finalInvested : 0;
-            const estimatedAppreciation = totalAppreciation * investedFactor * Math.pow(timeFactor, 0.5); // Sqrt to curve it slightly
+            // Non-linear appreciation curve to simulate compounding/market effect
+            const estimatedAppreciation = totalAppreciation * investedFactor * Math.pow(timeFactor, 0.7);
             
             const marketValue = data.accumulatedInvested + estimatedAppreciation;
-
-            // Trend Line (Simple Linear Projection from 0 to Current Balance)
-            const trend = (currentBalance / n) * (i + 1);
+            const totalReturn = marketValue - data.accumulatedInvested;
+            const returnPercent = data.accumulatedInvested > 0 ? (totalReturn / data.accumulatedInvested) * 100 : 0;
 
             return {
                 month: m,
                 label: getMonthName(m).substring(0, 3).toUpperCase(),
                 fullLabel: getMonthName(m),
-                
                 contribution: data.monthlyContribution,
                 dividend: data.monthlyDividend,
-                
                 invested: data.accumulatedInvested,
                 dividends: data.accumulatedDividends,
                 marketValue: marketValue,
                 appreciation: estimatedAppreciation,
-                trend: trend
+                returnPercent: returnPercent
             };
         });
-
     }, [transactions, dividends, currentBalance]);
 
+    // 2. Filter Data based on Time Range
+    const filteredData = useMemo(() => {
+        if (timeRange === 'MAX') return fullHistory;
+        const monthsMap = { '6M': 6, '1Y': 12, '2Y': 24, '5Y': 60 };
+        const months = monthsMap[timeRange] || 12;
+        return fullHistory.slice(-months);
+    }, [fullHistory, timeRange]);
+
+    // 3. Calculate Stats
     const stats = useMemo(() => {
-        if (evolutionData.length === 0) return { invested: 0, dividends: 0, marketValue: 0, appreciation: 0, avgContribution: 0, avgDividend: 0 };
-        const last = evolutionData[evolutionData.length - 1];
+        if (filteredData.length === 0) return null;
+        const last = filteredData[filteredData.length - 1];
+        const first = filteredData[0];
         
-        const contributions = evolutionData.map(d => d.contribution).filter(c => c > 0);
+        const totalInvested = last.invested;
+        const totalValue = last.marketValue;
+        const totalReturn = totalValue - totalInvested;
+        const roi = totalInvested > 0 ? (totalReturn / totalInvested) * 100 : 0;
+        
+        const contributions = filteredData.map(d => d.contribution).filter(c => c > 0);
         const avgContribution = contributions.length > 0 ? contributions.reduce((a, b) => a + b, 0) / contributions.length : 0;
         
-        const divs = evolutionData.map(d => d.dividend).filter(d => d > 0);
+        const divs = filteredData.map(d => d.dividend).filter(d => d > 0);
         const avgDividend = divs.length > 0 ? divs.reduce((a, b) => a + b, 0) / divs.length : 0;
 
+        // CAGR Calculation (Approximate)
+        const years = filteredData.length / 12;
+        const cagr = years >= 1 && first.marketValue > 0 ? (Math.pow(totalValue / first.marketValue, 1 / years) - 1) * 100 : roi;
+
+        // Best/Worst Month (by % change in market value vs invested)
+        let bestMonth = { ...filteredData[0], change: 0 };
+        let worstMonth = { ...filteredData[0], change: 0 };
+
+        for (let i = 1; i < filteredData.length; i++) {
+            const prev = filteredData[i-1];
+            const curr = filteredData[i];
+            // Organic change % (excluding contribution)
+            const organicGrowth = (curr.marketValue - prev.marketValue) - curr.contribution;
+            const pct = prev.marketValue > 0 ? (organicGrowth / prev.marketValue) * 100 : 0;
+            
+            if (pct > bestMonth.change) bestMonth = { ...curr, change: pct };
+            if (pct < worstMonth.change) worstMonth = { ...curr, change: pct };
+        }
+
         return {
-            invested: last.invested,
-            dividends: last.dividends,
-            marketValue: last.marketValue,
-            appreciation: last.appreciation,
+            invested: totalInvested,
+            marketValue: totalValue,
+            totalReturn,
+            roi,
+            cagr,
             avgContribution,
-            avgDividend
+            avgDividend,
+            bestMonth,
+            worstMonth,
+            totalDividends: last.dividends
         };
-    }, [evolutionData]);
+    }, [filteredData]);
+
+    if (!stats) return null;
 
     return (
         <SwipeableModal isOpen={isOpen} onClose={onClose}>
-            <div className="p-4 h-full flex flex-col anim-slide-up">
+            <div className="p-4 h-full flex flex-col anim-slide-up bg-zinc-50 dark:bg-black">
+                {/* Header Section */}
                 <div className="flex items-center justify-between mb-6 shrink-0">
                     <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-violet-500/20 ring-4 ring-violet-50 dark:ring-violet-900/20">
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-violet-500/20 ring-4 ring-white dark:ring-zinc-900">
                             <TrendingUp className="w-6 h-6" strokeWidth={2.5} />
                         </div>
                         <div>
                             <h2 className="text-xl font-black text-zinc-900 dark:text-white leading-none tracking-tight">Evolução</h2>
-                            <p className="text-sm font-bold text-violet-600 dark:text-violet-400 mt-0.5">Crescimento Patrimonial</p>
+                            <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mt-1">Análise de Performance</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">
+                    <button onClick={onClose} className="w-9 h-9 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors shadow-sm">
                         <X className="w-4 h-4" />
                     </button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto pb-20 no-scrollbar">
-                    {/* Summary Cards */}
-                    <div className="grid grid-cols-2 gap-3 mb-3">
-                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 shadow-xl shadow-zinc-200/50 dark:shadow-black/20 relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-500/5 rounded-full blur-2xl -mr-6 -mt-6 group-hover:bg-emerald-500/10 transition-colors"></div>
-                            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Patrimônio Atual</p>
-                            <p className="text-2xl font-black text-zinc-900 dark:text-white truncate tracking-tight">{formatBRL(stats.marketValue)}</p>
-                            <div className="flex items-center gap-1.5 mt-2">
-                                <div className="flex items-center gap-1 bg-emerald-100 dark:bg-emerald-500/10 px-2 py-1 rounded-lg">
-                                    <ArrowUpRight className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-                                        {formatBRL(stats.appreciation)}
-                                    </span>
+                <div className="flex-1 overflow-y-auto pb-24 no-scrollbar space-y-6">
+                    {/* Hero Stats Card */}
+                    <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-xl shadow-zinc-200/50 dark:shadow-black/40 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-500/5 rounded-full blur-3xl -mr-10 -mt-10 group-hover:bg-indigo-500/10 transition-colors duration-500"></div>
+                        <div className="absolute bottom-0 left-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl -ml-10 -mb-10 group-hover:bg-emerald-500/10 transition-colors duration-500"></div>
+                        
+                        <div className="relative z-10">
+                            <div className="flex justify-between items-start mb-4">
+                                <div>
+                                    <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Patrimônio Total</p>
+                                    <h3 className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter">{formatBRL(stats.marketValue)}</h3>
+                                </div>
+                                <div className={`px-3 py-1.5 rounded-xl border flex items-center gap-1.5 ${stats.roi >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-800/30 text-emerald-600 dark:text-emerald-400' : 'bg-rose-50 dark:bg-rose-900/20 border-rose-100 dark:border-rose-800/30 text-rose-600 dark:text-rose-400'}`}>
+                                    {stats.roi >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                                    <span className="text-xs font-black">{stats.roi >= 0 ? '+' : ''}{stats.roi.toFixed(2)}%</span>
                                 </div>
                             </div>
-                        </div>
-                        <div className="space-y-3">
-                            <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex justify-between items-center">
-                                <div className="flex flex-col">
-                                    <span className="text-[9px] font-bold text-zinc-400 uppercase">Aportado</span>
-                                    <span className="text-sm font-black text-indigo-600 dark:text-indigo-400">{formatBRL(stats.invested)}</span>
+
+                            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                                <div>
+                                    <p className="text-[9px] font-bold text-zinc-400 uppercase mb-0.5">Lucro Líquido</p>
+                                    <p className={`text-sm font-black ${stats.totalReturn >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                        {stats.totalReturn >= 0 ? '+' : ''}{formatBRL(stats.totalReturn)}
+                                    </p>
                                 </div>
-                                <div className="w-8 h-8 rounded-full bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-500">
-                                    <Wallet className="w-4 h-4" />
-                                </div>
-                            </div>
-                            <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex justify-between items-center">
-                                <div className="flex flex-col">
-                                    <span className="text-[9px] font-bold text-zinc-400 uppercase">Proventos</span>
-                                    <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">{formatBRL(stats.dividends)}</span>
-                                </div>
-                                <div className="w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-500">
-                                    <Coins className="w-4 h-4" />
+                                <div>
+                                    <p className="text-[9px] font-bold text-zinc-400 uppercase mb-0.5">Total Investido</p>
+                                    <p className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(stats.invested)}</p>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Chart Controls */}
-                    <div className="flex justify-center mb-6">
-                        <div className="bg-zinc-100 dark:bg-zinc-800/50 p-1 rounded-xl flex gap-1 ring-1 ring-zinc-200 dark:ring-zinc-700/50">
-                            <button 
-                                onClick={() => setViewType('ACCUMULATED')}
-                                className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase transition-all ${viewType === 'ACCUMULATED' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm ring-1 ring-black/5' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'}`}
-                            >
-                                Patrimônio
-                            </button>
-                            <button 
-                                onClick={() => setViewType('MONTHLY')}
-                                className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase transition-all ${viewType === 'MONTHLY' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm ring-1 ring-black/5' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'}`}
-                            >
-                                Mensal
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Main Chart */}
-                    <div className="bg-white dark:bg-zinc-900 rounded-[2rem] p-5 border border-zinc-100 dark:border-zinc-800 shadow-xl shadow-zinc-200/50 dark:shadow-black/20 mb-6 relative overflow-hidden">
-                        <div className="flex items-center justify-between mb-6 px-1">
-                            <h3 className="text-sm font-black text-zinc-900 dark:text-white flex items-center gap-2">
-                                <TrendingUp className="w-4 h-4 text-indigo-500" />
-                                {viewType === 'ACCUMULATED' ? 'Crescimento Patrimonial' : 'Aportes vs Proventos'}
-                            </h3>
-                            {viewType === 'ACCUMULATED' && (
-                                <div className="flex gap-3">
-                                    <div className="flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded-md">
-                                        <div className="w-2 h-0.5 bg-zinc-400 border-t border-dashed border-zinc-400"></div>
-                                        <span className="text-[9px] font-bold text-zinc-500 uppercase">Tendência</span>
-                                    </div>
+                    {/* Chart Section */}
+                    <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-lg overflow-hidden">
+                        <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex flex-col gap-4">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-sm font-black text-zinc-900 dark:text-white flex items-center gap-2">
+                                    <Activity className="w-4 h-4 text-indigo-500" />
+                                    Análise Gráfica
+                                </h3>
+                                <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl">
+                                    {(['6M', '1Y', '2Y', '5Y', 'MAX'] as const).map(range => (
+                                        <button
+                                            key={range}
+                                            onClick={() => setTimeRange(range)}
+                                            className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase transition-all ${timeRange === range ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                                        >
+                                            {range}
+                                        </button>
+                                    ))}
                                 </div>
-                            )}
+                            </div>
+                            
+                            <div className="flex p-1 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl overflow-x-auto no-scrollbar">
+                                <button onClick={() => setChartType('WEALTH')} className={`flex-1 min-w-[80px] py-2 rounded-lg text-[10px] font-black uppercase tracking-wide flex items-center justify-center gap-1.5 transition-all ${chartType === 'WEALTH' ? 'bg-white dark:bg-zinc-700 text-indigo-600 dark:text-indigo-400 shadow-sm ring-1 ring-black/5' : 'text-zinc-400'}`}>
+                                    <TrendingUp className="w-3.5 h-3.5" /> Patrimônio
+                                </button>
+                                <button onClick={() => setChartType('CASHFLOW')} className={`flex-1 min-w-[80px] py-2 rounded-lg text-[10px] font-black uppercase tracking-wide flex items-center justify-center gap-1.5 transition-all ${chartType === 'CASHFLOW' ? 'bg-white dark:bg-zinc-700 text-emerald-600 dark:text-emerald-400 shadow-sm ring-1 ring-black/5' : 'text-zinc-400'}`}>
+                                    <BarChart3 className="w-3.5 h-3.5" /> Fluxo
+                                </button>
+                                <button onClick={() => setChartType('RETURN')} className={`flex-1 min-w-[80px] py-2 rounded-lg text-[10px] font-black uppercase tracking-wide flex items-center justify-center gap-1.5 transition-all ${chartType === 'RETURN' ? 'bg-white dark:bg-zinc-700 text-amber-600 dark:text-amber-400 shadow-sm ring-1 ring-black/5' : 'text-zinc-400'}`}>
+                                    <Percent className="w-3.5 h-3.5" /> Retorno
+                                </button>
+                            </div>
                         </div>
 
-                        <div className="h-72 w-full">
+                        <div className="h-72 w-full p-4 pt-6">
                             <ResponsiveContainer width="100%" height="100%">
-                                {viewType === 'ACCUMULATED' ? (
-                                    <ComposedChart data={evolutionData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                                {chartType === 'WEALTH' ? (
+                                    <AreaChart data={filteredData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                                         <defs>
-                                            <linearGradient id="gradMarket" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
-                                                <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                                            </linearGradient>
-                                            <linearGradient id="gradInvested" x1="0" y1="0" x2="0" y2="1">
+                                            <linearGradient id="colorWealth" x1="0" y1="0" x2="0" y2="1">
                                                 <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
                                                 <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
                                             </linearGradient>
                                         </defs>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
-                                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a' }} minTickGap={30} />
-                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a' }} tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
+                                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 700 }} dy={10} minTickGap={30} />
+                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a' }} tickFormatter={(val) => `R$${val/1000}k`} />
                                         <RechartsTooltip 
-                                            contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '11px' }}
-                                            formatter={(value: number, name: string) => [
-                                                formatBRL(value), 
-                                                name === 'marketValue' ? 'Patrimônio Total' : 
-                                                name === 'invested' ? 'Total Aportado' : 
-                                                name === 'trend' ? 'Tendência' : name
-                                            ]}
-                                            labelStyle={{ color: '#a1a1aa', marginBottom: '4px' }}
+                                            contentStyle={{ borderRadius: '16px', border: 'none', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '11px', padding: '12px', backdropFilter: 'blur(12px)', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)' }}
+                                            formatter={(value: number, name: string) => [formatBRL(value), name === 'marketValue' ? 'Patrimônio' : 'Investido']}
+                                            labelStyle={{ color: '#a1a1aa', marginBottom: '4px', fontWeight: 700 }}
                                         />
-                                        <Area type="monotone" dataKey="marketValue" stroke="#10b981" strokeWidth={2} fill="url(#gradMarket)" name="marketValue" />
-                                        <Area type="monotone" dataKey="invested" stroke="#6366f1" strokeWidth={2} fill="url(#gradInvested)" name="invested" />
-                                        <Line type="monotone" dataKey="trend" stroke="#a1a1aa" strokeWidth={1} strokeDasharray="4 4" dot={false} name="trend" />
+                                        <Area type="monotone" dataKey="marketValue" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorWealth)" activeDot={{ r: 6, strokeWidth: 0, fill: '#6366f1' }} />
+                                        <Line type="monotone" dataKey="invested" stroke="#a1a1aa" strokeWidth={2} strokeDasharray="4 4" dot={false} activeDot={false} />
+                                    </AreaChart>
+                                ) : chartType === 'CASHFLOW' ? (
+                                    <ComposedChart data={filteredData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
+                                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 700 }} dy={10} minTickGap={30} />
+                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a' }} tickFormatter={(val) => `R$${val/1000}k`} />
+                                        <RechartsTooltip 
+                                            contentStyle={{ borderRadius: '16px', border: 'none', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '11px', padding: '12px', backdropFilter: 'blur(12px)', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)' }}
+                                            formatter={(value: number, name: string) => [formatBRL(value), name === 'contribution' ? 'Aporte Líquido' : 'Dividendos']}
+                                            labelStyle={{ color: '#a1a1aa', marginBottom: '4px', fontWeight: 700 }}
+                                        />
+                                        <Bar dataKey="contribution" fill="#6366f1" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                                        <Line type="monotone" dataKey="dividend" stroke="#10b981" strokeWidth={2} dot={{r: 3, fill: "#10b981", strokeWidth: 0}} />
                                     </ComposedChart>
                                 ) : (
-                                    <BarChart data={evolutionData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                                    <AreaChart data={filteredData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                                        <defs>
+                                            <linearGradient id="colorReturn" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3}/>
+                                                <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+                                            </linearGradient>
+                                        </defs>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
-                                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a' }} minTickGap={30} />
-                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a' }} tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
+                                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 700 }} dy={10} minTickGap={30} />
+                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a' }} tickFormatter={(val) => `${val}%`} />
                                         <RechartsTooltip 
-                                            cursor={{fill: 'transparent'}}
-                                            contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '11px' }}
-                                            formatter={(value: number, name: string) => [formatBRL(value), name === 'contribution' ? 'Aporte Mensal' : name === 'dividend' ? 'Proventos' : 'Total']}
-                                            labelStyle={{ color: '#a1a1aa', marginBottom: '4px' }}
+                                            contentStyle={{ borderRadius: '16px', border: 'none', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '11px', padding: '12px', backdropFilter: 'blur(12px)', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)' }}
+                                            formatter={(value: number) => [`${value.toFixed(2)}%`, 'Rentabilidade Acumulada']}
+                                            labelStyle={{ color: '#a1a1aa', marginBottom: '4px', fontWeight: 700 }}
                                         />
-                                        <Bar dataKey="contribution" stackId="a" fill="#6366f1" radius={[0, 0, 4, 4]} name="contribution" />
-                                        <Bar dataKey="dividend" stackId="a" fill="#10b981" radius={[4, 4, 0, 0]} name="dividend" />
-                                    </BarChart>
+                                        <Area type="monotone" dataKey="returnPercent" stroke="#f59e0b" strokeWidth={2} fill="url(#colorReturn)" activeDot={{ r: 6, strokeWidth: 0, fill: '#f59e0b' }} />
+                                    </AreaChart>
                                 )}
                             </ResponsiveContainer>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3 mb-6">
-                        <div className="bg-zinc-50 dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-800">
-                            <p className="text-[9px] font-bold text-zinc-400 uppercase mb-1">Média de Aportes</p>
-                            <p className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(stats.avgContribution)}<span className="text-[10px] text-zinc-400 font-medium ml-1">/mês</span></p>
+                    {/* Detailed Stats Grid */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                            <div className="flex items-center gap-2 mb-2">
+                                <div className="w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-500">
+                                    <ArrowUpRight className="w-4 h-4" />
+                                </div>
+                                <span className="text-[9px] font-bold text-zinc-400 uppercase">Melhor Mês</span>
+                            </div>
+                            <p className="text-sm font-black text-zinc-900 dark:text-white">{stats.bestMonth?.fullLabel || '-'}</p>
+                            <p className="text-xs font-bold text-emerald-500">+{stats.bestMonth?.change.toFixed(2)}%</p>
                         </div>
-                        <div className="bg-zinc-50 dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-800">
-                            <p className="text-[9px] font-bold text-zinc-400 uppercase mb-1">Média de Proventos</p>
-                            <p className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(stats.avgDividend)}<span className="text-[10px] text-zinc-400 font-medium ml-1">/mês</span></p>
+
+                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                            <div className="flex items-center gap-2 mb-2">
+                                <div className="w-8 h-8 rounded-full bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center text-rose-500">
+                                    <ArrowDownLeft className="w-4 h-4" />
+                                </div>
+                                <span className="text-[9px] font-bold text-zinc-400 uppercase">Pior Mês</span>
+                            </div>
+                            <p className="text-sm font-black text-zinc-900 dark:text-white">{stats.worstMonth?.fullLabel || '-'}</p>
+                            <p className="text-xs font-bold text-rose-500">{stats.worstMonth?.change.toFixed(2)}%</p>
+                        </div>
+
+                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                            <div className="flex items-center gap-2 mb-2">
+                                <div className="w-8 h-8 rounded-full bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-500">
+                                    <Wallet className="w-4 h-4" />
+                                </div>
+                                <span className="text-[9px] font-bold text-zinc-400 uppercase">Aporte Médio</span>
+                            </div>
+                            <p className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(stats.avgContribution)}</p>
+                            <p className="text-[9px] font-medium text-zinc-400">Mensal</p>
+                        </div>
+
+                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                            <div className="flex items-center gap-2 mb-2">
+                                <div className="w-8 h-8 rounded-full bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center text-amber-500">
+                                    <Coins className="w-4 h-4" />
+                                </div>
+                                <span className="text-[9px] font-bold text-zinc-400 uppercase">Proventos Totais</span>
+                            </div>
+                            <p className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(stats.totalDividends)}</p>
+                            <p className="text-[9px] font-medium text-zinc-400">Acumulado</p>
                         </div>
                     </div>
 
-                    <div className="bg-indigo-50 dark:bg-indigo-900/10 rounded-2xl p-4 border border-indigo-100 dark:border-indigo-800/30">
-                        <div className="flex items-start gap-3">
-                            <Info className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
+                    {/* CAGR Insight */}
+                    <div className="bg-gradient-to-br from-zinc-900 to-zinc-800 dark:from-zinc-800 dark:to-zinc-900 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-3xl -mr-10 -mt-10"></div>
+                        <div className="relative z-10 flex justify-between items-center">
                             <div>
-                                <h4 className="text-xs font-bold text-indigo-900 dark:text-indigo-300 mb-1">Sobre a Evolução</h4>
-                                <p className="text-[10px] text-indigo-700 dark:text-indigo-400 leading-relaxed">
-                                    O gráfico compara o <strong>Total Aportado</strong> (linha roxa) com o <strong>Patrimônio Total</strong> (linha verde), evidenciando a valorização ao longo do tempo.
-                                    <br/><br/>
-                                    A linha tracejada indica a <strong>Tendência</strong> de crescimento médio da sua carteira.
-                                </p>
+                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">CAGR (Cresc. Anual Composto)</p>
+                                <h4 className="text-2xl font-black">{stats.cagr.toFixed(2)}% <span className="text-sm font-medium text-zinc-400">ao ano</span></h4>
+                            </div>
+                            <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
+                                <Activity className="w-5 h-5 text-emerald-400" />
                             </div>
                         </div>
                     </div>
