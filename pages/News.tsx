@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { RefreshCw, AlertTriangle, Search, X, Wallet, TrendingUp, Building2, Globe, Check, Newspaper, Share2 } from 'lucide-react';
+import { RefreshCw, AlertTriangle, Search, X, Wallet, TrendingUp, TrendingDown, Building2, Globe, Check, Newspaper, Share2 } from 'lucide-react';
 import { NewsItem, Transaction, NewsSentiment, NewsImpact } from '../types';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -306,23 +306,33 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
                                     {item.summary.replace(/<[^>]*>?/gm, '')}
                                 </p>
 
-                                <div className="flex items-center justify-between mt-auto pt-2 border-t border-zinc-50 dark:border-zinc-800/50">
+                                <div className="flex items-center justify-between mt-auto pt-3 border-t border-zinc-50 dark:border-zinc-800/50">
                                     <div className="flex gap-2">
                                         {item.impact === 'high' && (
-                                            <span className="px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 text-[9px] font-bold uppercase flex items-center gap-1">
-                                                <AlertTriangle className="w-3 h-3" /> Impacto Alto
+                                            <span className="px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 text-[9px] font-black uppercase flex items-center gap-1 border border-rose-100 dark:border-rose-800/30">
+                                                <AlertTriangle className="w-3 h-3" /> Impacto
                                             </span>
                                         )}
                                         {item.impact === 'risk' && (
-                                            <span className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 text-[9px] font-bold uppercase flex items-center gap-1">
+                                            <span className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 text-[9px] font-black uppercase flex items-center gap-1 border border-amber-100 dark:border-amber-800/30">
                                                 <AlertTriangle className="w-3 h-3" /> Risco
+                                            </span>
+                                        )}
+                                        {item.sentiment === 'positive' && (
+                                            <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 text-[9px] font-black uppercase flex items-center gap-1 border border-emerald-100 dark:border-emerald-800/30">
+                                                <TrendingUp className="w-3 h-3" /> Otimista
+                                            </span>
+                                        )}
+                                        {item.sentiment === 'negative' && (
+                                            <span className="px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 text-[9px] font-black uppercase flex items-center gap-1 border border-rose-100 dark:border-rose-800/30">
+                                                <TrendingDown className="w-3 h-3" /> Pessimista
                                             </span>
                                         )}
                                     </div>
                                     
                                     <button 
                                         onClick={(e) => handleShare(item, e)}
-                                        className="p-1.5 -mr-1 rounded-lg text-zinc-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
+                                        className="w-8 h-8 flex items-center justify-center rounded-xl text-zinc-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all active:scale-90"
                                     >
                                         <Share2 className="w-4 h-4" />
                                     </button>
