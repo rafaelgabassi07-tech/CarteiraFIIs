@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { AssetPosition, DividendReceipt, AssetType, PortfolioInsight, Transaction } from '../types';
-import { CircleDollarSign, CalendarClock, PieChart as PieIcon, ArrowUpRight, ArrowDownLeft, Wallet, ArrowRight, Sparkles, Trophy, Anchor, Coins, Crown, Info, X, Zap, ShieldCheck, AlertTriangle, Play, Pause, TrendingUp, TrendingDown, Target, Snowflake, Layers, Medal, Rocket, Gem, Lock, Building2, Briefcase, ShoppingCart, Coffee, Plane, Star, Award, Umbrella, ZapOff, CheckCircle2, ListFilter, History, Activity, Calendar, Percent, BarChart3, Share2, ChevronDown } from 'lucide-react';
+import { CircleDollarSign, CalendarClock, PieChart as PieIcon, ArrowUpRight, ArrowDownLeft, Wallet, ArrowRight, Sparkles, Trophy, Anchor, Coins, Crown, Info, X, Zap, ShieldCheck, AlertTriangle, Play, Pause, TrendingUp, TrendingDown, Target, Snowflake, Layers, Medal, Rocket, Gem, Lock, Building2, Briefcase, ShoppingCart, Coffee, Plane, Star, Award, Umbrella, ZapOff, CheckCircle2, ListFilter, History, Activity, Calendar, Percent, BarChart3, Share2, ChevronDown, ArrowRightLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, CartesianGrid, AreaChart, Area, XAxis, YAxis, ComposedChart, Bar, Line, ReferenceLine, Label, BarChart } from 'recharts';
@@ -222,68 +222,66 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
     return (
         <SwipeableModal isOpen={isOpen} onClose={onClose}>
             <div className="h-full flex flex-col bg-white dark:bg-zinc-950">
-                {/* Clean Header */}
-                <div className="px-6 pt-6 pb-2 flex items-center justify-between shrink-0">
-                    <div>
-                        <h2 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">Evolução Patrimonial</h2>
-                        <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Análise Detalhada</p>
-                    </div>
-                    <div className="flex gap-2">
-                         <button onClick={onClose} className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors">
-                            <X className="w-4 h-4" />
+                {/* Clean Header - Integrated with Balance */}
+                <div className="px-6 pt-8 pb-4 shrink-0">
+                    <div className="flex justify-between items-start mb-6">
+                        <div>
+                            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.3em] mb-2">Patrimônio Total</p>
+                            <h3 className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter leading-none">
+                                {formatBRL(stats.marketValue)}
+                            </h3>
+                        </div>
+                        <button onClick={onClose} className="w-10 h-10 rounded-2xl bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-all active:scale-90">
+                            <X className="w-5 h-5" />
                         </button>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                        <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black shadow-sm ${stats.roi >= 0 ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
+                            {stats.roi >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                            {stats.roi >= 0 ? '+' : ''}{stats.roi.toFixed(2)}%
+                        </div>
+                        <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800"></div>
+                        <div className="flex flex-col">
+                            <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Retorno Total</span>
+                            <span className={`text-xs font-black ${stats.totalReturn >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                {stats.totalReturn >= 0 ? '+' : ''}{formatBRL(stats.totalReturn)}
+                            </span>
+                        </div>
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar px-6 pb-10">
+                <div className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar px-6 pb-12">
                     
-                    {/* Summary Section - Ultra Minimalist */}
-                    <div className="mt-10 mb-12">
-                        <div className="flex justify-between items-end mb-8">
-                            <div>
-                                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.3em] mb-2">Patrimônio Total</p>
-                                <h3 className="text-5xl font-black text-zinc-900 dark:text-white tracking-tighter leading-none">
-                                    {formatBRL(stats.marketValue)}
-                                </h3>
-                            </div>
-                            <div className={`flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-black shadow-sm ${stats.roi >= 0 ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
-                                {stats.roi >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-                                {stats.roi >= 0 ? '+' : ''}{stats.roi.toFixed(2)}%
-                            </div>
+                    {/* Quick Stats Grid */}
+                    <div className="grid grid-cols-2 gap-3 mb-10 mt-4">
+                        <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-3xl border border-zinc-100 dark:border-zinc-800/50">
+                            <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Investido</p>
+                            <p className="text-sm font-black text-zinc-700 dark:text-zinc-300 tracking-tight">{formatBRL(stats.invested)}</p>
                         </div>
-
-                        <div className="flex gap-12">
-                            <div>
-                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Retorno Total</p>
-                                <p className={`text-xl font-black ${stats.totalReturn >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'} tracking-tight`}>
-                                    {stats.totalReturn >= 0 ? '+' : ''}{formatBRL(stats.totalReturn)}
-                                </p>
-                            </div>
-                            <div className="w-px h-10 bg-zinc-100 dark:bg-zinc-800 self-end"></div>
-                            <div>
-                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Investido</p>
-                                <p className="text-xl font-black text-zinc-700 dark:text-zinc-300 tracking-tight">{formatBRL(stats.invested)}</p>
-                            </div>
+                        <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-3xl border border-zinc-100 dark:border-zinc-800/50">
+                            <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">CAGR Anual</p>
+                            <p className="text-sm font-black text-indigo-500 tracking-tight">{stats.cagr.toFixed(2)}%</p>
                         </div>
                     </div>
 
-                    {/* Chart Section - Open & Airy */}
-                    <div className="mb-12">
-                        <div className="flex justify-between items-center mb-8">
-                            <div className="flex bg-zinc-100/50 dark:bg-zinc-900/50 rounded-2xl p-1 backdrop-blur-sm">
-                                <button onClick={() => setChartType('WEALTH')} className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${chartType === 'WEALTH' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-md' : 'text-zinc-400 hover:text-zinc-600'}`}>Patrimônio</button>
-                                <button onClick={() => setChartType('CASHFLOW')} className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${chartType === 'CASHFLOW' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-md' : 'text-zinc-400 hover:text-zinc-600'}`}>Fluxo</button>
-                                <button onClick={() => setChartType('RETURN')} className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${chartType === 'RETURN' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-md' : 'text-zinc-400 hover:text-zinc-600'}`}>Retorno</button>
+                    {/* Chart Section - With Integrated Filters */}
+                    <div className="mb-12 bg-white dark:bg-zinc-950 rounded-[2.5rem] border border-zinc-100 dark:border-zinc-900 p-2 shadow-sm">
+                        <div className="flex justify-between items-center p-2 mb-4">
+                            <div className="flex bg-zinc-100/50 dark:bg-zinc-900/50 rounded-xl p-1 backdrop-blur-sm">
+                                <button onClick={() => setChartType('WEALTH')} className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${chartType === 'WEALTH' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}>Patrimônio</button>
+                                <button onClick={() => setChartType('CASHFLOW')} className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${chartType === 'CASHFLOW' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}>Fluxo</button>
+                                <button onClick={() => setChartType('RETURN')} className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${chartType === 'RETURN' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}>Retorno</button>
                             </div>
 
                             <div className="relative">
                                 <button 
                                     onClick={() => setShowTimeFilter(!showTimeFilter)}
-                                    className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-zinc-100/50 dark:bg-zinc-900/50 text-[10px] font-black text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-all active:scale-95"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-100/50 dark:bg-zinc-900/50 text-[9px] font-black text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-all"
                                 >
-                                    <Calendar className="w-3.5 h-3.5 text-indigo-500" />
+                                    <Calendar className="w-3 h-3 text-indigo-500" />
                                     {timeRange === 'MAX' ? 'Tudo' : timeRange}
-                                    <ChevronDown className={`w-3 h-3 transition-transform duration-300 ${showTimeFilter ? 'rotate-180' : ''}`} />
+                                    <ChevronDown className={`w-2.5 h-2.5 transition-transform duration-300 ${showTimeFilter ? 'rotate-180' : ''}`} />
                                 </button>
 
                                 <AnimatePresence>
@@ -292,7 +290,7 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                                             initial={{ opacity: 0, y: 10, scale: 0.95 }}
                                             animate={{ opacity: 1, y: 0, scale: 1 }}
                                             exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                            className="absolute right-0 mt-2 w-32 bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-zinc-100 dark:border-zinc-800 p-1.5 z-50 backdrop-blur-xl"
+                                            className="absolute right-0 mt-2 w-28 bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-zinc-100 dark:border-zinc-800 p-1 z-50 backdrop-blur-xl"
                                         >
                                             {(['6M', '1Y', '2Y', '5Y', 'MAX'] as const).map((range) => (
                                                 <button
@@ -301,7 +299,7 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                                                         setTimeRange(range);
                                                         setShowTimeFilter(false);
                                                     }}
-                                                    className={`w-full text-left px-4 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${timeRange === range ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400' : 'text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}
+                                                    className={`w-full text-left px-3 py-2 rounded-lg text-[9px] font-black uppercase transition-all ${timeRange === range ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400' : 'text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}
                                                 >
                                                     {range === 'MAX' ? 'Tudo' : range}
                                                 </button>
@@ -312,7 +310,7 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                             </div>
                         </div>
 
-                        <div className="h-80 w-full relative">
+                        <div className="h-72 w-full relative px-2">
                             <AnimatePresence mode="wait">
                                 <motion.div
                                     key={chartType}
@@ -403,78 +401,90 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                         </div>
                     </div>
 
-                    {/* Metrics Grid - Minimalist & Scannable */}
-                    <div className="space-y-10 mb-12">
+                    {/* Metrics Grid - Reorganized */}
+                    <div className="space-y-8 mb-12">
                         <div>
-                            <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.25em] mb-6 px-1 border-b border-zinc-100 dark:border-zinc-800 pb-2">Performance & Risco</h4>
-                            <div className="grid grid-cols-2 gap-x-8 gap-y-6">
-                                <div>
-                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">CAGR Anual</p>
-                                    <p className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">{stats.cagr.toFixed(2)}%</p>
+                            <div className="flex items-center gap-2 mb-6">
+                                <Activity className="w-3.5 h-3.5 text-indigo-500" />
+                                <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.25em]">Performance & Risco</h4>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-zinc-50 dark:bg-zinc-900/30 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
+                                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Volatilidade</p>
+                                    <p className="text-lg font-black text-zinc-900 dark:text-white tracking-tight">{stats.volatility.toFixed(2)}%</p>
                                 </div>
-                                <div>
-                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Volatilidade</p>
-                                    <p className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">{stats.volatility.toFixed(2)}%</p>
+                                <div className="bg-zinc-50 dark:bg-zinc-900/30 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
+                                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Win Rate</p>
+                                    <p className="text-lg font-black text-emerald-500 tracking-tight">{stats.winRate.toFixed(0)}%</p>
                                 </div>
-                                <div>
-                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Retorno Médio</p>
-                                    <p className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">{stats.avgMonthlyReturn.toFixed(2)}%</p>
+                                <div className="bg-zinc-50 dark:bg-zinc-900/30 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
+                                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Retorno Médio</p>
+                                    <p className="text-lg font-black text-zinc-900 dark:text-white tracking-tight">{stats.avgMonthlyReturn.toFixed(2)}%</p>
                                 </div>
-                                <div>
-                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Win Rate</p>
-                                    <p className="text-xl font-black text-emerald-500 tracking-tight">{stats.winRate.toFixed(0)}%</p>
-                                </div>
-                                <div>
-                                    <p className="text-[10px] font-bold text-emerald-600/60 dark:text-emerald-400/60 uppercase tracking-wider mb-1">Melhor Mês</p>
-                                    <p className="text-sm font-black text-emerald-600">{stats.bestMonth.label} <span className="ml-1 opacity-60">+{stats.bestMonth.change.toFixed(1)}%</span></p>
-                                </div>
-                                <div>
-                                    <p className="text-[10px] font-bold text-rose-600/60 dark:text-rose-400/60 uppercase tracking-wider mb-1">Pior Mês</p>
-                                    <p className="text-sm font-black text-rose-600">{stats.worstMonth.label} <span className="ml-1 opacity-60">{stats.worstMonth.change.toFixed(1)}%</span></p>
+                                <div className="bg-zinc-50 dark:bg-zinc-900/30 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
+                                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Melhor Mês</p>
+                                    <p className="text-sm font-black text-emerald-600">{stats.bestMonth.label} <span className="text-[10px] opacity-60">+{stats.bestMonth.change.toFixed(1)}%</span></p>
                                 </div>
                             </div>
                         </div>
 
                         <div>
-                            <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.25em] mb-6 px-1 border-b border-zinc-100 dark:border-zinc-800 pb-2">Atividade & Fluxo</h4>
-                            <div className="grid grid-cols-2 gap-x-8 gap-y-6">
-                                <div>
-                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Aporte Médio</p>
+                            <div className="flex items-center gap-2 mb-6">
+                                <ArrowRightLeft className="w-3.5 h-3.5 text-indigo-500" />
+                                <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.25em]">Atividade & Fluxo</h4>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-zinc-50 dark:bg-zinc-900/30 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
+                                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Aporte Médio</p>
                                     <p className="text-base font-black text-zinc-800 dark:text-zinc-200 tracking-tight">{formatBRL(stats.avgContribution)}</p>
                                 </div>
-                                <div>
-                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Proventos Totais</p>
-                                    <p className="text-base font-black text-zinc-800 dark:text-zinc-200 tracking-tight">{formatBRL(stats.totalDividends)}</p>
+                                <div className="bg-zinc-50 dark:bg-zinc-900/30 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
+                                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Dividendos Médios</p>
+                                    <p className="text-base font-black text-zinc-800 dark:text-zinc-200 tracking-tight">{formatBRL(stats.avgDividend)}</p>
                                 </div>
-                                <div>
-                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Crescimento Orgânico</p>
-                                    <p className="text-base font-black text-emerald-600 tracking-tight">{formatBRL(stats.totalReturn)}</p>
-                                </div>
-                                <div>
-                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Meses Positivos</p>
-                                    <p className="text-base font-black text-zinc-800 dark:text-zinc-200 tracking-tight">{stats.positiveMonths} <span className="text-[10px] text-zinc-400 font-medium">de {stats.positiveMonths + stats.negativeMonths}</span></p>
+                                <div className="col-span-2 bg-zinc-50 dark:bg-zinc-900/30 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 flex justify-between items-center">
+                                    <div>
+                                        <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Proventos Totais</p>
+                                        <p className="text-lg font-black text-indigo-500 tracking-tight">{formatBRL(stats.totalDividends)}</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Crescimento Orgânico</p>
+                                        <p className="text-lg font-black text-emerald-500 tracking-tight">+{((stats.marketValue - stats.invested) / stats.invested * 100).toFixed(1)}%</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Goal Progress - Minimalist */}
-                    <div className="pt-8 border-t border-zinc-100 dark:border-zinc-800">
-                        <div className="flex justify-between items-end mb-4">
+                    {/* Goal Progress - Re-styled */}
+                    <div className="p-6 bg-indigo-500 rounded-[2.5rem] text-white shadow-xl shadow-indigo-500/20">
+                        <div className="flex justify-between items-start mb-6">
                             <div>
-                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 mb-1">Próxima Meta</p>
-                                <h3 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Independência</h3>
+                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-100 mb-1">Próxima Meta</p>
+                                <h3 className="text-2xl font-black tracking-tight">Independência</h3>
                             </div>
-                            <span className="text-sm font-black text-indigo-600 dark:text-indigo-400">72%</span>
+                            <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center font-black text-sm">
+                                72%
+                            </div>
                         </div>
                         
-                        <div className="h-2.5 w-full bg-zinc-100 dark:bg-zinc-900 rounded-full overflow-hidden mb-4">
-                            <div className="h-full bg-indigo-500 rounded-full transition-all duration-1000" style={{ width: '72%' }}></div>
+                        <div className="h-2 w-full bg-white/20 rounded-full overflow-hidden mb-6">
+                            <motion.div 
+                                initial={{ width: 0 }}
+                                animate={{ width: '72%' }}
+                                transition={{ duration: 1.5, ease: "easeOut" }}
+                                className="h-full bg-white rounded-full"
+                            ></motion.div>
                         </div>
                         
-                        <p className="text-[11px] font-medium text-zinc-500 leading-relaxed">
-                            Faltam <span className="font-black text-zinc-900 dark:text-white">R$ 28.400</span> para atingir seu próximo objetivo.
-                        </p>
+                        <div className="flex justify-between items-center">
+                            <p className="text-[11px] font-medium text-indigo-50/80 leading-relaxed max-w-[180px]">
+                                Faltam <span className="font-black text-white">R$ 28.400</span> para atingir seu próximo objetivo.
+                            </p>
+                            <button className="px-4 py-2 bg-white text-indigo-600 text-[10px] font-black uppercase rounded-xl shadow-lg active:scale-95 transition-all">
+                                Ver Detalhes
+                            </button>
+                        </div>
                     </div>
 
                 </div>
