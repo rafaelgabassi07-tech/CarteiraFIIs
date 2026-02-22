@@ -5,26 +5,76 @@ import {
     Upload, Trash2, ChevronRight, Check, Loader2, Search, 
     Calculator, Palette, ChevronDown, ChevronUp, Download, 
     History, Activity, FileJson, FileSpreadsheet, Database,
-    Smartphone, Mail, ExternalLink, Info, Zap
+    Smartphone, Mail, ExternalLink, Info, Zap, Sliders, LifeBuoy, AlertTriangle
 } from 'lucide-react';
 import { triggerScraperUpdate } from '../services/dataService';
 import { ConfirmationModal } from '../components/Layout';
 import { ThemeType, ServiceMetric, Transaction, DividendReceipt } from '../types';
 import { parseB3Excel } from '../services/excelService';
 
-// --- Utility Components ---
+const ACCENT_COLORS = [
+    { hex: '#0ea5e9', name: 'Sky' },
+    { hex: '#10b981', name: 'Emerald' },
+    { hex: '#6366f1', name: 'Indigo' },
+    { hex: '#8b5cf6', name: 'Violet' },
+    { hex: '#f43f5e', name: 'Rose' },
+    { hex: '#f59e0b', name: 'Amber' },
+];
 
-const SectionTitle = ({ children }: { children: React.ReactNode }) => (
-    <h3 className="px-4 mb-3 text-[11px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">
-        {children}
-    </h3>
-);
+// --- Components ---
 
-const Card = ({ children, className = '' }: { children: React.ReactNode, className?: string }) => (
-    <div className={`bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden ${className}`}>
-        {children}
-    </div>
-);
+const SettingsGroup = ({ 
+    icon: Icon, 
+    title, 
+    description, 
+    children, 
+    defaultOpen = false 
+}: { 
+    icon: React.ElementType, 
+    title: string, 
+    description?: string, 
+    children: React.ReactNode, 
+    defaultOpen?: boolean 
+}) => {
+    const [isOpen, setIsOpen] = useState(defaultOpen);
+
+    return (
+        <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden transition-all duration-300">
+            <button 
+                onClick={() => setIsOpen(!isOpen)}
+                className="w-full flex items-center justify-between p-5 text-left transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+            >
+                <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ${isOpen ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'}`}>
+                        <Icon className="w-6 h-6" strokeWidth={2} />
+                    </div>
+                    <div>
+                        <h3 className="text-base font-black text-zinc-900 dark:text-white leading-tight">{title}</h3>
+                        {description && <p className="text-xs font-medium text-zinc-500 mt-0.5">{description}</p>}
+                    </div>
+                </div>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${isOpen ? 'bg-zinc-100 dark:bg-zinc-800 rotate-180' : ''}`}>
+                    <ChevronDown className="w-5 h-5 text-zinc-400" />
+                </div>
+            </button>
+            
+            <AnimatePresence>
+                {isOpen && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.3, ease: [0.04, 0.62, 0.23, 0.98] }}
+                    >
+                        <div className="border-t border-zinc-100 dark:border-zinc-800">
+                            {children}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+};
 
 interface SettingsItemProps {
     icon: React.ElementType;
@@ -124,15 +174,6 @@ interface SettingsProps {
   isCheckingConnection: boolean;
 }
 
-const ACCENT_COLORS = [
-    { hex: '#0ea5e9', name: 'Sky' },
-    { hex: '#10b981', name: 'Emerald' },
-    { hex: '#6366f1', name: 'Indigo' },
-    { hex: '#8b5cf6', name: 'Violet' },
-    { hex: '#f43f5e', name: 'Rose' },
-    { hex: '#f59e0b', name: 'Amber' },
-];
-
 export const Settings: React.FC<SettingsProps> = ({ 
     onLogout, user, transactions, onImportTransactions, dividends, onImportDividends, onResetApp,
     theme, onSetTheme, accentColor, onSetAccentColor, privacyMode, onSetPrivacyMode, appVersion,
@@ -199,10 +240,10 @@ export const Settings: React.FC<SettingsProps> = ({
     };
 
     return (
-        <div className="pb-32 anim-fade-in px-4 max-w-3xl mx-auto space-y-8">
+        <div className="pb-32 anim-fade-in px-4 max-w-3xl mx-auto space-y-6">
             
             {/* Profile Header */}
-            <div className="relative overflow-hidden rounded-[2.5rem] bg-zinc-900 dark:bg-zinc-100 p-8 shadow-2xl group">
+            <div className="relative overflow-hidden rounded-[2.5rem] bg-zinc-900 dark:bg-zinc-100 p-8 shadow-2xl group mb-8">
                 {/* Background Effects */}
                 <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 blur-[100px] rounded-full -mr-20 -mt-20 pointer-events-none"></div>
                 <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-500/10 blur-[80px] rounded-full -ml-10 -mb-10 pointer-events-none"></div>
@@ -251,10 +292,11 @@ export const Settings: React.FC<SettingsProps> = ({
                 </div>
             </div>
 
-            {/* Appearance Section */}
-            <div>
-                <SectionTitle>Aparência</SectionTitle>
-                <Card>
+            {/* Accordion Groups */}
+            <div className="space-y-4">
+                
+                {/* Appearance */}
+                <SettingsGroup icon={Palette} title="Aparência" description="Tema e cores do aplicativo">
                     <div className="p-4 flex items-center justify-between">
                         <div className="flex items-center gap-4">
                             <div className="w-10 h-10 rounded-xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 dark:text-zinc-400">
@@ -305,13 +347,10 @@ export const Settings: React.FC<SettingsProps> = ({
                             ))}
                         </div>
                     </div>
-                </Card>
-            </div>
+                </SettingsGroup>
 
-            {/* Preferences Section */}
-            <div>
-                <SectionTitle>Preferências</SectionTitle>
-                <Card>
+                {/* Preferences */}
+                <SettingsGroup icon={Sliders} title="Preferências" description="Privacidade e notificações">
                     <SettingsItem 
                         icon={Shield} 
                         label="Modo Privacidade" 
@@ -326,13 +365,10 @@ export const Settings: React.FC<SettingsProps> = ({
                             rightElement={<ToggleSwitch checked={pushEnabled} onChange={onRequestPushPermission} />}
                         />
                     </div>
-                </Card>
-            </div>
+                </SettingsGroup>
 
-            {/* Data Management Section */}
-            <div>
-                <SectionTitle>Dados e Backup</SectionTitle>
-                <Card>
+                {/* Data & Backup */}
+                <SettingsGroup icon={Database} title="Dados e Backup" description="Importação, exportação e sincronização">
                     <SettingsItem 
                         icon={isImporting ? Loader2 : FileSpreadsheet}
                         label={isImporting ? "Processando..." : "Importar Planilha B3"}
@@ -369,13 +405,10 @@ export const Settings: React.FC<SettingsProps> = ({
                             rightElement={isSyncing && <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />}
                         />
                     </div>
-                </Card>
-            </div>
+                </SettingsGroup>
 
-            {/* System Status Section */}
-            <div>
-                <SectionTitle>Sistema</SectionTitle>
-                <Card>
+                {/* System */}
+                <SettingsGroup icon={Activity} title="Sistema" description="Status, versão e novidades">
                     <div className="p-4 border-b border-zinc-100 dark:border-zinc-800">
                         <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-4">
@@ -438,13 +471,10 @@ export const Settings: React.FC<SettingsProps> = ({
                             onClick={onShowChangelog}
                         />
                     </div>
-                </Card>
-            </div>
+                </SettingsGroup>
 
-            {/* Support Section */}
-            <div>
-                <SectionTitle>Suporte</SectionTitle>
-                <Card>
+                {/* Support */}
+                <SettingsGroup icon={LifeBuoy} title="Suporte" description="Ajuda e feedback">
                     <SettingsItem 
                         icon={Mail} 
                         label="Fale Conosco" 
@@ -460,13 +490,10 @@ export const Settings: React.FC<SettingsProps> = ({
                             onClick={() => {}} 
                         />
                     </div>
-                </Card>
-            </div>
+                </SettingsGroup>
 
-            {/* Danger Zone */}
-            <div>
-                <SectionTitle>Zona de Perigo</SectionTitle>
-                <Card className="border-rose-100 dark:border-rose-900/30">
+                {/* Danger Zone */}
+                <SettingsGroup icon={AlertTriangle} title="Zona de Perigo" description="Ações destrutivas">
                     <SettingsItem 
                         icon={Trash2} 
                         label="Resetar Aplicativo" 
@@ -474,7 +501,8 @@ export const Settings: React.FC<SettingsProps> = ({
                         onClick={() => setConfirmReset(true)}
                         isDanger
                     />
-                </Card>
+                </SettingsGroup>
+
             </div>
 
             {/* Footer */}
