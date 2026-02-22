@@ -295,95 +295,173 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                             </div>
                         </div>
 
-                        {/* Chart Container - Minimalist */}
-                        <div className="h-64 w-full">
-                            <ResponsiveContainer width="99%" height="100%">
+                        {/* Chart Container - Enhanced with Bars and Lines */}
+                        <div className="h-72 w-full bg-zinc-50/50 dark:bg-zinc-900/30 rounded-3xl p-4 border border-zinc-100 dark:border-zinc-800/50 relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 blur-3xl rounded-full -mr-16 -mt-16 group-hover:bg-indigo-500/10 transition-colors duration-700"></div>
+                            
+                            <ResponsiveContainer width="100%" height="100%">
                                 {chartType === 'WEALTH' ? (
-                                    <AreaChart data={filteredData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                                    <ComposedChart data={filteredData} margin={{ top: 10, right: 5, left: -20, bottom: 0 }}>
                                         <defs>
-                                            <linearGradient id="colorWealth" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
+                                            <linearGradient id="colorWealthBar" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.6}/>
+                                                <stop offset="95%" stopColor="#6366f1" stopOpacity={0.1}/>
+                                            </linearGradient>
+                                            <linearGradient id="colorWealthArea" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1}/>
                                                 <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
                                             </linearGradient>
                                         </defs>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.05} />
                                         <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 700 }} dy={10} minTickGap={30} />
                                         <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a' }} tickFormatter={(val) => `R$${val/1000}k`} />
                                         <RechartsTooltip 
-                                            contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '11px', padding: '12px', backdropFilter: 'blur(12px)' }}
+                                            cursor={{ fill: 'rgba(99, 102, 241, 0.05)' }}
+                                            contentStyle={{ borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(24, 24, 27, 0.95)', color: '#fff', fontSize: '11px', padding: '12px', backdropFilter: 'blur(16px)', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}
                                             formatter={(value: number, name: string) => [formatBRL(value), name === 'marketValue' ? 'Patrimônio' : 'Investido']}
-                                            labelStyle={{ color: '#a1a1aa', marginBottom: '4px', fontWeight: 700 }}
+                                            labelStyle={{ color: '#a1a1aa', marginBottom: '6px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}
                                         />
-                                        <Area type="monotone" dataKey="marketValue" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorWealth)" activeDot={{ r: 6, strokeWidth: 0, fill: '#6366f1' }} />
-                                        <Line type="monotone" dataKey="invested" stroke="#a1a1aa" strokeWidth={2} strokeDasharray="4 4" dot={false} activeDot={false} />
-                                    </AreaChart>
+                                        <Area type="monotone" dataKey="marketValue" stroke="none" fill="url(#colorWealthArea)" />
+                                        <Bar dataKey="marketValue" fill="url(#colorWealthBar)" radius={[6, 6, 0, 0]} maxBarSize={24} animationDuration={1500} />
+                                        <Line type="monotone" dataKey="marketValue" stroke="#6366f1" strokeWidth={3} dot={{ r: 3, fill: '#6366f1', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6, strokeWidth: 0, fill: '#6366f1' }} animationDuration={2000} />
+                                        <Line type="monotone" dataKey="invested" stroke="#a1a1aa" strokeWidth={2} strokeDasharray="5 5" dot={false} activeDot={false} opacity={0.6} />
+                                    </ComposedChart>
                                 ) : chartType === 'CASHFLOW' ? (
-                                    <ComposedChart data={filteredData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
+                                    <ComposedChart data={filteredData} margin={{ top: 10, right: 5, left: -20, bottom: 0 }}>
+                                        <defs>
+                                            <linearGradient id="colorCashBar" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.8}/>
+                                                <stop offset="95%" stopColor="#6366f1" stopOpacity={0.2}/>
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.05} />
                                         <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 700 }} dy={10} minTickGap={30} />
                                         <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a' }} tickFormatter={(val) => `R$${val/1000}k`} />
                                         <RechartsTooltip 
-                                            contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '11px', padding: '12px', backdropFilter: 'blur(12px)' }}
+                                            cursor={{ fill: 'rgba(99, 102, 241, 0.05)' }}
+                                            contentStyle={{ borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(24, 24, 27, 0.95)', color: '#fff', fontSize: '11px', padding: '12px', backdropFilter: 'blur(16px)' }}
                                             formatter={(value: number, name: string) => [formatBRL(value), name === 'contribution' ? 'Aporte Líquido' : 'Dividendos']}
-                                            labelStyle={{ color: '#a1a1aa', marginBottom: '4px', fontWeight: 700 }}
+                                            labelStyle={{ color: '#a1a1aa', marginBottom: '6px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}
                                         />
-                                        <Bar dataKey="contribution" fill="#6366f1" radius={[4, 4, 0, 0]} maxBarSize={32} />
-                                        <Line type="monotone" dataKey="dividend" stroke="#10b981" strokeWidth={2} dot={{r: 3, fill: "#10b981", strokeWidth: 0}} />
+                                        <Bar dataKey="contribution" fill="url(#colorCashBar)" radius={[6, 6, 0, 0]} maxBarSize={24} animationDuration={1500} />
+                                        <Line type="monotone" dataKey="contribution" stroke="#6366f1" strokeWidth={2} strokeDasharray="3 3" dot={false} opacity={0.4} />
+                                        <Line type="monotone" dataKey="dividend" stroke="#10b981" strokeWidth={3} dot={{r: 4, fill: "#10b981", strokeWidth: 2, stroke: "#fff"}} activeDot={{ r: 6, strokeWidth: 0, fill: '#10b981' }} animationDuration={2000} />
                                     </ComposedChart>
                                 ) : (
-                                    <AreaChart data={filteredData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                                    <ComposedChart data={filteredData} margin={{ top: 10, right: 5, left: -20, bottom: 0 }}>
                                         <defs>
-                                            <linearGradient id="colorReturn" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3}/>
+                                            <linearGradient id="colorReturnBar" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8}/>
+                                                <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.2}/>
+                                            </linearGradient>
+                                            <linearGradient id="colorReturnArea" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.1}/>
                                                 <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
                                             </linearGradient>
                                         </defs>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.05} />
                                         <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 700 }} dy={10} minTickGap={30} />
                                         <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a' }} tickFormatter={(val) => `${val}%`} />
                                         <RechartsTooltip 
-                                            contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '11px', padding: '12px', backdropFilter: 'blur(12px)' }}
+                                            cursor={{ fill: 'rgba(245, 158, 11, 0.05)' }}
+                                            contentStyle={{ borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(24, 24, 27, 0.95)', color: '#fff', fontSize: '11px', padding: '12px', backdropFilter: 'blur(16px)' }}
                                             formatter={(value: number) => [`${value.toFixed(2)}%`, 'Rentabilidade Acumulada']}
-                                            labelStyle={{ color: '#a1a1aa', marginBottom: '4px', fontWeight: 700 }}
+                                            labelStyle={{ color: '#a1a1aa', marginBottom: '6px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}
                                         />
-                                        <Area type="monotone" dataKey="returnPercent" stroke="#f59e0b" strokeWidth={2} fill="url(#colorReturn)" activeDot={{ r: 6, strokeWidth: 0, fill: '#f59e0b' }} />
-                                    </AreaChart>
+                                        <Area type="monotone" dataKey="returnPercent" stroke="none" fill="url(#colorReturnArea)" />
+                                        <Bar dataKey="returnPercent" fill="url(#colorReturnBar)" radius={[6, 6, 0, 0]} maxBarSize={24} animationDuration={1500} />
+                                        <Line type="monotone" dataKey="returnPercent" stroke="#f59e0b" strokeWidth={3} dot={{ r: 4, fill: '#f59e0b', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6, strokeWidth: 0, fill: '#f59e0b' }} animationDuration={2000} />
+                                        <ReferenceLine y={0} stroke="#ef4444" strokeDasharray="3 3" opacity={0.5} />
+                                    </ComposedChart>
                                 )}
                             </ResponsiveContainer>
                         </div>
                     </div>
 
-                    {/* Metrics Grid - Clean & Flat */}
-                    <div className="grid grid-cols-2 gap-x-8 gap-y-6 border-t border-zinc-100 dark:border-zinc-900 pt-6">
-                        <div>
-                            <p className="text-[10px] font-bold text-zinc-400 uppercase mb-1">CAGR (Anual)</p>
-                            <p className="text-lg font-black text-zinc-900 dark:text-white">{stats.cagr.toFixed(2)}%</p>
+                    {/* Metrics Grid - Enhanced with Cards */}
+                    <div className="grid grid-cols-2 gap-4 border-t border-zinc-100 dark:border-zinc-900 pt-8 mb-8">
+                        <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
+                            <div className="flex items-center gap-2 mb-2">
+                                <div className="w-5 h-5 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                                    <TrendingUp className="w-3 h-3" />
+                                </div>
+                                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">CAGR (Anual)</p>
+                            </div>
+                            <p className="text-xl font-black text-zinc-900 dark:text-white">{stats.cagr.toFixed(2)}%</p>
+                            <p className="text-[9px] text-zinc-500 font-medium mt-1">Taxa de crescimento anual</p>
                         </div>
-                        <div>
-                            <p className="text-[10px] font-bold text-zinc-400 uppercase mb-1">Win Rate</p>
-                            <p className="text-lg font-black text-emerald-500">{stats.winRate.toFixed(0)}% <span className="text-xs text-zinc-400 font-medium">positivos</span></p>
+
+                        <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
+                            <div className="flex items-center gap-2 mb-2">
+                                <div className="w-5 h-5 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                                    <Target className="w-3 h-3" />
+                                </div>
+                                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Win Rate</p>
+                            </div>
+                            <p className="text-xl font-black text-emerald-500">{stats.winRate.toFixed(0)}%</p>
+                            <p className="text-[9px] text-zinc-500 font-medium mt-1">{stats.positiveMonths} meses positivos</p>
                         </div>
-                        <div>
-                            <p className="text-[10px] font-bold text-zinc-400 uppercase mb-1">Aporte Médio</p>
-                            <p className="text-base font-bold text-zinc-700 dark:text-zinc-300">{formatBRL(stats.avgContribution)}</p>
+
+                        <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
+                            <div className="flex items-center gap-2 mb-2">
+                                <div className="w-5 h-5 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                                    <ArrowUpRight className="w-3 h-3" />
+                                </div>
+                                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Aporte Médio</p>
+                            </div>
+                            <p className="text-base font-black text-zinc-800 dark:text-zinc-200">{formatBRL(stats.avgContribution)}</p>
+                            <p className="text-[9px] text-zinc-500 font-medium mt-1">Média mensal investida</p>
                         </div>
-                        <div>
-                            <p className="text-[10px] font-bold text-zinc-400 uppercase mb-1">Proventos Totais</p>
-                            <p className="text-base font-bold text-zinc-700 dark:text-zinc-300">{formatBRL(stats.totalDividends)}</p>
+
+                        <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
+                            <div className="flex items-center gap-2 mb-2">
+                                <div className="w-5 h-5 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                                    <CircleDollarSign className="w-3 h-3" />
+                                </div>
+                                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Proventos</p>
+                            </div>
+                            <p className="text-base font-black text-zinc-800 dark:text-zinc-200">{formatBRL(stats.totalDividends)}</p>
+                            <p className="text-[9px] text-zinc-500 font-medium mt-1">Total recebido no período</p>
                         </div>
-                        <div>
-                            <p className="text-[10px] font-bold text-zinc-400 uppercase mb-1">Melhor Mês</p>
-                            <div className="flex items-baseline gap-2">
-                                <span className="text-sm font-bold text-zinc-700 dark:text-zinc-300">{stats.bestMonth.label}</span>
-                                <span className="text-xs font-bold text-emerald-500">+{stats.bestMonth.change.toFixed(2)}%</span>
+
+                        <div className="bg-emerald-50/50 dark:bg-emerald-900/10 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/20">
+                            <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-1">Melhor Mês</p>
+                            <div className="flex items-baseline justify-between">
+                                <span className="text-sm font-black text-zinc-800 dark:text-zinc-200">{stats.bestMonth.label}</span>
+                                <span className="text-xs font-black text-emerald-600">+{stats.bestMonth.change.toFixed(2)}%</span>
                             </div>
                         </div>
-                        <div>
-                            <p className="text-[10px] font-bold text-zinc-400 uppercase mb-1">Pior Mês</p>
-                            <div className="flex items-baseline gap-2">
-                                <span className="text-sm font-bold text-zinc-700 dark:text-zinc-300">{stats.worstMonth.label}</span>
-                                <span className="text-xs font-bold text-rose-500">{stats.worstMonth.change.toFixed(2)}%</span>
+
+                        <div className="bg-rose-50/50 dark:bg-rose-900/10 p-4 rounded-2xl border border-rose-100 dark:border-rose-900/20">
+                            <p className="text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest mb-1">Pior Mês</p>
+                            <div className="flex items-baseline justify-between">
+                                <span className="text-sm font-black text-zinc-800 dark:text-zinc-200">{stats.worstMonth.label}</span>
+                                <span className="text-xs font-black text-rose-600">{stats.worstMonth.change.toFixed(2)}%</span>
                             </div>
+                        </div>
+                    </div>
+
+                    {/* Goal Progress Section */}
+                    <div className="bg-indigo-600 rounded-[2rem] p-6 text-white relative overflow-hidden shadow-xl shadow-indigo-500/20">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 blur-2xl rounded-full -mr-16 -mt-16"></div>
+                        <div className="relative z-10">
+                            <div className="flex items-center gap-2 mb-4">
+                                <Trophy className="w-5 h-5 text-indigo-200" />
+                                <h3 className="text-sm font-black uppercase tracking-widest">Próxima Conquista</h3>
+                            </div>
+                            
+                            <div className="flex justify-between items-end mb-2">
+                                <span className="text-2xl font-black tracking-tight">Independência</span>
+                                <span className="text-xs font-bold opacity-80">72% Concluído</span>
+                            </div>
+                            
+                            <div className="h-3 w-full bg-white/20 rounded-full overflow-hidden mb-4">
+                                <div className="h-full bg-white rounded-full transition-all duration-1000" style={{ width: '72%' }}></div>
+                            </div>
+                            
+                            <p className="text-xs font-medium text-indigo-100 leading-relaxed">
+                                Você está a apenas <span className="font-black text-white">R$ 28.400</span> de atingir sua próxima meta patrimonial. Continue com os aportes constantes!
+                            </p>
                         </div>
                     </div>
 
