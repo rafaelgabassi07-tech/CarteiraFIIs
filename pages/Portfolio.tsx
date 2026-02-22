@@ -873,34 +873,34 @@ const SimulatorCard = ({ data, ticker, dividends = [] }: any) => {
     if (!simulation) return null;
 
     return (
-        <div className="bg-white dark:bg-zinc-900 rounded-[2rem] p-6 border border-zinc-200 dark:border-zinc-800 shadow-sm mb-6">
+        <div className="bg-white dark:bg-zinc-900 rounded-[2rem] p-5 border border-zinc-200 dark:border-zinc-800 shadow-sm mb-6">
             {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-                <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-                        <Calculator className="w-6 h-6" />
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-5">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                        <Calculator className="w-5 h-5" />
                     </div>
                     <div>
-                        <h3 className="text-lg font-black text-zinc-900 dark:text-white leading-tight">Simulador de Retorno</h3>
-                        <p className="text-xs font-medium text-zinc-500">Histórico de 5 Anos com Reinvestimento</p>
+                        <h3 className="text-base font-black text-zinc-900 dark:text-white leading-tight">Simulador de Retorno</h3>
+                        <p className="text-[10px] font-medium text-zinc-500">Histórico de 5 Anos</p>
                     </div>
                 </div>
                 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                     <button 
                         onClick={() => setReinvest(!reinvest)}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all border ${reinvest ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/30 dark:border-indigo-800 dark:text-indigo-300' : 'bg-transparent border-zinc-200 text-zinc-500 dark:border-zinc-700'}`}
+                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all border ${reinvest ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/30 dark:border-indigo-800 dark:text-indigo-300' : 'bg-transparent border-zinc-200 text-zinc-500 dark:border-zinc-700'}`}
                     >
                         <RefreshCcw className={`w-3 h-3 ${reinvest ? 'animate-spin-slow' : ''}`} />
                         {reinvest ? 'Reinvestindo' : 'Sem Reinvestir'}
                     </button>
 
-                    <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-xl p-1">
+                    <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-lg p-1">
                         {[1000, 5000, 10000].map(val => (
                             <button 
                                 key={val} 
                                 onClick={() => setAmount(val)} 
-                                className={`px-3 py-1.5 text-[10px] font-black rounded-lg transition-all ${amount === val ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                                className={`px-2.5 py-1 text-[9px] font-black rounded-md transition-all ${amount === val ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                             >
                                 {val/1000}k
                             </button>
@@ -910,43 +910,43 @@ const SimulatorCard = ({ data, ticker, dividends = [] }: any) => {
             </div>
 
             {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
                 {/* Left: Stats */}
-                <div className="lg:col-span-1 flex flex-col justify-between gap-6">
+                <div className="lg:col-span-1 flex flex-col justify-between gap-4">
                     <div>
-                        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">Resultado Final</p>
-                        <h2 className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter mb-2">
+                        <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Resultado Final</p>
+                        <h2 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter mb-2">
                             {formatBRL(simulation.finalValue)}
                         </h2>
                         <div className="flex items-center gap-2">
-                            <span className={`px-2 py-1 rounded-md text-xs font-black ${simulation.roi >= 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400'}`}>
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-black ${simulation.roi >= 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400'}`}>
                                 {simulation.roi > 0 ? '+' : ''}{simulation.roi.toFixed(1)}%
                             </span>
-                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                            <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">
                                 vs CDI {simulation.cdiRoi.toFixed(1)}%
                             </span>
                         </div>
                     </div>
 
-                    <div className="space-y-3">
-                        <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-100 dark:border-zinc-800">
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-100 dark:border-zinc-800">
                             <div className="flex justify-between items-center mb-1">
-                                <span className="text-[9px] font-black text-zinc-400 uppercase tracking-wider">Dividendos</span>
+                                <span className="text-[8px] font-black text-zinc-400 uppercase tracking-wider">Dividendos</span>
                                 <Coins className="w-3 h-3 text-zinc-400" />
                             </div>
-                            <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(simulation.totalDividends)}</p>
+                            <p className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(simulation.totalDividends)}</p>
                         </div>
 
-                        <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-100 dark:border-zinc-800">
+                        <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-100 dark:border-zinc-800">
                             <div className="flex justify-between items-center mb-1">
-                                <span className="text-[9px] font-black text-zinc-400 uppercase tracking-wider">Cotas</span>
+                                <span className="text-[8px] font-black text-zinc-400 uppercase tracking-wider">Cotas</span>
                                 <Wallet className="w-3 h-3 text-zinc-400" />
                             </div>
-                            <div className="flex items-baseline gap-2">
-                                <p className="text-lg font-black text-zinc-900 dark:text-white">{simulation.shares}</p>
+                            <div className="flex items-baseline gap-1">
+                                <p className="text-sm font-black text-zinc-900 dark:text-white">{simulation.shares}</p>
                                 {reinvest && simulation.shares > simulation.initialShares && (
-                                    <span className="text-xs font-bold text-emerald-500">+{simulation.shares - simulation.initialShares}</span>
+                                    <span className="text-[9px] font-bold text-emerald-500">+{simulation.shares - simulation.initialShares}</span>
                                 )}
                             </div>
                         </div>
@@ -954,9 +954,9 @@ const SimulatorCard = ({ data, ticker, dividends = [] }: any) => {
                 </div>
 
                 {/* Right: Chart */}
-                <div className="lg:col-span-2 h-[280px] w-full bg-zinc-50 dark:bg-zinc-800/20 rounded-3xl border border-zinc-100 dark:border-zinc-800/50 p-4 relative">
+                <div className="lg:col-span-2 h-[200px] w-full bg-zinc-50 dark:bg-zinc-800/20 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 p-3 relative">
                     <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={simulation.chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <AreaChart data={simulation.chartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
                             <defs>
                                 <linearGradient id="colorSimValue" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
