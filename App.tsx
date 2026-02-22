@@ -181,57 +181,6 @@ const App: React.FC = () => {
     }
   }, [isReady]);
 
-  // --- LOGICA DE NOTIFICAÇÕES INTELIGENTES ---
-  useEffect(() => {
-      if (!dividends || dividends.length === 0 || !transactions || transactions.length === 0) return;
-
-      const newNotifs: AppNotification[] = [];
-      const existingIds = new Set(notifications.map(n => n.id));
-
-      dividends.forEach(div => {
-          if (!div || !div.ticker) return;
-          const qty = getQuantityOnDate(div.ticker, div.dateCom, transactions);
-          if (qty > 0) {
-              const total = qty * div.rate;
-              
-              if (isSameDayLocal(div.paymentDate)) {
-                  const id = `pay-${div.ticker}-${div.paymentDate}`;
-                  if (!existingIds.has(id)) {
-                      newNotifs.push({
-                          id,
-                          title: 'Pagamento Recebido 💰',
-                          message: `${div.ticker} pagou R$ ${total.toLocaleString('pt-BR', {minimumFractionDigits: 2})} hoje!`,
-                          type: 'success',
-                          category: 'payment',
-                          timestamp: Date.now(),
-                          read: false
-                      });
-                  }
-              }
-
-              if (isSameDayLocal(div.dateCom)) {
-                  const id = `datacom-${div.ticker}-${div.dateCom}`;
-                  if (!existingIds.has(id)) {
-                      newNotifs.push({
-                          id,
-                          title: 'Data Com Hoje 📅',
-                          message: `Último dia para garantir proventos de ${div.ticker}.`,
-                          type: 'info',
-                          category: 'datacom',
-                          timestamp: Date.now(),
-                          read: false
-                      });
-                  }
-              }
-          }
-      });
-
-      if (newNotifs.length > 0) {
-          setNotifications(prev => [...newNotifs, ...prev]);
-          if (navigator.vibrate) navigator.vibrate(200);
-      }
-
-  }, [dividends, transactions]);
 
   // --- PWA INSTALL HANDLER ---
   useEffect(() => {
@@ -635,6 +584,99 @@ const App: React.FC = () => {
   const insights = useMemo(() => {
       return analyzePortfolio(memoizedPortfolioData.portfolio, marketIndicators.ipca);
   }, [memoizedPortfolioData.portfolio, marketIndicators.ipca]);
+
+  // --- LOGICA DE NOTIFICAÇÕES INTELIGENTES ---
+  useEffect(() => {
+      if (!dividends || dividends.length === 0 || !transactions || transactions.length === 0) return;
+
+      const newNotifs: AppNotification[] = [];
+      const existingIds = new Set(notifications.map(n => n.id));
+
+      // 1. Pagamentos e Data Com
+      dividends.forEach(div => {
+          if (!div || !div.ticker) return;
+          const qty = getQuantityOnDate(div.ticker, div.dateCom, transactions);
+          if (qty > 0) {
+              const total = qty * div.rate;
+              
+              if (isSameDayLocal(div.paymentDate)) {
+                  const id = `pay-${div.ticker}-${div.paymentDate}`;
+                  if (!existingIds.has(id)) {
+                      newNotifs.push({
+                          id,
+                          title: 'Pagamento Recebido 💰',
+                          message: `${div.ticker} pagou R$ ${total.toLocaleString('pt-BR', {minimumFractionDigits: 2})} hoje!`,
+                          type: 'success',
+                          category: 'payment',
+                          timestamp: Date.now(),
+                          read: false
+                      });
+                  }
+              }
+
+              if (isSameDayLocal(div.dateCom)) {
+                  const id = `datacom-${div.ticker}-${div.dateCom}`;
+                  if (!existingIds.has(id)) {
+                      newNotifs.push({
+                          id,
+                          title: 'Data Com Hoje 📅',
+                          message: `Último dia para garantir proventos de ${div.ticker}.`,
+                          type: 'info',
+                          category: 'datacom',
+                          timestamp: Date.now(),
+                          read: false
+                      });
+                  }
+              }
+          }
+      });
+
+      // 2. Alertas de Preço (Variação > 5%)
+      Object.entries(quotes).forEach(([ticker, quote]) => {
+          const change = quote.regularMarketChangePercent;
+          if (change && Math.abs(change) >= 5) {
+              const id = `price-${ticker}-${new Date().toISOString().split('T')[0]}`;
+              if (!existingIds.has(id)) {
+                  newNotifs.push({
+                      id,
+                      title: change > 0 ? 'Alta Expressiva 🚀' : 'Queda Expressiva 📉',
+                      message: `${ticker} está com variação de ${change.toFixed(2)}% no dia.`,
+                      type: change > 0 ? 'success' : 'warning',
+                      category: 'alert',
+                      timestamp: Date.now(),
+                      read: false
+                  });
+              }
+          }
+      });
+
+      // 3. Alertas de Rebalanceamento (Concentração > 20%)
+      if (memoizedPortfolioData.portfolio.length > 0) {
+          memoizedPortfolioData.portfolio.forEach(asset => {
+              const weight = (asset.quantity * (asset.currentPrice || 0)) / memoizedPortfolioData.balance;
+              if (weight > 0.20) {
+                  const id = `rebalance-${asset.ticker}-${new Date().getMonth()}-${new Date().getFullYear()}`;
+                  if (!existingIds.has(id)) {
+                      newNotifs.push({
+                          id,
+                          title: 'Alerta de Concentração ⚖️',
+                          message: `${asset.ticker} representa ${(weight * 100).toFixed(1)}% da sua carteira. Considere rebalancear.`,
+                          type: 'warning',
+                          category: 'alert',
+                          timestamp: Date.now(),
+                          read: false
+                      });
+                  }
+              }
+          });
+      }
+
+      if (newNotifs.length > 0) {
+          setNotifications(prev => [...newNotifs, ...prev]);
+          if (navigator.vibrate) navigator.vibrate(200);
+      }
+
+  }, [dividends, transactions, quotes, memoizedPortfolioData.balance]);
 
   // Determine header visibility logic
   // CRITICAL FIX: Force header visible in Settings to prevent flicker

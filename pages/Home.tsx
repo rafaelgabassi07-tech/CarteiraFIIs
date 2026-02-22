@@ -2,7 +2,8 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { AssetPosition, DividendReceipt, AssetType, PortfolioInsight, Transaction } from '../types';
-import { CircleDollarSign, CalendarClock, PieChart as PieIcon, ArrowUpRight, ArrowDownLeft, Wallet, ArrowRight, Sparkles, Trophy, Anchor, Coins, Crown, Info, X, Zap, ShieldCheck, AlertTriangle, Play, Pause, TrendingUp, TrendingDown, Target, Snowflake, Layers, Medal, Rocket, Gem, Lock, Building2, Briefcase, ShoppingCart, Coffee, Plane, Star, Award, Umbrella, ZapOff, CheckCircle2, ListFilter, History, Activity, Calendar, Percent, BarChart3, Share2 } from 'lucide-react';
+import { CircleDollarSign, CalendarClock, PieChart as PieIcon, ArrowUpRight, ArrowDownLeft, Wallet, ArrowRight, Sparkles, Trophy, Anchor, Coins, Crown, Info, X, Zap, ShieldCheck, AlertTriangle, Play, Pause, TrendingUp, TrendingDown, Target, Snowflake, Layers, Medal, Rocket, Gem, Lock, Building2, Briefcase, ShoppingCart, Coffee, Plane, Star, Award, Umbrella, ZapOff, CheckCircle2, ListFilter, History, Activity, Calendar, Percent, BarChart3, Share2, ChevronDown } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, CartesianGrid, AreaChart, Area, XAxis, YAxis, ComposedChart, Bar, Line, ReferenceLine, Label, BarChart } from 'recharts';
 import { formatBRL, formatDateShort, getMonthName, getDaysUntil } from '../utils/formatters';
@@ -275,92 +276,130 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                                 <button onClick={() => setChartType('RETURN')} className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${chartType === 'RETURN' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-md' : 'text-zinc-400 hover:text-zinc-600'}`}>Retorno</button>
                             </div>
 
-                            <button 
-                                onClick={() => setShowTimeFilter(!showTimeFilter)}
-                                className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-zinc-100/50 dark:bg-zinc-900/50 text-[10px] font-black text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-all active:scale-95"
-                            >
-                                <Calendar className="w-3.5 h-3.5 text-indigo-500" />
-                                {timeRange === 'MAX' ? 'Tudo' : timeRange}
-                            </button>
+                            <div className="relative">
+                                <button 
+                                    onClick={() => setShowTimeFilter(!showTimeFilter)}
+                                    className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-zinc-100/50 dark:bg-zinc-900/50 text-[10px] font-black text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-all active:scale-95"
+                                >
+                                    <Calendar className="w-3.5 h-3.5 text-indigo-500" />
+                                    {timeRange === 'MAX' ? 'Tudo' : timeRange}
+                                    <ChevronDown className={`w-3 h-3 transition-transform duration-300 ${showTimeFilter ? 'rotate-180' : ''}`} />
+                                </button>
+
+                                <AnimatePresence>
+                                    {showTimeFilter && (
+                                        <motion.div 
+                                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                            className="absolute right-0 mt-2 w-32 bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-zinc-100 dark:border-zinc-800 p-1.5 z-50 backdrop-blur-xl"
+                                        >
+                                            {(['6M', '1Y', '2Y', '5Y', 'MAX'] as const).map((range) => (
+                                                <button
+                                                    key={range}
+                                                    onClick={() => {
+                                                        setTimeRange(range);
+                                                        setShowTimeFilter(false);
+                                                    }}
+                                                    className={`w-full text-left px-4 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${timeRange === range ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400' : 'text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}
+                                                >
+                                                    {range === 'MAX' ? 'Tudo' : range}
+                                                </button>
+                                            ))}
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
                         </div>
 
                         <div className="h-80 w-full relative">
-                            <ResponsiveContainer width="100%" height="100%">
-                                {chartType === 'WEALTH' ? (
-                                    <ComposedChart data={filteredData} margin={{ top: 10, right: 5, left: -20, bottom: 0 }}>
-                                        <defs>
-                                            <linearGradient id="colorWealthBar" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.6}/>
-                                                <stop offset="95%" stopColor="#6366f1" stopOpacity={0.1}/>
-                                            </linearGradient>
-                                            <linearGradient id="colorWealthArea" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1}/>
-                                                <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                                            </linearGradient>
-                                        </defs>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.05} />
-                                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 700 }} dy={10} minTickGap={30} />
-                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a' }} tickFormatter={(val) => `R$${val/1000}k`} />
-                                        <RechartsTooltip 
-                                            cursor={{ fill: 'rgba(99, 102, 241, 0.05)' }}
-                                            contentStyle={{ borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(24, 24, 27, 0.95)', color: '#fff', fontSize: '11px', padding: '12px', backdropFilter: 'blur(16px)', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}
-                                            formatter={(value: number, name: string) => [formatBRL(value), name === 'marketValue' ? 'Patrimônio' : 'Investido']}
-                                            labelStyle={{ color: '#a1a1aa', marginBottom: '6px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}
-                                        />
-                                        <Area type="monotone" dataKey="marketValue" stroke="none" fill="url(#colorWealthArea)" tooltipType="none" />
-                                        <Bar dataKey="marketValue" fill="url(#colorWealthBar)" radius={[6, 6, 0, 0]} maxBarSize={24} animationDuration={1500} tooltipType="none" />
-                                        <Line type="monotone" dataKey="marketValue" stroke="#6366f1" strokeWidth={3} dot={{ r: 3, fill: '#6366f1', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6, strokeWidth: 0, fill: '#6366f1' }} animationDuration={2000} />
-                                        <Line type="monotone" dataKey="invested" stroke="#a1a1aa" strokeWidth={2} strokeDasharray="5 5" dot={false} activeDot={false} opacity={0.6} />
-                                    </ComposedChart>
-                                ) : chartType === 'CASHFLOW' ? (
-                                    <ComposedChart data={filteredData} margin={{ top: 10, right: 5, left: -20, bottom: 0 }}>
-                                        <defs>
-                                            <linearGradient id="colorCashBar" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.8}/>
-                                                <stop offset="95%" stopColor="#6366f1" stopOpacity={0.2}/>
-                                            </linearGradient>
-                                        </defs>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.05} />
-                                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 700 }} dy={10} minTickGap={30} />
-                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a' }} tickFormatter={(val) => `R$${val/1000}k`} />
-                                        <RechartsTooltip 
-                                            cursor={{ fill: 'rgba(99, 102, 241, 0.05)' }}
-                                            contentStyle={{ borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(24, 24, 27, 0.95)', color: '#fff', fontSize: '11px', padding: '12px', backdropFilter: 'blur(16px)' }}
-                                            formatter={(value: number, name: string) => [formatBRL(value), name === 'contribution' ? 'Aporte Líquido' : 'Dividendos']}
-                                            labelStyle={{ color: '#a1a1aa', marginBottom: '6px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}
-                                        />
-                                        <Bar dataKey="contribution" fill="url(#colorCashBar)" radius={[6, 6, 0, 0]} maxBarSize={24} animationDuration={1500} />
-                                        <Line type="monotone" dataKey="contribution" stroke="#6366f1" strokeWidth={2} strokeDasharray="3 3" dot={false} opacity={0.4} tooltipType="none" />
-                                        <Line type="monotone" dataKey="dividend" stroke="#10b981" strokeWidth={3} dot={{r: 4, fill: "#10b981", strokeWidth: 2, stroke: "#fff"}} activeDot={{ r: 6, strokeWidth: 0, fill: '#10b981' }} animationDuration={2000} />
-                                    </ComposedChart>
-                                ) : (
-                                    <ComposedChart data={filteredData} margin={{ top: 10, right: 5, left: -20, bottom: 0 }}>
-                                        <defs>
-                                            <linearGradient id="colorReturnBar" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8}/>
-                                                <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.2}/>
-                                            </linearGradient>
-                                            <linearGradient id="colorReturnArea" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.1}/>
-                                                <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
-                                            </linearGradient>
-                                        </defs>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.05} />
-                                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 700 }} dy={10} minTickGap={30} />
-                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a' }} tickFormatter={(val) => `${val}%`} />
-                                        <RechartsTooltip 
-                                            cursor={{ fill: 'rgba(245, 158, 11, 0.05)' }}
-                                            contentStyle={{ borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(24, 24, 27, 0.95)', color: '#fff', fontSize: '11px', padding: '12px', backdropFilter: 'blur(16px)' }}
-                                            formatter={(value: number) => [`${value.toFixed(2)}%`, 'Rentabilidade Acumulada']}
-                                            labelStyle={{ color: '#a1a1aa', marginBottom: '6px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}
-                                        />
-                                        <Area type="monotone" dataKey="returnPercent" stroke="none" fill="url(#colorReturnArea)" tooltipType="none" />
-                                        <Bar dataKey="returnPercent" fill="url(#colorReturnBar)" radius={[6, 6, 0, 0]} maxBarSize={24} animationDuration={1500} tooltipType="none" />
-                                        <Line type="monotone" dataKey="returnPercent" stroke="#f59e0b" strokeWidth={3} dot={{ r: 4, fill: '#f59e0b', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6, strokeWidth: 0, fill: '#f59e0b' }} animationDuration={2000} />
-                                        <ReferenceLine y={0} stroke="#ef4444" strokeDasharray="3 3" opacity={0.5} />
-                                    </ComposedChart>
-                                )}
-                            </ResponsiveContainer>
+                            <AnimatePresence mode="wait">
+                                <motion.div
+                                    key={chartType}
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -20 }}
+                                    transition={{ duration: 0.3, ease: 'easeOut' }}
+                                    className="w-full h-full"
+                                >
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        {chartType === 'WEALTH' ? (
+                                            <ComposedChart data={filteredData} margin={{ top: 10, right: 5, left: -20, bottom: 0 }}>
+                                                <defs>
+                                                    <linearGradient id="colorWealthBar" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.6}/>
+                                                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0.1}/>
+                                                    </linearGradient>
+                                                    <linearGradient id="colorWealthArea" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1}/>
+                                                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                                                    </linearGradient>
+                                                </defs>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.05} />
+                                                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 700 }} dy={10} minTickGap={30} />
+                                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a' }} tickFormatter={(val) => `R$${val/1000}k`} />
+                                                <RechartsTooltip 
+                                                    cursor={{ fill: 'rgba(99, 102, 241, 0.05)' }}
+                                                    contentStyle={{ borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(24, 24, 27, 0.95)', color: '#fff', fontSize: '11px', padding: '12px', backdropFilter: 'blur(16px)', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}
+                                                    formatter={(value: number, name: string) => [formatBRL(value), name === 'marketValue' ? 'Patrimônio' : 'Investido']}
+                                                    labelStyle={{ color: '#a1a1aa', marginBottom: '6px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                                                />
+                                                <Area type="monotone" dataKey="marketValue" stroke="none" fill="url(#colorWealthArea)" tooltipType="none" />
+                                                <Bar dataKey="marketValue" fill="url(#colorWealthBar)" radius={[6, 6, 0, 0]} maxBarSize={24} animationDuration={1500} tooltipType="none" />
+                                                <Line type="monotone" dataKey="marketValue" stroke="#6366f1" strokeWidth={3} dot={{ r: 3, fill: '#6366f1', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6, strokeWidth: 0, fill: '#6366f1' }} animationDuration={2000} />
+                                                <Line type="monotone" dataKey="invested" stroke="#a1a1aa" strokeWidth={2} strokeDasharray="5 5" dot={false} activeDot={false} opacity={0.6} />
+                                            </ComposedChart>
+                                        ) : chartType === 'CASHFLOW' ? (
+                                            <ComposedChart data={filteredData} margin={{ top: 10, right: 5, left: -20, bottom: 0 }}>
+                                                <defs>
+                                                    <linearGradient id="colorCashBar" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.8}/>
+                                                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0.2}/>
+                                                    </linearGradient>
+                                                </defs>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.05} />
+                                                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 700 }} dy={10} minTickGap={30} />
+                                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a' }} tickFormatter={(val) => `R$${val/1000}k`} />
+                                                <RechartsTooltip 
+                                                    cursor={{ fill: 'rgba(99, 102, 241, 0.05)' }}
+                                                    contentStyle={{ borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(24, 24, 27, 0.95)', color: '#fff', fontSize: '11px', padding: '12px', backdropFilter: 'blur(16px)' }}
+                                                    formatter={(value: number, name: string) => [formatBRL(value), name === 'contribution' ? 'Aporte Líquido' : 'Dividendos']}
+                                                    labelStyle={{ color: '#a1a1aa', marginBottom: '6px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                                                />
+                                                <Bar dataKey="contribution" fill="url(#colorCashBar)" radius={[6, 6, 0, 0]} maxBarSize={24} animationDuration={1500} />
+                                                <Line type="monotone" dataKey="contribution" stroke="#6366f1" strokeWidth={2} strokeDasharray="3 3" dot={false} opacity={0.4} tooltipType="none" />
+                                                <Line type="monotone" dataKey="dividend" stroke="#10b981" strokeWidth={3} dot={{r: 4, fill: "#10b981", strokeWidth: 2, stroke: "#fff"}} activeDot={{ r: 6, strokeWidth: 0, fill: '#10b981' }} animationDuration={2000} />
+                                            </ComposedChart>
+                                        ) : (
+                                            <ComposedChart data={filteredData} margin={{ top: 10, right: 5, left: -20, bottom: 0 }}>
+                                                <defs>
+                                                    <linearGradient id="colorReturnBar" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8}/>
+                                                        <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.2}/>
+                                                    </linearGradient>
+                                                    <linearGradient id="colorReturnArea" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.1}/>
+                                                        <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+                                                    </linearGradient>
+                                                </defs>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.05} />
+                                                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 700 }} dy={10} minTickGap={30} />
+                                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a' }} tickFormatter={(val) => `${val}%`} />
+                                                <RechartsTooltip 
+                                                    cursor={{ fill: 'rgba(245, 158, 11, 0.05)' }}
+                                                    contentStyle={{ borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(24, 24, 27, 0.95)', color: '#fff', fontSize: '11px', padding: '12px', backdropFilter: 'blur(16px)' }}
+                                                    formatter={(value: number) => [`${value.toFixed(2)}%`, 'Rentabilidade Acumulada']}
+                                                    labelStyle={{ color: '#a1a1aa', marginBottom: '6px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                                                />
+                                                <Area type="monotone" dataKey="returnPercent" stroke="none" fill="url(#colorReturnArea)" tooltipType="none" />
+                                                <Bar dataKey="returnPercent" fill="url(#colorReturnBar)" radius={[6, 6, 0, 0]} maxBarSize={24} animationDuration={1500} tooltipType="none" />
+                                                <Line type="monotone" dataKey="returnPercent" stroke="#f59e0b" strokeWidth={3} dot={{ r: 4, fill: '#f59e0b', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6, strokeWidth: 0, fill: '#f59e0b' }} animationDuration={2000} />
+                                                <ReferenceLine y={0} stroke="#ef4444" strokeDasharray="3 3" opacity={0.5} />
+                                            </ComposedChart>
+                                        )}
+                                    </ResponsiveContainer>
+                                </motion.div>
+                            </AnimatePresence>
                         </div>
                     </div>
 
@@ -685,7 +724,12 @@ const StoryViewer = ({
 };
 
 const BentoCard = ({ title, value, subtext, icon: Icon, colorClass, onClick, className, info }: any) => (
-    <button onClick={onClick} className={`relative overflow-hidden bg-white dark:bg-zinc-900 p-4 rounded-[1.5rem] flex flex-col justify-between items-start text-left shadow-lg shadow-zinc-200/50 dark:shadow-black/20 border border-zinc-100 dark:border-zinc-800 press-effect h-full min-h-[120px] group transition-all duration-300 hover:border-zinc-200 dark:hover:border-zinc-700 ${className}`}>
+    <motion.button 
+        whileHover={{ y: -4, scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        onClick={onClick} 
+        className={`relative overflow-hidden bg-white dark:bg-zinc-900 p-4 rounded-[1.5rem] flex flex-col justify-between items-start text-left shadow-lg shadow-zinc-200/50 dark:shadow-black/20 border border-zinc-100 dark:border-zinc-800 press-effect h-full min-h-[120px] group transition-all duration-300 hover:border-zinc-200 dark:hover:border-zinc-700 ${className}`}
+    >
         <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-white/0 to-zinc-100/50 dark:to-zinc-800/50 rounded-bl-[3rem] -mr-4 -mt-4 transition-transform group-hover:scale-110 duration-500"></div>
         
         <div className="flex justify-between w-full mb-3 relative z-10">
@@ -704,7 +748,7 @@ const BentoCard = ({ title, value, subtext, icon: Icon, colorClass, onClick, cla
             <p className="text-xl font-black text-zinc-900 dark:text-white tracking-tight leading-none">{typeof value === 'object' ? '' : value}</p>
             {subtext && <p className="text-[10px] text-zinc-500 font-bold mt-1">{subtext}</p>}
         </div>
-    </button>
+    </motion.button>
 );
 
 const ProgressBar = ({ current, target, label, colorClass, privacyMode }: any) => {
@@ -1015,16 +1059,22 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
   }, [goalsData, goalTab]);
 
   return (
-    <div className="space-y-4 pb-8">
+    <motion.div 
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="space-y-4 pb-8"
+    >
         <StoriesBar 
             insights={insights} 
             onSelectStory={(s) => setSelectedStoryId(s.id)} 
             viewedIds={viewedStories}
         />
 
-        <div 
+        <motion.div 
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.99 }}
             onClick={() => setShowEvolution(true)}
-            className="relative w-full min-h-[200px] rounded-[2rem] bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl shadow-black/40 group anim-fade-in cursor-pointer active:scale-[0.98] transition-all duration-300"
+            className="relative w-full min-h-[200px] rounded-[2rem] bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl shadow-black/40 group anim-fade-in cursor-pointer transition-all duration-300"
         >
             {/* Background Effects */}
             <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-indigo-600/20 blur-[100px] rounded-full pointer-events-none -mr-20 -mt-20 mix-blend-screen animate-pulse-slow group-hover:bg-indigo-600/30 transition-colors"></div>
@@ -1083,7 +1133,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                     </div>
                 </div>
             </div>
-        </div>
+        </motion.div>
 
         <div className="grid grid-cols-2 gap-2 anim-slide-up">
             <BentoCard 
@@ -1127,16 +1177,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
             />
 
             <BentoCard 
-                title="Evolução" 
-                value="Histórico" 
-                subtext="Ver Crescimento"
-                icon={TrendingUp} 
-                colorClass="bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400"
-                onClick={() => setShowEvolution(true)}
-                info="Acompanhe a evolução do seu patrimônio e proventos acumulados ao longo do tempo."
-            />
-            
-            <BentoCard 
                 title="Alocação" 
                 value="Carteira" 
                 subtext="Ver Distribuição"
@@ -1144,6 +1184,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                 colorClass="bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400"
                 onClick={() => setShowAllocation(true)}
                 info="Visualize a distribuição do seu patrimônio por classe de ativos, setores e ativos individuais."
+                className="col-span-2"
             />
         </div>
 
@@ -1649,7 +1690,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
             currentBalance={balance}
         />
 
-    </div>
+    </motion.div>
   );
 };
 

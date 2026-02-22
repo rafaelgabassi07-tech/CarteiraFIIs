@@ -144,7 +144,7 @@ export interface VersionData {
   notes: ReleaseNote[];
 }
 
-export type NotificationCategory = 'payment' | 'datacom' | 'general' | 'update';
+export type NotificationCategory = 'payment' | 'datacom' | 'general' | 'update' | 'event' | 'alert';
 
 export interface AppNotification {
   id: string;

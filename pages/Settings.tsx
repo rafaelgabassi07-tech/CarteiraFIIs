@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { User, LogOut, Moon, Sun, Monitor, Shield, Bell, RefreshCw, Upload, Trash2, ChevronRight, Check, Loader2, Search, Calculator, Palette, ChevronDown, ChevronUp, Download, History, Activity } from 'lucide-react';
 import { triggerScraperUpdate } from '../services/dataService';
 import { ConfirmationModal } from '../components/Layout';
@@ -17,12 +18,17 @@ const ACCENT_COLORS = [
 ];
 
 const SettingsSection = ({ title, children }: { title?: string, children?: React.ReactNode }) => (
-    <div className="mb-8">
+    <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        className="mb-8"
+    >
         {title && <h3 className="px-6 mb-4 text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-[0.25em]">{title}</h3>}
         <div className="bg-white dark:bg-zinc-900/50 rounded-[2.5rem] border border-zinc-100 dark:border-zinc-800/50 overflow-hidden shadow-sm divide-y divide-zinc-50 dark:divide-zinc-800/30">
             {children}
         </div>
-    </div>
+    </motion.div>
 );
 
 interface SettingsItemProps {
@@ -37,10 +43,11 @@ interface SettingsItemProps {
 }
 
 const SettingsItem: React.FC<SettingsItemProps> = ({ icon: Icon, label, value, onClick, isDanger, rightElement, description, className }) => (
-    <button 
+    <motion.button 
+        whileTap={onClick ? { scale: 0.98 } : {}}
         onClick={onClick}
         disabled={!onClick}
-        className={`w-full flex items-center justify-between p-5 transition-all group text-left ${onClick ? 'hover:bg-zinc-50 dark:hover:bg-zinc-800/30 cursor-pointer active:scale-[0.99]' : 'cursor-default'} ${isDanger ? 'hover:bg-rose-50 dark:hover:bg-rose-900/10' : ''} ${className || ''}`}
+        className={`w-full flex items-center justify-between p-5 transition-all group text-left ${onClick ? 'hover:bg-zinc-50 dark:hover:bg-zinc-800/30 cursor-pointer' : 'cursor-default'} ${isDanger ? 'hover:bg-rose-50 dark:hover:bg-rose-900/10' : ''} ${className || ''}`}
     >
         <div className="flex items-center gap-5">
             <div className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all shadow-sm border border-zinc-100 dark:border-zinc-800 ${isDanger ? 'bg-rose-50 text-rose-500 dark:bg-rose-900/20' : 'bg-zinc-50 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400 group-hover:bg-white dark:group-hover:bg-zinc-700 group-hover:scale-110'}`}>
@@ -56,7 +63,7 @@ const SettingsItem: React.FC<SettingsItemProps> = ({ icon: Icon, label, value, o
             {rightElement}
             {onClick && !rightElement && <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:translate-x-1 transition-transform" />}
         </div>
-    </button>
+    </motion.button>
 );
 
 const ToggleSwitch = ({ checked, onChange }: { checked: boolean; onChange: () => void }) => (
