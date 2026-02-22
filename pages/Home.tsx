@@ -43,7 +43,15 @@ const getStoryIcon = (type: PortfolioInsight['type']) => {
     }
 };
 
-const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalance }: { isOpen: boolean, onClose: () => void, transactions: Transaction[], dividends: DividendReceipt[], currentBalance: number }) => {
+const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalance, nextLevel, progress }: { 
+    isOpen: boolean, 
+    onClose: () => void, 
+    transactions: Transaction[], 
+    dividends: DividendReceipt[], 
+    currentBalance: number,
+    nextLevel?: { name: string, target: number },
+    progress?: number
+}) => {
     const [timeRange, setTimeRange] = useState<'6M' | '1Y' | '2Y' | '5Y' | 'MAX'>('MAX');
     const [chartType, setChartType] = useState<'WEALTH' | 'CASHFLOW' | 'RETURN'>('WEALTH');
     const [showTimeFilter, setShowTimeFilter] = useState(false);
@@ -457,35 +465,37 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                     </div>
 
                     {/* Goal Progress - Re-styled */}
-                    <div className="p-6 bg-indigo-500 rounded-[2.5rem] text-white shadow-xl shadow-indigo-500/20">
-                        <div className="flex justify-between items-start mb-6">
-                            <div>
-                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-100 mb-1">Próxima Meta</p>
-                                <h3 className="text-2xl font-black tracking-tight">Independência</h3>
+                    {nextLevel && (
+                        <div className="p-6 bg-indigo-500 rounded-[2.5rem] text-white shadow-xl shadow-indigo-500/20">
+                            <div className="flex justify-between items-start mb-6">
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-100 mb-1">Próxima Meta</p>
+                                    <h3 className="text-2xl font-black tracking-tight">{nextLevel.name}</h3>
+                                </div>
+                                <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center font-black text-sm">
+                                    {(progress || 0).toFixed(0)}%
+                                </div>
                             </div>
-                            <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center font-black text-sm">
-                                72%
+                            
+                            <div className="h-2 w-full bg-white/20 rounded-full overflow-hidden mb-6">
+                                <motion.div 
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${progress || 0}%` }}
+                                    transition={{ duration: 1.5, ease: "easeOut" }}
+                                    className="h-full bg-white rounded-full"
+                                ></motion.div>
+                            </div>
+                            
+                            <div className="flex justify-between items-center">
+                                <p className="text-[11px] font-medium text-indigo-50/80 leading-relaxed max-w-[180px]">
+                                    Faltam <span className="font-black text-white">{formatBRL(Math.max(0, nextLevel.target - currentBalance))}</span> para atingir seu próximo objetivo.
+                                </p>
+                                <button className="px-4 py-2 bg-white text-indigo-600 text-[10px] font-black uppercase rounded-xl shadow-lg active:scale-95 transition-all">
+                                    Ver Detalhes
+                                </button>
                             </div>
                         </div>
-                        
-                        <div className="h-2 w-full bg-white/20 rounded-full overflow-hidden mb-6">
-                            <motion.div 
-                                initial={{ width: 0 }}
-                                animate={{ width: '72%' }}
-                                transition={{ duration: 1.5, ease: "easeOut" }}
-                                className="h-full bg-white rounded-full"
-                            ></motion.div>
-                        </div>
-                        
-                        <div className="flex justify-between items-center">
-                            <p className="text-[11px] font-medium text-indigo-50/80 leading-relaxed max-w-[180px]">
-                                Faltam <span className="font-black text-white">R$ 28.400</span> para atingir seu próximo objetivo.
-                            </p>
-                            <button className="px-4 py-2 bg-white text-indigo-600 text-[10px] font-black uppercase rounded-xl shadow-lg active:scale-95 transition-all">
-                                Ver Detalhes
-                            </button>
-                        </div>
-                    </div>
+                    )}
 
                 </div>
             </div>
@@ -1698,6 +1708,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
             transactions={transactions} 
             dividends={dividendReceipts}
             currentBalance={balance}
+            nextLevel={goalsData.nextLevel}
+            progress={goalsData.progress}
         />
 
     </motion.div>
