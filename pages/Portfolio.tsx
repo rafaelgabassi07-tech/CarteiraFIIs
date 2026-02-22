@@ -873,34 +873,34 @@ const SimulatorCard = ({ data, ticker, dividends = [] }: any) => {
     if (!simulation) return null;
 
     return (
-        <div className="bg-white dark:bg-zinc-900 rounded-[2rem] p-5 border border-zinc-200 dark:border-zinc-800 shadow-sm mb-6">
+        <div className="bg-white dark:bg-zinc-900 rounded-[1.5rem] p-4 border border-zinc-200 dark:border-zinc-800 shadow-sm mb-4">
             {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-5">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-                        <Calculator className="w-5 h-5" />
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4">
+                <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                        <Calculator className="w-4 h-4" />
                     </div>
                     <div>
-                        <h3 className="text-base font-black text-zinc-900 dark:text-white leading-tight">Simulador de Retorno</h3>
-                        <p className="text-[10px] font-medium text-zinc-500">Histórico de 5 Anos</p>
+                        <h3 className="text-sm font-black text-zinc-900 dark:text-white leading-tight">Simulador de Retorno</h3>
+                        <p className="text-[9px] font-medium text-zinc-500">Histórico de 5 Anos</p>
                     </div>
                 </div>
                 
                 <div className="flex items-center gap-2">
                     <button 
                         onClick={() => setReinvest(!reinvest)}
-                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all border ${reinvest ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/30 dark:border-indigo-800 dark:text-indigo-300' : 'bg-transparent border-zinc-200 text-zinc-500 dark:border-zinc-700'}`}
+                        className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-[9px] font-black uppercase transition-all border ${reinvest ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/30 dark:border-indigo-800 dark:text-indigo-300' : 'bg-transparent border-zinc-200 text-zinc-500 dark:border-zinc-700'}`}
                     >
-                        <RefreshCcw className={`w-3 h-3 ${reinvest ? 'animate-spin-slow' : ''}`} />
+                        <RefreshCcw className={`w-2.5 h-2.5 ${reinvest ? 'animate-spin-slow' : ''}`} />
                         {reinvest ? 'Reinvestindo' : 'Sem Reinvestir'}
                     </button>
 
-                    <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-lg p-1">
+                    <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-md p-0.5">
                         {[1000, 5000, 10000].map(val => (
                             <button 
                                 key={val} 
                                 onClick={() => setAmount(val)} 
-                                className={`px-2.5 py-1 text-[9px] font-black rounded-md transition-all ${amount === val ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                                className={`px-2 py-0.5 text-[9px] font-black rounded-sm transition-all ${amount === val ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                             >
                                 {val/1000}k
                             </button>
@@ -910,17 +910,17 @@ const SimulatorCard = ({ data, ticker, dividends = [] }: any) => {
             </div>
 
             {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 
                 {/* Left: Stats */}
-                <div className="lg:col-span-1 flex flex-col justify-between gap-4">
+                <div className="lg:col-span-1 flex flex-col justify-between gap-3">
                     <div>
-                        <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Resultado Final</p>
-                        <h2 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter mb-2">
+                        <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-0.5">Resultado Final</p>
+                        <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter mb-1.5">
                             {formatBRL(simulation.finalValue)}
                         </h2>
                         <div className="flex items-center gap-2">
-                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-black ${simulation.roi >= 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400'}`}>
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-black ${simulation.roi >= 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400'}`}>
                                 {simulation.roi > 0 ? '+' : ''}{simulation.roi.toFixed(1)}%
                             </span>
                             <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">
@@ -929,24 +929,24 @@ const SimulatorCard = ({ data, ticker, dividends = [] }: any) => {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-100 dark:border-zinc-800">
+                    <div className="grid grid-cols-2 gap-2">
+                        <div className="p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-100 dark:border-zinc-800">
                             <div className="flex justify-between items-center mb-1">
                                 <span className="text-[8px] font-black text-zinc-400 uppercase tracking-wider">Dividendos</span>
-                                <Coins className="w-3 h-3 text-zinc-400" />
+                                <Coins className="w-2.5 h-2.5 text-zinc-400" />
                             </div>
-                            <p className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(simulation.totalDividends)}</p>
+                            <p className="text-xs font-black text-zinc-900 dark:text-white">{formatBRL(simulation.totalDividends)}</p>
                         </div>
 
-                        <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-100 dark:border-zinc-800">
+                        <div className="p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-100 dark:border-zinc-800">
                             <div className="flex justify-between items-center mb-1">
                                 <span className="text-[8px] font-black text-zinc-400 uppercase tracking-wider">Cotas</span>
-                                <Wallet className="w-3 h-3 text-zinc-400" />
+                                <Wallet className="w-2.5 h-2.5 text-zinc-400" />
                             </div>
                             <div className="flex items-baseline gap-1">
-                                <p className="text-sm font-black text-zinc-900 dark:text-white">{simulation.shares}</p>
+                                <p className="text-xs font-black text-zinc-900 dark:text-white">{simulation.shares}</p>
                                 {reinvest && simulation.shares > simulation.initialShares && (
-                                    <span className="text-[9px] font-bold text-emerald-500">+{simulation.shares - simulation.initialShares}</span>
+                                    <span className="text-[8px] font-bold text-emerald-500">+{simulation.shares - simulation.initialShares}</span>
                                 )}
                             </div>
                         </div>
@@ -954,7 +954,7 @@ const SimulatorCard = ({ data, ticker, dividends = [] }: any) => {
                 </div>
 
                 {/* Right: Chart */}
-                <div className="lg:col-span-2 h-[200px] w-full bg-zinc-50 dark:bg-zinc-800/20 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 p-3 relative">
+                <div className="lg:col-span-2 h-[140px] w-full bg-zinc-50 dark:bg-zinc-800/20 rounded-xl border border-zinc-100 dark:border-zinc-800/50 p-2 relative">
                     <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={simulation.chartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
                             <defs>
