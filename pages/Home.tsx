@@ -236,76 +236,55 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
 
                 <div className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar px-6 pb-10">
                     
-                    {/* Summary Section - Integrated & Clean */}
-                    <div className="mt-6 mb-8 bg-zinc-50 dark:bg-zinc-900/40 rounded-[2rem] p-6 border border-zinc-100 dark:border-zinc-800/50">
-                        <div className="flex justify-between items-start mb-4">
+                    {/* Summary Section - Ultra Minimalist */}
+                    <div className="mt-10 mb-12">
+                        <div className="flex justify-between items-end mb-8">
                             <div>
-                                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Patrimônio Total</p>
-                                <h3 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter">
+                                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.3em] mb-2">Patrimônio Total</p>
+                                <h3 className="text-5xl font-black text-zinc-900 dark:text-white tracking-tighter leading-none">
                                     {formatBRL(stats.marketValue)}
                                 </h3>
                             </div>
-                            <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black ${stats.roi >= 0 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'}`}>
-                                {stats.roi >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                            <div className={`flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-black shadow-sm ${stats.roi >= 0 ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
+                                {stats.roi >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
                                 {stats.roi >= 0 ? '+' : ''}{stats.roi.toFixed(2)}%
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-zinc-200/50 dark:border-zinc-800/50">
+                        <div className="flex gap-12">
                             <div>
-                                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Retorno Total</p>
-                                <p className={`text-sm font-black ${stats.totalReturn >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Retorno Total</p>
+                                <p className={`text-xl font-black ${stats.totalReturn >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'} tracking-tight`}>
                                     {stats.totalReturn >= 0 ? '+' : ''}{formatBRL(stats.totalReturn)}
                                 </p>
                             </div>
+                            <div className="w-px h-10 bg-zinc-100 dark:bg-zinc-800 self-end"></div>
                             <div>
-                                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Total Investido</p>
-                                <p className="text-sm font-black text-zinc-700 dark:text-zinc-300">{formatBRL(stats.invested)}</p>
+                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Investido</p>
+                                <p className="text-xl font-black text-zinc-700 dark:text-zinc-300 tracking-tight">{formatBRL(stats.invested)}</p>
                             </div>
                         </div>
                     </div>
 
-                    {/* Chart Section */}
-                    <div className="mb-8">
-                        <div className="flex justify-between items-center mb-4 px-1">
-                            <div className="flex bg-zinc-100 dark:bg-zinc-900 rounded-lg p-0.5">
-                                <button onClick={() => setChartType('WEALTH')} className={`px-3 py-1 rounded-md text-[9px] font-black uppercase transition-all ${chartType === 'WEALTH' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}>Patrimônio</button>
-                                <button onClick={() => setChartType('CASHFLOW')} className={`px-3 py-1 rounded-md text-[9px] font-black uppercase transition-all ${chartType === 'CASHFLOW' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}>Fluxo</button>
-                                <button onClick={() => setChartType('RETURN')} className={`px-3 py-1 rounded-md text-[9px] font-black uppercase transition-all ${chartType === 'RETURN' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}>Retorno</button>
+                    {/* Chart Section - Open & Airy */}
+                    <div className="mb-12">
+                        <div className="flex justify-between items-center mb-8">
+                            <div className="flex bg-zinc-100/50 dark:bg-zinc-900/50 rounded-2xl p-1 backdrop-blur-sm">
+                                <button onClick={() => setChartType('WEALTH')} className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${chartType === 'WEALTH' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-md' : 'text-zinc-400 hover:text-zinc-600'}`}>Patrimônio</button>
+                                <button onClick={() => setChartType('CASHFLOW')} className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${chartType === 'CASHFLOW' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-md' : 'text-zinc-400 hover:text-zinc-600'}`}>Fluxo</button>
+                                <button onClick={() => setChartType('RETURN')} className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${chartType === 'RETURN' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-md' : 'text-zinc-400 hover:text-zinc-600'}`}>Retorno</button>
                             </div>
 
-                            <div className="relative">
-                                <button 
-                                    onClick={() => setShowTimeFilter(!showTimeFilter)}
-                                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-[10px] font-bold text-zinc-500"
-                                >
-                                    <Calendar className="w-3 h-3" />
-                                    {timeRange === 'MAX' ? 'Tudo' : timeRange}
-                                </button>
-                                
-                                {showTimeFilter && (
-                                    <>
-                                        <div className="fixed inset-0 z-10" onClick={() => setShowTimeFilter(false)}></div>
-                                        <div className="absolute right-0 top-full mt-1 w-28 bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-zinc-100 dark:border-zinc-800 p-1 z-20 flex flex-col gap-0.5 anim-scale-in">
-                                            {(['6M', '1Y', '2Y', '5Y', 'MAX'] as const).map(range => (
-                                                <button
-                                                    key={range}
-                                                    onClick={() => {
-                                                        setTimeRange(range);
-                                                        setShowTimeFilter(false);
-                                                    }}
-                                                    className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-left transition-colors ${timeRange === range ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' : 'text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}
-                                                >
-                                                    {range === 'MAX' ? 'Desde o início' : range}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </>
-                                )}
-                            </div>
+                            <button 
+                                onClick={() => setShowTimeFilter(!showTimeFilter)}
+                                className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-zinc-100/50 dark:bg-zinc-900/50 text-[10px] font-black text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-all active:scale-95"
+                            >
+                                <Calendar className="w-3.5 h-3.5 text-indigo-500" />
+                                {timeRange === 'MAX' ? 'Tudo' : timeRange}
+                            </button>
                         </div>
 
-                        <div className="h-64 w-full bg-zinc-50/30 dark:bg-zinc-900/20 rounded-3xl p-4 border border-zinc-100 dark:border-zinc-800/50 relative overflow-hidden">
+                        <div className="h-80 w-full relative">
                             <ResponsiveContainer width="100%" height="100%">
                                 {chartType === 'WEALTH' ? (
                                     <ComposedChart data={filteredData} margin={{ top: 10, right: 5, left: -20, bottom: 0 }}>
@@ -385,87 +364,78 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                         </div>
                     </div>
 
-                    {/* Metrics Grid - Reorganized for Clarity */}
-                    <div className="space-y-6 mb-8">
+                    {/* Metrics Grid - Minimalist & Scannable */}
+                    <div className="space-y-10 mb-12">
                         <div>
-                            <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-4 px-1">Performance & Risco</h4>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="bg-zinc-50 dark:bg-zinc-900/40 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
-                                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">CAGR Anual</p>
-                                    <p className="text-lg font-black text-zinc-900 dark:text-white tracking-tight">{stats.cagr.toFixed(2)}%</p>
+                            <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.25em] mb-6 px-1 border-b border-zinc-100 dark:border-zinc-800 pb-2">Performance & Risco</h4>
+                            <div className="grid grid-cols-2 gap-x-8 gap-y-6">
+                                <div>
+                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">CAGR Anual</p>
+                                    <p className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">{stats.cagr.toFixed(2)}%</p>
                                 </div>
-                                <div className="bg-zinc-50 dark:bg-zinc-900/40 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
-                                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Volatilidade</p>
-                                    <p className="text-lg font-black text-zinc-900 dark:text-white tracking-tight">{stats.volatility.toFixed(2)}%</p>
+                                <div>
+                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Volatilidade</p>
+                                    <p className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">{stats.volatility.toFixed(2)}%</p>
                                 </div>
-                                <div className="bg-zinc-50 dark:bg-zinc-900/40 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
-                                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Retorno Médio</p>
-                                    <p className="text-lg font-black text-zinc-900 dark:text-white tracking-tight">{stats.avgMonthlyReturn.toFixed(2)}%</p>
+                                <div>
+                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Retorno Médio</p>
+                                    <p className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">{stats.avgMonthlyReturn.toFixed(2)}%</p>
                                 </div>
-                                <div className="bg-zinc-50 dark:bg-zinc-900/40 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
-                                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Win Rate</p>
-                                    <p className="text-lg font-black text-emerald-500 tracking-tight">{stats.winRate.toFixed(0)}%</p>
+                                <div>
+                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Win Rate</p>
+                                    <p className="text-xl font-black text-emerald-500 tracking-tight">{stats.winRate.toFixed(0)}%</p>
                                 </div>
-                                <div className="bg-emerald-50/30 dark:bg-emerald-900/10 p-4 rounded-2xl border border-emerald-100/50 dark:border-emerald-900/20">
-                                    <p className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1">Melhor Mês</p>
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">{stats.bestMonth.label}</span>
-                                        <span className="text-xs font-black text-emerald-600">+{stats.bestMonth.change.toFixed(1)}%</span>
-                                    </div>
+                                <div>
+                                    <p className="text-[10px] font-bold text-emerald-600/60 dark:text-emerald-400/60 uppercase tracking-wider mb-1">Melhor Mês</p>
+                                    <p className="text-sm font-black text-emerald-600">{stats.bestMonth.label} <span className="ml-1 opacity-60">+{stats.bestMonth.change.toFixed(1)}%</span></p>
                                 </div>
-                                <div className="bg-rose-50/30 dark:bg-rose-900/10 p-4 rounded-2xl border border-rose-100/50 dark:border-rose-900/20">
-                                    <p className="text-[9px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider mb-1">Pior Mês</p>
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">{stats.worstMonth.label}</span>
-                                        <span className="text-xs font-black text-rose-600">{stats.worstMonth.change.toFixed(1)}%</span>
-                                    </div>
+                                <div>
+                                    <p className="text-[10px] font-bold text-rose-600/60 dark:text-rose-400/60 uppercase tracking-wider mb-1">Pior Mês</p>
+                                    <p className="text-sm font-black text-rose-600">{stats.worstMonth.label} <span className="ml-1 opacity-60">{stats.worstMonth.change.toFixed(1)}%</span></p>
                                 </div>
                             </div>
                         </div>
 
                         <div>
-                            <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-4 px-1">Atividade & Fluxo</h4>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="bg-zinc-50 dark:bg-zinc-900/40 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
-                                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Aporte Médio</p>
+                            <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.25em] mb-6 px-1 border-b border-zinc-100 dark:border-zinc-800 pb-2">Atividade & Fluxo</h4>
+                            <div className="grid grid-cols-2 gap-x-8 gap-y-6">
+                                <div>
+                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Aporte Médio</p>
                                     <p className="text-base font-black text-zinc-800 dark:text-zinc-200 tracking-tight">{formatBRL(stats.avgContribution)}</p>
                                 </div>
-                                <div className="bg-zinc-50 dark:bg-zinc-900/40 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
-                                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Proventos Totais</p>
+                                <div>
+                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Proventos Totais</p>
                                     <p className="text-base font-black text-zinc-800 dark:text-zinc-200 tracking-tight">{formatBRL(stats.totalDividends)}</p>
                                 </div>
-                                <div className="bg-zinc-50 dark:bg-zinc-900/40 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
-                                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Crescimento Orgânico</p>
+                                <div>
+                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Crescimento Orgânico</p>
                                     <p className="text-base font-black text-emerald-600 tracking-tight">{formatBRL(stats.totalReturn)}</p>
                                 </div>
-                                <div className="bg-zinc-50 dark:bg-zinc-900/40 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
-                                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Meses Positivos</p>
+                                <div>
+                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Meses Positivos</p>
                                     <p className="text-base font-black text-zinc-800 dark:text-zinc-200 tracking-tight">{stats.positiveMonths} <span className="text-[10px] text-zinc-400 font-medium">de {stats.positiveMonths + stats.negativeMonths}</span></p>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Goal Progress - Subtle & Integrated */}
-                    <div className="bg-zinc-900 dark:bg-zinc-100 rounded-[2rem] p-6 text-white dark:text-zinc-900 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 dark:bg-black/5 blur-2xl rounded-full -mr-12 -mt-12"></div>
-                        <div className="relative z-10">
-                            <div className="flex justify-between items-end mb-3">
-                                <div>
-                                    <p className="text-[9px] font-black uppercase tracking-[0.2em] opacity-60 mb-1">Próxima Meta</p>
-                                    <h3 className="text-xl font-black tracking-tight">Independência</h3>
-                                </div>
-                                <span className="text-xs font-black">72%</span>
+                    {/* Goal Progress - Minimalist */}
+                    <div className="pt-8 border-t border-zinc-100 dark:border-zinc-800">
+                        <div className="flex justify-between items-end mb-4">
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 mb-1">Próxima Meta</p>
+                                <h3 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Independência</h3>
                             </div>
-                            
-                            <div className="h-2 w-full bg-white/10 dark:bg-black/10 rounded-full overflow-hidden mb-4">
-                                <div className="h-full bg-white dark:bg-zinc-900 rounded-full transition-all duration-1000" style={{ width: '72%' }}></div>
-                            </div>
-                            
-                            <p className="text-[10px] font-medium opacity-70 leading-relaxed">
-                                Faltam <span className="font-black opacity-100">R$ 28.400</span> para atingir seu próximo objetivo.
-                            </p>
+                            <span className="text-sm font-black text-indigo-600 dark:text-indigo-400">72%</span>
                         </div>
+                        
+                        <div className="h-2.5 w-full bg-zinc-100 dark:bg-zinc-900 rounded-full overflow-hidden mb-4">
+                            <div className="h-full bg-indigo-500 rounded-full transition-all duration-1000" style={{ width: '72%' }}></div>
+                        </div>
+                        
+                        <p className="text-[11px] font-medium text-zinc-500 leading-relaxed">
+                            Faltam <span className="font-black text-zinc-900 dark:text-white">R$ 28.400</span> para atingir seu próximo objetivo.
+                        </p>
                     </div>
 
                 </div>

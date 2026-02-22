@@ -17,9 +17,9 @@ const ACCENT_COLORS = [
 ];
 
 const SettingsSection = ({ title, children }: { title?: string, children?: React.ReactNode }) => (
-    <div className="mb-6">
-        {title && <h3 className="px-4 mb-3 text-[10px] font-black text-zinc-400 uppercase tracking-widest">{title}</h3>}
-        <div className="bg-white dark:bg-zinc-900 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 overflow-hidden shadow-sm divide-y divide-zinc-50 dark:divide-zinc-800/50">
+    <div className="mb-8">
+        {title && <h3 className="px-6 mb-4 text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-[0.25em]">{title}</h3>}
+        <div className="bg-white dark:bg-zinc-900/50 rounded-[2.5rem] border border-zinc-100 dark:border-zinc-800/50 overflow-hidden shadow-sm divide-y divide-zinc-50 dark:divide-zinc-800/30">
             {children}
         </div>
     </div>
@@ -40,21 +40,21 @@ const SettingsItem: React.FC<SettingsItemProps> = ({ icon: Icon, label, value, o
     <button 
         onClick={onClick}
         disabled={!onClick}
-        className={`w-full flex items-center justify-between p-4 transition-all group text-left ${onClick ? 'hover:bg-zinc-50 dark:hover:bg-zinc-800/30 cursor-pointer active:scale-[0.99]' : 'cursor-default'} ${isDanger ? 'hover:bg-rose-50 dark:hover:bg-rose-900/10' : ''} ${className || ''}`}
+        className={`w-full flex items-center justify-between p-5 transition-all group text-left ${onClick ? 'hover:bg-zinc-50 dark:hover:bg-zinc-800/30 cursor-pointer active:scale-[0.99]' : 'cursor-default'} ${isDanger ? 'hover:bg-rose-50 dark:hover:bg-rose-900/10' : ''} ${className || ''}`}
     >
-        <div className="flex items-center gap-4">
-            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-colors shadow-sm border border-zinc-100 dark:border-zinc-800 ${isDanger ? 'bg-rose-50 text-rose-500 dark:bg-rose-900/20' : 'bg-zinc-50 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400 group-hover:bg-white dark:group-hover:bg-zinc-700'}`}>
+        <div className="flex items-center gap-5">
+            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all shadow-sm border border-zinc-100 dark:border-zinc-800 ${isDanger ? 'bg-rose-50 text-rose-500 dark:bg-rose-900/20' : 'bg-zinc-50 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400 group-hover:bg-white dark:group-hover:bg-zinc-700 group-hover:scale-110'}`}>
                 <Icon className={`w-5 h-5 ${isDanger ? 'text-rose-500' : 'text-current'}`} strokeWidth={2} />
             </div>
             <div>
-                <span className={`text-sm font-bold block ${isDanger ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-900 dark:text-white'}`}>{label}</span>
-                {description && <span className="text-[10px] text-zinc-400 font-medium leading-tight mt-0.5 block">{description}</span>}
+                <span className={`text-sm font-black block tracking-tight ${isDanger ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-900 dark:text-white'}`}>{label}</span>
+                {description && <span className="text-[10px] text-zinc-400 font-bold leading-tight mt-1 block tracking-wide">{description}</span>}
             </div>
         </div>
         <div className="flex items-center gap-3">
-            {value && <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400">{value}</span>}
+            {value && <span className="text-xs font-black text-zinc-500 dark:text-zinc-400">{value}</span>}
             {rightElement}
-            {onClick && !rightElement && <ChevronRight className="w-4 h-4 text-zinc-300" />}
+            {onClick && !rightElement && <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:translate-x-1 transition-transform" />}
         </div>
     </button>
 );
