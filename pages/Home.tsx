@@ -226,57 +226,57 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
 
                 <div className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar px-6 pb-10">
                     
-                    {/* Main Value Section - Very Clean */}
-                    <div className="mt-4 mb-8">
-                        <p className="text-sm font-bold text-zinc-400 mb-1">Patrimônio Total</p>
-                        <div className="flex items-baseline gap-3">
-                            <h3 className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter">
-                                {formatBRL(stats.marketValue)}
-                            </h3>
-                            <div className={`flex items-center gap-1 px-2 py-1 rounded-lg ${stats.roi >= 0 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'}`}>
+                    {/* Summary Section - Integrated & Clean */}
+                    <div className="mt-6 mb-8 bg-zinc-50 dark:bg-zinc-900/40 rounded-[2rem] p-6 border border-zinc-100 dark:border-zinc-800/50">
+                        <div className="flex justify-between items-start mb-4">
+                            <div>
+                                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Patrimônio Total</p>
+                                <h3 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter">
+                                    {formatBRL(stats.marketValue)}
+                                </h3>
+                            </div>
+                            <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black ${stats.roi >= 0 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'}`}>
                                 {stats.roi >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                                <span className="text-xs font-black">{stats.roi >= 0 ? '+' : ''}{stats.roi.toFixed(2)}%</span>
+                                {stats.roi >= 0 ? '+' : ''}{stats.roi.toFixed(2)}%
                             </div>
                         </div>
-                        <div className="flex items-center gap-4 mt-3 text-xs">
+
+                        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-zinc-200/50 dark:border-zinc-800/50">
                             <div>
-                                <span className="text-zinc-400 font-medium">Lucro: </span>
-                                <span className={`font-bold ${stats.totalReturn >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Retorno Total</p>
+                                <p className={`text-sm font-black ${stats.totalReturn >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                                     {stats.totalReturn >= 0 ? '+' : ''}{formatBRL(stats.totalReturn)}
-                                </span>
+                                </p>
                             </div>
-                            <div className="w-px h-3 bg-zinc-200 dark:bg-zinc-800"></div>
                             <div>
-                                <span className="text-zinc-400 font-medium">Investido: </span>
-                                <span className="font-bold text-zinc-700 dark:text-zinc-300">{formatBRL(stats.invested)}</span>
+                                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Total Investido</p>
+                                <p className="text-sm font-black text-zinc-700 dark:text-zinc-300">{formatBRL(stats.invested)}</p>
                             </div>
                         </div>
                     </div>
 
-                    {/* Chart Controls - Segmented */}
-                    <div className="flex flex-col gap-4 mb-6">
-                        <div className="flex justify-between items-center">
-                             {/* Type Selector */}
-                            <div className="flex p-1 bg-zinc-100 dark:bg-zinc-900 rounded-xl overflow-hidden">
-                                <button onClick={() => setChartType('WEALTH')} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${chartType === 'WEALTH' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}>Patrimônio</button>
-                                <button onClick={() => setChartType('CASHFLOW')} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${chartType === 'CASHFLOW' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}>Fluxo</button>
-                                <button onClick={() => setChartType('RETURN')} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${chartType === 'RETURN' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}>Retorno</button>
+                    {/* Chart Section */}
+                    <div className="mb-8">
+                        <div className="flex justify-between items-center mb-4 px-1">
+                            <div className="flex bg-zinc-100 dark:bg-zinc-900 rounded-lg p-0.5">
+                                <button onClick={() => setChartType('WEALTH')} className={`px-3 py-1 rounded-md text-[9px] font-black uppercase transition-all ${chartType === 'WEALTH' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}>Patrimônio</button>
+                                <button onClick={() => setChartType('CASHFLOW')} className={`px-3 py-1 rounded-md text-[9px] font-black uppercase transition-all ${chartType === 'CASHFLOW' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}>Fluxo</button>
+                                <button onClick={() => setChartType('RETURN')} className={`px-3 py-1 rounded-md text-[9px] font-black uppercase transition-all ${chartType === 'RETURN' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}>Retorno</button>
                             </div>
-                            
-                            {/* Time Range Filter Button */}
+
                             <div className="relative">
                                 <button 
                                     onClick={() => setShowTimeFilter(!showTimeFilter)}
-                                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-xs font-bold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"
+                                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-[10px] font-bold text-zinc-500"
                                 >
-                                    <Calendar className="w-3.5 h-3.5" />
+                                    <Calendar className="w-3 h-3" />
                                     {timeRange === 'MAX' ? 'Tudo' : timeRange}
                                 </button>
                                 
                                 {showTimeFilter && (
                                     <>
                                         <div className="fixed inset-0 z-10" onClick={() => setShowTimeFilter(false)}></div>
-                                        <div className="absolute right-0 top-full mt-2 w-32 bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-zinc-100 dark:border-zinc-800 p-1 z-20 flex flex-col gap-1 anim-scale-in">
+                                        <div className="absolute right-0 top-full mt-1 w-28 bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-zinc-100 dark:border-zinc-800 p-1 z-20 flex flex-col gap-0.5 anim-scale-in">
                                             {(['6M', '1Y', '2Y', '5Y', 'MAX'] as const).map(range => (
                                                 <button
                                                     key={range}
@@ -284,7 +284,7 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                                                         setTimeRange(range);
                                                         setShowTimeFilter(false);
                                                     }}
-                                                    className={`px-3 py-2 rounded-lg text-xs font-bold text-left transition-colors ${timeRange === range ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' : 'text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}
+                                                    className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-left transition-colors ${timeRange === range ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' : 'text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}
                                                 >
                                                     {range === 'MAX' ? 'Desde o início' : range}
                                                 </button>
@@ -295,10 +295,7 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                             </div>
                         </div>
 
-                        {/* Chart Container - Enhanced with Bars and Lines */}
-                        <div className="h-72 w-full bg-zinc-50/50 dark:bg-zinc-900/30 rounded-3xl p-4 border border-zinc-100 dark:border-zinc-800/50 relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 blur-3xl rounded-full -mr-16 -mt-16 group-hover:bg-indigo-500/10 transition-colors duration-700"></div>
-                            
+                        <div className="h-64 w-full bg-zinc-50/30 dark:bg-zinc-900/20 rounded-3xl p-4 border border-zinc-100 dark:border-zinc-800/50 relative overflow-hidden">
                             <ResponsiveContainer width="100%" height="100%">
                                 {chartType === 'WEALTH' ? (
                                     <ComposedChart data={filteredData} margin={{ top: 10, right: 5, left: -20, bottom: 0 }}>
@@ -378,89 +375,69 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                         </div>
                     </div>
 
-                    {/* Metrics Grid - Enhanced with Cards */}
-                    <div className="grid grid-cols-2 gap-4 border-t border-zinc-100 dark:border-zinc-900 pt-8 mb-8">
-                        <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
-                            <div className="flex items-center gap-2 mb-2">
-                                <div className="w-5 h-5 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
-                                    <TrendingUp className="w-3 h-3" />
+                    {/* Metrics Grid - Reorganized for Clarity */}
+                    <div className="space-y-6 mb-8">
+                        <div>
+                            <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-4 px-1">Performance</h4>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-zinc-50 dark:bg-zinc-900/40 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
+                                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">CAGR Anual</p>
+                                    <p className="text-lg font-black text-zinc-900 dark:text-white tracking-tight">{stats.cagr.toFixed(2)}%</p>
                                 </div>
-                                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">CAGR (Anual)</p>
-                            </div>
-                            <p className="text-xl font-black text-zinc-900 dark:text-white">{stats.cagr.toFixed(2)}%</p>
-                            <p className="text-[9px] text-zinc-500 font-medium mt-1">Taxa de crescimento anual</p>
-                        </div>
-
-                        <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
-                            <div className="flex items-center gap-2 mb-2">
-                                <div className="w-5 h-5 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                                    <Target className="w-3 h-3" />
+                                <div className="bg-zinc-50 dark:bg-zinc-900/40 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
+                                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Win Rate</p>
+                                    <p className="text-lg font-black text-emerald-500 tracking-tight">{stats.winRate.toFixed(0)}%</p>
                                 </div>
-                                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Win Rate</p>
-                            </div>
-                            <p className="text-xl font-black text-emerald-500">{stats.winRate.toFixed(0)}%</p>
-                            <p className="text-[9px] text-zinc-500 font-medium mt-1">{stats.positiveMonths} meses positivos</p>
-                        </div>
-
-                        <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
-                            <div className="flex items-center gap-2 mb-2">
-                                <div className="w-5 h-5 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-                                    <ArrowUpRight className="w-3 h-3" />
+                                <div className="bg-emerald-50/30 dark:bg-emerald-900/10 p-4 rounded-2xl border border-emerald-100/50 dark:border-emerald-900/20">
+                                    <p className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1">Melhor Mês</p>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">{stats.bestMonth.label}</span>
+                                        <span className="text-xs font-black text-emerald-600">+{stats.bestMonth.change.toFixed(1)}%</span>
+                                    </div>
                                 </div>
-                                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Aporte Médio</p>
-                            </div>
-                            <p className="text-base font-black text-zinc-800 dark:text-zinc-200">{formatBRL(stats.avgContribution)}</p>
-                            <p className="text-[9px] text-zinc-500 font-medium mt-1">Média mensal investida</p>
-                        </div>
-
-                        <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
-                            <div className="flex items-center gap-2 mb-2">
-                                <div className="w-5 h-5 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-                                    <CircleDollarSign className="w-3 h-3" />
+                                <div className="bg-rose-50/30 dark:bg-rose-900/10 p-4 rounded-2xl border border-rose-100/50 dark:border-rose-900/20">
+                                    <p className="text-[9px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider mb-1">Pior Mês</p>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">{stats.worstMonth.label}</span>
+                                        <span className="text-xs font-black text-rose-600">{stats.worstMonth.change.toFixed(1)}%</span>
+                                    </div>
                                 </div>
-                                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Proventos</p>
-                            </div>
-                            <p className="text-base font-black text-zinc-800 dark:text-zinc-200">{formatBRL(stats.totalDividends)}</p>
-                            <p className="text-[9px] text-zinc-500 font-medium mt-1">Total recebido no período</p>
-                        </div>
-
-                        <div className="bg-emerald-50/50 dark:bg-emerald-900/10 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/20">
-                            <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-1">Melhor Mês</p>
-                            <div className="flex items-baseline justify-between">
-                                <span className="text-sm font-black text-zinc-800 dark:text-zinc-200">{stats.bestMonth.label}</span>
-                                <span className="text-xs font-black text-emerald-600">+{stats.bestMonth.change.toFixed(2)}%</span>
                             </div>
                         </div>
 
-                        <div className="bg-rose-50/50 dark:bg-rose-900/10 p-4 rounded-2xl border border-rose-100 dark:border-rose-900/20">
-                            <p className="text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest mb-1">Pior Mês</p>
-                            <div className="flex items-baseline justify-between">
-                                <span className="text-sm font-black text-zinc-800 dark:text-zinc-200">{stats.worstMonth.label}</span>
-                                <span className="text-xs font-black text-rose-600">{stats.worstMonth.change.toFixed(2)}%</span>
+                        <div>
+                            <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-4 px-1">Atividade Mensal</h4>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-zinc-50 dark:bg-zinc-900/40 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
+                                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Aporte Médio</p>
+                                    <p className="text-base font-black text-zinc-800 dark:text-zinc-200 tracking-tight">{formatBRL(stats.avgContribution)}</p>
+                                </div>
+                                <div className="bg-zinc-50 dark:bg-zinc-900/40 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
+                                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Proventos</p>
+                                    <p className="text-base font-black text-zinc-800 dark:text-zinc-200 tracking-tight">{formatBRL(stats.totalDividends)}</p>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Goal Progress Section */}
-                    <div className="bg-indigo-600 rounded-[2rem] p-6 text-white relative overflow-hidden shadow-xl shadow-indigo-500/20">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 blur-2xl rounded-full -mr-16 -mt-16"></div>
+                    {/* Goal Progress - Subtle & Integrated */}
+                    <div className="bg-zinc-900 dark:bg-zinc-100 rounded-[2rem] p-6 text-white dark:text-zinc-900 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 dark:bg-black/5 blur-2xl rounded-full -mr-12 -mt-12"></div>
                         <div className="relative z-10">
-                            <div className="flex items-center gap-2 mb-4">
-                                <Trophy className="w-5 h-5 text-indigo-200" />
-                                <h3 className="text-sm font-black uppercase tracking-widest">Próxima Conquista</h3>
+                            <div className="flex justify-between items-end mb-3">
+                                <div>
+                                    <p className="text-[9px] font-black uppercase tracking-[0.2em] opacity-60 mb-1">Próxima Meta</p>
+                                    <h3 className="text-xl font-black tracking-tight">Independência</h3>
+                                </div>
+                                <span className="text-xs font-black">72%</span>
                             </div>
                             
-                            <div className="flex justify-between items-end mb-2">
-                                <span className="text-2xl font-black tracking-tight">Independência</span>
-                                <span className="text-xs font-bold opacity-80">72% Concluído</span>
+                            <div className="h-2 w-full bg-white/10 dark:bg-black/10 rounded-full overflow-hidden mb-4">
+                                <div className="h-full bg-white dark:bg-zinc-900 rounded-full transition-all duration-1000" style={{ width: '72%' }}></div>
                             </div>
                             
-                            <div className="h-3 w-full bg-white/20 rounded-full overflow-hidden mb-4">
-                                <div className="h-full bg-white rounded-full transition-all duration-1000" style={{ width: '72%' }}></div>
-                            </div>
-                            
-                            <p className="text-xs font-medium text-indigo-100 leading-relaxed">
-                                Você está a apenas <span className="font-black text-white">R$ 28.400</span> de atingir sua próxima meta patrimonial. Continue com os aportes constantes!
+                            <p className="text-[10px] font-medium opacity-70 leading-relaxed">
+                                Faltam <span className="font-black opacity-100">R$ 28.400</span> para atingir seu próximo objetivo.
                             </p>
                         </div>
                     </div>
