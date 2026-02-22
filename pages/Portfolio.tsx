@@ -913,40 +913,44 @@ const SimulatorCard = ({ data, ticker, dividends = [] }: any) => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 
                 {/* Left: Stats */}
-                <div className="lg:col-span-1 flex flex-col justify-between gap-3">
-                    <div>
-                        <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-0.5">Resultado Final</p>
-                        <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter mb-1.5">
-                            {formatBRL(simulation.finalValue)}
-                        </h2>
-                        <div className="flex items-center gap-2">
-                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-black ${simulation.roi >= 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400'}`}>
+                <div className="lg:col-span-1 flex flex-col gap-2">
+                    {/* Main Result */}
+                    <div className="bg-zinc-50 dark:bg-zinc-800/20 rounded-xl p-3 border border-zinc-100 dark:border-zinc-800/50">
+                        <div className="flex justify-between items-start mb-1">
+                            <div>
+                                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Resultado Final</p>
+                                <h2 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight leading-none">
+                                    {formatBRL(simulation.finalValue)}
+                                </h2>
+                            </div>
+                            <div className={`px-1.5 py-0.5 rounded-md text-[9px] font-black ${simulation.roi >= 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400'}`}>
                                 {simulation.roi > 0 ? '+' : ''}{simulation.roi.toFixed(1)}%
-                            </span>
-                            <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">
-                                vs CDI {simulation.cdiRoi.toFixed(1)}%
-                            </span>
+                            </div>
                         </div>
+                        <p className="text-[9px] font-medium text-zinc-500">
+                            Rend. vs CDI: <span className="text-zinc-700 dark:text-zinc-300">{simulation.cdiRoi.toFixed(1)}%</span>
+                        </p>
                     </div>
 
+                    {/* Secondary Stats */}
                     <div className="grid grid-cols-2 gap-2">
-                        <div className="p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-100 dark:border-zinc-800">
-                            <div className="flex justify-between items-center mb-1">
-                                <span className="text-[8px] font-black text-zinc-400 uppercase tracking-wider">Dividendos</span>
-                                <Coins className="w-2.5 h-2.5 text-zinc-400" />
+                        <div className="px-3 py-2 rounded-xl bg-zinc-50 dark:bg-zinc-800/20 border border-zinc-100 dark:border-zinc-800/50">
+                            <div className="flex items-center gap-1.5 mb-0.5">
+                                <Coins className="w-3 h-3 text-zinc-400" />
+                                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Dividendos</p>
                             </div>
-                            <p className="text-xs font-black text-zinc-900 dark:text-white">{formatBRL(simulation.totalDividends)}</p>
+                            <p className="text-sm font-black text-zinc-900 dark:text-white leading-tight">{formatBRL(simulation.totalDividends)}</p>
                         </div>
 
-                        <div className="p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-100 dark:border-zinc-800">
-                            <div className="flex justify-between items-center mb-1">
-                                <span className="text-[8px] font-black text-zinc-400 uppercase tracking-wider">Cotas</span>
-                                <Wallet className="w-2.5 h-2.5 text-zinc-400" />
+                        <div className="px-3 py-2 rounded-xl bg-zinc-50 dark:bg-zinc-800/20 border border-zinc-100 dark:border-zinc-800/50">
+                            <div className="flex items-center gap-1.5 mb-0.5">
+                                <Wallet className="w-3 h-3 text-zinc-400" />
+                                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Cotas</p>
                             </div>
                             <div className="flex items-baseline gap-1">
-                                <p className="text-xs font-black text-zinc-900 dark:text-white">{simulation.shares}</p>
+                                <p className="text-sm font-black text-zinc-900 dark:text-white leading-tight">{simulation.shares}</p>
                                 {reinvest && simulation.shares > simulation.initialShares && (
-                                    <span className="text-[8px] font-bold text-emerald-500">+{simulation.shares - simulation.initialShares}</span>
+                                    <span className="text-[9px] font-bold text-emerald-500">+{simulation.shares - simulation.initialShares}</span>
                                 )}
                             </div>
                         </div>
