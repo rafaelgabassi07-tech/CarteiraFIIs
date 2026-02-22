@@ -768,7 +768,7 @@ const SimulatorCard = ({ data, ticker, dividends = [] }: any) => {
     const [amount, setAmount] = useState(1000);
     const [reinvest, setReinvest] = useState(true);
     
-    const result = useMemo(() => {
+    const simulation = useMemo(() => {
         if (!data || data.length === 0) return null;
         
         const cutoff = new Date();
@@ -781,139 +781,250 @@ const SimulatorCard = ({ data, ticker, dividends = [] }: any) => {
         const last = simData[simData.length - 1];
         
         const startPrice = first.price || first.close;
-        const endPrice = last.price || last.close;
         const startDate = new Date(first.date);
+        const endDate = new Date(last.date);
+        const totalDays = Math.max(1, (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
         
         if (!startPrice) return null;
 
+        // Initial State
         let shares = Math.floor(amount / startPrice);
         let cash = amount - (shares * startPrice);
-        let totalDividendsReceived = 0;
-        let dividendsUsedForReinvest = 0;
-        
-        if (dividends && dividends.length > 0) {
-            const sortedDivs = [...dividends].sort((a: any, b: any) => {
-                const dateA = new Date(a.paymentDate || a.dateCom).getTime();
-                const dateB = new Date(b.paymentDate || b.dateCom).getTime();
-                return dateA - dateB;
-            });
+        let totalDividends = 0;
+        let totalReinvested = 0;
 
-            sortedDivs.forEach((div: DividendReceipt) => {
-                const payDate = new Date(div.paymentDate || div.dateCom);
+        // Sort dividends
+        const sortedDivs = [...dividends]
+            .filter(d => new Date(d.paymentDate || d.dateCom) >= startDate)
+            .sort((a: any, b: any) => new Date(a.paymentDate || a.dateCom).getTime() - new Date(b.paymentDate || b.dateCom).getTime());
+
+        let divIndex = 0;
+        const chartData: any[] = [];
+        const cdiTotalGrowth = (last.cdiPct || 0) / 100;
+
+        // Sample data for chart to avoid performance issues
+        const step = Math.max(1, Math.floor(simData.length / 80)); 
+
+        simData.forEach((point: any, index: number) => {
+            const date = new Date(point.date);
+            const price = point.price || point.close;
+
+            // Process dividends up to this date
+            while (divIndex < sortedDivs.length) {
+                const div = sortedDivs[divIndex];
+                const divDate = new Date(div.paymentDate || div.dateCom);
                 
-                if (payDate >= startDate) {
+                if (divDate <= date) {
                     const receipt = shares * div.rate;
-                    totalDividendsReceived += receipt;
+                    totalDividends += receipt;
                     
                     if (reinvest) {
                         cash += receipt;
-                        const closestPoint = simData.find((p: any) => new Date(p.date) >= payDate);
-                        const reinvestPrice = closestPoint ? (closestPoint.price || closestPoint.close) : endPrice;
-                        
-                        if (reinvestPrice && cash >= reinvestPrice) {
-                            const newShares = Math.floor(cash / reinvestPrice);
+                        // Try to buy more shares
+                        if (price && cash >= price) {
+                            const newShares = Math.floor(cash / price);
                             shares += newShares;
-                            cash -= (newShares * reinvestPrice);
-                            dividendsUsedForReinvest += (newShares * reinvestPrice);
+                            cash -= (newShares * price);
+                            totalReinvested += (newShares * price);
                         }
                     }
+                    divIndex++;
+                } else {
+                    break;
                 }
-            });
-        }
+            }
 
-        const finalEquity = (shares * endPrice);
-        const finalTotal = reinvest ? (finalEquity + cash) : (finalEquity + cash + totalDividendsReceived);
-        const cdiGrowth = (last.cdiPct || 0) / 100;
-        const finalCDI = amount * (1 + cdiGrowth);
-        
+            // Add point to chart data
+            if (index % step === 0 || index === simData.length - 1) {
+                const currentEquity = shares * price;
+                const totalValue = reinvest ? (currentEquity + cash) : (currentEquity + cash + totalDividends);
+                
+                // Approximate CDI curve
+                const daysPassed = (date.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
+                const progress = Math.min(1, daysPassed / totalDays);
+                const cdiValue = amount * Math.pow(1 + cdiTotalGrowth, progress);
+
+                chartData.push({
+                    date: point.date,
+                    label: formatDateShort(point.date),
+                    value: totalValue,
+                    cdi: cdiValue,
+                    invested: amount
+                });
+            }
+        });
+
+        const finalValue = chartData[chartData.length - 1].value;
+        const finalCDI = chartData[chartData.length - 1].cdi;
+
         return {
+            chartData,
+            finalValue,
+            finalCDI,
+            totalDividends,
             shares,
-            equity: finalEquity,
-            dividends: totalDividendsReceived,
-            total: finalTotal,
-            profit: finalTotal - amount,
-            cdi: finalCDI,
-            roi: ((finalTotal - amount) / amount) * 100,
-            reinvestedAmount: dividendsUsedForReinvest,
-            initialShares: Math.floor(amount / startPrice)
+            initialShares: Math.floor(amount / startPrice),
+            roi: ((finalValue - amount) / amount) * 100,
+            cdiRoi: ((finalCDI - amount) / amount) * 100
         };
+
     }, [data, amount, dividends, reinvest]);
 
+    if (!simulation) return null;
+
     return (
-        <div className="bg-zinc-900 rounded-[2rem] p-6 border border-zinc-800 shadow-xl mb-6">
+        <div className="bg-white dark:bg-zinc-900 rounded-[2rem] p-6 border border-zinc-200 dark:border-zinc-800 shadow-sm mb-6">
             {/* Header */}
-            <div className="flex justify-between items-start mb-8">
-                <div className="flex gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-500 shrink-0">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
                         <Calculator className="w-6 h-6" />
                     </div>
                     <div>
-                        <h3 className="text-lg font-bold text-white leading-tight">Simulador de<br/>Retorno</h3>
-                        <p className="text-xs font-medium text-zinc-500 mt-1">Histórico de 5 Anos</p>
+                        <h3 className="text-lg font-black text-zinc-900 dark:text-white leading-tight">Simulador de Retorno</h3>
+                        <p className="text-xs font-medium text-zinc-500">Histórico de 5 Anos com Reinvestimento</p>
                     </div>
                 </div>
                 
-                <div className="flex bg-zinc-800/50 rounded-xl p-1">
-                    {[1000, 5000, 10000].map(val => (
-                        <button 
-                            key={val} 
-                            onClick={() => setAmount(val)} 
-                            className={`px-3 py-1.5 text-[10px] font-bold rounded-lg transition-all ${amount === val ? 'bg-zinc-700 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
-                        >
-                            {val/1000}k
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            {/* Result Card */}
-            <div className="bg-zinc-800/30 rounded-3xl p-6 mb-6 relative overflow-hidden border border-zinc-800/50">
-                <div className="flex justify-between items-center relative z-10">
-                    <div>
-                        <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">RESULTADO FINAL</p>
-                        <h2 className="text-4xl font-black text-white tracking-tight mb-3">
-                            {result ? formatBRL(result.total) : '...'}
-                        </h2>
-                        
-                        {result && (
-                            <div className="flex items-center gap-3">
-                                <span className={`px-2 py-1 rounded-lg text-xs font-black ${result.profit >= 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
-                                    {result.profit > 0 ? '+' : ''}{result.roi.toFixed(1)}%
-                                </span>
-                                <span className="text-xs font-medium text-zinc-500">
-                                    vs CDI: {result.cdi ? formatBRL(result.cdi) : '...'}
-                                </span>
-                            </div>
-                        )}
-                    </div>
-
+                <div className="flex items-center gap-3">
                     <button 
                         onClick={() => setReinvest(!reinvest)}
-                        className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all active:scale-95 ${reinvest ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-zinc-700 text-zinc-400'}`}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all border ${reinvest ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/30 dark:border-indigo-800 dark:text-indigo-300' : 'bg-transparent border-zinc-200 text-zinc-500 dark:border-zinc-700'}`}
                     >
-                        <RefreshCcw className={`w-6 h-6 ${reinvest ? 'animate-spin-slow' : ''}`} />
+                        <RefreshCcw className={`w-3 h-3 ${reinvest ? 'animate-spin-slow' : ''}`} />
+                        {reinvest ? 'Reinvestindo' : 'Sem Reinvestir'}
                     </button>
+
+                    <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-xl p-1">
+                        {[1000, 5000, 10000].map(val => (
+                            <button 
+                                key={val} 
+                                onClick={() => setAmount(val)} 
+                                className={`px-3 py-1.5 text-[10px] font-black rounded-lg transition-all ${amount === val ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                            >
+                                {val/1000}k
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
 
-            {/* Bottom Stats */}
-            {result && (
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-zinc-800/30 rounded-2xl p-4 border border-zinc-800/50">
-                        <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-2">COTAS ACUMULADAS</p>
-                        <div className="flex items-baseline justify-between">
-                            <span className="text-2xl font-black text-white">{result.shares}</span>
-                            {reinvest && result.shares > result.initialShares && (
-                                <span className="text-xs font-black text-emerald-500">+{result.shares - result.initialShares}</span>
-                            )}
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                {/* Left: Stats */}
+                <div className="lg:col-span-1 flex flex-col justify-between gap-6">
+                    <div>
+                        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">Resultado Final</p>
+                        <h2 className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter mb-2">
+                            {formatBRL(simulation.finalValue)}
+                        </h2>
+                        <div className="flex items-center gap-2">
+                            <span className={`px-2 py-1 rounded-md text-xs font-black ${simulation.roi >= 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400'}`}>
+                                {simulation.roi > 0 ? '+' : ''}{simulation.roi.toFixed(1)}%
+                            </span>
+                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                                vs CDI {simulation.cdiRoi.toFixed(1)}%
+                            </span>
                         </div>
                     </div>
-                    <div className="bg-zinc-800/30 rounded-2xl p-4 border border-zinc-800/50">
-                        <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-2">DIVIDENDOS TOTAIS</p>
-                        <span className="text-2xl font-black text-emerald-400">{formatBRL(result.dividends)}</span>
+
+                    <div className="space-y-3">
+                        <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-100 dark:border-zinc-800">
+                            <div className="flex justify-between items-center mb-1">
+                                <span className="text-[9px] font-black text-zinc-400 uppercase tracking-wider">Dividendos</span>
+                                <Coins className="w-3 h-3 text-zinc-400" />
+                            </div>
+                            <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(simulation.totalDividends)}</p>
+                        </div>
+
+                        <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-100 dark:border-zinc-800">
+                            <div className="flex justify-between items-center mb-1">
+                                <span className="text-[9px] font-black text-zinc-400 uppercase tracking-wider">Cotas</span>
+                                <Wallet className="w-3 h-3 text-zinc-400" />
+                            </div>
+                            <div className="flex items-baseline gap-2">
+                                <p className="text-lg font-black text-zinc-900 dark:text-white">{simulation.shares}</p>
+                                {reinvest && simulation.shares > simulation.initialShares && (
+                                    <span className="text-xs font-bold text-emerald-500">+{simulation.shares - simulation.initialShares}</span>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </div>
-            )}
+
+                {/* Right: Chart */}
+                <div className="lg:col-span-2 h-[280px] w-full bg-zinc-50 dark:bg-zinc-800/20 rounded-3xl border border-zinc-100 dark:border-zinc-800/50 p-4 relative">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={simulation.chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                            <defs>
+                                <linearGradient id="colorSimValue" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
+                                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#71717a" opacity={0.1} />
+                            <XAxis 
+                                dataKey="label" 
+                                axisLine={false} 
+                                tickLine={false} 
+                                tick={{ fontSize: 9, fill: '#a1a1aa', fontWeight: 600 }} 
+                                minTickGap={40}
+                            />
+                            <YAxis 
+                                axisLine={false} 
+                                tickLine={false} 
+                                tick={{ fontSize: 9, fill: '#a1a1aa' }} 
+                                tickFormatter={(val) => `R$${val/1000}k`} 
+                            />
+                            <Tooltip 
+                                contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '11px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
+                                formatter={(value: number, name: string) => [formatBRL(value), name === 'value' ? 'Patrimônio' : name === 'cdi' ? 'CDI' : 'Investido']}
+                                labelStyle={{ color: '#a1a1aa', marginBottom: '4px' }}
+                            />
+                            <Area 
+                                type="monotone" 
+                                dataKey="value" 
+                                stroke="#6366f1" 
+                                strokeWidth={3} 
+                                fill="url(#colorSimValue)" 
+                                name="value"
+                            />
+                            <Line 
+                                type="monotone" 
+                                dataKey="cdi" 
+                                stroke="#a1a1aa" 
+                                strokeWidth={2} 
+                                strokeDasharray="4 4" 
+                                dot={false} 
+                                name="cdi"
+                                opacity={0.6}
+                            />
+                            <Line 
+                                type="monotone" 
+                                dataKey="invested" 
+                                stroke="#52525b" 
+                                strokeWidth={1} 
+                                strokeDasharray="2 2" 
+                                dot={false} 
+                                name="invested"
+                                opacity={0.3}
+                            />
+                        </AreaChart>
+                    </ResponsiveContainer>
+                    
+                    <div className="absolute top-4 right-4 flex gap-3">
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
+                            <span className="text-[9px] font-bold text-zinc-500 uppercase">Patrimônio</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full bg-zinc-400"></div>
+                            <span className="text-[9px] font-bold text-zinc-500 uppercase">CDI</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 };
