@@ -121,26 +121,31 @@ export const Settings: React.FC<SettingsProps> = ({
 
     return (
         <div className="pb-32 anim-fade-in px-2">
-            <div className="flex items-center gap-4 mb-6 bg-white dark:bg-zinc-900 p-4 rounded-[1.5rem] border border-zinc-200 dark:border-zinc-800 shadow-sm relative overflow-hidden">
-                <div className="w-14 h-14 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-400 border border-zinc-200 dark:border-zinc-700 shadow-inner shrink-0">
-                    <User className="w-7 h-7" strokeWidth={1.5} />
-                </div>
-                <div className="flex-1 min-w-0">
-                    <h2 className="text-lg font-black text-zinc-900 dark:text-white truncate">{user?.email?.split('@')[0] || 'Investidor'}</h2>
-                    <p className="text-xs text-zinc-500 font-medium truncate">{user?.email}</p>
-                    <div className="flex items-center gap-2 mt-1.5">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-[9px] font-bold uppercase tracking-wide">
-                            Pro
-                        </span>
-                        <span className="text-[10px] text-zinc-400">v{appVersion}</span>
+            <div className="mb-8 bg-zinc-900 dark:bg-zinc-100 p-6 rounded-[2.5rem] shadow-xl relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 dark:bg-black/5 blur-3xl rounded-full -mr-20 -mt-20 group-hover:bg-white/10 dark:group-hover:bg-black/10 transition-colors duration-700"></div>
+                <div className="absolute bottom-0 left-0 w-32 h-32 bg-indigo-500/10 blur-3xl rounded-full -ml-16 -mb-16"></div>
+                
+                <div className="relative z-10 flex items-center gap-5">
+                    <div className="w-16 h-16 rounded-3xl bg-white/10 dark:bg-black/10 backdrop-blur-md flex items-center justify-center text-white dark:text-zinc-900 border border-white/20 dark:border-black/10 shadow-inner shrink-0 scale-100 group-hover:scale-105 transition-transform duration-500">
+                        <User className="w-8 h-8" strokeWidth={1.5} />
                     </div>
+                    <div className="flex-1 min-w-0">
+                        <h2 className="text-xl font-black text-white dark:text-zinc-900 truncate tracking-tight">{user?.email?.split('@')[0] || 'Investidor'}</h2>
+                        <p className="text-xs text-white/60 dark:text-zinc-500 font-medium truncate">{user?.email}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-indigo-500 text-white text-[9px] font-black uppercase tracking-widest shadow-lg shadow-indigo-500/20">
+                                Premium
+                            </span>
+                            <span className="text-[10px] text-white/40 dark:text-zinc-400 font-bold tracking-wider">v{appVersion}</span>
+                        </div>
+                    </div>
+                    <button 
+                        onClick={onLogout}
+                        className="w-11 h-11 rounded-2xl bg-white/10 dark:bg-black/5 flex items-center justify-center text-white/60 dark:text-zinc-400 hover:text-rose-400 dark:hover:text-rose-500 hover:bg-rose-500/20 transition-all active:scale-95"
+                    >
+                        <LogOut className="w-5 h-5" />
+                    </button>
                 </div>
-                <button 
-                    onClick={onLogout}
-                    className="w-10 h-10 rounded-xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
-                >
-                    <LogOut className="w-5 h-5" />
-                </button>
             </div>
 
             <SettingsSection title="Personalização">
@@ -206,7 +211,7 @@ export const Settings: React.FC<SettingsProps> = ({
                 </div>
             </SettingsSection>
 
-            <SettingsSection title="Dados & Nuvem">
+            <SettingsSection title="Dados & Backup">
                 <SettingsItem 
                     icon={Upload} 
                     label="Importar Planilha B3" 
@@ -217,10 +222,44 @@ export const Settings: React.FC<SettingsProps> = ({
                 
                 <div className="border-t border-zinc-100 dark:border-zinc-800">
                     <SettingsItem 
+                        icon={Download} 
+                        label="Exportar Backup (JSON)" 
+                        description="Baixar todos os dados locais"
+                        onClick={() => {
+                            const data = { transactions, dividends };
+                            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `investfiis-backup-${new Date().toISOString().split('T')[0]}.json`;
+                            a.click();
+                        }} 
+                    />
+                </div>
+
+                <div className="border-t border-zinc-100 dark:border-zinc-800">
+                    <SettingsItem 
                         icon={RefreshCw} 
                         label="Sincronizar Dados" 
-                        description="Forçar atualização da nuvem"
+                        description="Forçar atualização com a nuvem"
                         onClick={() => onSyncAll(true)} 
+                    />
+                </div>
+            </SettingsSection>
+
+            <SettingsSection title="Suporte & Feedback">
+                <SettingsItem 
+                    icon={Shield} 
+                    label="Central de Segurança" 
+                    description="Como protegemos seus dados"
+                    onClick={() => {}} 
+                />
+                <div className="border-t border-zinc-100 dark:border-zinc-800">
+                    <SettingsItem 
+                        icon={Bell} 
+                        label="Sugerir Melhoria" 
+                        description="Fale diretamente com os devs"
+                        onClick={() => window.open('mailto:suporte@investfiis.com.br')} 
                     />
                 </div>
             </SettingsSection>

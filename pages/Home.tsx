@@ -174,6 +174,7 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
         let worstMonth = { ...filteredData[0], change: 0 };
         let positiveMonths = 0;
         let negativeMonths = 0;
+        const monthlyReturns: number[] = [];
 
         for (let i = 1; i < filteredData.length; i++) {
             const prev = filteredData[i-1];
@@ -182,12 +183,19 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
             const organicGrowth = (curr.marketValue - prev.marketValue) - curr.contribution;
             const pct = prev.marketValue > 0 ? (organicGrowth / prev.marketValue) * 100 : 0;
             
+            monthlyReturns.push(pct);
+            
             if (pct > bestMonth.change) bestMonth = { ...curr, change: pct };
             if (pct < worstMonth.change) worstMonth = { ...curr, change: pct };
             
             if (pct > 0) positiveMonths++;
             else if (pct < 0) negativeMonths++;
         }
+
+        // Volatility (Standard Deviation)
+        const avgMonthlyReturn = monthlyReturns.length > 0 ? monthlyReturns.reduce((a, b) => a + b, 0) / monthlyReturns.length : 0;
+        const variance = monthlyReturns.length > 0 ? monthlyReturns.reduce((a, b) => a + Math.pow(b - avgMonthlyReturn, 2), 0) / monthlyReturns.length : 0;
+        const volatility = Math.sqrt(variance);
 
         return {
             invested: totalInvested,
@@ -202,6 +210,8 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
             totalDividends: last.dividends,
             positiveMonths,
             negativeMonths,
+            avgMonthlyReturn,
+            volatility,
             winRate: (positiveMonths + negativeMonths) > 0 ? (positiveMonths / (positiveMonths + negativeMonths)) * 100 : 0
         };
     }, [filteredData]);
@@ -378,11 +388,19 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                     {/* Metrics Grid - Reorganized for Clarity */}
                     <div className="space-y-6 mb-8">
                         <div>
-                            <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-4 px-1">Performance</h4>
+                            <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-4 px-1">Performance & Risco</h4>
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="bg-zinc-50 dark:bg-zinc-900/40 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
                                     <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">CAGR Anual</p>
                                     <p className="text-lg font-black text-zinc-900 dark:text-white tracking-tight">{stats.cagr.toFixed(2)}%</p>
+                                </div>
+                                <div className="bg-zinc-50 dark:bg-zinc-900/40 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
+                                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Volatilidade</p>
+                                    <p className="text-lg font-black text-zinc-900 dark:text-white tracking-tight">{stats.volatility.toFixed(2)}%</p>
+                                </div>
+                                <div className="bg-zinc-50 dark:bg-zinc-900/40 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
+                                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Retorno Médio</p>
+                                    <p className="text-lg font-black text-zinc-900 dark:text-white tracking-tight">{stats.avgMonthlyReturn.toFixed(2)}%</p>
                                 </div>
                                 <div className="bg-zinc-50 dark:bg-zinc-900/40 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
                                     <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Win Rate</p>
@@ -406,15 +424,23 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                         </div>
 
                         <div>
-                            <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-4 px-1">Atividade Mensal</h4>
+                            <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-4 px-1">Atividade & Fluxo</h4>
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="bg-zinc-50 dark:bg-zinc-900/40 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
                                     <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Aporte Médio</p>
                                     <p className="text-base font-black text-zinc-800 dark:text-zinc-200 tracking-tight">{formatBRL(stats.avgContribution)}</p>
                                 </div>
                                 <div className="bg-zinc-50 dark:bg-zinc-900/40 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
-                                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Proventos</p>
+                                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Proventos Totais</p>
                                     <p className="text-base font-black text-zinc-800 dark:text-zinc-200 tracking-tight">{formatBRL(stats.totalDividends)}</p>
+                                </div>
+                                <div className="bg-zinc-50 dark:bg-zinc-900/40 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
+                                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Crescimento Orgânico</p>
+                                    <p className="text-base font-black text-emerald-600 tracking-tight">{formatBRL(stats.totalReturn)}</p>
+                                </div>
+                                <div className="bg-zinc-50 dark:bg-zinc-900/40 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
+                                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Meses Positivos</p>
+                                    <p className="text-base font-black text-zinc-800 dark:text-zinc-200 tracking-tight">{stats.positiveMonths} <span className="text-[10px] text-zinc-400 font-medium">de {stats.positiveMonths + stats.negativeMonths}</span></p>
                                 </div>
                             </div>
                         </div>
