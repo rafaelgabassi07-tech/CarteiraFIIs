@@ -1022,9 +1022,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
             viewedIds={viewedStories}
         />
 
-        <div className="relative w-full min-h-[200px] rounded-[2rem] bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl shadow-black/40 group anim-fade-in">
+        <div 
+            onClick={() => setShowEvolution(true)}
+            className="relative w-full min-h-[200px] rounded-[2rem] bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl shadow-black/40 group anim-fade-in cursor-pointer active:scale-[0.98] transition-all duration-300"
+        >
             {/* Background Effects */}
-            <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-indigo-600/20 blur-[100px] rounded-full pointer-events-none -mr-20 -mt-20 mix-blend-screen animate-pulse-slow"></div>
+            <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-indigo-600/20 blur-[100px] rounded-full pointer-events-none -mr-20 -mt-20 mix-blend-screen animate-pulse-slow group-hover:bg-indigo-600/30 transition-colors"></div>
             <div className="absolute bottom-0 left-0 w-[250px] h-[250px] bg-emerald-600/10 blur-[80px] rounded-full pointer-events-none -ml-20 -mb-20 mix-blend-screen"></div>
             <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-50"></div>
 
@@ -1035,9 +1038,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                             <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
                             <span className="text-[10px] font-black text-zinc-200 uppercase tracking-widest">Patrimônio Total</span>
                         </div>
-                        <button className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center backdrop-blur-md transition-colors border border-white/5">
-                            <Wallet className="w-4 h-4 text-zinc-300" />
-                        </button>
+                        <div className="w-8 h-8 rounded-full bg-white/5 group-hover:bg-white/10 flex items-center justify-center backdrop-blur-md transition-colors border border-white/5">
+                            <TrendingUp className="w-4 h-4 text-zinc-300" />
+                        </div>
                     </div>
 
                     <div className="flex flex-col">
