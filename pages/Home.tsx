@@ -321,8 +321,8 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                                             formatter={(value: number, name: string) => [formatBRL(value), name === 'marketValue' ? 'Patrimônio' : 'Investido']}
                                             labelStyle={{ color: '#a1a1aa', marginBottom: '6px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}
                                         />
-                                        <Area type="monotone" dataKey="marketValue" stroke="none" fill="url(#colorWealthArea)" />
-                                        <Bar dataKey="marketValue" fill="url(#colorWealthBar)" radius={[6, 6, 0, 0]} maxBarSize={24} animationDuration={1500} />
+                                        <Area type="monotone" dataKey="marketValue" stroke="none" fill="url(#colorWealthArea)" tooltipType="none" />
+                                        <Bar dataKey="marketValue" fill="url(#colorWealthBar)" radius={[6, 6, 0, 0]} maxBarSize={24} animationDuration={1500} tooltipType="none" />
                                         <Line type="monotone" dataKey="marketValue" stroke="#6366f1" strokeWidth={3} dot={{ r: 3, fill: '#6366f1', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6, strokeWidth: 0, fill: '#6366f1' }} animationDuration={2000} />
                                         <Line type="monotone" dataKey="invested" stroke="#a1a1aa" strokeWidth={2} strokeDasharray="5 5" dot={false} activeDot={false} opacity={0.6} />
                                     </ComposedChart>
@@ -344,7 +344,7 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                                             labelStyle={{ color: '#a1a1aa', marginBottom: '6px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}
                                         />
                                         <Bar dataKey="contribution" fill="url(#colorCashBar)" radius={[6, 6, 0, 0]} maxBarSize={24} animationDuration={1500} />
-                                        <Line type="monotone" dataKey="contribution" stroke="#6366f1" strokeWidth={2} strokeDasharray="3 3" dot={false} opacity={0.4} />
+                                        <Line type="monotone" dataKey="contribution" stroke="#6366f1" strokeWidth={2} strokeDasharray="3 3" dot={false} opacity={0.4} tooltipType="none" />
                                         <Line type="monotone" dataKey="dividend" stroke="#10b981" strokeWidth={3} dot={{r: 4, fill: "#10b981", strokeWidth: 2, stroke: "#fff"}} activeDot={{ r: 6, strokeWidth: 0, fill: '#10b981' }} animationDuration={2000} />
                                     </ComposedChart>
                                 ) : (
@@ -368,8 +368,8 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                                             formatter={(value: number) => [`${value.toFixed(2)}%`, 'Rentabilidade Acumulada']}
                                             labelStyle={{ color: '#a1a1aa', marginBottom: '6px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}
                                         />
-                                        <Area type="monotone" dataKey="returnPercent" stroke="none" fill="url(#colorReturnArea)" />
-                                        <Bar dataKey="returnPercent" fill="url(#colorReturnBar)" radius={[6, 6, 0, 0]} maxBarSize={24} animationDuration={1500} />
+                                        <Area type="monotone" dataKey="returnPercent" stroke="none" fill="url(#colorReturnArea)" tooltipType="none" />
+                                        <Bar dataKey="returnPercent" fill="url(#colorReturnBar)" radius={[6, 6, 0, 0]} maxBarSize={24} animationDuration={1500} tooltipType="none" />
                                         <Line type="monotone" dataKey="returnPercent" stroke="#f59e0b" strokeWidth={3} dot={{ r: 4, fill: '#f59e0b', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6, strokeWidth: 0, fill: '#f59e0b' }} animationDuration={2000} />
                                         <ReferenceLine y={0} stroke="#ef4444" strokeDasharray="3 3" opacity={0.5} />
                                     </ComposedChart>
