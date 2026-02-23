@@ -168,10 +168,18 @@ function parseInvestidor10Data(data: any[]) {
 async function fetchYahooData(symbol: string, range: string) {
     const s = symbol.includes('^') ? symbol : (symbol.endsWith('.SA') ? symbol : `${symbol}.SA`);
     const { range: yRange, interval } = getYahooParams(range);
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${s}?range=${yRange}&interval=${interval}&includePrePost=false`;
+    // Use query2 for better reliability
+    const url = `https://query2.finance.yahoo.com/v8/finance/chart/${s}?range=${yRange}&interval=${interval}&includePrePost=false`;
     
     try {
-        const { data } = await axios.get(url, { httpsAgent, timeout: 8000 });
+        const { data } = await axios.get(url, { 
+            httpsAgent, 
+            timeout: 8000,
+            headers: {
+                ...HEADERS,
+                'Referer': 'https://finance.yahoo.com/'
+            }
+        });
         const result = data.chart?.result?.[0];
         if (!result || !result.timestamp || !result.indicators.quote[0].close) return null;
         
@@ -233,19 +241,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
         const startDateBCB = getStartDate(range);
 
-        // Fetch Parallel Data
-        // Try Investidor10 for the main asset first, fallback to Yahoo
-        let assetData = null;
-        
-        // Only use Investidor10 for Brazilian assets (no ^ or .SA suffix usually, but user might pass it)
-        const cleanTicker = ticker.replace('.SA', '');
-        if (!ticker.includes('^')) {
-             assetData = await fetchInvestidor10History(cleanTicker, range);
-        }
-        
-        if (!assetData) {
-            assetData = await fetchYahooData(ticker, range);
-        }
+    // Fetch Parallel Data
+    // Try Yahoo for intraday ranges, otherwise try Investidor10 first
+    let assetData = null;
+    const isIntraday = ['1m', '5m', '10m', '15m', '30m', '1h', '1D', '5D'].includes(range);
+    
+    // Only use Investidor10 for Brazilian assets (no ^ or .SA suffix usually, but user might pass it)
+    const cleanTicker = ticker.replace('.SA', '');
+    
+    if (!isIntraday && !ticker.includes('^')) {
+         assetData = await fetchInvestidor10History(cleanTicker, range);
+    }
+    
+    if (!assetData) {
+        assetData = await fetchYahooData(ticker, range);
+    }
 
         const [ibovData, ifixData, cdiMap, ipcaMap] = await Promise.all([
             fetchYahooData('^BVSP', range),

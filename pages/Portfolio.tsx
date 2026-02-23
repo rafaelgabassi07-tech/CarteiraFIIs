@@ -1711,7 +1711,9 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: { asset: Ass
             if (!d.paymentDate) return;
             const year = new Date(d.paymentDate).getFullYear();
             const current = yearlyMap.get(year) || 0;
-            yearlyMap.set(year, current + d.rate * asset.quantity); // Approximate total received based on current quantity
+            // Prioritize actual total received, fallback to rate * quantityOwned, then rate * current quantity
+            const amount = d.totalReceived || (d.rate * (d.quantityOwned || asset.quantity));
+            yearlyMap.set(year, current + amount);
         });
 
         const years = Array.from(yearlyMap.keys()).sort();
