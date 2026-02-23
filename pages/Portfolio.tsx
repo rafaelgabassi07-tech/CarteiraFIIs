@@ -1717,10 +1717,21 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: { asset: Ass
         });
 
         const years = Array.from(yearlyMap.keys()).sort();
-        return years.map(year => ({
-            year: year.toString(),
-            total: yearlyMap.get(year) || 0
-        }));
+        return years.map((year, index) => {
+            const total = yearlyMap.get(year) || 0;
+            let growth = 0;
+            if (index > 0) {
+                const prevTotal = yearlyMap.get(years[index - 1]) || 0;
+                if (prevTotal > 0) {
+                    growth = ((total - prevTotal) / prevTotal) * 100;
+                }
+            }
+            return {
+                year: year.toString(),
+                total,
+                growth
+            };
+        });
     }, [marketHistory, asset.quantity]);
 
     return (
@@ -1817,10 +1828,15 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: { asset: Ass
                 </div>
 
                 <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
-                    <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
-                        <h4 className="text-[10px] font-bold text-zinc-400 uppercase flex items-center gap-2">
-                            <TrendingUp className="w-3 h-3" /> Evolução Anual
-                        </h4>
+                    <div className="p-4 border-b border-zinc-100 dark:border-zinc-800">
+                        <div className="flex justify-between items-center mb-1">
+                            <h4 className="text-[10px] font-bold text-zinc-400 uppercase flex items-center gap-2">
+                                <TrendingUp className="w-3 h-3" /> Evolução Anual de Proventos
+                            </h4>
+                        </div>
+                        <p className="text-[9px] text-zinc-500 font-medium leading-tight">
+                            Acompanhe o crescimento do seu fluxo de caixa passivo total recebido por ano. Este gráfico ilustra o efeito "bola de neve" ao longo do tempo.
+                        </p>
                     </div>
                     <div className="h-60 w-full p-2 pt-4">
                         {yearlyDividendData.length > 0 ? (
@@ -1835,9 +1851,12 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: { asset: Ass
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
                                     <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 700 }} dy={5} />
                                     <Tooltip 
-                                        cursor={{fill: 'transparent'}} 
+                                        cursor={{fill: 'rgba(255,255,255,0.05)'}} 
                                         contentStyle={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(24, 24, 27, 0.8)', color: '#fff', fontSize: '10px', padding: '8px 12px', backdropFilter: 'blur(8px)' }} 
-                                        formatter={(value: number) => [formatBRL(value), 'Total Anual']} 
+                                        formatter={(value: number, name: string) => {
+                                            if (name === 'growth') return [`${value.toFixed(1)}%`, 'Crescimento'];
+                                            return [formatBRL(value), 'Total Recebido'];
+                                        }} 
                                     />
                                     <Bar 
                                         dataKey="total" 
@@ -1948,24 +1967,27 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: { asset: Ass
                                     domain={['auto', 'auto']}
                                 />
                                 <Tooltip 
-                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
+                                    contentStyle={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(24, 24, 27, 0.8)', color: '#fff', fontSize: '10px', padding: '8px 12px', backdropFilter: 'blur(8px)' }}
                                     formatter={(value: number) => [`${value.toFixed(2)}%`, 'DY (12m)']}
                                     labelStyle={{ color: '#71717a', fontSize: '11px', fontWeight: 'bold', marginBottom: '4px' }}
                                 />
                                 <Bar 
                                     dataKey="yield" 
-                                    fill="#10b981" 
-                                    opacity={0.3}
-                                    radius={[2, 2, 0, 0]}
-                                    barSize={10}
+                                    fill="url(#gradUnitRend)" 
+                                    radius={[4, 4, 0, 0]}
+                                    maxBarSize={20}
+                                    animationDuration={1500}
+                                    name="DY Mensal"
                                 />
-                                <Area 
+                                <Line 
                                     type="monotone" 
                                     dataKey="yield" 
-                                    stroke="#10b981" 
+                                    stroke="#f59e0b" 
                                     strokeWidth={2}
-                                    fillOpacity={1} 
-                                    fill="url(#colorYield)" 
+                                    dot={{r: 3, fill: "#f59e0b", strokeWidth: 0}}
+                                    activeDot={{r: 5}}
+                                    animationDuration={2000}
+                                    name="DY Histórico"
                                 />
                             </ComposedChart>
                         </ResponsiveContainer>
