@@ -1169,17 +1169,22 @@ const DetailedInfoBlock = ({ asset }: { asset: AssetPosition }) => {
                         <InfoRow label="P/VP (Preço/Valor Patr.)" value={asset.p_vp?.toFixed(2)} />
                         <InfoRow label="VPA (Valor Patr./Ação)" value={formatBRL(asset.vpa)} />
                         <InfoRow label="EV/EBITDA" value={asset.ev_ebitda?.toFixed(2)} />
+                        <InfoRow label="PEG Ratio" value={asset.peg_ratio?.toFixed(2)} />
+                        <InfoRow label="P/EBIT" value={asset.p_ebit?.toFixed(2)} />
 
                         <h5 className="px-2 text-[9px] font-black text-indigo-500 uppercase tracking-widest mb-1 mt-4">Eficiência & Crescimento</h5>
                         <InfoRow label="Margem Líquida" value={asset.net_margin ? `${asset.net_margin.toFixed(2)}%` : undefined} />
                         <InfoRow label="Margem Bruta" value={asset.gross_margin ? `${asset.gross_margin.toFixed(2)}%` : undefined} />
                         <InfoRow label="ROE (Ret. s/ Patr.)" value={asset.roe ? `${asset.roe.toFixed(2)}%` : undefined} />
+                        <InfoRow label="ROIC" value={asset.roic ? `${asset.roic.toFixed(2)}%` : undefined} />
+                        <InfoRow label="ROA" value={asset.roa ? `${asset.roa.toFixed(2)}%` : undefined} />
                         <InfoRow label="CAGR Lucros (5 anos)" value={asset.cagr_profits ? `${asset.cagr_profits.toFixed(2)}%` : undefined} />
                         <InfoRow label="Payout" value={asset.payout ? `${asset.payout.toFixed(2)}%` : undefined} />
 
                         <h5 className="px-2 text-[9px] font-black text-indigo-500 uppercase tracking-widest mb-1 mt-4">Endividamento</h5>
                         <InfoRow label="Dívida Líq / EBITDA" value={asset.net_debt_ebitda?.toFixed(2)} />
                         <InfoRow label="Dívida Líq / PL" value={asset.net_debt_equity?.toFixed(2)} />
+                        <InfoRow label="Liquidez Corrente" value={asset.liquidez_corrente?.toFixed(2)} />
                     </div>
                 </div>
             )}
@@ -1193,8 +1198,13 @@ const DetailedInfoBlock = ({ asset }: { asset: AssetPosition }) => {
                     </div>
                     <div className="-mx-2">
                         <InfoRow label="Vacância Física" value={asset.vacancy ? `${asset.vacancy.toFixed(2)}%` : undefined} />
+                        <InfoRow label="Vacância Financeira" value={asset.financial_vacancy ? `${asset.financial_vacancy.toFixed(2)}%` : undefined} />
+                        <InfoRow label="Cap Rate" value={asset.cap_rate ? `${asset.cap_rate.toFixed(2)}%` : undefined} />
                         <InfoRow label="P/VP" value={asset.p_vp?.toFixed(2)} />
+                        <InfoRow label="VP por Cota" value={formatBRL(asset.val_patrimonial_cota || asset.vpa)} />
                         <InfoRow label="Último Rendimento" value={formatBRL(asset.last_dividend)} />
+                        <InfoRow label="Nº de Cotistas" value={asset.shareholders_count?.toLocaleString('pt-BR')} />
+                        <InfoRow label="Nº de Imóveis" value={asset.properties_count} />
                         <InfoRow label="Tipo de Gestão" value={asset.manager_type} />
                         <InfoRow label="Taxa de Adm." value={asset.management_fee} />
                         <InfoRow label="Público Alvo" value={asset.target_audience} />
