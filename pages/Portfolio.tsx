@@ -1706,7 +1706,14 @@ const AssetCard = ({ asset, maxVal, totalVal, privacyMode, onClick }: { asset: A
                 </div>
                 <div className="flex flex-col items-end">
                     <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Preço Atual</span>
-                    <span className="text-xs font-bold text-zinc-900 dark:text-white">{formatBRL(asset.currentPrice, privacyMode)}</span>
+                    <div className="flex items-baseline gap-2">
+                        <span className="text-xs font-bold text-zinc-900 dark:text-white">{formatBRL(asset.currentPrice, privacyMode)}</span>
+                        {asset.dailyChange !== undefined && (
+                            <span className={`text-[10px] font-bold ${asset.dailyChange >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                {asset.dailyChange >= 0 ? '+' : ''}{asset.dailyChange.toFixed(2)}%
+                            </span>
+                        )}
+                    </div>
                 </div>
             </div>
         </button>

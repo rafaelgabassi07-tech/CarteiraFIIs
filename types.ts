@@ -54,6 +54,10 @@ export interface AssetFundamentals {
   ebit_margin?: number; // Margem EBIT (NOVO)
   cagr_revenue?: number; // CAGR Receita 5a
   cagr_profits?: number; // CAGR Lucros 5a
+  roic?: number; // Return on Invested Capital (NOVO)
+  roa?: number; // Return on Assets (NOVO)
+  liquidez_corrente?: number; // Liquidez Corrente (NOVO)
+  
   payout?: number; // Payout (NOVO)
   lpa?: number; // Lucro por Ação
   vpa?: number; // Valor Patrimonial por Ação
@@ -62,16 +66,28 @@ export interface AssetFundamentals {
   ev_ebitda?: number;
   net_debt_ebitda?: number; // Dívida Líquida / EBITDA
   net_debt_equity?: number; // Dívida Líquida / PL (NOVO)
+  peg_ratio?: number; // PEG Ratio (NOVO)
+  p_ebit?: number; // Preço / EBIT (NOVO)
+
+  // Governança e Mercado (NOVO)
+  governance_level?: string; // Nível de Governança
+  free_float?: number; // Free Float (%)
+  tag_along?: number; // Tag Along (%)
+  avg_daily_volume?: number; // Volume Médio Diário (Numérico)
 
   // FIIs
   vacancy?: number; // Vacância Física
+  financial_vacancy?: number; // Vacância Financeira (NOVO)
   assets_value?: string; // Patrimônio Líquido (R$)
   manager_type?: string; // Tipo de Gestão (Ativa/Passiva)
   segment_secondary?: string; // Segmento/Tipo de Fundo
   mandate?: string; // Mandato
-  properties_count?: number; // Quantidade de Imóveis ou Número de Cotistas (adaptado)
+  properties_count?: number; // Quantidade de Imóveis
+  shareholders_count?: number; // Número de Cotistas (NOVO)
   management_fee?: string; // Taxa de Administração
   last_dividend?: number; // Último Rendimento
+  val_patrimonial_cota?: number; // Valor Patrimonial por Cota (NOVO)
+  cap_rate?: number; // Cap Rate (NOVO)
   
   // Informações Adicionais (FIIs)
   company_name?: string;
