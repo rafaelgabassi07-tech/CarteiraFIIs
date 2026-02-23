@@ -1185,6 +1185,12 @@ const DetailedInfoBlock = ({ asset }: { asset: AssetPosition }) => {
                         <InfoRow label="Dívida Líq / EBITDA" value={asset.net_debt_ebitda?.toFixed(2)} />
                         <InfoRow label="Dívida Líq / PL" value={asset.net_debt_equity?.toFixed(2)} />
                         <InfoRow label="Liquidez Corrente" value={asset.liquidez_corrente?.toFixed(2)} />
+
+                        <h5 className="px-2 text-[9px] font-black text-indigo-500 uppercase tracking-widest mb-1 mt-4">Governança & Mercado</h5>
+                        <InfoRow label="Governança" value={asset.governance_level} />
+                        <InfoRow label="Free Float" value={asset.free_float ? `${asset.free_float.toFixed(2)}%` : undefined} />
+                        <InfoRow label="Tag Along" value={asset.tag_along ? `${asset.tag_along.toFixed(2)}%` : undefined} />
+                        <InfoRow label="Vol. Médio Diário" value={asset.avg_daily_volume ? formatBRL(asset.avg_daily_volume) : undefined} />
                     </div>
                 </div>
             )}
@@ -1342,6 +1348,77 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: { asset: Ass
     const [simMonthlyInvest, setSimMonthlyInvest] = useState<string>('1000');
     const [simYears, setSimYears] = useState<string>('5');
     const [simResult, setSimResult] = useState<{ qty: number, income: number } | null>(null);
+    const [priceHistory, setPriceHistory] = useState<any[]>([]);
+    const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+    useEffect(() => {
+        const fetchHistory = async () => {
+            setIsLoadingHistory(true);
+            try {
+                const res = await fetch(`/api/history?ticker=${asset.ticker}&range=5y`);
+                const data = await res.json();
+                if (data && data.results) {
+                    setPriceHistory(data.results);
+                }
+            } catch (error) {
+                console.error("Failed to fetch history for yield chart", error);
+            } finally {
+                setIsLoadingHistory(false);
+            }
+        };
+        fetchHistory();
+    }, [asset.ticker]);
+
+    const yieldHistoryData = useMemo(() => {
+        if (!priceHistory.length || !marketHistory.length) return [];
+
+        // Sort dividends by date
+        const sortedDivs = [...marketHistory].sort((a, b) => new Date(a.paymentDate).getTime() - new Date(b.paymentDate).getTime());
+
+        // Sample price history to reduce points (e.g., one per week or month) to improve performance
+        // Taking the last price of each month is a good standard
+        const monthlyPrices = new Map<string, number>();
+        priceHistory.forEach(p => {
+            const d = new Date(p.date);
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            // Overwrite to keep the latest price of the month
+            monthlyPrices.set(key, p.close);
+        });
+
+        const chartPoints: any[] = [];
+        
+        monthlyPrices.forEach((price, monthKey) => {
+            const [year, month] = monthKey.split('-').map(Number);
+            const dateObj = new Date(year, month - 1, 28); // End of month approx
+            
+            // Calculate trailing 12m dividends
+            const oneYearAgo = new Date(dateObj);
+            oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+            const trailingDivs = sortedDivs.filter(d => {
+                const payDate = new Date(d.paymentDate);
+                return payDate > oneYearAgo && payDate <= dateObj;
+            });
+
+            const totalDivs = trailingDivs.reduce((sum, d) => sum + d.rate, 0);
+            
+            if (totalDivs > 0 && price > 0) {
+                const dy = (totalDivs / price) * 100;
+                // Filter out unrealistic spikes (e.g. data errors)
+                if (dy < 100) {
+                    chartPoints.push({
+                        date: monthKey,
+                        displayDate: `${month}/${year}`,
+                        yield: dy,
+                        price: price,
+                        dividends: totalDivs
+                    });
+                }
+            }
+        });
+
+        return chartPoints.sort((a, b) => a.date.localeCompare(b.date));
+    }, [priceHistory, marketHistory]);
 
     useEffect(() => {
         const monthlyInvest = parseFloat(simMonthlyInvest) || 0;
@@ -1557,6 +1634,63 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: { asset: Ass
                             <Legend iconType="circle" iconSize={6} formatter={(val) => <span className="text-[9px] font-bold text-zinc-500 uppercase">{val}</span>} />
                         </ComposedChart>
                     </ResponsiveContainer>
+                </div>
+            </div>
+
+            {/* Yield History Chart */}
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
+                <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
+                    <h4 className="text-[10px] font-bold text-zinc-400 uppercase flex items-center gap-2">
+                        <TrendingUp className="w-3 h-3" /> Dividend Yield Histórico (12m)
+                    </h4>
+                    {isLoadingHistory && <span className="text-[9px] text-zinc-400 animate-pulse">Carregando...</span>}
+                </div>
+                <div className="h-60 w-full p-2 pt-4">
+                    {yieldHistoryData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={yieldHistoryData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="colorYield" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
+                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e4e4e7" opacity={0.4} />
+                                <XAxis 
+                                    dataKey="displayDate" 
+                                    tick={{fontSize: 9, fill: '#71717a'}} 
+                                    axisLine={false} 
+                                    tickLine={false}
+                                    dy={10}
+                                    minTickGap={30}
+                                />
+                                <YAxis 
+                                    tick={{fontSize: 9, fill: '#71717a'}} 
+                                    axisLine={false} 
+                                    tickLine={false}
+                                    tickFormatter={(val) => `${val.toFixed(1)}%`}
+                                    domain={['auto', 'auto']}
+                                />
+                                <Tooltip 
+                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
+                                    formatter={(value: number) => [`${value.toFixed(2)}%`, 'DY (12m)']}
+                                    labelStyle={{ color: '#71717a', fontSize: '11px', fontWeight: 'bold', marginBottom: '4px' }}
+                                />
+                                <Area 
+                                    type="monotone" 
+                                    dataKey="yield" 
+                                    stroke="#10b981" 
+                                    strokeWidth={2}
+                                    fillOpacity={1} 
+                                    fill="url(#colorYield)" 
+                                />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    ) : (
+                        <div className="flex h-full items-center justify-center text-zinc-400 text-xs">
+                            {isLoadingHistory ? 'Carregando histórico...' : 'Sem dados históricos suficientes'}
+                        </div>
+                    )}
                 </div>
             </div>
 

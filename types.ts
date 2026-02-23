@@ -69,6 +69,12 @@ export interface AssetFundamentals {
   peg_ratio?: number; // PEG Ratio (NOVO)
   p_ebit?: number; // Preço / EBIT (NOVO)
 
+  // Governança e Mercado (NOVO)
+  governance_level?: string; // Nível de Governança
+  free_float?: number; // Free Float (%)
+  tag_along?: number; // Tag Along (%)
+  avg_daily_volume?: number; // Volume Médio Diário (Numérico)
+
   // FIIs
   vacancy?: number; // Vacância Física
   financial_vacancy?: number; // Vacância Financeira (NOVO)

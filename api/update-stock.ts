@@ -157,6 +157,10 @@ const FIELD_MATCHERS = [
     { key: 'liquidez_corrente',    indicator: ['LIQUIDEZ_CORRENTE'],    text: (t: string) => t.includes('liquidez corrente') },
     { key: 'peg_ratio',            indicator: ['PEG_RATIO'],            text: (t: string) => t.includes('peg ratio') },
     { key: 'p_ebit',               indicator: ['P_EBIT'],               text: (t: string) => t.includes('p/ebit') },
+    { key: 'governance_level',     indicator: [],                       text: (t: string) => t.includes('governanca') || t.includes('segmento de listagem') },
+    { key: 'free_float',           indicator: [],                       text: (t: string) => t.includes('free float') },
+    { key: 'tag_along',            indicator: [],                       text: (t: string) => t.includes('tag along') },
+    { key: 'avg_daily_volume',     indicator: [],                       text: (t: string) => t.includes('volume medio') || t.includes('liquidez media') },
 ];
 
 function buildProcessPair(dados: any) {
@@ -572,6 +576,11 @@ async function scrapeInvestidor10(ticker: string) {
                 peg_ratio: parseValue(dados.peg_ratio),
                 p_ebit: parseValue(dados.p_ebit),
                 
+                governance_level: dados.governance_level,
+                free_float: parseValue(dados.free_float),
+                tag_along: parseValue(dados.tag_along),
+                avg_daily_volume: parseValue(dados.avg_daily_volume),
+
                 properties: realEstateProperties.length > 0 ? realEstateProperties : null
             };
             
