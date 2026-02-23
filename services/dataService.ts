@@ -326,37 +326,47 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
       const metadataMap: Record<string, any> = {};
       metaData.forEach((m: any) => { metadataMap[normalizeTicker(m.ticker)] = m; });
 
-      const missingOrStale = uniqueTickers.filter(t => {
+      const missing = uniqueTickers.filter(t => !metadataMap[t]);
+      
+      const staleOrSuspicious = uniqueTickers.filter(t => {
           const m = metadataMap[t];
-          const hasSuspiciousData = m && (m.dy_12m === 0 || m.dy_12m === null || m.dy_12m === undefined || m.dy_12m === '0');
-          return !m || (m.updated_at && isStale(m.updated_at)) || hasSuspiciousData;
+          if (!m) return false; // Already in missing
+          const hasSuspiciousData = m.dy_12m === 0 || m.dy_12m === null || m.dy_12m === undefined || m.dy_12m === '0';
+          return (m.updated_at && isStale(m.updated_at)) || hasSuspiciousData;
       });
 
-      const toUpdate = forceRefresh ? uniqueTickers : missingOrStale;
+      // Se forçar refresh, atualiza tudo.
+      // Se não, atualiza 'missing' (aguardando) e 'stale' (background).
+      const toUpdateImmediately = forceRefresh ? uniqueTickers : missing;
+      const toUpdateBackground = forceRefresh ? [] : staleOrSuspicious;
 
-      if (toUpdate.length > 0) {
-          if (forceRefresh) {
-              const results = await triggerScraperUpdate(toUpdate, true);
-              results.forEach(r => {
-                  if (r.status === 'success' && r.rawFundamentals) {
-                      metadataMap[normalizeTicker(r.ticker)] = r.rawFundamentals;
-                      if (r.dividendsFound && r.dividendsFound.length > 0) {
-                          const newDivs = r.dividendsFound.map((d: any) => ({
-                              ticker: r.ticker,
-                              type: d.type,
-                              date_com: d.date_com,
-                              payment_date: d.payment_date,
-                              rate: d.rate
-                          }));
-                          dividendsData = [...dividendsData, ...newDivs];
-                      }
+      // 1. Atualização Imediata (Bloqueante) - Para novos ativos ou Force Refresh
+      if (toUpdateImmediately.length > 0) {
+          const results = await triggerScraperUpdate(toUpdateImmediately, true);
+          results.forEach(r => {
+              if (r.status === 'success' && r.rawFundamentals) {
+                  metadataMap[normalizeTicker(r.ticker)] = r.rawFundamentals;
+                  if (r.dividendsFound && r.dividendsFound.length > 0) {
+                      const newDivs = r.dividendsFound.map((d: any) => ({
+                          ticker: r.ticker,
+                          type: d.type,
+                          date_com: d.date_com,
+                          payment_date: d.payment_date,
+                          rate: d.rate
+                      }));
+                      dividendsData = [...dividendsData, ...newDivs];
                   }
-              });
-          } else {
-              triggerScraperUpdate(toUpdate, true).then(results => {
-                  console.log(`[DataService] Auto-correction triggered for ${results.length} assets`);
-              });
-          }
+              }
+          });
+      }
+
+      // 2. Atualização em Background (Não bloqueante) - Para dados obsoletos
+      if (toUpdateBackground.length > 0) {
+          triggerScraperUpdate(toUpdateBackground, true).then(results => {
+              console.log(`[DataService] Background update finished for ${results.length} stale assets`);
+              // Nota: A UI não será atualizada automaticamente aqui, mas na próxima interação/refresh.
+              // Isso é aceitável para dados stale para não travar a UI.
+          });
       }
 
       const dividends: DividendReceipt[] = dividendsData.map((d: any) => ({

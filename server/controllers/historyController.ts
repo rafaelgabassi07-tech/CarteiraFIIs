@@ -264,19 +264,13 @@ export async function getHistory(req: Request, res: Response) {
         const startDateBCB = getStartDate(range);
 
     // Fetch Parallel Data
-    // Try Yahoo for intraday ranges, otherwise try Investidor10 first
-    let assetData = null;
-    const isIntraday = ['1m', '5m', '10m', '15m', '30m', '1h', '1D', '5D'].includes(range);
+    // Prioritize Yahoo Finance as requested (Better for Real-Time/Intraday)
+    let assetData = await fetchYahooData(ticker, range);
     
-    // Only use Investidor10 for Brazilian assets (no ^ or .SA suffix usually, but user might pass it)
-    const cleanTicker = ticker.replace('.SA', '');
-    
-    if (!isIntraday && !ticker.includes('^')) {
+    // Fallback to Investidor10 for Brazilian assets if Yahoo fails
+    if (!assetData && !ticker.includes('^')) {
+         const cleanTicker = ticker.replace('.SA', '');
          assetData = await fetchInvestidor10History(cleanTicker, range);
-    }
-    
-    if (!assetData) {
-        assetData = await fetchYahooData(ticker, range);
     }
 
         const [ibovData, ifixData, cdiMap, ipcaMap] = await Promise.all([
