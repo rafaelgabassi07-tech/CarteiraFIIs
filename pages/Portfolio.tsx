@@ -1161,6 +1161,172 @@ const ValuationCard = ({ asset }: { asset: AssetPosition }) => {
     );
 };
 
+const Investidor10ChartsSection = ({ ticker, assetType, onlyPayout = false }: { ticker: string, assetType: AssetType, onlyPayout?: boolean }) => {
+    const [revenueData, setRevenueData] = useState<any>(null);
+    const [profitPriceData, setProfitPriceData] = useState<any>(null);
+    const [equityData, setEquityData] = useState<any>(null);
+    const [payoutData, setPayoutData] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            setLoading(true);
+            try {
+                let types = [];
+                if (onlyPayout) {
+                    types = ['payout'];
+                } else {
+                    types = assetType === AssetType.STOCK ? ['revenue_profit', 'profit_price', 'equity'] : ['profit_price'];
+                }
+                
+                const results = await Promise.all(
+                    types.map(type => 
+                        fetch(`/api/investidor10-charts?ticker=${ticker}&chartType=${type}&assetType=${assetType === AssetType.STOCK ? 'acoes' : 'fiis'}`)
+                            .then(res => res.ok ? res.json() : null)
+                    )
+                );
+
+                if (onlyPayout) {
+                    setPayoutData(results[0]);
+                } else if (assetType === AssetType.STOCK) {
+                    setRevenueData(results[0]);
+                    setProfitPriceData(results[1]);
+                    setEquityData(results[2]);
+                } else {
+                    setProfitPriceData(results[0]);
+                }
+            } catch (error) {
+                console.error("Failed to fetch Investidor10 charts", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, [ticker, assetType, onlyPayout]);
+
+    if (loading) {
+        return (
+            <div className="flex flex-col gap-4">
+                {[1, 2].map(i => (
+                    <div key={i} className="h-64 bg-zinc-100 dark:bg-zinc-800 animate-pulse rounded-2xl"></div>
+                ))}
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-6">
+            {/* Lucro x Cotação - Dual Axis */}
+            {profitPriceData && profitPriceData.length > 0 && (
+                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm">
+                    <div className="flex items-center gap-2 mb-4 pb-2 border-b border-zinc-100 dark:border-zinc-800">
+                        <TrendingUp className="w-4 h-4 text-indigo-500" />
+                        <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Lucro x Cotação</h3>
+                    </div>
+                    <div className="h-64 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <ComposedChart data={profitPriceData}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" opacity={0.5} />
+                                <XAxis 
+                                    dataKey="label" 
+                                    tick={{ fontSize: 9, fontWeight: 700 }} 
+                                    axisLine={false}
+                                    tickLine={false}
+                                />
+                                <YAxis yAxisId="left" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
+                                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
+                                <Tooltip 
+                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '10px' }}
+                                    formatter={(value: any, name: string) => [name === 'price' ? formatBRL(value) : value.toLocaleString('pt-BR'), name === 'price' ? 'Cotação' : 'Lucro']}
+                                />
+                                <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
+                                <Bar yAxisId="left" dataKey="profit" name="Lucro" fill="#10b981" radius={[4, 4, 0, 0]} />
+                                <Line yAxisId="right" type="monotone" dataKey="price" name="Cotação" stroke="#6366f1" strokeWidth={2} dot={false} />
+                            </ComposedChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+            )}
+
+            {/* Receitas e Lucros - Grouped Bar */}
+            {revenueData && revenueData.length > 0 && (
+                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm">
+                    <div className="flex items-center gap-2 mb-4 pb-2 border-b border-zinc-100 dark:border-zinc-800">
+                        <BarChart3 className="w-4 h-4 text-emerald-500" />
+                        <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Receitas e Lucros</h3>
+                    </div>
+                    <div className="h-64 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={revenueData}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" opacity={0.5} />
+                                <XAxis dataKey="label" tick={{ fontSize: 9, fontWeight: 700 }} axisLine={false} tickLine={false} />
+                                <YAxis tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
+                                <Tooltip 
+                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '10px' }}
+                                    formatter={(value: any) => [value.toLocaleString('pt-BR'), '']}
+                                />
+                                <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
+                                <Bar dataKey="revenue" name="Receita Líq." fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                                <Bar dataKey="profit" name="Lucro Líq." fill="#10b981" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+            )}
+
+            {/* Evolução do Patrimônio - Grouped Bar */}
+            {equityData && equityData.length > 0 && (
+                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm">
+                    <div className="flex items-center gap-2 mb-4 pb-2 border-b border-zinc-100 dark:border-zinc-800">
+                        <PieChart className="w-4 h-4 text-amber-500" />
+                        <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Evolução do Patrimônio</h3>
+                    </div>
+                    <div className="h-64 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={equityData}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" opacity={0.5} />
+                                <XAxis dataKey="label" tick={{ fontSize: 9, fontWeight: 700 }} axisLine={false} tickLine={false} />
+                                <YAxis tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
+                                <Tooltip 
+                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '10px' }}
+                                    formatter={(value: any) => [value.toLocaleString('pt-BR'), '']}
+                                />
+                                <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
+                                <Bar dataKey="equity" name="Patrimônio" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                                <Bar dataKey="revenue" name="Receita" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                                <Bar dataKey="profit" name="Lucro" fill="#10b981" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+            )}
+
+            {/* Payout - Bar + Line */}
+            {payoutData && payoutData.length > 0 && (
+                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm">
+                    <div className="flex items-center gap-2 mb-4 pb-2 border-b border-zinc-100 dark:border-zinc-800">
+                        <Coins className="w-4 h-4 text-indigo-500" />
+                        <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Payout x Dividend Yield</h3>
+                    </div>
+                    <div className="h-64 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <ComposedChart data={payoutData}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" opacity={0.5} />
+                                <XAxis dataKey="label" tick={{ fontSize: 9, fontWeight: 700 }} axisLine={false} tickLine={false} />
+                                <YAxis tick={{ fontSize: 9 }} axisLine={false} tickLine={false} unit="%" />
+                                <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '10px' }} />
+                                <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
+                                <Bar dataKey="payout" name="Payout %" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                                <Line type="monotone" dataKey="dy" name="DY %" stroke="#10b981" strokeWidth={2} dot={true} />
+                            </ComposedChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
 const DetailedInfoBlock = ({ asset }: { asset: AssetPosition }) => {
     const InfoRow = ({ label, value, suffix = '', goodCondition, badCondition }: { label: string, value: string | number | undefined, suffix?: string, goodCondition?: boolean, badCondition?: boolean }) => {
         if (value === undefined || value === null || value === '') return null;
@@ -1389,12 +1555,13 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: { asset: Ass
     const [simResult, setSimResult] = useState<{ qty: number, income: number } | null>(null);
     const [priceHistory, setPriceHistory] = useState<any[]>([]);
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+    const [yieldRange, setYieldRange] = useState('5y');
 
     useEffect(() => {
         const fetchHistory = async () => {
             setIsLoadingHistory(true);
             try {
-                const res = await fetch(`/api/history?ticker=${asset.ticker}&range=5y`);
+                const res = await fetch(`/api/history?ticker=${asset.ticker}&range=${yieldRange}`);
                 const data = await res.json();
                 if (data && data.points) {
                     setPriceHistory(data.points);
@@ -1406,7 +1573,7 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: { asset: Ass
             }
         };
         fetchHistory();
-    }, [asset.ticker]);
+    }, [asset.ticker, yieldRange]);
 
     const yieldHistoryData = useMemo(() => {
         if (!priceHistory.length || !marketHistory.length) return [];
@@ -1736,15 +1903,26 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: { asset: Ass
             {/* Yield History Chart */}
             <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
                 <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
-                    <h4 className="text-[10px] font-bold text-zinc-400 uppercase flex items-center gap-2">
-                        <TrendingUp className="w-3 h-3" /> Dividend Yield Histórico (12m)
-                    </h4>
-                    {isLoadingHistory && <span className="text-[9px] text-zinc-400 animate-pulse">Carregando...</span>}
+                    <div className="flex items-center gap-2">
+                        <TrendingUp className="w-3 h-3 text-emerald-500" />
+                        <h4 className="text-[10px] font-bold text-zinc-400 uppercase">Dividend Yield Histórico (12m)</h4>
+                    </div>
+                    <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5">
+                        {['1y', '2y', '5y', 'max'].map((r) => (
+                            <button 
+                                key={r} 
+                                onClick={() => setYieldRange(r)} 
+                                className={`px-2 py-0.5 text-[8px] font-bold rounded-md transition-all ${yieldRange === r ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                            >
+                                {r.toUpperCase()}
+                            </button>
+                        ))}
+                    </div>
                 </div>
                 <div className="h-60 w-full p-2 pt-4">
                     {yieldHistoryData.length > 0 ? (
                         <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={yieldHistoryData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                            <ComposedChart data={yieldHistoryData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="colorYield" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
@@ -1772,6 +1950,13 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: { asset: Ass
                                     formatter={(value: number) => [`${value.toFixed(2)}%`, 'DY (12m)']}
                                     labelStyle={{ color: '#71717a', fontSize: '11px', fontWeight: 'bold', marginBottom: '4px' }}
                                 />
+                                <Bar 
+                                    dataKey="yield" 
+                                    fill="#10b981" 
+                                    opacity={0.3}
+                                    radius={[2, 2, 0, 0]}
+                                    barSize={10}
+                                />
                                 <Area 
                                     type="monotone" 
                                     dataKey="yield" 
@@ -1780,7 +1965,7 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: { asset: Ass
                                     fillOpacity={1} 
                                     fill="url(#colorYield)" 
                                 />
-                            </AreaChart>
+                            </ComposedChart>
                         </ResponsiveContainer>
                     ) : (
                         <div className="flex h-full items-center justify-center text-zinc-400 text-xs">
@@ -2124,6 +2309,12 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
                             <ValuationCard asset={selectedAsset} />
                             
                             <div className="flex items-center gap-3 mt-8 mb-2">
+                                <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Histórico Fundamentalista</h3>
+                                <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
+                            </div>
+                            <Investidor10ChartsSection ticker={selectedAsset.ticker} assetType={selectedAsset.assetType} />
+
+                            <div className="flex items-center gap-3 mt-8 mb-2">
                                 <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Indicadores</h3>
                                 <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
                             </div>
@@ -2149,9 +2340,18 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
                             </div>
                             <IncomeAnalysisSection 
                                 asset={selectedAsset} 
-                                chartData={incomeChartData} 
-                                marketHistory={assetMarketHistory} 
+                                chartData={incomeChartData}
+                                marketHistory={assetMarketHistory}
                             />
+                            {selectedAsset.assetType === AssetType.STOCK && (
+                                <div className="mt-8">
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Histórico de Payout</h3>
+                                        <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
+                                    </div>
+                                    <Investidor10ChartsSection ticker={selectedAsset.ticker} assetType={selectedAsset.assetType} onlyPayout={true} />
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
