@@ -126,12 +126,9 @@ const FIELD_MATCHERS = [
     { key: 'variacao_12m',         indicator: [],                       text: (t: string) => (t.includes('variacao') || t.includes('rentabilidade')) && (t.includes('12m') || t.includes('12 m') || t.includes('12 meses')) },
     { key: 'ultimo_rendimento',    indicator: [],                       text: (t: string) => t.includes('ultimo rendimento') },
     { key: 'segmento',             indicator: [],                       text: (t: string) => t.includes('segmento') || t.includes('setor') || t.includes('subsetor') },
-    { key: 'vacancia',             indicator: [],                       text: (t: string) => t.includes('vacancia') && !t.includes('financeira') },
-    { key: 'vacancia_financeira',  indicator: [],                       text: (t: string) => t.includes('vacancia') && t.includes('financeira') },
-    { key: 'cap_rate',             indicator: [],                       text: (t: string) => t.includes('cap rate') },
+    { key: 'vacancia',             indicator: [],                       text: (t: string) => t.includes('vacancia') },
     { key: 'cnpj',                 indicator: [],                       text: (t: string) => t.includes('cnpj') },
     { key: 'num_cotistas',         indicator: [],                       text: (t: string) => t.includes('cotistas') },
-    { key: 'num_imoveis',          indicator: [],                       text: (t: string) => t.includes('imoveis') && !t.includes('valor') },
     { key: 'tipo_gestao',          indicator: [],                       text: (t: string) => t.includes('gestao') },
     { key: 'mandato',              indicator: [],                       text: (t: string) => t.includes('mandato') },
     { key: 'tipo_fundo',           indicator: [],                       text: (t: string) => t.includes('tipo de fundo') },
@@ -152,15 +149,6 @@ const FIELD_MATCHERS = [
     { key: 'divida_liquida_pl',    indicator: [],                       text: (t: string) => { const c = t.replace(/[\s\/\.\-]/g, ''); return c.includes('div') && c.includes('liq') && c.includes('pl') && !c.includes('ebitda'); } },
     { key: 'cagr_receita_5a',      indicator: [],                       text: (t: string) => t.includes('cagr') && t.includes('receita') },
     { key: 'cagr_lucros_5a',       indicator: [],                       text: (t: string) => t.includes('cagr') && t.includes('lucro') },
-    { key: 'roic',                 indicator: ['ROIC'],                 text: (t: string) => t.includes('roic') },
-    { key: 'roa',                  indicator: ['ROA'],                  text: (t: string) => t.includes('roa') },
-    { key: 'liquidez_corrente',    indicator: ['LIQUIDEZ_CORRENTE'],    text: (t: string) => t.includes('liquidez corrente') },
-    { key: 'peg_ratio',            indicator: ['PEG_RATIO'],            text: (t: string) => t.includes('peg ratio') },
-    { key: 'p_ebit',               indicator: ['P_EBIT'],               text: (t: string) => t.includes('p/ebit') },
-    { key: 'governance_level',     indicator: [],                       text: (t: string) => t.includes('governanca') || t.includes('segmento de listagem') },
-    { key: 'free_float',           indicator: [],                       text: (t: string) => t.includes('free float') },
-    { key: 'tag_along',            indicator: [],                       text: (t: string) => t.includes('tag along') },
-    { key: 'avg_daily_volume',     indicator: [],                       text: (t: string) => t.includes('volume medio') || t.includes('liquidez media') },
 ];
 
 function buildProcessPair(dados: any) {
@@ -542,15 +530,11 @@ async function scrapeInvestidor10(ticker: string) {
                 benchmark_ibov_12m: dados.benchmark_ibov_12m,
 
                 vacancy: parseValue(dados.vacancia),
-                financial_vacancy: parseValue(dados.vacancia_financeira),
-                cap_rate: parseValue(dados.cap_rate),
                 assets_value: dados.patrimonio_liquido,
-                properties_count: parseValue(dados.num_imoveis),
-                shareholders_count: parseValue(dados.num_cotistas),
+                properties_count: parseValue(dados.num_cotistas),
                 manager_type: dados.tipo_gestao,
                 management_fee: dados.taxa_adm,
                 last_dividend: parseValue(dados.ultimo_rendimento),
-                val_patrimonial_cota: parseValue(dados.vp_cota),
                 
                 cnpj: dados.cnpj,
                 mandate: dados.mandato,
@@ -570,17 +554,7 @@ async function scrapeInvestidor10(ticker: string) {
                 net_debt_equity: parseValue(dados.divida_liquida_pl),
                 cagr_revenue: parseValue(dados.cagr_receita_5a),
                 cagr_profits: parseValue(dados.cagr_lucros_5a),
-                roic: parseValue(dados.roic),
-                roa: parseValue(dados.roa),
-                liquidez_corrente: parseValue(dados.liquidez_corrente),
-                peg_ratio: parseValue(dados.peg_ratio),
-                p_ebit: parseValue(dados.p_ebit),
                 
-                governance_level: dados.governance_level,
-                free_float: parseValue(dados.free_float),
-                tag_along: parseValue(dados.tag_along),
-                avg_daily_volume: parseValue(dados.avg_daily_volume),
-
                 properties: realEstateProperties.length > 0 ? realEstateProperties : null
             };
             
