@@ -7,6 +7,8 @@ import { getHistory } from "./server/controllers/historyController";
 
 import { getNews } from "./server/controllers/newsController";
 import { analyzeNews } from "./server/controllers/aiController";
+import { getInvestidor10Data } from "./server/controllers/investidor10Controller";
+import { updateAllStocks } from "./server/controllers/updateAllStocksController";
 
 dotenv.config();
 
@@ -22,6 +24,8 @@ async function startServer() {
   app.get("/api/history", getHistory);
   app.get("/api/news", getNews);
   app.post("/api/analyze-news", analyzeNews);
+  app.get("/api/investidor10", getInvestidor10Data);
+  app.get("/api/update-all-stocks", updateAllStocks);
 
   // Health check
   app.get("/api/health", (req, res) => {
