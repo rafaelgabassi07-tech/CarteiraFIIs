@@ -165,36 +165,59 @@ function parseInvestidor10Data(data: any[]) {
     };
 }
 
-async function fetchYahooData(symbol: string, range: string) {
-    const s = symbol.includes('^') ? symbol : (symbol.endsWith('.SA') ? symbol : `${symbol}.SA`);
-    const { range: yRange, interval } = getYahooParams(range);
-    // Use query2 for better reliability
-    const url = `https://query2.finance.yahoo.com/v8/finance/chart/${s}?range=${yRange}&interval=${interval}&includePrePost=false`;
+function normalizeYahooTicker(symbol: string) {
+    if (symbol.includes('^')) return symbol;
+    if (symbol.includes('.')) return symbol;
     
-    try {
-        const { data } = await axios.get(url, { 
-            httpsAgent, 
-            timeout: 8000,
-            headers: {
-                ...HEADERS,
-                'Referer': 'https://finance.yahoo.com/'
-            }
-        });
-        const result = data.chart?.result?.[0];
-        if (!result || !result.timestamp || !result.indicators.quote[0].close) return null;
-        
-        const quote = result.indicators.quote[0];
-
-        return {
-            timestamps: result.timestamp as number[],
-            prices: quote.close as (number | null)[],
-            opens: quote.open as (number | null)[],
-            highs: quote.high as (number | null)[],
-            lows: quote.low as (number | null)[]
-        };
-    } catch (e) {
-        return null;
+    // Brazilian stocks/FIIs usually have a number at the end (3, 4, 5, 6, 11, 34)
+    // US stocks are usually just letters (AAPL, TSLA)
+    if (/[0-9]$/.test(symbol)) {
+        return `${symbol}.SA`;
     }
+    
+    return symbol;
+}
+
+async function fetchYahooData(symbol: string, range: string) {
+    const s = normalizeYahooTicker(symbol);
+    const { range: yRange, interval } = getYahooParams(range);
+    
+    // Try query2 first, then query1 as fallback
+    const endpoints = [
+        `https://query2.finance.yahoo.com/v8/finance/chart/${s}?range=${yRange}&interval=${interval}&includePrePost=false`,
+        `https://query1.finance.yahoo.com/v8/finance/chart/${s}?range=${yRange}&interval=${interval}&includePrePost=false`
+    ];
+    
+    for (const url of endpoints) {
+        try {
+            const { data } = await axios.get(url, { 
+                httpsAgent, 
+                timeout: 8000,
+                headers: {
+                    ...HEADERS,
+                    'Referer': `https://finance.yahoo.com/quote/${s}`,
+                    'Origin': 'https://finance.yahoo.com'
+                }
+            });
+            
+            const result = data.chart?.result?.[0];
+            if (!result || !result.timestamp || !result.indicators.quote[0].close) continue;
+            
+            const quote = result.indicators.quote[0];
+
+            return {
+                timestamps: result.timestamp as number[],
+                prices: quote.close as (number | null)[],
+                opens: quote.open as (number | null)[],
+                highs: quote.high as (number | null)[],
+                lows: quote.low as (number | null)[]
+            };
+        } catch (e: any) {
+            console.warn(`Yahoo fetch failed for ${url}:`, e.message);
+            // Continue to next endpoint
+        }
+    }
+    return null;
 }
 
 // Busca série histórica do BCB (CDI ou IPCA)

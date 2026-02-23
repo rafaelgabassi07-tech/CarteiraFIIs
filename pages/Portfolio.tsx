@@ -231,11 +231,11 @@ const PriceHistoryChart = ({ fullData, loading, error, ticker, range, onRangeCha
     const toggleIndicator = (key: keyof typeof indicators) => setIndicators(prev => ({ ...prev, [key]: !prev[key] }));
 
     const INTRADAY_OPTIONS = [
+        { label: 'Hoje', value: '1D' },
+        { label: '5 Dias', value: '5D' },
         { label: '1 Min', value: '1m' },
         { label: '5 Min', value: '5m' },
-        { label: '10 Min', value: '10m' },
         { label: '15 Min', value: '15m' },
-        { label: '30 Min', value: '30m' },
         { label: '1 Hora', value: '1h' },
     ];
 
@@ -249,7 +249,7 @@ const PriceHistoryChart = ({ fullData, loading, error, ticker, range, onRangeCha
 
     const formatXAxis = (tickItem: string) => {
         const date = new Date(tickItem);
-        if (['1m', '5m', '10m', '15m', '30m', '1h', '1d'].includes(range)) {
+        if (['1m', '5m', '10m', '15m', '30m', '1h', '1D', '5D'].includes(range)) {
             return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         }
         return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
@@ -529,11 +529,11 @@ const ComparativeChart = ({ ticker, type }: any) => {
     const filteredData = chartData;
 
     const INTRADAY_OPTIONS = [
+        { label: 'Hoje', value: '1D' },
+        { label: '5 Dias', value: '5D' },
         { label: '1 Min', value: '1m' },
         { label: '5 Min', value: '5m' },
-        { label: '10 Min', value: '10m' },
         { label: '15 Min', value: '15m' },
-        { label: '30 Min', value: '30m' },
         { label: '1 Hora', value: '1h' },
     ];
 
@@ -547,7 +547,7 @@ const ComparativeChart = ({ ticker, type }: any) => {
 
     const formatXAxis = (tickItem: string) => {
         const date = new Date(tickItem);
-        if (['1m', '5m', '10m', '15m', '30m', '1h', '1d'].includes(range)) {
+        if (['1m', '5m', '10m', '15m', '30m', '1h', '1D', '5D'].includes(range)) {
             return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         }
         return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
@@ -718,7 +718,7 @@ const ChartsContainer = ({ ticker, type, marketDividends }: { ticker: string, ty
     const [historyData, setHistoryData] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
-    const [range, setRange] = useState('1d'); // Default to 1d
+    const [range, setRange] = useState('1D'); // Default to 1D (Intraday)
 
     useEffect(() => {
         let mounted = true;
