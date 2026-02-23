@@ -27,6 +27,10 @@ const TYPE_LABELS: Record<string, string> = {
 
 const CHART_COLORS = ['#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e', '#f59e0b', '#10b981'];
 
+const getMonthLabel = (dateStr: string) => {
+    return getMonthName(dateStr + '-01').substring(0, 3).toUpperCase();
+};
+
 import AssetModal from '../components/AssetModal';
 
 // --- COMPONENTE ACORDEÃO (COLLAPSIBLE) ---
@@ -708,21 +712,13 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
     portfolio, dividends, marketDividends, privacyMode, 
     onAssetRefresh, headerVisible, targetAsset, onClearTarget 
 }) => {
-    const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
     const [filter, setFilter] = useState('');
-    const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'ANALYSIS' | 'INCOME'>('OVERVIEW');
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedAssetForModal, setSelectedAssetForModal] = useState<AssetPosition | null>(null);
 
-    useEffect(() => {
-        if (targetAsset) {
-            setSelectedTicker(targetAsset);
-            setActiveTab('OVERVIEW');
-        }
-    }, [targetAsset]);
-
-    const handleBack = () => {
-        setSelectedTicker(null);
-        setActiveTab('OVERVIEW');
-        if(onClearTarget) onClearTarget();
+    const handleAssetClick = (asset: AssetPosition) => {
+        setSelectedAssetForModal(asset);
+        setIsModalOpen(true);
     };
 
     const sortedPortfolio = useMemo(() => {
@@ -757,18 +753,12 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
         return { fiis, stocks, maxVal, totalVal, totalDailyChange };
     }, [sortedPortfolio]);
 
-    const [activeTab, setActiveTab] = useState('OVERVIEW');
-
-    const selectedAsset = useMemo(() => 
-        portfolio.find(p => p.ticker === selectedTicker), 
-    [portfolio, selectedTicker]);
-
-    // Data prep for IncomeAnalysisSection
+    // Data prep for IncomeAnalysisSection, now based on the modal's selected asset
     const incomeChartData = useMemo(() => {
-        if (!selectedAsset) return { data: [], average: 0, activeTypes: [] };
+        if (!selectedAssetForModal) return { data: [], average: 0, activeTypes: [] };
         
         // Filter dividends for this asset from wallet receipts
-        const assetDivs = dividends.filter(d => d.ticker === selectedAsset.ticker);
+        const assetDivs = dividends.filter(d => d.ticker === selectedAssetForModal.ticker);
         
         // Group by month
         const today = new Date();
@@ -800,25 +790,11 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
             average: total / 12,
             activeTypes: Array.from(activeTypes)
         };
-    }, [selectedAsset, dividends]);
+    }, [selectedAssetForModal, dividends]);
 
-    const assetMarketHistory = useMemo(() => {
-        if(!selectedAsset) return [];
-        return marketDividends.filter(d => d.ticker === selectedAsset.ticker);
-    }, [selectedAsset, marketDividends]);
 
-    if (selectedAsset) {
-        return (
-            <AssetModal 
-                asset={selectedAsset} 
-                onClose={handleBack} 
-                onAssetRefresh={onAssetRefresh}
-                marketDividends={assetMarketHistory}
-                incomeChartData={incomeChartData}
-                privacyMode={privacyMode}
-            />
-        )
-    }
+
+
 
     return (
         <div className="pb-24">
@@ -872,7 +848,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
                                         maxVal={groupedAssets.maxVal} 
                                         totalVal={groupedAssets.totalVal}
                                         privacyMode={privacyMode} 
-                                        onClick={() => setSelectedTicker(asset.ticker)} 
+                                        onClick={() => handleAssetClick(asset)} 
                                     />
                                 ))}
                             </div>
@@ -894,7 +870,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
                                         maxVal={groupedAssets.maxVal} 
                                         totalVal={groupedAssets.totalVal}
                                         privacyMode={privacyMode} 
-                                        onClick={() => setSelectedTicker(asset.ticker)} 
+                                        onClick={() => handleAssetClick(asset)} 
                                     />
                                 ))}
                             </div>
@@ -902,8 +878,21 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
                     )}
                 </div>
             )}
+
+            {isModalOpen && (
+                <AssetModal 
+                    asset={selectedAssetForModal}
+                    onClose={() => setIsModalOpen(false)}
+                    onAssetRefresh={onAssetRefresh}
+                    marketDividends={marketDividends.filter(d => d.ticker === selectedAssetForModal?.ticker)}
+                    incomeChartData={incomeChartData}
+                    privacyMode={privacyMode}
+                />
+            )}
         </div>
     );
 };
+
+
 
 export const Portfolio = React.memo(PortfolioComponent);

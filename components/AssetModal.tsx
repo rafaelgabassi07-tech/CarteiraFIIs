@@ -17,6 +17,12 @@ interface AssetModalProps {
 
 // --- SUB-COMPONENTS & HELPERS ---
 
+const TYPE_LABELS: { [key: string]: string } = {
+    'JCP': 'JCP',
+    'DIVIDENDO': 'Dividendo',
+    'RENDIMENTO': 'Rendimento',
+};
+
 const getMonthLabel = (dateStr: string) => {
     return getMonthName(dateStr + '-01').substring(0, 3).toUpperCase();
 };
@@ -799,10 +805,8 @@ const SimulatorCard = ({ data, ticker, dividends = [] }: any) => {
 };
 
 const PositionSummaryCard = ({ asset, privacyMode }: { asset: AssetPosition, privacyMode: boolean }) => {
-
-const PositionSummaryCard = ({ asset, privacyMode }: { asset: AssetPosition, privacyMode: boolean }) => {
     const totalValue = asset.quantity * (asset.currentPrice || 0);
-    const totalCost = asset.quantity * asset.mediumPrice;
+    const totalCost = asset.quantity * asset.averagePrice;
     const result = totalValue - totalCost;
     const resultPercent = totalCost > 0 ? (result / totalCost) * 100 : 0;
 
@@ -831,10 +835,9 @@ const PositionSummaryCard = ({ asset, privacyMode }: { asset: AssetPosition, pri
 };
 
 const ValuationCard = ({ asset }: { asset: AssetPosition }) => {
-    const indicators = asset.indicators || {};
-    const pvp = indicators['P/VP'] || 0;
-    const pl = indicators['P/L'] || 0;
-    const dy = indicators['DY'] || 0;
+    const pvp = asset['p_vp'] || 0;
+    const pl = asset['p_l'] || 0;
+    const dy = asset['dy_12m'] || 0;
 
     const getValuationColor = (value: number, thresholds: [number, number]) => {
         if (value <= thresholds[0]) return 'text-emerald-500';
@@ -845,15 +848,15 @@ const ValuationCard = ({ asset }: { asset: AssetPosition }) => {
     return (
         <div className="grid grid-cols-3 gap-3 text-center">
             <div className="bg-zinc-100 dark:bg-zinc-800/50 p-3 rounded-xl">
-                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest flex items-center justify-center gap-1.5">P/VP <InfoTooltip text="Preço sobre Valor Patrimonial. Idealmente abaixo de 1." /></p>
+                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest flex items-center justify-center gap-1.5">P/VP <InfoTooltip title="P/VP" text="Preço sobre Valor Patrimonial. Idealmente abaixo de 1." /></p>
                 <p className={`text-lg font-black tracking-tighter ${getValuationColor(pvp, [1, 1.5])}`}>{pvp.toFixed(2)}</p>
             </div>
             <div className="bg-zinc-100 dark:bg-zinc-800/50 p-3 rounded-xl">
-                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest flex items-center justify-center gap-1.5">P/L <InfoTooltip text="Preço sobre Lucro. Mede o quão 'caro' o ativo está em relação ao lucro que gera." /></p>
+                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest flex items-center justify-center gap-1.5">P/L <InfoTooltip title="P/L" text="Preço sobre Lucro. Mede o quão 'caro' o ativo está em relação ao lucro que gera." /></p>
                 <p className={`text-lg font-black tracking-tighter ${getValuationColor(pl, [10, 15])}`}>{pl.toFixed(2)}</p>
             </div>
             <div className="bg-zinc-100 dark:bg-zinc-800/50 p-3 rounded-xl">
-                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest flex items-center justify-center gap-1.5">Div. Yield <InfoTooltip text="Dividend Yield. Rendimento de dividendos em relação ao preço." /></p>
+                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest flex items-center justify-center gap-1.5">Div. Yield <InfoTooltip title="Div. Yield" text="Dividend Yield. Rendimento de dividendos em relação ao preço." /></p>
                 <p className="text-lg font-black tracking-tighter text-emerald-500">{(dy * 100).toFixed(2)}%</p>
             </div>
         </div>
@@ -861,25 +864,17 @@ const ValuationCard = ({ asset }: { asset: AssetPosition }) => {
 };
 
 const DetailedInfoBlock = ({ asset }: { asset: AssetPosition }) => {
-    const indicators = asset.indicators || {};
-    const info = asset.info || {};
-
     const dataPoints = [
         { label: 'Cotação Atual', value: formatBRL(asset.currentPrice || 0), icon: DollarSign },
-        { label: 'Preço Médio', value: formatBRL(asset.mediumPrice), icon: Scale },
-        { label: 'Data Posição', value: formatDateShort(info.positionDate), icon: CheckCircle },
-        { label: 'Início Posição', value: formatDateShort(info.startDate), icon: Goal },
+        { label: 'Preço Médio', value: formatBRL(asset.averagePrice), icon: Scale },
         { label: 'Tipo', value: asset.assetType, icon: Briefcase },
-        { label: 'Setor', value: info.sector, icon: Building2 },
-        { label: 'Sub-setor', value: info.subSector, icon: SquareStack },
-        { label: 'Segmento', value: info.segment, icon: PieChart },
-        { label: 'Patrim. Líquido', value: formatBRL(indicators['PATRIMONIO_LIQUIDO']), icon: Wallet },
-        { label: 'P/VP', value: indicators['P/VP']?.toFixed(2), icon: Percent },
-        { label: 'P/L', value: indicators['P/L']?.toFixed(2), icon: Percent },
-        { label: 'Dividend Yield', value: `${(indicators['DY'] * 100).toFixed(2)}%`, icon: Coins },
-        { label: 'Vacância', value: info.vacancy ? `${(info.vacancy * 100).toFixed(2)}%` : 'N/A', icon: MapPin },
-        { label: 'Imóveis', value: info.propertiesAmount, icon: Building2 },
-        { label: 'Ativos', value: info.assetsAmount, icon: Wallet },
+        { label: 'Segmento', value: asset.segment, icon: PieChart },
+        { label: 'Patrim. Líquido', value: asset.assets_value, icon: Wallet },
+        { label: 'P/VP', value: asset.p_vp?.toFixed(2), icon: Percent },
+        { label: 'P/L', value: asset.p_l?.toFixed(2), icon: Percent },
+        { label: 'Dividend Yield', value: asset.dy_12m ? `${(asset.dy_12m * 100).toFixed(2)}%` : 'N/A', icon: Coins },
+        { label: 'Vacância', value: asset.vacancy ? `${(asset.vacancy * 100).toFixed(2)}%` : 'N/A', icon: MapPin },
+        { label: 'Imóveis', value: asset.properties_count, icon: Building2 },
     ].filter(d => d.value);
 
     return (
@@ -968,7 +963,7 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: any) => {
 
             <div className="h-60 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 5 }}>
+                    <BarChart data={chartData.data} margin={{ top: 10, right: 0, left: -20, bottom: 5 }}>
                         <XAxis dataKey="month" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
                         <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={(val) => formatBRL(val)} />
                         <Tooltip contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '8px' }} labelStyle={{ color: '#a1a1aa' }} formatter={(value: number) => [formatBRL(value), 'Total Recebido']} />
@@ -1139,7 +1134,7 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends, incomeCha
     if (!asset) return null;
 
     return (
-        <SwipeableModal show={!!asset} onHide={onClose}>
+        <SwipeableModal isOpen={!!asset} onClose={onClose}>
             {selectedAsset && (
                 <div className="bg-primary-light dark:bg-primary-dark rounded-t-3xl md:rounded-2xl shadow-2xl flex flex-col" style={{ maxHeight: '95vh' }}>
                     <div className="p-4 sticky top-0 bg-primary-light dark:bg-primary-dark z-10 border-b border-zinc-100 dark:border-zinc-800">
