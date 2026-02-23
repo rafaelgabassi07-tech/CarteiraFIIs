@@ -10,6 +10,12 @@ const httpsAgent = new https.Agent({
     rejectUnauthorized: false // Helps with some BCB SSL issues
 });
 
+const HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+    'Accept': 'application/json, text/plain, */*',
+    'X-Requested-With': 'XMLHttpRequest'
+};
+
 function getYahooParams(range: string) {
     switch (range) {
         // Intraday
@@ -41,6 +47,23 @@ function getYahooParams(range: string) {
     }
 }
 
+function getInvestidor10Days(range: string): number {
+    const r = range.toUpperCase();
+    switch (r) {
+        case '1D': return 1;
+        case '5D': return 5;
+        case '1M': return 30;
+        case '6M': return 180;
+        case 'YTD': return 365; // Approx
+        case '1Y': return 365;
+        case '2Y': return 730;
+        case '5Y': return 1825;
+        case '10Y': return 3650;
+        case 'MAX': return 36500; // 100 years
+        default: return 365;
+    }
+}
+
 // Calcula data de início baseada no range para consulta ao BCB
 function getStartDate(range: string): Date {
     const now = new Date();
@@ -66,6 +89,81 @@ const formatDateBCB = (date: Date) => {
     const y = date.getFullYear();
     return `${d}/${m}/${y}`;
 };
+
+async function fetchInvestidor10History(ticker: string, range: string) {
+    const days = getInvestidor10Days(range);
+    
+    try {
+        // 1. Try Stock Endpoint first (most common)
+        // Stocks use ticker directly: /api/cotacoes/acao/chart/{ticker}/{days}
+        try {
+            const stockUrl = `https://investidor10.com.br/api/cotacoes/acao/chart/${ticker}/${days}`;
+            const { data } = await axios.get(stockUrl, { headers: HEADERS, httpsAgent, timeout: 5000 });
+            if (data && data.real && data.real.length > 0) {
+                return parseInvestidor10Data(data.real);
+            }
+        } catch (e) {
+            // Ignore error, try next method
+        }
+
+        // 2. Try FII Endpoint
+        // FIIs need an ID. We must scrape the FII page to get the ID.
+        // Try fetching the FII page
+        const fiiPageUrl = `https://investidor10.com.br/fiis/${ticker}/`;
+        const { data: pageHtml } = await axios.get(fiiPageUrl, { headers: HEADERS, httpsAgent, timeout: 5000 });
+        
+        // Extract ID: look for "id: 56" or similar
+        const idMatch = pageHtml.match(/id:\s*(\d+)/);
+        if (idMatch && idMatch[1]) {
+            const id = idMatch[1];
+            const fiiUrl = `https://investidor10.com.br/api/fii/cotacoes/chart/${id}/${days}`;
+            const { data: fiiData } = await axios.get(fiiUrl, { 
+                headers: { ...HEADERS, 'Referer': fiiPageUrl }, 
+                httpsAgent, 
+                timeout: 5000 
+            });
+            
+            if (fiiData && fiiData.real && fiiData.real.length > 0) {
+                return parseInvestidor10Data(fiiData.real);
+            }
+        }
+
+        return null;
+    } catch (e) {
+        console.warn(`Investidor10 fetch failed for ${ticker}:`, e);
+        return null;
+    }
+}
+
+function parseInvestidor10Data(data: any[]) {
+    const timestamps: number[] = [];
+    const prices: number[] = [];
+    
+    data.forEach((item: any) => {
+        // item.created_at format: "DD/MM/YYYY" or "DD/MM/YYYY HH:mm"
+        const [datePart, timePart] = item.created_at.split(' ');
+        const [day, month, year] = datePart.split('/');
+        
+        let date = new Date(`${year}-${month}-${day}T00:00:00Z`); // UTC
+        if (timePart) {
+             // If time exists, it might be intraday, but we usually want daily close
+             // For simplicity, treat as daily close
+        }
+        
+        // Adjust for timezone if needed, but UTC date string is safer for charts
+        // Actually, we want the timestamp in seconds
+        timestamps.push(Math.floor(date.getTime() / 1000));
+        prices.push(parseFloat(item.price));
+    });
+
+    return {
+        timestamps,
+        prices,
+        opens: prices, // Investidor10 only gives close price usually
+        highs: prices,
+        lows: prices
+    };
+}
 
 async function fetchYahooData(symbol: string, range: string) {
     const s = symbol.includes('^') ? symbol : (symbol.endsWith('.SA') ? symbol : `${symbol}.SA`);
@@ -136,8 +234,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const startDateBCB = getStartDate(range);
 
         // Fetch Parallel Data
-        const [assetData, ibovData, ifixData, cdiMap, ipcaMap] = await Promise.all([
-            fetchYahooData(ticker, range),
+        // Try Investidor10 for the main asset first, fallback to Yahoo
+        let assetData = null;
+        
+        // Only use Investidor10 for Brazilian assets (no ^ or .SA suffix usually, but user might pass it)
+        const cleanTicker = ticker.replace('.SA', '');
+        if (!ticker.includes('^')) {
+             assetData = await fetchInvestidor10History(cleanTicker, range);
+        }
+        
+        if (!assetData) {
+            assetData = await fetchYahooData(ticker, range);
+        }
+
+        const [ibovData, ifixData, cdiMap, ipcaMap] = await Promise.all([
             fetchYahooData('^BVSP', range),
             fetchYahooData('IFIX.SA', range),
             fetchBcbSeries(12, startDateBCB),  // CDI Diário

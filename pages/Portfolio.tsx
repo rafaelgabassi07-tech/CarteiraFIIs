@@ -1072,68 +1072,107 @@ const PositionSummaryCard = ({ asset, privacyMode }: { asset: AssetPosition, pri
 };
 
 const ValuationCard = ({ asset }: { asset: AssetPosition }) => {
+    // Lógica de Valuation Simplificada
     let fairPrice = 0;
-    let upside = 0;
-    const lpa = asset.lpa ?? 0;
-    const vpa = asset.vpa ?? 0;
     
-    // Lógica Específica por Tipo de Ativo
+    // Graham Formula (VPA * LPA * 22.5) - Apenas para Ações com Lucro
     if (asset.assetType === AssetType.STOCK) {
-        // Graham (VPA * LPA * 22.5)
-        if (lpa > 0 && vpa > 0) {
-            fairPrice = Math.sqrt(22.5 * lpa * vpa);
+        if (asset.lpa && asset.lpa > 0 && asset.vpa && asset.vpa > 0) {
+            fairPrice = Math.sqrt(22.5 * asset.lpa * asset.vpa);
         }
-    } else if (asset.assetType === AssetType.FII) {
-        // Bazin (Dividend Discount Model simplificado para FIIs - Cap Rate 6%)
-        // Prioriza DY anualizado, senão usa último rendimento * 12
-        const dividend = (asset.dy_12m && asset.dy_12m > 0) 
-            ? (asset.dy_12m/100) * (asset.currentPrice || 0) 
-            : (asset.last_dividend || 0) * 12;
-            
-        if (dividend > 0) fairPrice = dividend / 0.06;
-    } else if (asset.dy_12m && asset.currentPrice) {
-         // Fallback genérico (Bazin)
+    } 
+    // Gordon Growth / Bazin para FIIs (Dividend Yield esperado de 6% a.a.)
+    else if (asset.assetType === AssetType.FII) {
+        const annualDividend = (asset.last_dividend || 0) * 12;
+        if (annualDividend > 0) {
+            fairPrice = annualDividend / 0.06; // Cap Rate esperado de 6%
+        }
+    }
+
+    // Se não calculou (dados faltantes), tenta usar DY médio se disponível
+    if (fairPrice === 0 && asset.dy_12m && asset.currentPrice) {
          const dividend = (asset.dy_12m/100) * asset.currentPrice;
          fairPrice = dividend / 0.06;
     }
 
-    if (asset.currentPrice && fairPrice > 0) {
-        upside = ((fairPrice - asset.currentPrice) / asset.currentPrice) * 100;
+    const currentPrice = asset.currentPrice || 0;
+    let upside = 0;
+    if (currentPrice > 0 && fairPrice > 0) {
+        upside = ((fairPrice - currentPrice) / currentPrice) * 100;
     }
+
+    // Limita o gráfico para não quebrar o layout (ex: -100% a +100%)
+    const progressValue = Math.min(Math.max(upside, -100), 100); 
+    const isPositive = upside >= 0;
+
+    if (fairPrice === 0) return null;
 
     return (
         <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 shadow-sm mb-4">
-            <div className="flex items-center gap-2 mb-4">
-                <Calculator className="w-4 h-4 text-zinc-400" />
-                <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest">Valuation & Preço Justo</h3>
+            <div className="flex items-center justify-between mb-4 border-b border-zinc-100 dark:border-zinc-800 pb-3">
+                <div className="flex items-center gap-2">
+                    <Calculator className="w-4 h-4 text-indigo-500" />
+                    <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Valuation (Estimativa)</h3>
+                </div>
+                <span className="text-[9px] font-bold text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded-md">
+                    {asset.assetType === AssetType.STOCK ? 'Graham' : 'Bazin (6%)'}
+                </span>
             </div>
             
-            <div className="flex items-center justify-between mt-2">
+            <div className="flex items-end justify-between mb-2">
                 <div>
-                    <p className="text-xs font-bold text-zinc-500 mb-1">Preço Justo (Estimado)</p>
+                    <p className="text-[10px] font-bold text-zinc-400 uppercase mb-1">Preço Justo</p>
                     <p className="text-2xl font-black text-zinc-900 dark:text-white">{formatBRL(fairPrice)}</p>
                 </div>
                 <div className="text-right">
-                     <p className="text-xs font-bold text-zinc-500 mb-1">Potencial (Upside)</p>
-                     <span className={`text-lg font-black ${upside >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                        {upside > 0 ? '+' : ''}{upside.toFixed(2)}%
+                     <p className="text-[10px] font-bold text-zinc-400 uppercase mb-1">Potencial</p>
+                     <span className={`text-xl font-black ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        {isPositive ? '+' : ''}{upside.toFixed(2)}%
                      </span>
                 </div>
             </div>
+
+            {/* Visual Gauge / Progress Bar */}
+            <div className="relative h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden mt-3">
+                {/* Center Marker */}
+                <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-zinc-300 dark:bg-zinc-600 z-10"></div>
+                
+                {/* Progress Bar */}
+                <div 
+                    className={`absolute top-0 bottom-0 transition-all duration-1000 ease-out ${isPositive ? 'bg-emerald-500' : 'bg-rose-500'}`}
+                    style={{
+                        left: isPositive ? '50%' : `${50 + (progressValue/2)}%`,
+                        width: `${Math.abs(progressValue)/2}%`,
+                        maxWidth: '50%'
+                    }}
+                ></div>
+            </div>
+            <div className="flex justify-between text-[9px] font-bold text-zinc-400 mt-1 uppercase">
+                <span>Caro (-100%)</span>
+                <span>Justo (0%)</span>
+                <span>Barato (+100%)</span>
+            </div>
+
             <p className="text-[9px] text-zinc-400 mt-3 leading-relaxed border-t border-zinc-100 dark:border-zinc-800 pt-2">
-                *Estimativa baseada em {asset.assetType === AssetType.STOCK ? 'Graham (VPA*LPA)' : 'Bazin (Div/0.06)'}. Não é recomendação de compra.
+                *Cálculo baseado na fórmula de {asset.assetType === AssetType.STOCK ? 'Benjamin Graham (√22.5 × LPA × VPA)' : 'Décio Bazin (Dividend Yield / 6%)'}. 
+                Não representa recomendação de compra ou venda.
             </p>
         </div>
     );
 };
 
 const DetailedInfoBlock = ({ asset }: { asset: AssetPosition }) => {
-    const InfoRow = ({ label, value }: { label: string, value: string | number | undefined }) => {
+    const InfoRow = ({ label, value, suffix = '', goodCondition, badCondition }: { label: string, value: string | number | undefined, suffix?: string, goodCondition?: boolean, badCondition?: boolean }) => {
         if (value === undefined || value === null || value === '') return null;
+        
+        let valueColor = "text-zinc-900 dark:text-white";
+        if (goodCondition) valueColor = "text-emerald-500";
+        if (badCondition) valueColor = "text-rose-500";
+
         return (
             <div className="flex justify-between py-2.5 text-xs border-b border-dashed border-zinc-100 dark:border-zinc-800 last:border-0 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 px-2 rounded-lg transition-colors">
                 <span className="font-bold text-zinc-500">{label}</span>
-                <span className="font-medium text-zinc-900 dark:text-white text-right max-w-[60%]">{value}</span>
+                <span className={`font-medium text-right max-w-[60%] ${valueColor}`}>{value}{suffix}</span>
             </div>
         );
     };
@@ -1165,31 +1204,31 @@ const DetailedInfoBlock = ({ asset }: { asset: AssetPosition }) => {
                     
                     <div className="-mx-2">
                         <h5 className="px-2 text-[9px] font-black text-indigo-500 uppercase tracking-widest mb-1 mt-1">Valuation</h5>
-                        <InfoRow label="P/L (Preço/Lucro)" value={asset.p_l?.toFixed(2)} />
-                        <InfoRow label="P/VP (Preço/Valor Patr.)" value={asset.p_vp?.toFixed(2)} />
+                        <InfoRow label="P/L (Preço/Lucro)" value={asset.p_l?.toFixed(2)} goodCondition={(asset.p_l || 0) > 0 && (asset.p_l || 0) < 15} badCondition={(asset.p_l || 0) < 0 || (asset.p_l || 0) > 30} />
+                        <InfoRow label="P/VP (Preço/Valor Patr.)" value={asset.p_vp?.toFixed(2)} goodCondition={(asset.p_vp || 0) > 0 && (asset.p_vp || 0) < 1.5} badCondition={(asset.p_vp || 0) > 3} />
                         <InfoRow label="VPA (Valor Patr./Ação)" value={formatBRL(asset.vpa)} />
-                        <InfoRow label="EV/EBITDA" value={asset.ev_ebitda?.toFixed(2)} />
-                        <InfoRow label="PEG Ratio" value={asset.peg_ratio?.toFixed(2)} />
+                        <InfoRow label="EV/EBITDA" value={asset.ev_ebitda?.toFixed(2)} goodCondition={(asset.ev_ebitda || 0) > 0 && (asset.ev_ebitda || 0) < 10} />
+                        <InfoRow label="PEG Ratio" value={asset.peg_ratio?.toFixed(2)} goodCondition={(asset.peg_ratio || 0) > 0 && (asset.peg_ratio || 0) < 1} />
                         <InfoRow label="P/EBIT" value={asset.p_ebit?.toFixed(2)} />
 
                         <h5 className="px-2 text-[9px] font-black text-indigo-500 uppercase tracking-widest mb-1 mt-4">Eficiência & Crescimento</h5>
-                        <InfoRow label="Margem Líquida" value={asset.net_margin ? `${asset.net_margin.toFixed(2)}%` : undefined} />
-                        <InfoRow label="Margem Bruta" value={asset.gross_margin ? `${asset.gross_margin.toFixed(2)}%` : undefined} />
-                        <InfoRow label="ROE (Ret. s/ Patr.)" value={asset.roe ? `${asset.roe.toFixed(2)}%` : undefined} />
-                        <InfoRow label="ROIC" value={asset.roic ? `${asset.roic.toFixed(2)}%` : undefined} />
-                        <InfoRow label="ROA" value={asset.roa ? `${asset.roa.toFixed(2)}%` : undefined} />
-                        <InfoRow label="CAGR Lucros (5 anos)" value={asset.cagr_profits ? `${asset.cagr_profits.toFixed(2)}%` : undefined} />
-                        <InfoRow label="Payout" value={asset.payout ? `${asset.payout.toFixed(2)}%` : undefined} />
+                        <InfoRow label="Margem Líquida" value={asset.net_margin?.toFixed(2)} suffix="%" goodCondition={(asset.net_margin || 0) > 10} badCondition={(asset.net_margin || 0) < 5} />
+                        <InfoRow label="Margem Bruta" value={asset.gross_margin?.toFixed(2)} suffix="%" goodCondition={(asset.gross_margin || 0) > 30} />
+                        <InfoRow label="ROE (Ret. s/ Patr.)" value={asset.roe?.toFixed(2)} suffix="%" goodCondition={(asset.roe || 0) > 15} badCondition={(asset.roe || 0) < 5} />
+                        <InfoRow label="ROIC" value={asset.roic?.toFixed(2)} suffix="%" goodCondition={(asset.roic || 0) > 10} />
+                        <InfoRow label="ROA" value={asset.roa?.toFixed(2)} suffix="%" goodCondition={(asset.roa || 0) > 5} />
+                        <InfoRow label="CAGR Lucros (5 anos)" value={asset.cagr_profits?.toFixed(2)} suffix="%" goodCondition={(asset.cagr_profits || 0) > 10} badCondition={(asset.cagr_profits || 0) < 0} />
+                        <InfoRow label="Payout" value={asset.payout?.toFixed(2)} suffix="%" />
 
                         <h5 className="px-2 text-[9px] font-black text-indigo-500 uppercase tracking-widest mb-1 mt-4">Endividamento</h5>
-                        <InfoRow label="Dívida Líq / EBITDA" value={asset.net_debt_ebitda?.toFixed(2)} />
-                        <InfoRow label="Dívida Líq / PL" value={asset.net_debt_equity?.toFixed(2)} />
-                        <InfoRow label="Liquidez Corrente" value={asset.liquidez_corrente?.toFixed(2)} />
+                        <InfoRow label="Dívida Líq / EBITDA" value={asset.net_debt_ebitda?.toFixed(2)} goodCondition={(asset.net_debt_ebitda || 0) < 2.5} badCondition={(asset.net_debt_ebitda || 0) > 3.5} />
+                        <InfoRow label="Dívida Líq / PL" value={asset.net_debt_equity?.toFixed(2)} goodCondition={(asset.net_debt_equity || 0) < 1} />
+                        <InfoRow label="Liquidez Corrente" value={asset.liquidez_corrente?.toFixed(2)} goodCondition={(asset.liquidez_corrente || 0) > 1.5} badCondition={(asset.liquidez_corrente || 0) < 1} />
 
                         <h5 className="px-2 text-[9px] font-black text-indigo-500 uppercase tracking-widest mb-1 mt-4">Governança & Mercado</h5>
                         <InfoRow label="Governança" value={asset.governance_level} />
-                        <InfoRow label="Free Float" value={asset.free_float ? `${asset.free_float.toFixed(2)}%` : undefined} />
-                        <InfoRow label="Tag Along" value={asset.tag_along ? `${asset.tag_along.toFixed(2)}%` : undefined} />
+                        <InfoRow label="Free Float" value={asset.free_float?.toFixed(2)} suffix="%" goodCondition={(asset.free_float || 0) > 25} badCondition={(asset.free_float || 0) < 15} />
+                        <InfoRow label="Tag Along" value={asset.tag_along?.toFixed(2)} suffix="%" goodCondition={(asset.tag_along || 0) === 100} badCondition={(asset.tag_along || 0) < 80} />
                         <InfoRow label="Vol. Médio Diário" value={asset.avg_daily_volume ? formatBRL(asset.avg_daily_volume) : undefined} />
                     </div>
                 </div>
@@ -1203,10 +1242,10 @@ const DetailedInfoBlock = ({ asset }: { asset: AssetPosition }) => {
                         <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Dados do Fundo</h3>
                     </div>
                     <div className="-mx-2">
-                        <InfoRow label="Vacância Física" value={asset.vacancy ? `${asset.vacancy.toFixed(2)}%` : undefined} />
-                        <InfoRow label="Vacância Financeira" value={asset.financial_vacancy ? `${asset.financial_vacancy.toFixed(2)}%` : undefined} />
-                        <InfoRow label="Cap Rate" value={asset.cap_rate ? `${asset.cap_rate.toFixed(2)}%` : undefined} />
-                        <InfoRow label="P/VP" value={asset.p_vp?.toFixed(2)} />
+                        <InfoRow label="Vacância Física" value={asset.vacancy?.toFixed(2)} suffix="%" goodCondition={(asset.vacancy || 0) < 5} badCondition={(asset.vacancy || 0) > 15} />
+                        <InfoRow label="Vacância Financeira" value={asset.financial_vacancy?.toFixed(2)} suffix="%" goodCondition={(asset.financial_vacancy || 0) < 5} badCondition={(asset.financial_vacancy || 0) > 15} />
+                        <InfoRow label="Cap Rate" value={asset.cap_rate?.toFixed(2)} suffix="%" goodCondition={(asset.cap_rate || 0) > 8} />
+                        <InfoRow label="P/VP" value={asset.p_vp?.toFixed(2)} goodCondition={(asset.p_vp || 0) >= 0.9 && (asset.p_vp || 0) <= 1.05} badCondition={(asset.p_vp || 0) > 1.2} />
                         <InfoRow label="VP por Cota" value={formatBRL(asset.val_patrimonial_cota || asset.vpa)} />
                         <InfoRow label="Último Rendimento" value={formatBRL(asset.last_dividend)} />
                         <InfoRow label="Nº de Cotistas" value={asset.shareholders_count?.toLocaleString('pt-BR')} />
@@ -1357,8 +1396,8 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: { asset: Ass
             try {
                 const res = await fetch(`/api/history?ticker=${asset.ticker}&range=5y`);
                 const data = await res.json();
-                if (data && data.results) {
-                    setPriceHistory(data.results);
+                if (data && data.points) {
+                    setPriceHistory(data.points);
                 }
             } catch (error) {
                 console.error("Failed to fetch history for yield chart", error);
@@ -1497,6 +1536,24 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: { asset: Ass
         return allKeys.map(k => grouped[k]);
     }, [marketHistory, asset.assetType]);
 
+    const yearlyDividendData = useMemo(() => {
+        if (!marketHistory || marketHistory.length === 0) return [];
+        
+        const yearlyMap = new Map<number, number>();
+        marketHistory.forEach(d => {
+            if (!d.paymentDate) return;
+            const year = new Date(d.paymentDate).getFullYear();
+            const current = yearlyMap.get(year) || 0;
+            yearlyMap.set(year, current + d.rate * asset.quantity); // Approximate total received based on current quantity
+        });
+
+        const years = Array.from(yearlyMap.keys()).sort();
+        return years.map(year => ({
+            year: year.toString(),
+            total: yearlyMap.get(year) || 0
+        }));
+    }, [marketHistory, asset.quantity]);
+
     return (
         <div className="space-y-4">
             <div className="p-4 rounded-2xl border bg-gradient-to-br from-indigo-50 to-white dark:from-zinc-800 dark:to-zinc-900 border-indigo-100 dark:border-zinc-800 relative overflow-hidden shadow-sm">
@@ -1527,66 +1584,105 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: { asset: Ass
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
-                    <h4 className="text-[10px] font-bold text-zinc-400 uppercase flex items-center gap-2">
-                        <BarChart3 className="w-3 h-3" /> Evolução da Renda (12m)
-                    </h4>
-                    <span className="text-[10px] text-zinc-400 bg-zinc-50 dark:bg-zinc-800/50 px-2 py-1 rounded-md border border-zinc-100 dark:border-zinc-700">
-                        Média: {formatBRL(chartData.average)}
-                    </span>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
+                    <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
+                        <h4 className="text-[10px] font-bold text-zinc-400 uppercase flex items-center gap-2">
+                            <BarChart3 className="w-3 h-3" /> Evolução Mensal (12m)
+                        </h4>
+                        <span className="text-[10px] text-zinc-400 bg-zinc-50 dark:bg-zinc-800/50 px-2 py-1 rounded-md border border-zinc-100 dark:border-zinc-700">
+                            Média: {formatBRL(chartData.average)}
+                        </span>
+                    </div>
+                    <div className="h-60 w-full p-2 pt-4">
+                        {chartData.data.some(d => d.total > 0) ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={chartData.data} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                                    <defs>
+                                        <linearGradient id="colorBarDiv" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor={TYPE_COLORS.DIV} stopOpacity={0.8}/>
+                                            <stop offset="95%" stopColor={TYPE_COLORS.DIV} stopOpacity={0.3}/>
+                                        </linearGradient>
+                                        <linearGradient id="colorBarJcp" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor={TYPE_COLORS.JCP} stopOpacity={0.8}/>
+                                            <stop offset="95%" stopColor={TYPE_COLORS.JCP} stopOpacity={0.3}/>
+                                        </linearGradient>
+                                        <linearGradient id="colorBarRend" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor={TYPE_COLORS.REND} stopOpacity={0.8}/>
+                                            <stop offset="95%" stopColor={TYPE_COLORS.REND} stopOpacity={0.3}/>
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
+                                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 700 }} dy={5} interval={0} />
+                                    <Tooltip 
+                                        cursor={{fill: 'transparent'}} 
+                                        contentStyle={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(24, 24, 27, 0.8)', color: '#fff', fontSize: '10px', padding: '8px 12px', backdropFilter: 'blur(8px)' }} 
+                                        formatter={(value: number, name: string) => [formatBRL(value), TYPE_LABELS[name] || name]} 
+                                    />
+                                    {chartData.activeTypes.map(type => {
+                                        let fillUrl = TYPE_COLORS[type];
+                                        if (type === 'DIV') fillUrl = "url(#colorBarDiv)";
+                                        if (type === 'JCP') fillUrl = "url(#colorBarJcp)";
+                                        if (type === 'REND') fillUrl = "url(#colorBarRend)";
+                                        
+                                        return (
+                                            <Bar 
+                                                key={type} 
+                                                dataKey={type} 
+                                                stackId="a" 
+                                                fill={fillUrl} 
+                                                radius={[4, 4, 0, 0]} 
+                                                maxBarSize={28}
+                                                animationDuration={1500}
+                                                animationEasing="ease-out"
+                                            />
+                                        );
+                                    })}
+                                    {chartData.average > 0 && <ReferenceLine y={chartData.average} stroke="#f59e0b" strokeDasharray="3 3" strokeOpacity={0.6} />}
+                                </BarChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="h-full flex items-center justify-center text-xs text-zinc-400 font-medium bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-700">Sem histórico recente</div>
+                        )}
+                    </div>
                 </div>
-                <div className="h-60 w-full p-2 pt-4">
-                    {chartData.data.some(d => d.total > 0) ? (
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={chartData.data} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-                                <defs>
-                                    <linearGradient id="colorBarDiv" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor={TYPE_COLORS.DIV} stopOpacity={0.8}/>
-                                        <stop offset="95%" stopColor={TYPE_COLORS.DIV} stopOpacity={0.3}/>
-                                    </linearGradient>
-                                    <linearGradient id="colorBarJcp" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor={TYPE_COLORS.JCP} stopOpacity={0.8}/>
-                                        <stop offset="95%" stopColor={TYPE_COLORS.JCP} stopOpacity={0.3}/>
-                                    </linearGradient>
-                                    <linearGradient id="colorBarRend" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor={TYPE_COLORS.REND} stopOpacity={0.8}/>
-                                        <stop offset="95%" stopColor={TYPE_COLORS.REND} stopOpacity={0.3}/>
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
-                                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 700 }} dy={5} interval={0} />
-                                <Tooltip 
-                                    cursor={{fill: 'transparent'}} 
-                                    contentStyle={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(24, 24, 27, 0.8)', color: '#fff', fontSize: '10px', padding: '8px 12px', backdropFilter: 'blur(8px)' }} 
-                                    formatter={(value: number, name: string) => [formatBRL(value), TYPE_LABELS[name] || name]} 
-                                />
-                                {chartData.activeTypes.map(type => {
-                                    let fillUrl = TYPE_COLORS[type];
-                                    if (type === 'DIV') fillUrl = "url(#colorBarDiv)";
-                                    if (type === 'JCP') fillUrl = "url(#colorBarJcp)";
-                                    if (type === 'REND') fillUrl = "url(#colorBarRend)";
-                                    
-                                    return (
-                                        <Bar 
-                                            key={type} 
-                                            dataKey={type} 
-                                            stackId="a" 
-                                            fill={fillUrl} 
-                                            radius={[4, 4, 0, 0]} 
-                                            maxBarSize={28}
-                                            animationDuration={1500}
-                                            animationEasing="ease-out"
-                                        />
-                                    );
-                                })}
-                                {chartData.average > 0 && <ReferenceLine y={chartData.average} stroke="#f59e0b" strokeDasharray="3 3" strokeOpacity={0.6} />}
-                                <Legend iconType="circle" iconSize={6} formatter={(value) => <span className="text-[9px] font-bold text-zinc-500 uppercase">{TYPE_LABELS[value] || value}</span>} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    ) : (
-                        <div className="h-full flex items-center justify-center text-xs text-zinc-400 font-medium bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-700">Sem histórico recente</div>
-                    )}
+
+                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
+                    <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
+                        <h4 className="text-[10px] font-bold text-zinc-400 uppercase flex items-center gap-2">
+                            <TrendingUp className="w-3 h-3" /> Evolução Anual
+                        </h4>
+                    </div>
+                    <div className="h-60 w-full p-2 pt-4">
+                        {yearlyDividendData.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={yearlyDividendData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                                    <defs>
+                                        <linearGradient id="colorBarYearly" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8}/>
+                                            <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.3}/>
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
+                                    <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 700 }} dy={5} />
+                                    <Tooltip 
+                                        cursor={{fill: 'transparent'}} 
+                                        contentStyle={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(24, 24, 27, 0.8)', color: '#fff', fontSize: '10px', padding: '8px 12px', backdropFilter: 'blur(8px)' }} 
+                                        formatter={(value: number) => [formatBRL(value), 'Total Anual']} 
+                                    />
+                                    <Bar 
+                                        dataKey="total" 
+                                        fill="url(#colorBarYearly)" 
+                                        radius={[4, 4, 0, 0]} 
+                                        maxBarSize={40}
+                                        animationDuration={1500}
+                                    />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="h-full flex items-center justify-center text-xs text-zinc-400 font-medium bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-700">Sem histórico anual</div>
+                        )}
+                    </div>
                 </div>
             </div>
 
