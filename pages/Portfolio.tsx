@@ -1176,7 +1176,7 @@ const Investidor10ChartsSection = ({ ticker, assetType, onlyPayout = false }: { 
                 if (onlyPayout) {
                     types = ['payout'];
                 } else {
-                    types = assetType === AssetType.STOCK ? ['revenue_profit', 'profit_price', 'equity'] : ['profit_price'];
+                    types = ['revenue_profit', 'profit_price', 'equity'];
                 }
                 
                 const results = await Promise.all(
@@ -1188,12 +1188,10 @@ const Investidor10ChartsSection = ({ ticker, assetType, onlyPayout = false }: { 
 
                 if (onlyPayout) {
                     setPayoutData(results[0]);
-                } else if (assetType === AssetType.STOCK) {
+                } else {
                     setRevenueData(results[0]);
                     setProfitPriceData(results[1]);
                     setEquityData(results[2]);
-                } else {
-                    setProfitPriceData(results[0]);
                 }
             } catch (error) {
                 console.error("Failed to fetch Investidor10 charts", error);
@@ -1221,7 +1219,9 @@ const Investidor10ChartsSection = ({ ticker, assetType, onlyPayout = false }: { 
                 <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm">
                     <div className="flex items-center gap-2 mb-4 pb-2 border-b border-zinc-100 dark:border-zinc-800">
                         <TrendingUp className="w-4 h-4 text-indigo-500" />
-                        <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Lucro x Cotação</h3>
+                        <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+                            {assetType === AssetType.STOCK ? 'Lucro x Cotação' : 'Resultado x Cotação'}
+                        </h3>
                     </div>
                     <div className="h-64 w-full">
                         <ResponsiveContainer width="100%" height="100%">
@@ -1237,10 +1237,10 @@ const Investidor10ChartsSection = ({ ticker, assetType, onlyPayout = false }: { 
                                 <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
                                 <Tooltip 
                                     contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '10px' }}
-                                    formatter={(value: any, name: string) => [name === 'price' ? formatBRL(value) : value.toLocaleString('pt-BR'), name === 'price' ? 'Cotação' : 'Lucro']}
+                                    formatter={(value: any, name: string) => [name === 'price' ? formatBRL(value) : (assetType === AssetType.STOCK ? value.toLocaleString('pt-BR') : formatBRL(value)), name === 'price' ? 'Cotação' : (assetType === AssetType.STOCK ? 'Lucro' : 'Resultado')] }
                                 />
                                 <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
-                                <Bar yAxisId="left" dataKey="profit" name="Lucro" fill="#10b981" radius={[4, 4, 0, 0]} />
+                                <Bar yAxisId="left" dataKey="profit" name={assetType === AssetType.STOCK ? 'Lucro' : 'Resultado'} fill="#10b981" radius={[4, 4, 0, 0]} />
                                 <Line yAxisId="right" type="monotone" dataKey="price" name="Cotação" stroke="#6366f1" strokeWidth={2} dot={false} />
                             </ComposedChart>
                         </ResponsiveContainer>
@@ -1248,12 +1248,14 @@ const Investidor10ChartsSection = ({ ticker, assetType, onlyPayout = false }: { 
                 </div>
             )}
 
-            {/* Receitas e Lucros - Grouped Bar */}
+            {/* Receitas e Lucros / Proventos */}
             {revenueData && revenueData.length > 0 && (
                 <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm">
                     <div className="flex items-center gap-2 mb-4 pb-2 border-b border-zinc-100 dark:border-zinc-800">
                         <BarChart3 className="w-4 h-4 text-emerald-500" />
-                        <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Receitas e Lucros</h3>
+                        <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+                            {assetType === AssetType.STOCK ? 'Receitas e Lucros' : 'Histórico de Proventos'}
+                        </h3>
                     </div>
                     <div className="h-64 w-full">
                         <ResponsiveContainer width="100%" height="100%">
@@ -1263,23 +1265,34 @@ const Investidor10ChartsSection = ({ ticker, assetType, onlyPayout = false }: { 
                                 <YAxis tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
                                 <Tooltip 
                                     contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '10px' }}
-                                    formatter={(value: any) => [value.toLocaleString('pt-BR'), '']}
+                                    formatter={(value: any, name: string) => [
+                                        assetType === AssetType.STOCK ? value.toLocaleString('pt-BR') : formatBRL(value), 
+                                        name === 'revenue' ? (assetType === AssetType.STOCK ? 'Receita' : 'Provento') : (assetType === AssetType.STOCK ? 'Lucro' : 'Provento')
+                                    ]}
                                 />
                                 <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
-                                <Bar dataKey="revenue" name="Receita Líq." fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                                <Bar dataKey="profit" name="Lucro Líq." fill="#10b981" radius={[4, 4, 0, 0]} />
+                                {assetType === AssetType.STOCK ? (
+                                    <>
+                                        <Bar dataKey="revenue" name="Receita Líq." fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                                        <Bar dataKey="profit" name="Lucro Líq." fill="#10b981" radius={[4, 4, 0, 0]} />
+                                    </>
+                                ) : (
+                                    <Bar dataKey="revenue" name="Provento" fill="#10b981" radius={[4, 4, 0, 0]} />
+                                )}
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
             )}
 
-            {/* Evolução do Patrimônio - Grouped Bar */}
+            {/* Evolução do Patrimônio */}
             {equityData && equityData.length > 0 && (
                 <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm">
                     <div className="flex items-center gap-2 mb-4 pb-2 border-b border-zinc-100 dark:border-zinc-800">
                         <PieChart className="w-4 h-4 text-amber-500" />
-                        <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Evolução do Patrimônio</h3>
+                        <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+                            {assetType === AssetType.STOCK ? 'Evolução do Patrimônio' : 'Patrimônio Líquido'}
+                        </h3>
                     </div>
                     <div className="h-64 w-full">
                         <ResponsiveContainer width="100%" height="100%">
@@ -1289,12 +1302,16 @@ const Investidor10ChartsSection = ({ ticker, assetType, onlyPayout = false }: { 
                                 <YAxis tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
                                 <Tooltip 
                                     contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '10px' }}
-                                    formatter={(value: any) => [value.toLocaleString('pt-BR'), '']}
+                                    formatter={(value: any) => [assetType === AssetType.STOCK ? value.toLocaleString('pt-BR') : formatBRL(value), 'Patrimônio']}
                                 />
                                 <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
                                 <Bar dataKey="equity" name="Patrimônio" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                                <Bar dataKey="revenue" name="Receita" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                                <Bar dataKey="profit" name="Lucro" fill="#10b981" radius={[4, 4, 0, 0]} />
+                                {assetType === AssetType.STOCK && (
+                                    <>
+                                        <Bar dataKey="revenue" name="Receita" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                                        <Bar dataKey="profit" name="Lucro" fill="#10b981" radius={[4, 4, 0, 0]} />
+                                    </>
+                                )}
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
@@ -1539,7 +1556,21 @@ const PropertiesAnalysis = ({ properties }: { properties: any[] }) => {
     );
 };
 
-const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: { asset: AssetPosition, chartData: { data: any[], average: number, activeTypes: string[] }, marketHistory: DividendReceipt[] }) => {
+const IncomeAnalysisSection = ({ asset, chartData, marketHistory: rawMarketHistory }: { asset: AssetPosition, chartData: { data: any[], average: number, activeTypes: string[] }, marketHistory: DividendReceipt[] }) => {
+    // DEDUPLICAÇÃO GLOBAL DE PROVENTOS PARA EVITAR DUPLICIDADE EM TODOS OS GRÁFICOS
+    const marketHistory = useMemo(() => {
+        if (!rawMarketHistory) return [];
+        const unique = new Map<string, DividendReceipt>();
+        rawMarketHistory.forEach(d => {
+            const dateRef = d.paymentDate || d.dateCom || 'N/A';
+            const key = `${d.ticker}-${dateRef}-${d.type}-${d.rate.toFixed(4)}`;
+            if (!unique.has(key)) {
+                unique.set(key, d);
+            }
+        });
+        return Array.from(unique.values());
+    }, [rawMarketHistory]);
+
     const totalInvested = asset.quantity * asset.averagePrice;
     const yoc = totalInvested > 0 ? (asset.totalDividends || 0) / totalInvested * 100 : 0;
     const currentPrice = asset.currentPrice || 0;
@@ -1651,25 +1682,6 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: { asset: Ass
     const perShareChartData = useMemo(() => {
         if (!marketHistory || marketHistory.length === 0) return [];
         
-        // DEDUPLICAÇÃO INTELIGENTE DE EVENTOS DE DIVIDENDOS
-        // Cria chave composta: Data (YYYY-MM) + Tipo + Valor para evitar somar duplicatas de importação
-        const uniqueEvents = new Map<string, any>();
-        
-        marketHistory.forEach(d => {
-            if (!d.paymentDate && !d.dateCom) return;
-            const dateRef = d.paymentDate || d.dateCom;
-            // Chave única para o evento específico
-            const eventKey = `${dateRef}-${d.type}-${d.rate.toFixed(4)}`;
-            
-            if (!uniqueEvents.has(eventKey)) {
-                uniqueEvents.set(eventKey, {
-                    date: dateRef,
-                    type: d.type,
-                    rate: d.rate
-                });
-            }
-        });
-
         const grouped: Record<string, { month: string, fullDate: string, DIV: number, JCP: number, REND: number, OUTROS: number, total: number }> = {};
         const today = new Date();
         
@@ -1680,9 +1692,11 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: { asset: Ass
             grouped[key] = { month: getMonthLabel(key), fullDate: key, DIV: 0, JCP: 0, REND: 0, OUTROS: 0, total: 0 };
         }
 
-        // Soma apenas eventos únicos no mês correspondente
-        uniqueEvents.forEach((evt) => {
-            const key = evt.date.substring(0, 7);
+        // Soma eventos no mês correspondente (já deduplicados no topo)
+        marketHistory.forEach((evt) => {
+            const dateRef = evt.paymentDate || evt.dateCom;
+            if (!dateRef) return;
+            const key = dateRef.substring(0, 7);
             
             if (grouped[key]) {
                 let type = evt.type || 'OUTROS';
@@ -1864,7 +1878,18 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: { asset: Ass
                                         radius={[4, 4, 0, 0]} 
                                         maxBarSize={40}
                                         animationDuration={1500}
+                                        name="Total"
                                     />
+                                    <Line 
+                                        type="monotone" 
+                                        dataKey="growth" 
+                                        stroke="#10b981" 
+                                        strokeWidth={2} 
+                                        dot={{r: 3, fill: "#10b981"}} 
+                                        name="Crescimento %"
+                                        yAxisId="right"
+                                    />
+                                    <YAxis yAxisId="right" orientation="right" hide />
                                 </BarChart>
                             </ResponsiveContainer>
                         ) : (
@@ -1973,7 +1998,7 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: { asset: Ass
                                 />
                                 <Bar 
                                     dataKey="yield" 
-                                    fill="url(#gradUnitRend)" 
+                                    fill={asset.assetType === AssetType.FII ? "url(#gradUnitRend)" : "url(#gradUnitDiv)"} 
                                     radius={[4, 4, 0, 0]}
                                     maxBarSize={20}
                                     animationDuration={1500}

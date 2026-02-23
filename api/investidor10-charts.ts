@@ -49,28 +49,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const t = String(ticker).toUpperCase();
     const type = String(assetType || (t.endsWith('11') ? 'fiis' : 'acoes')).toLowerCase();
+    const isFii = type === 'fiis';
     
     try {
         let url = '';
-        
-        if (chartType === 'profit_price') {
-            url = `https://investidor10.com.br/api/cotacao-lucro/${t}/adjusted/`;
-        } else {
-            const ids = await getIds(t, type);
-            if (!ids) return res.status(404).json({ error: 'Could not find IDs for ticker' });
+        const ids = await getIds(t, type);
+        if (!ids) return res.status(404).json({ error: 'Could not find IDs for ticker' });
 
+        if (chartType === 'profit_price') {
+            if (isFii) {
+                url = `https://investidor10.com.br/api/fii/cotacoes/chart/${ids.id}/3650/`;
+            } else {
+                url = `https://investidor10.com.br/api/cotacao-lucro/${t}/adjusted/`;
+            }
+        } else {
             switch (chartType) {
                 case 'revenue_profit':
-                    if (!ids.revenueId) return res.status(404).json({ error: 'Revenue ID not found' });
-                    url = `https://investidor10.com.br/api/balancos/receitaliquida/chart/${ids.revenueId}/3650/false/`;
+                    if (isFii) {
+                        url = `https://investidor10.com.br/api/fii/dividendos/chart/${ids.id}/3650/`;
+                    } else {
+                        if (!ids.revenueId) return res.status(404).json({ error: 'Revenue ID not found' });
+                        url = `https://investidor10.com.br/api/balancos/receitaliquida/chart/${ids.revenueId}/3650/false/`;
+                    }
                     break;
                 case 'equity':
-                    if (!ids.revenueId) return res.status(404).json({ error: 'Equity ID not found' });
-                    url = `https://investidor10.com.br/api/balancos/ativospassivos/chart/${ids.revenueId}/3650/`;
+                    if (isFii) {
+                        url = `https://investidor10.com.br/api/fii/valor-patrimonial/chart/${ids.id}/3650/`;
+                    } else {
+                        if (!ids.revenueId) return res.status(404).json({ error: 'Equity ID not found' });
+                        url = `https://investidor10.com.br/api/balancos/ativospassivos/chart/${ids.revenueId}/3650/`;
+                    }
                     break;
                 case 'payout':
-                    if (!ids.companyId || !ids.tickerId) return res.status(404).json({ error: 'Payout IDs not found' });
-                    url = `https://investidor10.com.br/api/acoes/payout-chart/${ids.companyId}/${ids.tickerId}/${t}/365`;
+                    if (isFii) {
+                        url = `https://investidor10.com.br/api/fii/dividend-yield/chart/${ids.id}/3650/`;
+                    } else {
+                        if (!ids.companyId || !ids.tickerId) return res.status(404).json({ error: 'Payout IDs not found' });
+                        url = `https://investidor10.com.br/api/acoes/payout-chart/${ids.companyId}/${ids.tickerId}/${t}/365`;
+                    }
                     break;
                 default:
                     return res.status(400).json({ error: 'Invalid chartType' });
@@ -87,45 +103,73 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         
         let transformedData = response.data;
 
-        // Transform data based on chartType
-        if (chartType === 'revenue_profit') {
-            const arr = Array.isArray(response.data) ? response.data : Object.values(response.data);
-            transformedData = arr.map((item: any) => ({
-                label: `${item.quarter}T${item.year}`,
-                revenue: item.net_revenue,
-                profit: item.net_profit
-            }));
-        } else if (chartType === 'equity') {
-            const arr = Array.isArray(response.data) ? response.data : Object.values(response.data);
-            transformedData = arr.map((item: any) => ({
-                label: `${item.quarter}T${item.year}`,
-                equity: item.net_worth,
-                revenue: item.net_revenue,
-                profit: item.net_profit
-            }));
-        } else if (chartType === 'profit_price') {
-            transformedData = Object.entries(response.data).map(([year, val]: [string, any]) => ({
-                label: year,
-                profit: val.net_profit,
-                price: parseFloat(val.quotation)
-            }));
-        } else if (chartType === 'payout') {
-            const years = response.data.years || [];
-            const payoutMap = response.data.payOutCompanyIndicators || {};
-            const dyMap = response.data.dyTickerIndicators || {};
-            
-            transformedData = years.map((year: string, idx: number) => {
-                // The maps might use index as key or year as key. Based on debug, it looks like index-like keys "13", "14"...
-                // Let's find the entry that matches the year
-                const payoutEntry = Object.values(payoutMap).find((v: any) => v.year === year) as any;
-                const dyEntry = Object.values(dyMap).find((v: any) => v.year === year) as any;
-                
-                return {
+        // Transform data based on chartType and assetType
+        if (isFii) {
+            if (chartType === 'profit_price') {
+                // FII cotacoes returns { real: [...], dolar: [...], euro: [...] }
+                const points = response.data.real || [];
+                transformedData = points.map((item: any) => ({
+                    label: item.created_at.split('/').slice(1).join('/'), // MM/YYYY
+                    price: item.price,
+                    profit: 0 // FIIs don't have a simple profit line in this chart
+                }));
+            } else if (chartType === 'revenue_profit') {
+                // FII dividendos returns [{ price: 0.87, created_at: '02/2016' }, ...]
+                transformedData = response.data.map((item: any) => ({
+                    label: item.created_at,
+                    revenue: item.price, // Using dividend as proxy for income
+                    profit: item.price
+                }));
+            } else if (chartType === 'equity') {
+                transformedData = response.data.map((item: any) => ({
+                    label: item.created_at,
+                    equity: item.price
+                }));
+            } else if (chartType === 'payout') {
+                transformedData = response.data.map((item: any) => ({
+                    label: item.created_at,
+                    dy: item.price
+                }));
+            }
+        } else {
+            // Transform data for Stocks
+            if (chartType === 'revenue_profit') {
+                const arr = Array.isArray(response.data) ? response.data : Object.values(response.data);
+                transformedData = arr.map((item: any) => ({
+                    label: `${item.quarter}T${item.year}`,
+                    revenue: item.net_revenue,
+                    profit: item.net_profit
+                }));
+            } else if (chartType === 'equity') {
+                const arr = Array.isArray(response.data) ? response.data : Object.values(response.data);
+                transformedData = arr.map((item: any) => ({
+                    label: `${item.quarter}T${item.year}`,
+                    equity: item.net_worth,
+                    revenue: item.net_revenue,
+                    profit: item.net_profit
+                }));
+            } else if (chartType === 'profit_price') {
+                transformedData = Object.entries(response.data).map(([year, val]: [string, any]) => ({
                     label: year,
-                    payout: payoutEntry ? payoutEntry.value : 0,
-                    dy: dyEntry ? parseFloat(dyEntry.value) : 0
-                };
-            });
+                    profit: val.net_profit,
+                    price: parseFloat(val.quotation)
+                }));
+            } else if (chartType === 'payout') {
+                const years = response.data.years || [];
+                const payoutMap = response.data.payOutCompanyIndicators || {};
+                const dyMap = response.data.dyTickerIndicators || {};
+                
+                transformedData = years.map((year: string, idx: number) => {
+                    const payoutEntry = Object.values(payoutMap).find((v: any) => v.year === year) as any;
+                    const dyEntry = Object.values(dyMap).find((v: any) => v.year === year) as any;
+                    
+                    return {
+                        label: year,
+                        payout: payoutEntry ? payoutEntry.value : 0,
+                        dy: dyEntry ? parseFloat(dyEntry.value) : 0
+                    };
+                });
+            }
         }
         
         return res.status(200).json(transformedData);
