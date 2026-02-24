@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Search, Trash2, TrendingUp, TrendingDown, Plus, Star, ArrowLeft } from 'lucide-react';
 import { getQuotes } from '../services/brapiService';
 import { formatBRL } from '../utils/formatters';
+import AssetModal from '../components/AssetModal';
+import { AssetPosition, AssetType } from '../types';
 
 interface WatchlistItem {
     ticker: string;
@@ -17,6 +19,7 @@ export default function Watchlist() {
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [isAdding, setIsAdding] = useState(false);
+    const [selectedAsset, setSelectedAsset] = useState<AssetPosition | null>(null);
 
     // Load from LocalStorage on mount
     useEffect(() => {
@@ -94,6 +97,30 @@ export default function Watchlist() {
         setWatchlist(prev => prev.filter(t => t !== ticker));
     };
 
+    const handleAssetClick = (ticker: string) => {
+        const quote = quotes[ticker];
+        // Create a temporary AssetPosition object for the modal
+        const tempAsset: AssetPosition = {
+            ticker: ticker,
+            quantity: 0,
+            averagePrice: 0,
+            currentPrice: quote?.price || 0,
+            totalDividends: 0,
+            assetType: AssetType.STOCK, // Default, could be improved
+            segment: 'Unknown',
+            logoUrl: quote?.logo,
+            dividends: [],
+            properties: [],
+            properties_count: 0,
+            assets_value: '0',
+            vacancy: 0,
+            p_vp: 0,
+            p_l: 0,
+            dy_12m: 0
+        };
+        setSelectedAsset(tempAsset);
+    };
+
     return (
         <div className="pb-24 pt-6 px-4 max-w-md mx-auto min-h-screen">
             <div className="flex items-center justify-between mb-6">
@@ -142,7 +169,11 @@ export default function Watchlist() {
                         const isPositive = change >= 0;
 
                         return (
-                            <div key={ticker} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center justify-between">
+                            <div 
+                                key={ticker} 
+                                onClick={() => handleAssetClick(ticker)}
+                                className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all"
+                            >
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center overflow-hidden">
                                         {quote?.logo ? (
@@ -168,7 +199,7 @@ export default function Watchlist() {
                                         </div>
                                     </div>
                                     <button 
-                                        onClick={() => removeTicker(ticker)}
+                                        onClick={(e) => { e.stopPropagation(); removeTicker(ticker); }}
                                         className="p-2 text-zinc-300 hover:text-rose-500 transition-colors"
                                     >
                                         <Trash2 className="w-4 h-4" />
@@ -178,6 +209,17 @@ export default function Watchlist() {
                         );
                     })}
                 </div>
+            )}
+
+            {selectedAsset && (
+                <AssetModal 
+                    asset={selectedAsset} 
+                    onClose={() => setSelectedAsset(null)} 
+                    onAssetRefresh={() => {}} 
+                    marketDividends={[]} 
+                    incomeChartData={{ data: [] }} 
+                    privacyMode={false} 
+                />
             )}
         </div>
     );
