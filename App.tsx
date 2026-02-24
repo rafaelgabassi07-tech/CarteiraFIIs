@@ -5,6 +5,7 @@ import { Home } from './pages/Home';
 import { Portfolio } from './pages/Portfolio';
 import { Transactions } from './pages/Transactions';
 import { News } from './pages/News';
+import Watchlist from './pages/Watchlist';
 import { Settings } from './pages/Settings';
 import { Login } from './pages/Login';
 import { Transaction, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals, ServiceMetric, ThemeType, ScrapeResult, UpdateReportData } from './types';
@@ -713,7 +714,7 @@ const App: React.FC = () => {
 
         <>
             <Header 
-                title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Carteira' : currentTab === 'transactions' ? 'Ordens' : 'Notícias'} 
+                title={showSettings ? 'Ajustes' : currentTab === 'home' ? 'Visão Geral' : currentTab === 'portfolio' ? 'Carteira' : currentTab === 'transactions' ? 'Ordens' : currentTab === 'watchlist' ? 'Favoritos' : 'Notícias'} 
                 showBack={showSettings} onBack={() => setShowSettings(false)} onSettingsClick={() => setShowSettings(true)} 
                 isRefreshing={isRefreshing || isScraping} updateAvailable={isUpdateAvailable} 
                 onUpdateClick={() => setShowChangelog(true)} onNotificationClick={() => setShowNotifications(true)} 
@@ -768,6 +769,7 @@ const App: React.FC = () => {
                       />
                   )}
                   {currentTab === 'transactions' && <Transactions transactions={transactions} onAddTransaction={handleAddTransaction} onUpdateTransaction={handleUpdateTransaction} onRequestDeleteConfirmation={handleDeleteTransaction} privacyMode={privacyMode} />}
+                  {currentTab === 'watchlist' && <Watchlist />}
                   {currentTab === 'news' && <MemoizedNews transactions={transactions} />}
                 </div>
               )}

@@ -15,6 +15,7 @@ const getBrapiToken = () => {
 };
 
 const BRAPI_TOKEN = getBrapiToken();
+console.log('[BrapiService] Token Loaded:', BRAPI_TOKEN ? `YES (Length: ${BRAPI_TOKEN.length})` : 'NO');
 
 /**
  * Busca cotações de ativos na API da Brapi.
@@ -25,7 +26,7 @@ export const getQuotes = async (tickers: string[]): Promise<{ quotes: BrapiQuote
   }
   
   if (!BRAPI_TOKEN) {
-    console.warn("Brapi token not found. Cotações em tempo real indisponíveis.");
+    console.warn("[BrapiService] Token not found. Cotações em tempo real indisponíveis.");
     // Não retorna erro fatal para permitir que o app funcione com dados cacheados ou manuais
     return { quotes: [], error: "Token não configurado" };
   }
@@ -35,6 +36,7 @@ export const getQuotes = async (tickers: string[]): Promise<{ quotes: BrapiQuote
   try {
     const quotePromises = uniqueTickers.map(async (ticker) => {
         try {
+            // console.log(`[BrapiService] Fetching ${ticker}...`);
             const response = await fetch(`https://brapi.dev/api/quote/${ticker}?token=${BRAPI_TOKEN}`, {
                 cache: 'no-store'
             });
@@ -42,7 +44,9 @@ export const getQuotes = async (tickers: string[]): Promise<{ quotes: BrapiQuote
             if (!response.ok) {
                 // Silently fail for 404 to avoid spamming logs for bad tickers
                 if (response.status !== 404) {
-                    console.warn(`Brapi: ${ticker} -> ${response.status}`);
+                    console.warn(`[BrapiService] ${ticker} -> HTTP ${response.status}`);
+                } else {
+                    console.warn(`[BrapiService] ${ticker} -> Not Found (404)`);
                 }
                 return null;
             }

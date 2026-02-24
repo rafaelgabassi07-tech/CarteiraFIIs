@@ -172,6 +172,7 @@ const navItems = [
   { id: 'home', icon: Home, label: 'Início' },
   { id: 'portfolio', icon: PieChart, label: 'Carteira' },
   { id: 'transactions', icon: ArrowRightLeft, label: 'Ordens' },
+  { id: 'watchlist', icon: Star, label: 'Favoritos' },
   { id: 'news', icon: Newspaper, label: 'News' },
 ];
 
