@@ -805,6 +805,8 @@ const SimulatorCard = ({ data, ticker, dividends = [] }: any) => {
 };
 
 const PositionSummaryCard = ({ asset, privacyMode }: { asset: AssetPosition, privacyMode: boolean }) => {
+    if (asset.quantity === 0) return null;
+
     const totalValue = asset.quantity * (asset.currentPrice || 0);
     const totalCost = asset.quantity * asset.averagePrice;
     const result = totalValue - totalCost;
@@ -919,7 +921,8 @@ const PropertiesAnalysis = ({ properties }: { properties: any[] }) => {
 
 const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: any) => {
     const lastDividend = asset.dividends.length > 0 ? asset.dividends[0] : null;
-    const yieldOnCost = (asset.totalDividends / (asset.mediumPrice * asset.quantity)) * 100;
+    const totalInvested = (asset.averagePrice || 0) * (asset.quantity || 0);
+    const yieldOnCost = totalInvested > 0 ? ((asset.totalDividends || 0) / totalInvested) * 100 : 0;
 
     const nextEvents = marketHistory
         .filter((d: any) => new Date(d.paymentDate) >= new Date())
@@ -934,11 +937,13 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: any) => {
                     <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(lastDividend?.value || 0)}</p>
                     <p className="text-xs text-zinc-500">em {formatDateShort(lastDividend?.paymentDate)}</p>
                 </div>
-                <div className="bg-zinc-100 dark:bg-zinc-800/50 p-3 rounded-xl">
-                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Yield on Cost</p>
-                    <p className="text-lg font-black text-emerald-500">{yieldOnCost.toFixed(2)}%</p>
-                    <p className="text-xs text-zinc-500">Total recebido</p>
-                </div>
+                {totalInvested > 0 && (
+                    <div className="bg-zinc-100 dark:bg-zinc-800/50 p-3 rounded-xl">
+                        <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Yield on Cost</p>
+                        <p className="text-lg font-black text-emerald-500">{yieldOnCost.toFixed(2)}%</p>
+                        <p className="text-xs text-zinc-500">Total recebido</p>
+                    </div>
+                )}
             </div>
 
             <div>
