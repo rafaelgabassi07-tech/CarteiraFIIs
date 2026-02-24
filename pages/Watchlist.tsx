@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Trash2, TrendingUp, TrendingDown, Plus, Star, ArrowLeft } from 'lucide-react';
+import { Search, Trash2, TrendingUp, TrendingDown, Plus, Star, ArrowLeft, RefreshCcw } from 'lucide-react';
 import { getQuotes } from '../services/brapiService';
+import { fetchUnifiedMarketData } from '../services/dataService';
 import { formatBRL } from '../utils/formatters';
 import AssetModal from '../components/AssetModal';
-import { AssetPosition, AssetType } from '../types';
+import { AssetPosition, AssetType, DividendReceipt } from '../types';
 
 interface WatchlistItem {
     ticker: string;
@@ -11,6 +12,9 @@ interface WatchlistItem {
     change?: number;
     name?: string;
     logo?: string;
+    fundamentals?: any;
+    segment?: string;
+    type?: AssetType;
 }
 
 export default function Watchlist() {
@@ -20,6 +24,7 @@ export default function Watchlist() {
     const [searchTerm, setSearchTerm] = useState('');
     const [isAdding, setIsAdding] = useState(false);
     const [selectedAsset, setSelectedAsset] = useState<AssetPosition | null>(null);
+    const [marketDividends, setMarketDividends] = useState<DividendReceipt[]>([]);
 
     // Load from LocalStorage on mount
     useEffect(() => {
@@ -38,56 +43,99 @@ export default function Watchlist() {
         localStorage.setItem('user_watchlist', JSON.stringify(watchlist));
     }, [watchlist]);
 
+    const fetchData = async (forceRefresh = false) => {
+        if (watchlist.length === 0) {
+            setQuotes({});
+            return;
+        }
+        
+        setLoading(true);
+        try {
+            console.log("[Watchlist] Fetching data for:", watchlist);
+            
+            // 1. Fetch Real-time Quotes from Brapi
+            const quotesPromise = getQuotes(watchlist).catch(err => {
+                console.error("[Watchlist] Brapi Error:", err);
+                return { quotes: [], error: err };
+            });
+            
+            // 2. Fetch Fundamentals & Metadata from Scraper/DB
+            const unifiedDataPromise = fetchUnifiedMarketData(watchlist, undefined, forceRefresh).catch(err => {
+                console.error("[Watchlist] Unified Data Error:", err);
+                return { dividends: [], metadata: {}, error: err };
+            });
+
+            const [brapiResult, unifiedData] = await Promise.all([quotesPromise, unifiedDataPromise]);
+            const brapiData = brapiResult?.quotes || [];
+            
+            console.log("[Watchlist] Brapi Data:", brapiData);
+            console.log("[Watchlist] Unified Data:", unifiedData);
+
+            const newQuotes: Record<string, WatchlistItem> = {};
+            
+            // Process Brapi Data
+            if (brapiData) {
+                brapiData.forEach((q: any) => {
+                    newQuotes[q.symbol] = {
+                        ticker: q.symbol,
+                        price: q.regularMarketPrice,
+                        change: q.regularMarketChangePercent,
+                        name: q.longName || q.shortName,
+                        logo: q.logourl
+                    };
+                });
+            }
+
+            // Merge with Unified Data (Scraper)
+            if (unifiedData && unifiedData.metadata) {
+                Object.entries(unifiedData.metadata).forEach(([ticker, meta]: [string, any]) => {
+                    if (newQuotes[ticker]) {
+                        newQuotes[ticker].fundamentals = meta.fundamentals;
+                        newQuotes[ticker].segment = meta.segment;
+                        newQuotes[ticker].type = meta.type;
+                    } else {
+                        // Fallback if Brapi failed for this ticker but we have metadata
+                        newQuotes[ticker] = {
+                            ticker: ticker,
+                            name: meta.fundamentals?.company_name || ticker,
+                            fundamentals: meta.fundamentals,
+                            segment: meta.segment,
+                            type: meta.type
+                        };
+                    }
+                });
+                
+                if (unifiedData.dividends) {
+                    setMarketDividends(unifiedData.dividends);
+                }
+            }
+
+            setQuotes(newQuotes);
+        } catch (e) {
+            console.error("Error fetching watchlist data", e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     // Fetch quotes when watchlist changes
     useEffect(() => {
-        let mounted = true;
-        const fetchData = async () => {
-            if (watchlist.length === 0) {
-                setQuotes({});
-                return;
-            }
-            
-            setLoading(true);
-            try {
-                // Fetch from Brapi (or backend proxy if needed)
-                const { quotes: data, error } = await getQuotes(watchlist);
-                
-                if (mounted && data) {
-                    const newQuotes: Record<string, WatchlistItem> = {};
-                    data.forEach((q: any) => {
-                        newQuotes[q.symbol] = {
-                            ticker: q.symbol,
-                            price: q.regularMarketPrice,
-                            change: q.regularMarketChangePercent,
-                            name: q.longName || q.shortName,
-                            logo: q.logourl
-                        };
-                    });
-                    setQuotes(newQuotes);
-                }
-            } catch (e) {
-                console.error("Error fetching watchlist quotes", e);
-            } finally {
-                if (mounted) setLoading(false);
-            }
-        };
-
         fetchData();
-        const interval = setInterval(fetchData, 60000); // Refresh every minute
+        const interval = setInterval(() => fetchData(false), 60000); // Refresh every minute
 
-        return () => {
-            mounted = false;
-            clearInterval(interval);
-        };
+        return () => clearInterval(interval);
     }, [watchlist]);
 
-    const handleAdd = (e: React.FormEvent) => {
+    const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!searchTerm) return;
         
         const ticker = searchTerm.toUpperCase().trim();
         if (!watchlist.includes(ticker)) {
-            setWatchlist(prev => [...prev, ticker]);
+            const newWatchlist = [...watchlist, ticker];
+            setWatchlist(newWatchlist);
+            // Trigger fetch immediately for the new list
+            // Note: useEffect will trigger, but we might want immediate feedback or force refresh for the new item
         }
         setSearchTerm('');
         setIsAdding(false);
@@ -99,26 +147,29 @@ export default function Watchlist() {
 
     const handleAssetClick = (ticker: string) => {
         const quote = quotes[ticker];
-        // Create a temporary AssetPosition object for the modal
-        const tempAsset: AssetPosition = {
+        const fundamentals = quote?.fundamentals || {};
+        
+        // Create a full AssetPosition object for the modal
+        const asset: AssetPosition = {
             ticker: ticker,
-            quantity: 0,
+            quantity: 0, // Watchlist items have 0 quantity
             averagePrice: 0,
             currentPrice: quote?.price || 0,
             totalDividends: 0,
-            assetType: AssetType.STOCK, // Default, could be improved
-            segment: 'Unknown',
+            assetType: quote?.type || (ticker.endsWith('11') ? AssetType.FII : AssetType.STOCK),
+            segment: quote?.segment || 'Geral',
             logoUrl: quote?.logo,
-            dividends: [],
-            properties: [],
-            properties_count: 0,
-            assets_value: '0',
-            vacancy: 0,
-            p_vp: 0,
-            p_l: 0,
-            dy_12m: 0
+            dividends: [], // Will be populated by AssetModal using marketDividends
+            properties: fundamentals.properties || [],
+            properties_count: fundamentals.properties_count || 0,
+            assets_value: fundamentals.assets_value || '0',
+            vacancy: fundamentals.vacancy || 0,
+            p_vp: fundamentals.p_vp || 0,
+            p_l: fundamentals.p_l || 0,
+            dy_12m: fundamentals.dy_12m || 0,
+            ...fundamentals // Spread other fundamentals
         };
-        setSelectedAsset(tempAsset);
+        setSelectedAsset(asset);
     };
 
     return (
@@ -128,12 +179,20 @@ export default function Watchlist() {
                     <h1 className="text-2xl font-black text-zinc-900 dark:text-white">Favoritos</h1>
                     <p className="text-sm text-zinc-500 font-medium">Acompanhe seus ativos de interesse</p>
                 </div>
-                <button 
-                    onClick={() => setIsAdding(!isAdding)}
-                    className="w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/30 active:scale-95 transition-all"
-                >
-                    <Plus className="w-5 h-5" />
-                </button>
+                <div className="flex gap-2">
+                    <button 
+                        onClick={() => fetchData(true)}
+                        className={`w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 flex items-center justify-center active:scale-95 transition-all ${loading ? 'animate-spin' : ''}`}
+                    >
+                        <RefreshCcw className="w-5 h-5" />
+                    </button>
+                    <button 
+                        onClick={() => setIsAdding(!isAdding)}
+                        className="w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/30 active:scale-95 transition-all"
+                    >
+                        <Plus className="w-5 h-5" />
+                    </button>
+                </div>
             </div>
 
             {isAdding && (
@@ -216,7 +275,7 @@ export default function Watchlist() {
                     asset={selectedAsset} 
                     onClose={() => setSelectedAsset(null)} 
                     onAssetRefresh={() => {}} 
-                    marketDividends={[]} 
+                    marketDividends={marketDividends} 
                     incomeChartData={{ data: [] }} 
                     privacyMode={false} 
                 />
