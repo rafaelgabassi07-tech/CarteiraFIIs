@@ -919,31 +919,68 @@ const PropertiesAnalysis = ({ properties }: { properties: any[] }) => {
     );
 };
 
-const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: any) => {
-    const lastDividend = asset.dividends.length > 0 ? asset.dividends[0] : null;
+const IncomeAnalysisSection = ({ asset, chartData, marketHistory, isWatchlist = false }: any) => {
+    // Tenta pegar dos dividendos do ativo (carteira) ou do histórico de mercado (watchlist)
+    const lastDividend = asset.dividends.length > 0 
+        ? asset.dividends[0] 
+        : (marketHistory && marketHistory.length > 0 
+            ? [...marketHistory].sort((a: any, b: any) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime())[0] 
+            : null);
+
     const totalInvested = (asset.averagePrice || 0) * (asset.quantity || 0);
     const yieldOnCost = totalInvested > 0 ? ((asset.totalDividends || 0) / totalInvested) * 100 : 0;
+
+    // Se for watchlist, usamos o DY de 12m dos fundamentos
+    const displayYield = isWatchlist ? (asset.dy_12m * 100) : yieldOnCost;
+    const yieldLabel = isWatchlist ? "Dividend Yield (12m)" : "Yield on Cost";
 
     const nextEvents = marketHistory
         .filter((d: any) => new Date(d.paymentDate) >= new Date())
         .sort((a: any, b: any) => new Date(a.paymentDate).getTime() - new Date(b.paymentDate).getTime())
         .slice(0, 3);
 
+    // Para Watchlist, o gráfico deve mostrar o histórico de pagamentos por cota (rate)
+    // Para Carteira, mostra o total recebido (rate * quantity)
+    // Como chartData vem pronto de fora (baseado em receipts), precisamos adaptar ou usar marketHistory
+    
+    const historyChartData = useMemo(() => {
+        if (!isWatchlist) return chartData.data;
+
+        // Agrupar marketHistory por mês para mostrar evolução dos pagamentos por cota
+        const grouped = new Map();
+        // Pegar últimos 12 meses ou 24 meses
+        const sortedHistory = [...marketHistory].sort((a: any, b: any) => new Date(a.paymentDate).getTime() - new Date(b.paymentDate).getTime());
+        
+        sortedHistory.forEach((d: any) => {
+            if (!d.paymentDate) return;
+            const date = new Date(d.paymentDate);
+            const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            const monthLabel = getMonthLabel(key);
+            
+            if (!grouped.has(key)) {
+                grouped.set(key, { month: monthLabel, date: key, total: 0 });
+            }
+            grouped.get(key).total += d.rate;
+        });
+
+        return Array.from(grouped.values())
+            .sort((a: any, b: any) => a.date.localeCompare(b.date))
+            .slice(-12); // Últimos 12 meses com pagamento
+    }, [chartData, marketHistory, isWatchlist]);
+
     return (
         <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
                 <div className="bg-zinc-100 dark:bg-zinc-800/50 p-3 rounded-xl">
                     <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Último Provento</p>
-                    <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(lastDividend?.value || 0)}</p>
+                    <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(lastDividend?.value || lastDividend?.rate || 0)}</p>
                     <p className="text-xs text-zinc-500">em {formatDateShort(lastDividend?.paymentDate)}</p>
                 </div>
-                {totalInvested > 0 && (
-                    <div className="bg-zinc-100 dark:bg-zinc-800/50 p-3 rounded-xl">
-                        <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Yield on Cost</p>
-                        <p className="text-lg font-black text-emerald-500">{yieldOnCost.toFixed(2)}%</p>
-                        <p className="text-xs text-zinc-500">Total recebido</p>
-                    </div>
-                )}
+                <div className="bg-zinc-100 dark:bg-zinc-800/50 p-3 rounded-xl">
+                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">{yieldLabel}</p>
+                    <p className="text-lg font-black text-emerald-500">{displayYield.toFixed(2)}%</p>
+                    <p className="text-xs text-zinc-500">{isWatchlist ? 'Atual' : 'Sobre custo'}</p>
+                </div>
             </div>
 
             <div>
@@ -953,7 +990,7 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: any) => {
                         {nextEvents.map((event: any, i: number) => (
                             <div key={i} className="bg-zinc-100 dark:bg-zinc-800/50 p-2 rounded-lg flex justify-between items-center">
                                 <div>
-                                    <p className="text-xs font-bold text-zinc-900 dark:text-white">{formatBRL(event.value)} <span className="text-zinc-500 text-[10px]">({TYPE_LABELS[event.type] || event.type})</span></p>
+                                    <p className="text-xs font-bold text-zinc-900 dark:text-white">{formatBRL(event.rate || event.value)} <span className="text-zinc-500 text-[10px]">({TYPE_LABELS[event.type] || event.type})</span></p>
                                     <p className="text-[10px] text-zinc-500">Data Com: {formatDateShort(event.dateCom)}</p>
                                 </div>
                                 <div className="text-right">
@@ -967,11 +1004,12 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: any) => {
             </div>
 
             <div className="h-60 w-full">
+                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Histórico de Pagamentos (Por Cota)</p>
                 <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData.data} margin={{ top: 10, right: 0, left: -20, bottom: 5 }}>
+                    <BarChart data={historyChartData} margin={{ top: 10, right: 0, left: -20, bottom: 5 }}>
                         <XAxis dataKey="month" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
                         <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={(val) => formatBRL(val)} />
-                        <Tooltip contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '8px' }} labelStyle={{ color: '#a1a1aa' }} formatter={(value: number) => [formatBRL(value), 'Total Recebido']} />
+                        <Tooltip contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '8px' }} labelStyle={{ color: '#a1a1aa' }} formatter={(value: number) => [formatBRL(value), isWatchlist ? 'Valor por Cota' : 'Total Recebido']} />
                         <Bar dataKey="total" fill="#10b981" radius={[4, 4, 0, 0]} />
                     </BarChart>
                 </ResponsiveContainer>
@@ -1125,9 +1163,6 @@ const ChartsContainer = ({ ticker, type, marketDividends }: { ticker: string, ty
 const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends, incomeChartData, privacyMode }: AssetModalProps) => {
     const [activeTab, setActiveTab] = useState('OVERVIEW');
 
-    const selectedAsset = asset;
-    const assetMarketHistory = marketDividends.filter(d => d.ticker === selectedAsset?.ticker);
-
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'Escape') onClose();
@@ -1137,6 +1172,10 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends, incomeCha
     }, [onClose]);
 
     if (!asset) return null;
+
+    const selectedAsset = asset;
+    const assetMarketHistory = marketDividends.filter(d => d.ticker === selectedAsset.ticker);
+    const isWatchlist = selectedAsset.quantity === 0;
 
     return (
         <SwipeableModal isOpen={!!asset} onClose={onClose}>
@@ -1158,19 +1197,21 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends, incomeCha
                                 onClick={() => setActiveTab('OVERVIEW')} 
                                 className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'OVERVIEW' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
                             >
-                                <LayoutGrid className="w-3.5 h-3.5" /> Resumo
+                                <LayoutGrid className="w-3.5 h-3.5" /> {isWatchlist ? 'Análise' : 'Resumo'}
                             </button>
-                            <button 
-                                onClick={() => setActiveTab('ANALYSIS')} 
-                                className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'ANALYSIS' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
-                            >
-                                <FileText className="w-3.5 h-3.5" /> Análises
-                            </button>
+                            {!isWatchlist && (
+                                <button 
+                                    onClick={() => setActiveTab('ANALYSIS')} 
+                                    className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'ANALYSIS' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+                                >
+                                    <FileText className="w-3.5 h-3.5" /> Análises
+                                </button>
+                            )}
                             <button 
                                 onClick={() => setActiveTab('INCOME')} 
                                 className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'INCOME' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
                             >
-                                <Coins className="w-3.5 h-3.5" /> Renda
+                                <Coins className="w-3.5 h-3.5" /> Proventos
                             </button>
                         </div>
                     </div>
@@ -1179,11 +1220,15 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends, incomeCha
                         <div className="space-y-6">
                             {activeTab === 'OVERVIEW' && (
                                 <div className="anim-fade-in space-y-6">
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Sua Posição</h3>
-                                        <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
-                                    </div>
-                                    <PositionSummaryCard asset={selectedAsset} privacyMode={privacyMode} />
+                                    {!isWatchlist && (
+                                        <>
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Sua Posição</h3>
+                                                <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
+                                            </div>
+                                            <PositionSummaryCard asset={selectedAsset} privacyMode={privacyMode} />
+                                        </>
+                                    )}
                                     
                                     <div className="flex items-center gap-3 mt-8 mb-2">
                                         <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Gráficos</h3>
@@ -1194,10 +1239,27 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends, incomeCha
                                         type={selectedAsset.assetType} 
                                         marketDividends={assetMarketHistory}
                                     />
+
+                                    {isWatchlist && (
+                                        <>
+                                            <div className="flex items-center gap-3 mt-8 mb-2">
+                                                <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Valuation</h3>
+                                                <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
+                                            </div>
+                                            <ValuationCard asset={selectedAsset} />
+                                            
+                                            <div className="flex items-center gap-3 mt-8 mb-2">
+                                                <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Fundamentos</h3>
+                                                <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
+                                            </div>
+                                            <DetailedInfoBlock asset={selectedAsset} />
+                                            <Investidor10ChartsSection ticker={selectedAsset.ticker} assetType={selectedAsset.assetType} />
+                                        </>
+                                    )}
                                 </div>
                             )}
 
-                            {activeTab === 'ANALYSIS' && (
+                            {activeTab === 'ANALYSIS' && !isWatchlist && (
                                 <div className="anim-fade-in space-y-6">
                                     <div className="flex items-center gap-3 mb-2">
                                         <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Valuation</h3>
@@ -1232,13 +1294,14 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends, incomeCha
                             {activeTab === 'INCOME' && (
                                 <div className="anim-fade-in space-y-6">
                                     <div className="flex items-center gap-3 mb-2">
-                                        <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Geração de Renda</h3>
+                                        <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Histórico de Proventos</h3>
                                         <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
                                     </div>
                                     <IncomeAnalysisSection 
                                         asset={selectedAsset} 
                                         chartData={incomeChartData}
                                         marketHistory={assetMarketHistory}
+                                        isWatchlist={isWatchlist}
                                     />
                                     {selectedAsset.assetType === AssetType.STOCK && (
                                         <div className="mt-8">
