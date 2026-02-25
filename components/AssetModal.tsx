@@ -1195,21 +1195,15 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends, incomeCha
                         <div className="flex p-1 bg-zinc-100 dark:bg-zinc-800 rounded-xl">
                             <button 
                                 onClick={() => setActiveTab('OVERVIEW')} 
-                                className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'OVERVIEW' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+                                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'OVERVIEW' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
                             >
                                 <LayoutGrid className="w-3.5 h-3.5" /> {isWatchlist ? 'Cotação' : 'Resumo'}
                             </button>
                             <button 
-                                onClick={() => setActiveTab('ANALYSIS')} 
-                                className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'ANALYSIS' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+                                onClick={() => setActiveTab('DETAILS')} 
+                                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'DETAILS' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
                             >
-                                <FileText className="w-3.5 h-3.5" /> Análises
-                            </button>
-                            <button 
-                                onClick={() => setActiveTab('INCOME')} 
-                                className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'INCOME' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
-                            >
-                                <Coins className="w-3.5 h-3.5" /> Proventos
+                                <Activity className="w-3.5 h-3.5" /> Análise & Renda
                             </button>
                         </div>
                     </div>
@@ -1240,57 +1234,68 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends, incomeCha
                                 </div>
                             )}
 
-                            {activeTab === 'ANALYSIS' && (
-                                <div className="anim-fade-in space-y-6">
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Destaques</h3>
-                                        <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
+                            {activeTab === 'DETAILS' && (
+                                <div className="anim-fade-in space-y-8">
+                                    {/* 1. Destaques de Valuation */}
+                                    <div>
+                                        <div className="flex items-center gap-3 mb-4">
+                                            <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Indicadores Principais</h3>
+                                            <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
+                                        </div>
+                                        <ValuationCard asset={selectedAsset} />
                                     </div>
-                                    <ValuationCard asset={selectedAsset} />
-                                    
-                                    <div className="flex items-center gap-3 mt-8 mb-2">
-                                        <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Histórico Fundamentalista</h3>
-                                        <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
-                                    </div>
-                                    <Investidor10ChartsSection ticker={selectedAsset.ticker} assetType={selectedAsset.assetType} />
 
-                                    <div className="flex items-center gap-3 mt-8 mb-2">
-                                        <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Indicadores Detalhados</h3>
-                                        <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
+                                    {/* 2. Seção de Proventos (Income) */}
+                                    <div>
+                                        <div className="flex items-center gap-3 mb-4">
+                                            <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Proventos & Dividendos</h3>
+                                            <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
+                                        </div>
+                                        <IncomeAnalysisSection 
+                                            asset={selectedAsset} 
+                                            chartData={incomeChartData}
+                                            marketHistory={assetMarketHistory}
+                                            isWatchlist={isWatchlist}
+                                        />
                                     </div>
-                                    <DetailedInfoBlock asset={selectedAsset} />
-                                    
-                                    {selectedAsset.properties && selectedAsset.properties.length > 0 && (
-                                        <>
-                                            <div className="flex items-center gap-3 mt-8 mb-2">
-                                                <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Portfólio Físico</h3>
-                                                <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
-                                            </div>
-                                            <PropertiesAnalysis properties={selectedAsset.properties} />
-                                        </>
-                                    )}
-                                </div>
-                            )}
 
-                            {activeTab === 'INCOME' && (
-                                <div className="anim-fade-in space-y-6">
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Histórico de Proventos</h3>
-                                        <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
+                                    {/* 3. Indicadores Detalhados */}
+                                    <div>
+                                        <div className="flex items-center gap-3 mb-4">
+                                            <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Dados Detalhados</h3>
+                                            <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
+                                        </div>
+                                        <DetailedInfoBlock asset={selectedAsset} />
                                     </div>
-                                    <IncomeAnalysisSection 
-                                        asset={selectedAsset} 
-                                        chartData={incomeChartData}
-                                        marketHistory={assetMarketHistory}
-                                        isWatchlist={isWatchlist}
-                                    />
+
+                                    {/* 4. Histórico Fundamentalista (Gráficos) */}
+                                    <div>
+                                        <div className="flex items-center gap-3 mb-4">
+                                            <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Evolução Fundamentalista</h3>
+                                            <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
+                                        </div>
+                                        <Investidor10ChartsSection ticker={selectedAsset.ticker} assetType={selectedAsset.assetType} />
+                                    </div>
+
+                                    {/* 5. Payout (Apenas Ações) */}
                                     {selectedAsset.assetType === AssetType.STOCK && (
-                                        <div className="mt-8">
+                                        <div>
                                             <div className="flex items-center gap-3 mb-4">
                                                 <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Histórico de Payout</h3>
                                                 <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
                                             </div>
                                             <Investidor10ChartsSection ticker={selectedAsset.ticker} assetType={selectedAsset.assetType} onlyPayout={true} />
+                                        </div>
+                                    )}
+
+                                    {/* 6. Portfólio Físico (Apenas FIIs de Tijolo/Imóveis) */}
+                                    {selectedAsset.properties && selectedAsset.properties.length > 0 && (
+                                        <div>
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Portfólio Físico</h3>
+                                                <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
+                                            </div>
+                                            <PropertiesAnalysis properties={selectedAsset.properties} />
                                         </div>
                                     )}
                                 </div>
