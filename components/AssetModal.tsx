@@ -1197,16 +1197,14 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends, incomeCha
                                 onClick={() => setActiveTab('OVERVIEW')} 
                                 className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'OVERVIEW' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
                             >
-                                <LayoutGrid className="w-3.5 h-3.5" /> {isWatchlist ? 'Análise' : 'Resumo'}
+                                <LayoutGrid className="w-3.5 h-3.5" /> {isWatchlist ? 'Cotação' : 'Resumo'}
                             </button>
-                            {!isWatchlist && (
-                                <button 
-                                    onClick={() => setActiveTab('ANALYSIS')} 
-                                    className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'ANALYSIS' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
-                                >
-                                    <FileText className="w-3.5 h-3.5" /> Análises
-                                </button>
-                            )}
+                            <button 
+                                onClick={() => setActiveTab('ANALYSIS')} 
+                                className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'ANALYSIS' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+                            >
+                                <FileText className="w-3.5 h-3.5" /> Análises
+                            </button>
                             <button 
                                 onClick={() => setActiveTab('INCOME')} 
                                 className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'INCOME' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
@@ -1239,30 +1237,13 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends, incomeCha
                                         type={selectedAsset.assetType} 
                                         marketDividends={assetMarketHistory}
                                     />
-
-                                    {isWatchlist && (
-                                        <>
-                                            <div className="flex items-center gap-3 mt-8 mb-2">
-                                                <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Valuation</h3>
-                                                <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
-                                            </div>
-                                            <ValuationCard asset={selectedAsset} />
-                                            
-                                            <div className="flex items-center gap-3 mt-8 mb-2">
-                                                <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Fundamentos</h3>
-                                                <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
-                                            </div>
-                                            <DetailedInfoBlock asset={selectedAsset} />
-                                            <Investidor10ChartsSection ticker={selectedAsset.ticker} assetType={selectedAsset.assetType} />
-                                        </>
-                                    )}
                                 </div>
                             )}
 
-                            {activeTab === 'ANALYSIS' && !isWatchlist && (
+                            {activeTab === 'ANALYSIS' && (
                                 <div className="anim-fade-in space-y-6">
                                     <div className="flex items-center gap-3 mb-2">
-                                        <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Valuation</h3>
+                                        <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Destaques</h3>
                                         <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
                                     </div>
                                     <ValuationCard asset={selectedAsset} />
@@ -1274,7 +1255,7 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends, incomeCha
                                     <Investidor10ChartsSection ticker={selectedAsset.ticker} assetType={selectedAsset.assetType} />
 
                                     <div className="flex items-center gap-3 mt-8 mb-2">
-                                        <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Indicadores</h3>
+                                        <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Indicadores Detalhados</h3>
                                         <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
                                     </div>
                                     <DetailedInfoBlock asset={selectedAsset} />

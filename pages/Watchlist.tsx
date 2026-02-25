@@ -288,29 +288,36 @@ export default function Watchlist() {
                 <div className="space-y-3">
                     {watchlist.map(ticker => {
                         const quote = quotes[ticker];
-                        const price = quote?.price || 0;
+                        const price = quote?.price;
                         const change = quote?.change || 0;
                         const isPositive = change >= 0;
-                        const isLoadingItem = loading && !quote;
+                        const hasData = !!quote && price !== undefined && price !== 0;
+                        const isUpdating = loading && !!quote;
+                        const isLoadingInitial = loading && !quote;
 
                         return (
                             <div 
                                 key={ticker} 
                                 onClick={() => handleAssetClick(ticker)}
-                                className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all hover:border-indigo-200 dark:hover:border-zinc-700"
+                                className={`bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all hover:border-indigo-200 dark:hover:border-zinc-700 ${isUpdating ? 'opacity-70' : ''}`}
                             >
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center overflow-hidden border border-zinc-200 dark:border-zinc-700">
+                                    <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center overflow-hidden border border-zinc-200 dark:border-zinc-700 relative">
                                         {quote?.logo ? (
                                             <img src={quote.logo} alt={ticker} className="w-full h-full object-cover" />
                                         ) : (
                                             <span className="text-xs font-bold text-zinc-400">{ticker.substring(0, 2)}</span>
                                         )}
+                                        {isUpdating && (
+                                            <div className="absolute inset-0 bg-black/10 dark:bg-black/30 flex items-center justify-center">
+                                                <RefreshCcw className="w-3 h-3 text-white animate-spin" />
+                                            </div>
+                                        )}
                                     </div>
                                     <div>
                                         <h3 className="font-bold text-zinc-900 dark:text-white">{ticker}</h3>
                                         <p className="text-xs text-zinc-500 truncate max-w-[120px]">
-                                            {quote?.name || (isLoadingItem ? 'Buscando dados...' : 'Ativo')}
+                                            {quote?.name || (isLoadingInitial ? 'Buscando dados...' : 'Ativo')}
                                         </p>
                                     </div>
                                 </div>
@@ -318,13 +325,9 @@ export default function Watchlist() {
                                 <div className="flex items-center gap-4">
                                     <div className="text-right">
                                         <p className="font-bold text-zinc-900 dark:text-white tabular-nums">
-                                            {isLoadingItem ? (
-                                                <span className="animate-pulse text-zinc-300">---</span>
-                                            ) : (
-                                                formatBRL(price)
-                                            )}
+                                            {hasData ? formatBRL(price) : (isLoadingInitial ? <span className="animate-pulse text-zinc-300">---</span> : <span className="text-zinc-300 text-xs">Indisp.</span>)}
                                         </p>
-                                        {!isLoadingItem && (
+                                        {hasData && (
                                             <div className={`flex items-center justify-end gap-0.5 text-xs font-bold ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
                                                 {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                                                 {change.toFixed(2)}%
