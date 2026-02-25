@@ -276,28 +276,28 @@ export default function Watchlist() {
     }, [watchlist, quotes]);
 
     return (
-        <div className="pb-24 pt-8 px-4 max-w-md mx-auto min-h-screen bg-zinc-50 dark:bg-zinc-950">
+        <div className="pb-24 pt-2 px-4 max-w-md mx-auto min-h-screen bg-zinc-50 dark:bg-zinc-950">
             {/* Header Moderno Minimalista */}
-            <div className="flex items-end justify-between mb-8">
+            <div className="flex items-center justify-between mb-4">
                 <div>
-                    <h1 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tight">Favoritos</h1>
-                    <p className="text-sm text-zinc-500 font-medium flex items-center gap-2 mt-1">
+                    <h1 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Favoritos</h1>
+                    <p className="text-xs text-zinc-500 font-medium flex items-center gap-2 mt-0.5">
                         {watchlist.length} {watchlist.length === 1 ? 'ativo' : 'ativos'}
                     </p>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex gap-2">
                     <button 
                         onClick={() => fetchData(true)}
                         disabled={loading}
                         className={`p-2 rounded-xl text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all ${loading ? 'animate-spin text-indigo-500' : ''}`}
                     >
-                        <RefreshCcw className="w-5 h-5" />
+                        <RefreshCcw className="w-4 h-4" />
                     </button>
                     <button 
                         onClick={() => setIsAdding(true)}
-                        className="w-10 h-10 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 flex items-center justify-center shadow-lg shadow-zinc-900/20 active:scale-95 transition-all hover:bg-zinc-800 dark:hover:bg-zinc-100"
+                        className="w-9 h-9 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 flex items-center justify-center shadow-lg shadow-zinc-900/20 active:scale-95 transition-all hover:bg-zinc-800 dark:hover:bg-zinc-100"
                     >
-                        <Plus className="w-5 h-5" />
+                        <Plus className="w-4 h-4" />
                     </button>
                 </div>
             </div>
@@ -436,38 +436,38 @@ export default function Watchlist() {
                                 <div 
                                     key={ticker} 
                                     onClick={() => handleAssetClick(ticker)}
-                                    className={`group bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm hover:shadow-md transition-all cursor-pointer active:scale-[0.98] relative overflow-hidden ${isUpdating ? 'opacity-80' : ''}`}
+                                    className={`group bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm hover:shadow-md transition-all cursor-pointer active:scale-[0.98] relative overflow-hidden ${isUpdating ? 'opacity-80' : ''}`}
                                 >
                                     <div className="flex items-center justify-between relative z-10">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-14 h-14 rounded-2xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center overflow-hidden border border-zinc-100 dark:border-zinc-700/50 shadow-sm relative">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center overflow-hidden border border-zinc-100 dark:border-zinc-700/50 shadow-sm relative">
                                                 {quote?.logo ? (
                                                     <img src={quote.logo} alt={ticker} className="w-full h-full object-cover" />
                                                 ) : (
-                                                    <span className="text-sm font-black text-zinc-300 dark:text-zinc-600">{ticker.substring(0, 2)}</span>
+                                                    <span className="text-xs font-black text-zinc-300 dark:text-zinc-600">{ticker.substring(0, 2)}</span>
                                                 )}
                                                 {isUpdating && (
                                                     <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px] flex items-center justify-center">
-                                                        <RefreshCcw className="w-5 h-5 text-white animate-spin" />
+                                                        <RefreshCcw className="w-3 h-3 text-white animate-spin" />
                                                     </div>
                                                 )}
                                             </div>
                                             <div>
-                                                <h3 className="font-black text-zinc-900 dark:text-white text-xl tracking-tight leading-none mb-1.5">{ticker}</h3>
-                                                <p className="text-xs font-medium text-zinc-500 truncate max-w-[140px]">
+                                                <h3 className="font-black text-zinc-900 dark:text-white text-base tracking-tight leading-none mb-0.5">{ticker}</h3>
+                                                <p className="text-[10px] font-medium text-zinc-500 truncate max-w-[120px]">
                                                     {quote?.name || (isLoadingInitial ? 'Atualizando...' : 'Ativo')}
                                                 </p>
                                             </div>
                                         </div>
 
-                                        <div className="flex flex-col items-end gap-1">
-                                            <p className="font-black text-zinc-900 dark:text-white tabular-nums text-xl tracking-tight">
+                                        <div className="flex flex-col items-end gap-0.5">
+                                            <p className="font-black text-zinc-900 dark:text-white tabular-nums text-base tracking-tight">
                                                 {hasData ? formatBRL(price) : (isLoadingInitial ? <span className="animate-pulse text-zinc-300">---</span> : <span className="text-zinc-300 text-xs font-bold">Indisp.</span>)}
                                             </p>
                                             
                                             {hasData && (
-                                                <div className={`flex items-center gap-1 text-xs font-bold ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                                                    {isPositive ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
+                                                <div className={`flex items-center gap-1 text-[10px] font-bold ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                                    {isPositive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
                                                     {Math.abs(change).toFixed(2)}%
                                                 </div>
                                             )}
@@ -477,9 +477,9 @@ export default function Watchlist() {
                                     {/* Delete Action (Visible on Hover/Swipe - simplified here as a button) */}
                                     <button 
                                         onClick={(e) => { e.stopPropagation(); removeTicker(ticker); }}
-                                        className="absolute top-5 right-5 p-2 text-zinc-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-full transition-all opacity-0 group-hover:opacity-100"
+                                        className="absolute top-3 right-3 p-1.5 text-zinc-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-full transition-all opacity-0 group-hover:opacity-100"
                                     >
-                                        <Trash2 className="w-4 h-4" />
+                                        <Trash2 className="w-3.5 h-3.5" />
                                     </button>
                                 </div>
                             );
