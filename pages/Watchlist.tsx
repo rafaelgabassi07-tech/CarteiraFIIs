@@ -302,30 +302,6 @@ export default function Watchlist() {
                 </div>
             </div>
 
-            {/* Market Mood Summary */}
-            {watchlist.length > 0 && (
-                <div className="flex gap-3 mb-8">
-                    <div className="flex-1 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                            <ArrowUpRight className="w-4 h-4" />
-                        </div>
-                        <div>
-                            <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Em Alta</p>
-                            <p className="text-lg font-black text-zinc-900 dark:text-white leading-none">{stats.up}</p>
-                        </div>
-                    </div>
-                    <div className="flex-1 bg-rose-500/10 border border-rose-500/20 rounded-xl p-3 flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-rose-500/20 flex items-center justify-center text-rose-600 dark:text-rose-400">
-                            <ArrowDownRight className="w-4 h-4" />
-                        </div>
-                        <div>
-                            <p className="text-xs font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider">Em Baixa</p>
-                            <p className="text-lg font-black text-zinc-900 dark:text-white leading-none">{stats.down}</p>
-                        </div>
-                    </div>
-                </div>
-            )}
-
             {/* Filters - Segmented Control Style */}
             {watchlist.length > 0 && (
                 <div className="flex p-1 bg-zinc-200/50 dark:bg-zinc-900 rounded-xl mb-6">
@@ -343,8 +319,8 @@ export default function Watchlist() {
 
             {/* Add Asset Sheet/Modal */}
             {isAdding && (
-                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-                    <div className="bg-white dark:bg-zinc-900 w-full max-w-md rounded-3xl p-6 shadow-2xl animate-in slide-in-from-bottom-10 duration-300 border border-zinc-100 dark:border-zinc-800">
+                <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 backdrop-blur-sm p-4 pt-24 animate-in fade-in duration-200">
+                    <div className="bg-white dark:bg-zinc-900 w-full max-w-md rounded-3xl p-6 shadow-2xl animate-in slide-in-from-top-10 duration-300 border border-zinc-100 dark:border-zinc-800">
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">Adicionar Favorito</h2>
                             <button onClick={() => setIsAdding(false)} className="p-2 bg-zinc-100 dark:bg-zinc-800 rounded-full text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">
