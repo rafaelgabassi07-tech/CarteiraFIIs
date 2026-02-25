@@ -729,7 +729,7 @@ const App: React.FC = () => {
                 headerIcon={!showSettings ? <AppLogo /> : undefined} // Logo visível apenas nas abas principais
             />
             
-            <main className="max-w-xl mx-auto pt-24 pb-32 min-h-screen px-4">
+            <main className="max-w-xl mx-auto pt-[4.5rem] pb-32 min-h-screen px-4">
               {showSettings ? (
                 <div className="pt-4">
                   <MemoizedSettings 

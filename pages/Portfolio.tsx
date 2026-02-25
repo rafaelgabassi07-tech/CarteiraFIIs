@@ -1824,7 +1824,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
     if (selectedAsset) {
         return (
             <div className="pb-24 animate-in slide-in-from-right duration-300">
-                <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-30 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800 -mx-4 px-4 py-2 mb-4">
+                <div className="sticky top-[calc(3.2rem+env(safe-area-inset-top))] z-30 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800 -mx-4 px-4 py-2 mb-4">
                     <div className="flex items-center justify-between mb-3">
                         <button onClick={handleBack} className="flex items-center gap-1 text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors">
                             <ArrowLeft className="w-5 h-5" />
@@ -1928,7 +1928,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
 
     return (
         <div className="pb-24">
-            <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-20 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-xl -mx-4 px-4 pb-4 pt-2 transition-all">
+            <div className="sticky top-[calc(3.2rem+env(safe-area-inset-top))] z-20 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-xl -mx-4 px-4 pb-4 pt-2 transition-all">
                 <div className="relative group mb-3">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 group-focus-within:text-indigo-500 transition-colors" />
                     <input 

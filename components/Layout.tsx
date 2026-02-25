@@ -100,7 +100,7 @@ export const Header: React.FC<HeaderProps> = ({
     >
       <div className={`absolute inset-0 bg-primary-light/80 dark:bg-primary-dark/80 backdrop-blur-xl border-b border-zinc-200/50 dark:border-zinc-800/50 transition-opacity duration-300 ${hideBorder ? 'opacity-0' : 'opacity-100'}`}></div>
 
-      <div className="relative z-10 flex flex-col justify-end px-4 h-[calc(3.5rem+env(safe-area-inset-top))] pb-2 pt-safe">
+      <div className="relative z-10 flex flex-col justify-end px-4 h-[calc(3.2rem+env(safe-area-inset-top))] pb-2 pt-safe">
         <div className="flex items-center justify-between">
           
           <div className="flex items-center gap-3 min-w-0">

@@ -163,7 +163,7 @@ const TransactionRow = React.memo(({ index, data }: any) => {
   
   if (item.type === 'header') {
       return (
-          <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top)+60px)] z-10 py-2 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-xl -mx-4 px-4 border-b border-zinc-100 dark:border-zinc-800/50 mb-2 mt-2 shadow-sm">
+          <div className="sticky top-[calc(3.2rem+env(safe-area-inset-top)+60px)] z-10 py-2 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-xl -mx-4 px-4 border-b border-zinc-100 dark:border-zinc-800/50 mb-2 mt-2 shadow-sm">
               <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 flex justify-between items-center">
                   {formatMonthHeader(item.monthKey)}
                   <span className={`text-[9px] px-2 py-0.5 rounded-md font-bold ${item.monthlyNet >= 0 ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'}`}>
@@ -363,7 +363,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
 
     return (
         <div className="anim-fade-in min-h-screen pb-32">
-            <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-20 bg-primary-light dark:bg-primary-dark transition-all -mx-4 px-4 pt-2 pb-3 border-b border-zinc-200 dark:border-zinc-800 shadow-sm">
+            <div className="sticky top-[calc(3.2rem+env(safe-area-inset-top))] z-20 bg-primary-light dark:bg-primary-dark transition-all -mx-4 px-4 pt-2 pb-3 border-b border-zinc-200 dark:border-zinc-800 shadow-sm">
                 <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                         {isSelectionMode ? (

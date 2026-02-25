@@ -1101,7 +1101,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
             <div className="absolute bottom-0 left-0 w-[250px] h-[250px] bg-emerald-600/10 blur-[80px] rounded-full pointer-events-none -ml-20 -mb-20 mix-blend-screen"></div>
             <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-50"></div>
 
-            <div className="relative z-10 p-6 flex flex-col justify-between h-full">
+            <div className="relative z-10 p-5 flex flex-col justify-between h-full">
                 <div>
                     <div className="flex justify-between items-start mb-4">
                         <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/10 backdrop-blur-md shadow-lg">
@@ -1114,7 +1114,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                     </div>
 
                     <div className="flex flex-col">
-                        <h1 className="text-[2.75rem] font-black text-white leading-none tracking-tighter tabular-nums drop-shadow-lg select-none">
+                        <h1 className="text-[2.5rem] font-black text-white leading-none tracking-tighter tabular-nums drop-shadow-lg select-none">
                             {formatBRL(balance, privacyMode)}
                         </h1>
                         <div className="flex items-center gap-2 mt-2 ml-1">
