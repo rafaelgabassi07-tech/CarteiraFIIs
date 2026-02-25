@@ -277,39 +277,39 @@ export default function Watchlist() {
 
     return (
         <div className="pb-24 pt-8 px-4 max-w-md mx-auto min-h-screen bg-zinc-50 dark:bg-zinc-950">
-            {/* Header Moderno */}
-            <div className="flex items-end justify-between mb-6">
+            {/* Header Moderno Minimalista */}
+            <div className="flex items-end justify-between mb-8">
                 <div>
                     <h1 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tight">Favoritos</h1>
-                    <p className="text-sm text-zinc-500 font-medium flex items-center gap-2">
-                        {watchlist.length} {watchlist.length === 1 ? 'ativo monitorado' : 'ativos monitorados'}
+                    <p className="text-sm text-zinc-500 font-medium flex items-center gap-2 mt-1">
+                        {watchlist.length} {watchlist.length === 1 ? 'ativo' : 'ativos'}
                     </p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-3">
                     <button 
                         onClick={() => fetchData(true)}
                         disabled={loading}
-                        className={`w-10 h-10 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-500 flex items-center justify-center active:scale-95 transition-all shadow-sm ${loading ? 'animate-spin text-indigo-500' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}
+                        className={`p-2 rounded-xl text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all ${loading ? 'animate-spin text-indigo-500' : ''}`}
                     >
-                        <RefreshCcw className="w-4 h-4" />
+                        <RefreshCcw className="w-5 h-5" />
                     </button>
                     <button 
                         onClick={() => setIsAdding(true)}
-                        className="w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/30 active:scale-95 transition-all hover:bg-indigo-700"
+                        className="w-10 h-10 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 flex items-center justify-center shadow-lg shadow-zinc-900/20 active:scale-95 transition-all hover:bg-zinc-800 dark:hover:bg-zinc-100"
                     >
                         <Plus className="w-5 h-5" />
                     </button>
                 </div>
             </div>
 
-            {/* Filters - Segmented Control Style */}
+            {/* Filters - Minimalist Pills */}
             {watchlist.length > 0 && (
-                <div className="flex p-1 bg-zinc-200/50 dark:bg-zinc-900 rounded-xl mb-6">
+                <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
                     {(['ALL', 'STOCK', 'FII'] as const).map((f) => (
                         <button 
                             key={f}
                             onClick={() => setFilter(f)}
-                            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${filter === f ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${filter === f ? 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'bg-transparent border-transparent text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'}`}
                         >
                             {f === 'ALL' ? 'Todos' : f === 'STOCK' ? 'Ações' : 'FIIs'}
                         </button>
@@ -410,7 +410,7 @@ export default function Watchlist() {
                     <p className="text-zinc-500 font-medium max-w-[200px] mb-6">Comece adicionando ativos que você quer acompanhar de perto.</p>
                     <button 
                         onClick={() => setIsAdding(true)} 
-                        className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-500/20 transition-all active:scale-95"
+                        className="px-6 py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-bold text-sm shadow-lg shadow-zinc-900/20 dark:shadow-white/10 transition-all active:scale-95 hover:bg-zinc-800 dark:hover:bg-zinc-100"
                     >
                         Adicionar Primeiro Ativo
                     </button>
@@ -436,27 +436,24 @@ export default function Watchlist() {
                                 <div 
                                     key={ticker} 
                                     onClick={() => handleAssetClick(ticker)}
-                                    className={`group bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm hover:shadow-md transition-all cursor-pointer active:scale-[0.98] relative overflow-hidden ${isUpdating ? 'opacity-80' : ''}`}
+                                    className={`group bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm hover:shadow-md transition-all cursor-pointer active:scale-[0.98] relative overflow-hidden ${isUpdating ? 'opacity-80' : ''}`}
                                 >
-                                    {/* Hover Effect Gradient */}
-                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-zinc-50 dark:to-zinc-800/30 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-
                                     <div className="flex items-center justify-between relative z-10">
                                         <div className="flex items-center gap-4">
-                                            <div className="w-12 h-12 rounded-2xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center overflow-hidden border border-zinc-100 dark:border-zinc-700/50 shadow-sm relative">
+                                            <div className="w-14 h-14 rounded-2xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center overflow-hidden border border-zinc-100 dark:border-zinc-700/50 shadow-sm relative">
                                                 {quote?.logo ? (
                                                     <img src={quote.logo} alt={ticker} className="w-full h-full object-cover" />
                                                 ) : (
-                                                    <span className="text-xs font-black text-zinc-300 dark:text-zinc-600">{ticker.substring(0, 2)}</span>
+                                                    <span className="text-sm font-black text-zinc-300 dark:text-zinc-600">{ticker.substring(0, 2)}</span>
                                                 )}
                                                 {isUpdating && (
                                                     <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px] flex items-center justify-center">
-                                                        <RefreshCcw className="w-4 h-4 text-white animate-spin" />
+                                                        <RefreshCcw className="w-5 h-5 text-white animate-spin" />
                                                     </div>
                                                 )}
                                             </div>
                                             <div>
-                                                <h3 className="font-black text-zinc-900 dark:text-white text-lg tracking-tight leading-none mb-1">{ticker}</h3>
+                                                <h3 className="font-black text-zinc-900 dark:text-white text-xl tracking-tight leading-none mb-1.5">{ticker}</h3>
                                                 <p className="text-xs font-medium text-zinc-500 truncate max-w-[140px]">
                                                     {quote?.name || (isLoadingInitial ? 'Atualizando...' : 'Ativo')}
                                                 </p>
@@ -464,13 +461,13 @@ export default function Watchlist() {
                                         </div>
 
                                         <div className="flex flex-col items-end gap-1">
-                                            <p className="font-black text-zinc-900 dark:text-white tabular-nums text-lg tracking-tight">
+                                            <p className="font-black text-zinc-900 dark:text-white tabular-nums text-xl tracking-tight">
                                                 {hasData ? formatBRL(price) : (isLoadingInitial ? <span className="animate-pulse text-zinc-300">---</span> : <span className="text-zinc-300 text-xs font-bold">Indisp.</span>)}
                                             </p>
                                             
                                             {hasData && (
-                                                <div className={`px-2 py-1 rounded-lg flex items-center gap-1 text-[10px] font-bold ${isPositive ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'}`}>
-                                                    {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                                                <div className={`flex items-center gap-1 text-xs font-bold ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                                    {isPositive ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
                                                     {Math.abs(change).toFixed(2)}%
                                                 </div>
                                             )}
@@ -480,7 +477,7 @@ export default function Watchlist() {
                                     {/* Delete Action (Visible on Hover/Swipe - simplified here as a button) */}
                                     <button 
                                         onClick={(e) => { e.stopPropagation(); removeTicker(ticker); }}
-                                        className="absolute top-4 right-4 p-2 text-zinc-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-full transition-all opacity-0 group-hover:opacity-100"
+                                        className="absolute top-5 right-5 p-2 text-zinc-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-full transition-all opacity-0 group-hover:opacity-100"
                                     >
                                         <Trash2 className="w-4 h-4" />
                                     </button>
