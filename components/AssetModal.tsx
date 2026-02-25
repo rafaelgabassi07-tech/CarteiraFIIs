@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, BarChart3, PieChart, Coins, DollarSign, Building2, FileText, MapPin, Zap, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, SquareStack, Map as MapIcon, CandlestickChart, LineChart as LineChartIcon, Award, RefreshCcw, ArrowLeft, Briefcase, MoreHorizontal, LayoutGrid, List, Activity, Scale, Percent, ChevronDown, ChevronUp, ListFilter, BookOpen } from 'lucide-react';
+import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, BarChart3, PieChart, Coins, DollarSign, Building2, FileText, MapPin, Zap, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, SquareStack, Map as MapIcon, CandlestickChart, LineChart as LineChartIcon, Award, RefreshCcw, ArrowLeft, Briefcase, MoreHorizontal, LayoutGrid, List, Activity, Scale, Percent, ChevronDown, ChevronUp, ListFilter, BookOpen, Calendar } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, ReferenceLine, ComposedChart, CartesianGrid, AreaChart, Area, YAxis, PieChart as RePieChart, Pie, Cell, LineChart, Line, Label, Legend, Scatter } from 'recharts';
 import { formatBRL, formatDateShort, getMonthName } from '../utils/formatters';
@@ -815,22 +815,23 @@ const PositionSummaryCard = ({ asset, privacyMode }: { asset: AssetPosition, pri
     const isPositive = result >= 0;
 
     return (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
-            <div className="bg-zinc-100 dark:bg-zinc-800/50 p-3 rounded-xl">
-                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Posição</p>
-                <p className="text-lg font-black text-zinc-900 dark:text-white tracking-tighter">{formatBRL(totalValue, privacyMode)}</p>
+        <div className="grid grid-cols-2 gap-3">
+            <div className="bg-white dark:bg-zinc-900 p-4 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                <p className="text-[9px] font-black text-zinc-400 uppercase tracking-[0.15em] mb-1">Patrimônio</p>
+                <p className="text-xl font-black text-zinc-900 dark:text-white tracking-tighter">{formatBRL(totalValue, privacyMode)}</p>
+                <p className="text-[10px] font-bold text-zinc-500 mt-1">{asset.quantity} cotas</p>
             </div>
-            <div className="bg-zinc-100 dark:bg-zinc-800/50 p-3 rounded-xl">
-                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Resultado</p>
-                <p className={`text-lg font-black tracking-tighter ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>{isPositive ? '+' : ''}{formatBRL(result, privacyMode)}</p>
-            </div>
-            <div className="bg-zinc-100 dark:bg-zinc-800/50 p-3 rounded-xl">
-                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Evolução</p>
-                <p className={`text-lg font-black tracking-tighter ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>{isPositive ? '+' : ''}{resultPercent.toFixed(2)}%</p>
-            </div>
-            <div className="bg-zinc-100 dark:bg-zinc-800/50 p-3 rounded-xl">
-                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Qtd.</p>
-                <p className="text-lg font-black text-zinc-900 dark:text-white tracking-tighter">{asset.quantity}</p>
+            <div className="bg-white dark:bg-zinc-900 p-4 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                <p className="text-[9px] font-black text-zinc-400 uppercase tracking-[0.15em] mb-1">Resultado Total</p>
+                <div className="flex items-baseline gap-1.5">
+                    <p className={`text-xl font-black tracking-tighter ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        {isPositive ? '+' : ''}{formatBRL(result, privacyMode)}
+                    </p>
+                </div>
+                <div className={`flex items-center gap-1 mt-1 ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
+                    {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                    <span className="text-[10px] font-black">{resultPercent.toFixed(2)}%</span>
+                </div>
             </div>
         </div>
     );
@@ -848,17 +849,17 @@ const ValuationCard = ({ asset }: { asset: AssetPosition }) => {
     };
 
     return (
-        <div className="grid grid-cols-3 gap-3 text-center">
-            <div className="bg-zinc-100 dark:bg-zinc-800/50 p-3 rounded-xl">
-                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest flex items-center justify-center gap-1.5">P/VP <InfoTooltip title="P/VP" text="Preço sobre Valor Patrimonial. Idealmente abaixo de 1." /></p>
+        <div className="grid grid-cols-3 gap-3">
+            <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 text-center">
+                <p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">P/VP <InfoTooltip title="P/VP" text="Preço sobre Valor Patrimonial. Idealmente abaixo de 1." /></p>
                 <p className={`text-lg font-black tracking-tighter ${getValuationColor(pvp, [1, 1.5])}`}>{pvp.toFixed(2)}</p>
             </div>
-            <div className="bg-zinc-100 dark:bg-zinc-800/50 p-3 rounded-xl">
-                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest flex items-center justify-center gap-1.5">P/L <InfoTooltip title="P/L" text="Preço sobre Lucro. Mede o quão 'caro' o ativo está em relação ao lucro que gera." /></p>
+            <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 text-center">
+                <p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">P/L <InfoTooltip title="P/L" text="Preço sobre Lucro. Mede o quão 'caro' o ativo está em relação ao lucro que gera." /></p>
                 <p className={`text-lg font-black tracking-tighter ${getValuationColor(pl, [10, 15])}`}>{pl.toFixed(2)}</p>
             </div>
-            <div className="bg-zinc-100 dark:bg-zinc-800/50 p-3 rounded-xl">
-                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest flex items-center justify-center gap-1.5">Div. Yield <InfoTooltip title="Div. Yield" text="Dividend Yield. Rendimento de dividendos em relação ao preço." /></p>
+            <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 text-center">
+                <p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">Dividend Yield</p>
                 <p className="text-lg font-black tracking-tighter text-emerald-500">{(dy * 100).toFixed(2)}%</p>
             </div>
         </div>
@@ -880,14 +881,16 @@ const DetailedInfoBlock = ({ asset }: { asset: AssetPosition }) => {
     ].filter(d => d.value);
 
     return (
-        <div className="bg-zinc-100 dark:bg-zinc-800/50 p-3 rounded-2xl">
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
+        <div className="bg-white dark:bg-zinc-900 p-5 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
+            <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                 {dataPoints.map(({ label, value, icon: Icon }) => (
-                    <div key={label} className="flex items-start gap-2">
-                        <Icon className="w-3.5 h-3.5 text-zinc-400 mt-0.5 shrink-0" />
+                    <div key={label} className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center shrink-0">
+                            <Icon className="w-4 h-4 text-zinc-400" />
+                        </div>
                         <div>
-                            <p className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 leading-tight">{label}</p>
-                            <p className="text-xs font-semibold text-zinc-900 dark:text-white">{value}</p>
+                            <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-1">{label}</p>
+                            <p className="text-xs font-black text-zinc-900 dark:text-white tracking-tight">{value}</p>
                         </div>
                     </div>
                 ))}
@@ -921,7 +924,7 @@ const PropertiesAnalysis = ({ properties }: { properties: any[] }) => {
 
 const IncomeAnalysisSection = ({ asset, chartData, marketHistory, isWatchlist = false }: any) => {
     // Tenta pegar dos dividendos do ativo (carteira) ou do histórico de mercado (watchlist)
-    const lastDividend = asset.dividends.length > 0 
+    const lastDividend = asset.dividends?.length > 0 
         ? asset.dividends[0] 
         : (marketHistory && marketHistory.length > 0 
             ? [...marketHistory].sort((a: any, b: any) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime())[0] 
@@ -939,16 +942,10 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory, isWatchlist = 
         .sort((a: any, b: any) => new Date(a.paymentDate).getTime() - new Date(b.paymentDate).getTime())
         .slice(0, 3);
 
-    // Para Watchlist, o gráfico deve mostrar o histórico de pagamentos por cota (rate)
-    // Para Carteira, mostra o total recebido (rate * quantity)
-    // Como chartData vem pronto de fora (baseado em receipts), precisamos adaptar ou usar marketHistory
-    
     const historyChartData = useMemo(() => {
         if (!isWatchlist) return chartData.data;
 
-        // Agrupar marketHistory por mês para mostrar evolução dos pagamentos por cota
         const grouped = new Map();
-        // Pegar últimos 12 meses ou 24 meses
         const sortedHistory = [...marketHistory].sort((a: any, b: any) => new Date(a.paymentDate).getTime() - new Date(b.paymentDate).getTime());
         
         sortedHistory.forEach((d: any) => {
@@ -965,54 +962,72 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory, isWatchlist = 
 
         return Array.from(grouped.values())
             .sort((a: any, b: any) => a.date.localeCompare(b.date))
-            .slice(-12); // Últimos 12 meses com pagamento
+            .slice(-12);
     }, [chartData, marketHistory, isWatchlist]);
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-6">
             <div className="grid grid-cols-2 gap-3">
-                <div className="bg-zinc-100 dark:bg-zinc-800/50 p-3 rounded-xl">
-                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Último Provento</p>
-                    <p className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(lastDividend?.value || lastDividend?.rate || 0)}</p>
-                    <p className="text-xs text-zinc-500">em {formatDateShort(lastDividend?.paymentDate)}</p>
+                <div className="bg-white dark:bg-zinc-900 p-4 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                    <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Último Provento</p>
+                    <p className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">{formatBRL(lastDividend?.value || lastDividend?.rate || 0)}</p>
+                    <p className="text-[10px] font-bold text-zinc-500 mt-1">Pago em {formatDateShort(lastDividend?.paymentDate)}</p>
                 </div>
-                <div className="bg-zinc-100 dark:bg-zinc-800/50 p-3 rounded-xl">
-                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">{yieldLabel}</p>
-                    <p className="text-lg font-black text-emerald-500">{displayYield.toFixed(2)}%</p>
-                    <p className="text-xs text-zinc-500">{isWatchlist ? 'Atual' : 'Sobre custo'}</p>
+                <div className="bg-white dark:bg-zinc-900 p-4 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                    <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">{yieldLabel}</p>
+                    <p className="text-xl font-black text-emerald-500 tracking-tight">{displayYield.toFixed(2)}%</p>
+                    <p className="text-[10px] font-bold text-zinc-500 mt-1">{isWatchlist ? 'Anualizado' : 'Yield on Cost'}</p>
                 </div>
             </div>
 
-            <div>
-                <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">Próximos Eventos</h4>
-                {nextEvents.length > 0 ? (
-                    <div className="space-y-2">
+            {nextEvents.length > 0 && (
+                <div className="bg-zinc-50 dark:bg-zinc-900/50 p-5 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800/50">
+                    <div className="flex items-center gap-2 mb-4">
+                        <Calendar className="w-4 h-4 text-indigo-500" />
+                        <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Próximos Pagamentos</h4>
+                    </div>
+                    <div className="space-y-3">
                         {nextEvents.map((event: any, i: number) => (
-                            <div key={i} className="bg-zinc-100 dark:bg-zinc-800/50 p-2 rounded-lg flex justify-between items-center">
-                                <div>
-                                    <p className="text-xs font-bold text-zinc-900 dark:text-white">{formatBRL(event.rate || event.value)} <span className="text-zinc-500 text-[10px]">({TYPE_LABELS[event.type] || event.type})</span></p>
-                                    <p className="text-[10px] text-zinc-500">Data Com: {formatDateShort(event.dateCom)}</p>
+                            <div key={i} className="flex justify-between items-center group">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-xl bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm border border-zinc-100 dark:border-zinc-700">
+                                        <Coins className="w-4 h-4 text-emerald-500" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-black text-zinc-900 dark:text-white">{formatBRL(event.rate || event.value)}</p>
+                                        <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-tighter">Data Com: {formatDateShort(event.dateCom)}</p>
+                                    </div>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-xs font-semibold text-emerald-500">{formatDateShort(event.paymentDate)}</p>
-                                    <p className="text-[10px] text-zinc-500">Pagamento</p>
+                                    <p className="text-xs font-black text-emerald-500">{formatDateShort(event.paymentDate)}</p>
+                                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-tighter">Pagamento</p>
                                 </div>
                             </div>
                         ))}
                     </div>
-                ) : <p className="text-xs text-zinc-400 italic">Nenhum evento futuro anunciado.</p>}
-            </div>
+                </div>
+            )}
 
-            <div className="h-60 w-full">
-                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Histórico de Pagamentos (Por Cota)</p>
-                <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={historyChartData} margin={{ top: 10, right: 0, left: -20, bottom: 5 }}>
-                        <XAxis dataKey="month" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-                        <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={(val) => formatBRL(val)} />
-                        <Tooltip contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '8px' }} labelStyle={{ color: '#a1a1aa' }} formatter={(value: number) => [formatBRL(value), isWatchlist ? 'Valor por Cota' : 'Total Recebido']} />
-                        <Bar dataKey="total" fill="#10b981" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                </ResponsiveContainer>
+            <div className="bg-white dark:bg-zinc-900 p-5 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                <div className="flex items-center justify-between mb-6">
+                    <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Histórico de Proventos</h4>
+                    <span className="text-[9px] font-bold text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-md uppercase tracking-tighter">Por Cota</span>
+                </div>
+                <div className="h-56 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={historyChartData} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
+                            <XAxis dataKey="month" tick={{ fontSize: 9, fontWeight: 600, fill: '#71717a' }} tickLine={false} axisLine={false} dy={10} />
+                            <YAxis tick={{ fontSize: 9, fontWeight: 600, fill: '#71717a' }} tickLine={false} axisLine={false} tickFormatter={(val) => `R$${val}`} />
+                            <Tooltip 
+                                cursor={{fill: 'rgba(0,0,0,0.02)'}} 
+                                contentStyle={{ backgroundColor: '#18181b', border: 'none', borderRadius: '12px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} 
+                                labelStyle={{ color: '#a1a1aa', fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' }} 
+                                formatter={(value: number) => [formatBRL(value), isWatchlist ? 'Valor por Cota' : 'Total Recebido']} 
+                            />
+                            <Bar dataKey="total" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={30} />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
             </div>
         </div>
     );
@@ -1181,27 +1196,52 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends, incomeCha
         <SwipeableModal isOpen={!!asset} onClose={onClose}>
             {selectedAsset && (
                 <div className="bg-primary-light dark:bg-primary-dark rounded-t-3xl md:rounded-2xl shadow-2xl flex flex-col" style={{ maxHeight: '95vh' }}>
-                    <div className="p-4 sticky top-0 bg-primary-light dark:bg-primary-dark z-10 border-b border-zinc-100 dark:border-zinc-800">
-                        <div className="flex justify-between items-center mb-4">
-                            <div className="flex items-center gap-2">
-                                {selectedAsset.logoUrl && <img src={selectedAsset.logoUrl} className="w-6 h-6 rounded-full" />}
-                                <span className="font-black text-lg">{selectedAsset.ticker}</span>
+                    <div className="p-6 sticky top-0 bg-primary-light dark:bg-primary-dark z-10 border-b border-zinc-100 dark:border-zinc-800">
+                        <div className="flex justify-between items-center mb-6">
+                            <div className="flex items-center gap-4">
+                                <div className="w-14 h-14 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center overflow-hidden shadow-inner border border-zinc-200 dark:border-zinc-700">
+                                    {selectedAsset.logoUrl ? (
+                                        <img src={selectedAsset.logoUrl} className="w-full h-full object-cover" alt={selectedAsset.ticker} />
+                                    ) : (
+                                        <span className="font-black text-xl text-zinc-400">{selectedAsset.ticker.substring(0, 2)}</span>
+                                    )}
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h2 className="font-black text-2xl tracking-tighter text-zinc-900 dark:text-white leading-none">{selectedAsset.ticker}</h2>
+                                        <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest ${selectedAsset.assetType === 'FII' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400'}`}>
+                                            {selectedAsset.assetType}
+                                        </span>
+                                    </div>
+                                    <p className="text-xs font-bold text-zinc-500 mt-1 uppercase tracking-wider truncate max-w-[180px]">{selectedAsset.company_name || selectedAsset.ticker}</p>
+                                </div>
                             </div>
-                            <button onClick={() => onAssetRefresh(selectedAsset.ticker)} className="p-2 bg-zinc-100 dark:bg-zinc-800 rounded-full active:scale-95 transition-transform">
-                                <RefreshCcw className="w-4 h-4 text-zinc-500" />
-                            </button>
+                            <div className="flex gap-2">
+                                <button 
+                                    onClick={() => onAssetRefresh(selectedAsset.ticker)} 
+                                    className="w-10 h-10 bg-zinc-100 dark:bg-zinc-800 rounded-2xl flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-all active:scale-90"
+                                >
+                                    <RefreshCcw className="w-4 h-4" />
+                                </button>
+                                <button 
+                                    onClick={onClose}
+                                    className="w-10 h-10 bg-zinc-100 dark:bg-zinc-800 rounded-2xl flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-all active:scale-90"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
                         </div>
 
-                        <div className="flex p-1 bg-zinc-100 dark:bg-zinc-800 rounded-xl">
+                        <div className="flex p-1 bg-zinc-100 dark:bg-zinc-800 rounded-2xl">
                             <button 
                                 onClick={() => setActiveTab('OVERVIEW')} 
-                                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'OVERVIEW' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+                                className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${activeTab === 'OVERVIEW' ? 'bg-white dark:bg-zinc-700 shadow-lg shadow-black/5 text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
                             >
                                 <LayoutGrid className="w-3.5 h-3.5" /> {isWatchlist ? 'Cotação' : 'Resumo'}
                             </button>
                             <button 
                                 onClick={() => setActiveTab('DETAILS')} 
-                                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'DETAILS' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+                                className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${activeTab === 'DETAILS' ? 'bg-white dark:bg-zinc-700 shadow-lg shadow-black/5 text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
                             >
                                 <Activity className="w-3.5 h-3.5" /> Análise & Renda
                             </button>

@@ -277,39 +277,31 @@ export default function Watchlist() {
 
     return (
         <div className="pb-24 px-4 max-w-md mx-auto min-h-screen bg-zinc-50 dark:bg-zinc-950">
-            {/* Header Moderno Minimalista */}
-            <div className="flex items-center justify-between mb-4 pt-4">
-                <div>
-                    <h1 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Favoritos</h1>
-                    <p className="text-xs text-zinc-500 font-medium flex items-center gap-2 mt-0.5">
-                        {watchlist.length} {watchlist.length === 1 ? 'ativo' : 'ativos'}
-                    </p>
-                </div>
-                <div className="flex gap-2">
-                    <button 
-                        onClick={() => fetchData(true)}
-                        disabled={loading}
-                        className={`p-2 rounded-xl text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all ${loading ? 'animate-spin text-indigo-500' : ''}`}
-                    >
-                        <RefreshCcw className="w-4 h-4" />
-                    </button>
-                    <button 
-                        onClick={() => setIsAdding(true)}
-                        className="w-9 h-9 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 flex items-center justify-center shadow-lg shadow-zinc-900/20 active:scale-95 transition-all hover:bg-zinc-800 dark:hover:bg-zinc-100"
-                    >
-                        <Plus className="w-4 h-4" />
-                    </button>
-                </div>
+            {/* Header Actions - Compact and Modern */}
+            <div className="flex items-center justify-end gap-2 mb-6 pt-6">
+                <button 
+                    onClick={() => fetchData(true)}
+                    disabled={loading}
+                    className={`w-10 h-10 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all shadow-sm ${loading ? 'animate-spin text-indigo-500' : ''}`}
+                >
+                    <RefreshCcw className="w-4 h-4" />
+                </button>
+                <button 
+                    onClick={() => setIsAdding(true)}
+                    className="w-10 h-10 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 flex items-center justify-center shadow-xl shadow-zinc-900/20 active:scale-95 transition-all"
+                >
+                    <Plus className="w-5 h-5" />
+                </button>
             </div>
 
             {/* Filters - Minimalist Pills */}
             {watchlist.length > 0 && (
-                <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
+                <div className="flex gap-2 mb-6 overflow-x-auto pb-2 no-scrollbar">
                     {(['ALL', 'STOCK', 'FII'] as const).map((f) => (
                         <button 
                             key={f}
                             onClick={() => setFilter(f)}
-                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${filter === f ? 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'bg-transparent border-transparent text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'}`}
+                            className={`px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border ${filter === f ? 'bg-zinc-900 dark:bg-white border-transparent text-white dark:text-zinc-900 shadow-lg shadow-zinc-900/20 dark:shadow-white/10' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 shadow-sm'}`}
                         >
                             {f === 'ALL' ? 'Todos' : f === 'STOCK' ? 'Ações' : 'FIIs'}
                         </button>
@@ -317,103 +309,109 @@ export default function Watchlist() {
                 </div>
             )}
 
-            {/* Add Asset Sheet/Modal */}
+            {/* Add Asset Sheet/Modal - Enhanced UI */}
             {isAdding && (
-                <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 backdrop-blur-sm p-4 pt-24 animate-in fade-in duration-200">
-                    <div className="bg-white dark:bg-zinc-900 w-full max-w-md rounded-[2rem] p-6 shadow-2xl animate-in slide-in-from-bottom-10 sm:slide-in-from-top-10 duration-300 border border-zinc-100 dark:border-zinc-800 ring-1 ring-black/5">
-                        <div className="flex justify-between items-center mb-6">
+                <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-md p-0 sm:p-4 animate-in fade-in duration-300">
+                    <div 
+                        className="bg-white dark:bg-zinc-950 w-full max-w-md rounded-t-[2.5rem] sm:rounded-[2.5rem] p-8 shadow-2xl animate-in slide-in-from-bottom-full duration-500 ease-out border-t sm:border border-zinc-100 dark:border-zinc-900 ring-1 ring-black/5"
+                    >
+                        {/* Handle for mobile */}
+                        <div className="w-12 h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full mx-auto mb-8 sm:hidden"></div>
+
+                        <div className="flex justify-between items-start mb-8">
                             <div>
-                                <h2 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">Novo Ativo</h2>
-                                <p className="text-xs text-zinc-500 font-medium mt-0.5">Adicione ações ou fundos à sua lista</p>
+                                <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter">Novo Favorito</h2>
+                                <p className="text-xs text-zinc-500 font-bold mt-1 uppercase tracking-wider">Acompanhe ativos em tempo real</p>
                             </div>
-                            <button onClick={() => setIsAdding(false)} className="p-2 bg-zinc-50 dark:bg-zinc-800 rounded-full text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">
+                            <button onClick={() => setIsAdding(false)} className="w-10 h-10 bg-zinc-50 dark:bg-zinc-900 rounded-2xl flex items-center justify-center text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all active:scale-90">
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
 
-                        <div className="relative mb-8">
-                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                <Search className="h-5 w-5 text-zinc-400" />
+                        <div className="relative mb-10">
+                            <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                                <Search className="h-5 w-5 text-zinc-300" />
                             </div>
                             <input
                                 type="text"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                placeholder="Digite o código (ex: PETR4)"
-                                className="block w-full pl-11 pr-12 py-4 bg-zinc-50 dark:bg-zinc-950 border-0 rounded-2xl text-lg font-black text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:ring-2 focus:ring-indigo-500/20 transition-all uppercase"
+                                placeholder="EX: PETR4, MXRF11..."
+                                className="block w-full pl-14 pr-14 py-5 bg-zinc-50 dark:bg-zinc-900/50 border-2 border-transparent focus:border-indigo-500/20 focus:bg-white dark:focus:bg-zinc-900 rounded-[1.5rem] text-xl font-black text-zinc-900 dark:text-white placeholder:text-zinc-300 dark:placeholder:text-zinc-800 focus:ring-0 transition-all uppercase shadow-inner"
                                 autoFocus
                             />
-                            {searchTerm && (
-                                <button 
-                                    onClick={() => setSearchTerm('')}
-                                    className="absolute inset-y-0 right-0 pr-4 flex items-center"
-                                >
-                                    {isSearching ? (
-                                        <RefreshCcw className="h-4 w-4 text-indigo-500 animate-spin" />
-                                    ) : (
-                                        <div className="bg-zinc-200 dark:bg-zinc-800 rounded-full p-0.5">
-                                            <X className="h-3 w-3 text-zinc-500" />
-                                        </div>
-                                    )}
-                                </button>
-                            )}
+                            <div className="absolute inset-y-0 right-0 pr-5 flex items-center">
+                                {isSearching ? (
+                                    <RefreshCcw className="h-5 w-5 text-indigo-500 animate-spin" />
+                                ) : searchTerm && (
+                                    <button onClick={() => setSearchTerm('')} className="bg-zinc-200 dark:bg-zinc-800 rounded-full p-1 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors">
+                                        <X className="h-3 w-3 text-zinc-500" />
+                                    </button>
+                                )}
+                            </div>
                         </div>
 
-                        {searchResult ? (
-                            <div 
-                                onClick={() => handleAddTicker(searchResult.ticker)}
-                                className="bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-900/20 dark:to-zinc-900 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-500/30 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] group shadow-sm"
-                            >
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 rounded-2xl bg-white dark:bg-zinc-800 flex items-center justify-center overflow-hidden shadow-sm border border-zinc-100 dark:border-zinc-700">
-                                            {searchResult.logo ? (
-                                                <img src={searchResult.logo} alt={searchResult.ticker} className="w-full h-full object-cover" />
-                                            ) : (
-                                                <span className="font-black text-sm text-zinc-400">{searchResult.ticker.substring(0, 2)}</span>
-                                            )}
+                        <div className="min-h-[200px]">
+                            {searchResult ? (
+                                <div 
+                                    onClick={() => handleAddTicker(searchResult.ticker)}
+                                    className="bg-gradient-to-br from-indigo-500 to-purple-600 p-[1px] rounded-[2rem] cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] shadow-xl shadow-indigo-500/20 group"
+                                >
+                                    <div className="bg-white dark:bg-zinc-950 rounded-[1.95rem] p-5 flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-14 h-14 rounded-2xl bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center overflow-hidden shadow-inner border border-zinc-100 dark:border-zinc-800">
+                                                {searchResult.logo ? (
+                                                    <img src={searchResult.logo} alt={searchResult.ticker} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <span className="font-black text-lg text-zinc-300">{searchResult.ticker.substring(0, 2)}</span>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <h3 className="font-black text-2xl text-zinc-900 dark:text-white tracking-tighter leading-none">{searchResult.ticker}</h3>
+                                                <p className="text-[10px] font-bold text-zinc-400 mt-1 uppercase tracking-wide truncate max-w-[140px]">{searchResult.name}</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <h3 className="font-black text-xl text-zinc-900 dark:text-white tracking-tight leading-none">{searchResult.ticker}</h3>
-                                            <p className="text-xs font-medium text-zinc-500 mt-1 truncate max-w-[150px]">{searchResult.name}</p>
+                                        <div className="text-right">
+                                            <p className="font-black text-xl text-zinc-900 dark:text-white tracking-tight">{formatBRL(searchResult.price || 0)}</p>
+                                            <div className="flex items-center justify-end gap-1.5 text-indigo-600 dark:text-indigo-400 mt-1">
+                                                <Plus className="w-3.5 h-3.5" strokeWidth={3} />
+                                                <span className="text-[10px] font-black uppercase tracking-widest">Adicionar</span>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="text-right">
-                                        <p className="font-black text-lg text-zinc-900 dark:text-white">{formatBRL(searchResult.price || 0)}</p>
-                                        <div className="flex items-center justify-end gap-1 text-indigo-600 dark:text-indigo-400">
-                                            <Plus className="w-3 h-3" strokeWidth={3} />
-                                            <span className="text-[10px] font-black uppercase tracking-wider">Adicionar</span>
-                                        </div>
+                                </div>
+                            ) : searchTerm.length > 0 && !isSearching && searchError ? (
+                                <div className="text-center py-12 bg-rose-50/50 dark:bg-rose-900/10 rounded-[2rem] border border-dashed border-rose-200 dark:border-rose-900/30">
+                                    <div className="w-14 h-14 bg-rose-100 dark:bg-rose-900/30 rounded-full flex items-center justify-center mx-auto mb-4 text-rose-500">
+                                        <AlertCircle className="w-7 h-7" />
+                                    </div>
+                                    <p className="text-sm font-black text-zinc-900 dark:text-white">Ativo não encontrado</p>
+                                    <p className="text-[10px] text-zinc-500 font-bold mt-1 uppercase tracking-wider">Verifique o código e tente novamente</p>
+                                </div>
+                            ) : (
+                                <div>
+                                    <div className="flex items-center gap-2 mb-5">
+                                        <TrendingUp className="w-4 h-4 text-emerald-500" />
+                                        <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Ativos Populares</h3>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {POPULAR_ASSETS.slice(0, 6).map(asset => (
+                                            <button
+                                                key={asset.ticker}
+                                                onClick={() => handleAddTicker(asset.ticker)}
+                                                className="flex items-center justify-between px-4 py-3.5 bg-zinc-50 dark:bg-zinc-900/50 hover:bg-white dark:hover:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 hover:border-indigo-500/30 rounded-2xl transition-all group active:scale-95 shadow-sm"
+                                            >
+                                                <div className="flex flex-col items-start">
+                                                    <span className="text-sm font-black text-zinc-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{asset.ticker}</span>
+                                                    <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-tighter truncate max-w-[80px]">{asset.name}</span>
+                                                </div>
+                                                <div className={`w-2 h-2 rounded-full ${asset.type === 'FII' ? 'bg-emerald-400' : 'bg-sky-400'} shadow-sm`}></div>
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
-                            </div>
-                        ) : searchTerm.length > 0 && !isSearching && searchError ? (
-                            <div className="text-center py-8">
-                                <div className="w-12 h-12 bg-rose-50 dark:bg-rose-900/20 rounded-full flex items-center justify-center mx-auto mb-3 text-rose-500">
-                                    <AlertCircle className="w-6 h-6" />
-                                </div>
-                                <p className="text-sm font-bold text-zinc-900 dark:text-white">Ativo não encontrado</p>
-                                <p className="text-xs text-zinc-500 mt-1">Verifique o código e tente novamente.</p>
-                            </div>
-                        ) : (
-                            <div>
-                                <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                    <TrendingUp className="w-3 h-3" /> Populares
-                                </h3>
-                                <div className="flex flex-wrap gap-2">
-                                    {POPULAR_ASSETS.map(asset => (
-                                        <button
-                                            key={asset.ticker}
-                                            onClick={() => handleAddTicker(asset.ticker)}
-                                            className="px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800/50 hover:bg-white dark:hover:bg-zinc-800 border border-zinc-100 dark:border-zinc-800 hover:border-indigo-200 dark:hover:border-indigo-500/30 rounded-xl text-xs font-bold text-zinc-600 dark:text-zinc-300 transition-all flex items-center gap-2 group active:scale-95"
-                                        >
-                                            <span className="group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{asset.ticker}</span>
-                                            {asset.type === 'FII' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
                 </div>
             )}
