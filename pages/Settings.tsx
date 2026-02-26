@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
     User, LogOut, Moon, Sun, Monitor, Shield, Bell, RefreshCw, 
     Upload, Trash2, ChevronRight, Check, Loader2, Search, 
