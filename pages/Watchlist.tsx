@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Search, Trash2, TrendingUp, TrendingDown, Plus, Star, ArrowLeft, RefreshCcw, AlertCircle, X, Filter, BarChart3, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Search, Trash2, TrendingUp, TrendingDown, Plus, Star, ArrowLeft, RefreshCcw, AlertCircle, X, Filter, BarChart3, ArrowUpRight, ArrowDownRight, Bell, BellOff } from 'lucide-react';
 import { getQuotes } from '../services/brapiService';
 import { fetchUnifiedMarketData } from '../services/dataService';
 import { formatBRL } from '../utils/formatters';
@@ -33,6 +33,7 @@ const POPULAR_ASSETS = [
 
 export default function Watchlist() {
     const [watchlist, setWatchlist] = useState<string[]>([]);
+    const [alerts, setAlerts] = useState<Record<string, { target: number; type: 'ABOVE' | 'BELOW' }>>({});
     const [quotes, setQuotes] = useState<Record<string, WatchlistItem>>({});
     const [loading, setLoading] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
@@ -40,6 +41,13 @@ export default function Watchlist() {
     const [marketDividends, setMarketDividends] = useState<DividendReceipt[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [filter, setFilter] = useState<'ALL' | 'STOCK' | 'FII'>('ALL');
+    const [sortBy, setSortBy] = useState<'TICKER' | 'PRICE' | 'CHANGE'>('TICKER');
+    const [sortOrder, setSortOrder] = useState<'ASC' | 'DESC'>('ASC');
+
+    // Alert Modal State
+    const [alertingTicker, setAlertingTicker] = useState<string | null>(null);
+    const [alertPrice, setAlertPrice] = useState<string>('');
+    const [alertType, setAlertType] = useState<'ABOVE' | 'BELOW'>('ABOVE');
 
     // Search State
     const [searchTerm, setSearchTerm] = useState('');
@@ -49,12 +57,22 @@ export default function Watchlist() {
 
     // Load from LocalStorage on mount
     useEffect(() => {
-        const saved = localStorage.getItem('user_watchlist');
-        if (saved) {
+        const savedWatchlist = localStorage.getItem('user_watchlist');
+        const savedAlerts = localStorage.getItem('user_watchlist_alerts');
+        
+        if (savedWatchlist) {
             try {
-                setWatchlist(JSON.parse(saved));
+                setWatchlist(JSON.parse(savedWatchlist));
             } catch (e) {
                 console.error("Failed to parse watchlist", e);
+            }
+        }
+
+        if (savedAlerts) {
+            try {
+                setAlerts(JSON.parse(savedAlerts));
+            } catch (e) {
+                console.error("Failed to parse alerts", e);
             }
         }
     }, []);
@@ -63,6 +81,33 @@ export default function Watchlist() {
     useEffect(() => {
         localStorage.setItem('user_watchlist', JSON.stringify(watchlist));
     }, [watchlist]);
+
+    useEffect(() => {
+        localStorage.setItem('user_watchlist_alerts', JSON.stringify(alerts));
+    }, [alerts]);
+
+    const handleSetAlert = () => {
+        if (!alertingTicker || !alertPrice) return;
+        
+        const price = parseFloat(alertPrice.replace(',', '.'));
+        if (isNaN(price)) return;
+
+        setAlerts(prev => ({
+            ...prev,
+            [alertingTicker]: { target: price, type: alertType }
+        }));
+        
+        setAlertingTicker(null);
+        setAlertPrice('');
+    };
+
+    const removeAlert = (ticker: string) => {
+        setAlerts(prev => {
+            const next = { ...prev };
+            delete next[ticker];
+            return next;
+        });
+    };
 
     const fetchData = useCallback(async (forceRefresh = false, specificTickers?: string[]) => {
         const tickersToFetch = specificTickers || watchlist;
@@ -254,14 +299,41 @@ export default function Watchlist() {
         setSelectedAsset(asset);
     };
 
-    const filteredWatchlist = useMemo(() => {
-        if (filter === 'ALL') return watchlist;
-        return watchlist.filter(ticker => {
-            const quote = quotes[ticker];
-            const type = quote?.type || ((ticker.endsWith('11') || ticker.endsWith('11B')) ? AssetType.FII : AssetType.STOCK);
-            return type === (filter === 'STOCK' ? AssetType.STOCK : AssetType.FII);
+    const sortedAndFilteredWatchlist = useMemo(() => {
+        let list = [...watchlist];
+        
+        // Filter
+        if (filter !== 'ALL') {
+            list = list.filter(ticker => {
+                const quote = quotes[ticker];
+                const type = quote?.type || ((ticker.endsWith('11') || ticker.endsWith('11B')) ? AssetType.FII : AssetType.STOCK);
+                return type === (filter === 'STOCK' ? AssetType.STOCK : AssetType.FII);
+            });
+        }
+
+        // Sort
+        list.sort((a, b) => {
+            const quoteA = quotes[a];
+            const quoteB = quotes[b];
+            
+            let valA: any = a;
+            let valB: any = b;
+
+            if (sortBy === 'PRICE') {
+                valA = quoteA?.price || 0;
+                valB = quoteB?.price || 0;
+            } else if (sortBy === 'CHANGE') {
+                valA = quoteA?.change || 0;
+                valB = quoteB?.change || 0;
+            }
+
+            if (valA < valB) return sortOrder === 'ASC' ? -1 : 1;
+            if (valA > valB) return sortOrder === 'ASC' ? 1 : -1;
+            return 0;
         });
-    }, [watchlist, quotes, filter]);
+
+        return list;
+    }, [watchlist, quotes, filter, sortBy, sortOrder]);
 
     // Derived Stats
     const stats = useMemo(() => {
@@ -275,10 +347,19 @@ export default function Watchlist() {
         return { up, down, neutral };
     }, [watchlist, quotes]);
 
+    const toggleSort = (newSort: typeof sortBy) => {
+        if (sortBy === newSort) {
+            setSortOrder(prev => prev === 'ASC' ? 'DESC' : 'ASC');
+        } else {
+            setSortBy(newSort);
+            setSortOrder('DESC'); // Default to DESC for price/change
+        }
+    };
+
     return (
         <div className="pb-24 px-4 max-w-md mx-auto min-h-screen bg-zinc-50 dark:bg-zinc-950">
             {/* Header Actions & Stats */}
-            <div className="pt-8 mb-8">
+            <div className="pt-8 mb-6">
                 <div className="flex items-center justify-between mb-6">
                     <div>
                         <h1 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter">Favoritos</h1>
@@ -328,18 +409,44 @@ export default function Watchlist() {
                 )}
             </div>
 
-            {/* Filters - Minimalist Pills */}
+            {/* Filters & Sorting */}
             {watchlist.length > 0 && (
-                <div className="flex gap-2 mb-6 overflow-x-auto pb-2 no-scrollbar">
-                    {(['ALL', 'STOCK', 'FII'] as const).map((f) => (
-                        <button 
-                            key={f}
-                            onClick={() => setFilter(f)}
-                            className={`px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border ${filter === f ? 'bg-zinc-900 dark:bg-white border-transparent text-white dark:text-zinc-900 shadow-lg shadow-zinc-900/20 dark:shadow-white/10' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 shadow-sm'}`}
-                        >
-                            {f === 'ALL' ? 'Todos' : f === 'STOCK' ? 'Ações' : 'FIIs'}
-                        </button>
-                    ))}
+                <div className="space-y-4 mb-6">
+                    <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                        {(['ALL', 'STOCK', 'FII'] as const).map((f) => (
+                            <button 
+                                key={f}
+                                onClick={() => setFilter(f)}
+                                className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border shrink-0 ${filter === f ? 'bg-zinc-900 dark:bg-white border-transparent text-white dark:text-zinc-900 shadow-lg shadow-zinc-900/10' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 shadow-sm'}`}
+                            >
+                                {f === 'ALL' ? 'Todos' : f === 'STOCK' ? 'Ações' : 'FIIs'}
+                            </button>
+                        ))}
+                    </div>
+                    
+                    <div className="flex items-center gap-3 px-1">
+                        <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Ordenar por:</span>
+                        <div className="flex gap-3">
+                            <button 
+                                onClick={() => toggleSort('TICKER')}
+                                className={`text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 ${sortBy === 'TICKER' ? 'text-indigo-500' : 'text-zinc-400'}`}
+                            >
+                                Ticker {sortBy === 'TICKER' && (sortOrder === 'ASC' ? '↑' : '↓')}
+                            </button>
+                            <button 
+                                onClick={() => toggleSort('PRICE')}
+                                className={`text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 ${sortBy === 'PRICE' ? 'text-indigo-500' : 'text-zinc-400'}`}
+                            >
+                                Preço {sortBy === 'PRICE' && (sortOrder === 'ASC' ? '↑' : '↓')}
+                            </button>
+                            <button 
+                                onClick={() => toggleSort('CHANGE')}
+                                className={`text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 ${sortBy === 'CHANGE' ? 'text-indigo-500' : 'text-zinc-400'}`}
+                            >
+                                Var. {sortBy === 'CHANGE' && (sortOrder === 'ASC' ? '↑' : '↓')}
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -476,13 +583,13 @@ export default function Watchlist() {
                 </div>
             ) : (
                 <div className="space-y-4">
-                    {filteredWatchlist.length === 0 ? (
+                    {sortedAndFilteredWatchlist.length === 0 ? (
                         <div className="text-center py-16 bg-white dark:bg-zinc-900 rounded-[2rem] border border-dashed border-zinc-200 dark:border-zinc-800">
                             <Filter className="w-10 h-10 text-zinc-200 dark:text-zinc-800 mx-auto mb-4" />
                             <p className="text-zinc-400 font-black text-[10px] uppercase tracking-widest">Nenhum ativo neste filtro</p>
                         </div>
                     ) : (
-                        filteredWatchlist.map(ticker => {
+                        sortedAndFilteredWatchlist.map(ticker => {
                             const quote = quotes[ticker];
                             const price = quote?.price;
                             const change = quote?.change || 0;
@@ -490,6 +597,12 @@ export default function Watchlist() {
                             const hasData = !!quote && price !== undefined && price !== 0;
                             const isUpdating = loading && !!quote;
                             const isLoadingInitial = loading && !quote;
+                            const fundamentals = quote?.fundamentals || {};
+                            const alert = alerts[ticker];
+                            const isAlertTriggered = alert && (
+                                (alert.type === 'ABOVE' && price && price >= alert.target) ||
+                                (alert.type === 'BELOW' && price && price <= alert.target)
+                            );
 
                             return (
                                 <div 
@@ -500,58 +613,161 @@ export default function Watchlist() {
                                     {/* Subtle background indicator for trend */}
                                     <div className={`absolute top-0 right-0 w-32 h-32 -mr-16 -mt-16 rounded-full blur-3xl opacity-[0.03] dark:opacity-[0.05] transition-colors ${isPositive ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
 
-                                    <div className="flex items-center justify-between relative z-10">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-12 h-12 rounded-2xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center overflow-hidden border border-zinc-100 dark:border-zinc-700/50 shadow-inner relative">
+                                    <div className="flex items-center justify-between relative z-10 mb-3">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center overflow-hidden border border-zinc-100 dark:border-zinc-700/50 shadow-inner relative">
                                                 {quote?.logo ? (
                                                     <img src={quote.logo} alt={ticker} className="w-full h-full object-cover" />
                                                 ) : (
-                                                    <span className="text-sm font-black text-zinc-300 dark:text-zinc-600">{ticker.substring(0, 2)}</span>
+                                                    <span className="text-xs font-black text-zinc-300 dark:text-zinc-600">{ticker.substring(0, 2)}</span>
                                                 )}
                                                 {isUpdating && (
                                                     <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px] flex items-center justify-center">
-                                                        <RefreshCcw className="w-4 h-4 text-white animate-spin" />
+                                                        <RefreshCcw className="w-3 h-3 text-white animate-spin" />
                                                     </div>
                                                 )}
                                             </div>
                                             <div>
-                                                <div className="flex items-center gap-2">
-                                                    <h3 className="font-black text-zinc-900 dark:text-white text-lg tracking-tighter leading-none">{ticker}</h3>
-                                                    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-tighter ${quote?.type === 'FII' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400'}`}>
+                                                <div className="flex items-center gap-1.5">
+                                                    <h3 className="font-black text-zinc-900 dark:text-white text-base tracking-tighter leading-none">{ticker}</h3>
+                                                    <span className={`text-[7px] font-black px-1 py-0.5 rounded uppercase tracking-tighter ${quote?.type === 'FII' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400'}`}>
                                                         {quote?.type || (ticker.endsWith('11') ? 'FII' : 'Ação')}
                                                     </span>
                                                 </div>
-                                                <p className="text-[10px] font-bold text-zinc-400 mt-1 uppercase tracking-wide truncate max-w-[140px]">
+                                                <p className="text-[9px] font-bold text-zinc-400 mt-0.5 uppercase tracking-wide truncate max-w-[120px]">
                                                     {quote?.name || (isLoadingInitial ? 'Atualizando...' : 'Ativo')}
                                                 </p>
                                             </div>
                                         </div>
 
                                         <div className="flex flex-col items-end gap-1">
-                                            <p className="font-black text-zinc-900 dark:text-white tabular-nums text-lg tracking-tight">
+                                            <p className="font-black text-zinc-900 dark:text-white tabular-nums text-base tracking-tight">
                                                 {hasData ? formatBRL(price) : (isLoadingInitial ? <span className="animate-pulse text-zinc-200">---</span> : <span className="text-zinc-300 text-xs font-bold">Indisp.</span>)}
                                             </p>
                                             
                                             {hasData && (
-                                                <div className={`flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-black ${isPositive ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'}`}>
-                                                    {isPositive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                                                <div className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-lg text-[9px] font-black ${isPositive ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'}`}>
+                                                    {isPositive ? <ArrowUpRight className="w-2.5 h-2.5" /> : <ArrowDownRight className="w-2.5 h-2.5" />}
                                                     {Math.abs(change).toFixed(2)}%
                                                 </div>
                                             )}
                                         </div>
                                     </div>
 
-                                    {/* Delete Action - Subtle and elegant */}
-                                    <button 
-                                        onClick={(e) => { e.stopPropagation(); removeTicker(ticker); }}
-                                        className="absolute top-2 right-2 p-2 text-zinc-200 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-all opacity-0 group-hover:opacity-100"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
+                                    {/* Additional Info Grid */}
+                                    {hasData && (
+                                        <div className="grid grid-cols-3 gap-2 pt-3 border-t border-zinc-50 dark:border-zinc-800/50 relative z-10">
+                                            <div className="flex flex-col">
+                                                <span className="text-[7px] font-black text-zinc-400 uppercase tracking-widest">DY (12M)</span>
+                                                <span className="text-[10px] font-black text-zinc-900 dark:text-white">{fundamentals.dy_12m ? `${fundamentals.dy_12m.toFixed(2)}%` : '--'}</span>
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-[7px] font-black text-zinc-400 uppercase tracking-widest">P/VP</span>
+                                                <span className={`text-[10px] font-black ${fundamentals.p_vp > 1.1 ? 'text-rose-500' : fundamentals.p_vp < 0.9 ? 'text-emerald-500' : 'text-zinc-900 dark:text-white'}`}>
+                                                    {fundamentals.p_vp ? fundamentals.p_vp.toFixed(2) : '--'}
+                                                </span>
+                                            </div>
+                                            <div className="flex flex-col items-end">
+                                                <span className="text-[7px] font-black text-zinc-400 uppercase tracking-widest">Segmento</span>
+                                                <span className="text-[10px] font-black text-zinc-900 dark:text-white truncate max-w-[80px]">{quote?.segment || 'Geral'}</span>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Alert Status */}
+                                    {alert && (
+                                        <div className={`mt-3 flex items-center justify-between px-3 py-2 rounded-xl border ${isAlertTriggered ? 'bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800/50' : 'bg-zinc-50 border-zinc-100 dark:bg-zinc-800/30 dark:border-zinc-700/50'} relative z-10`}>
+                                            <div className="flex items-center gap-2">
+                                                <Bell className={`w-3 h-3 ${isAlertTriggered ? 'text-amber-500 animate-bounce' : 'text-zinc-400'}`} />
+                                                <span className={`text-[8px] font-black uppercase tracking-widest ${isAlertTriggered ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-400'}`}>
+                                                    Alerta: {alert.type === 'ABOVE' ? 'Acima' : 'Abaixo'} {formatBRL(alert.target)}
+                                                </span>
+                                            </div>
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); removeAlert(ticker); }}
+                                                className="text-[8px] font-black text-zinc-400 hover:text-rose-500 uppercase tracking-widest"
+                                            >
+                                                Remover
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {/* Actions Overlay */}
+                                    <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all z-20">
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); setAlertingTicker(ticker); setAlertPrice(price?.toString() || ''); }}
+                                            className="p-1.5 text-zinc-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-all"
+                                            title="Definir Alerta"
+                                        >
+                                            <Bell className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); removeTicker(ticker); }}
+                                            className="p-1.5 text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-all"
+                                            title="Remover"
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
                                 </div>
                             );
                         })
                     )}
+                </div>
+            )}
+
+            {/* Price Alert Modal */}
+            {alertingTicker && (
+                <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-0 sm:p-4 animate-in fade-in duration-300">
+                    <div className="bg-white dark:bg-zinc-950 w-full max-w-md rounded-t-[2.5rem] sm:rounded-[2.5rem] p-8 shadow-2xl animate-in slide-in-from-bottom-full duration-500 ease-out border-t sm:border border-white/20 dark:border-zinc-800/50">
+                        <div className="flex justify-between items-start mb-8">
+                            <div>
+                                <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter">Alerta de Preço</h2>
+                                <p className="text-[10px] text-zinc-400 font-black mt-1 uppercase tracking-[0.2em]">{alertingTicker}</p>
+                            </div>
+                            <button onClick={() => setAlertingTicker(null)} className="w-10 h-10 bg-zinc-100 dark:bg-zinc-900 rounded-xl flex items-center justify-center text-zinc-400">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-6">
+                            <div>
+                                <label className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mb-2 block">Tipo de Alerta</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button 
+                                        onClick={() => setAlertType('ABOVE')}
+                                        className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${alertType === 'ABOVE' ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-transparent' : 'bg-white dark:bg-zinc-900 text-zinc-400 border-zinc-100 dark:border-zinc-800'}`}
+                                    >
+                                        Preço Acima de
+                                    </button>
+                                    <button 
+                                        onClick={() => setAlertType('BELOW')}
+                                        className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${alertType === 'BELOW' ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-transparent' : 'bg-white dark:bg-zinc-900 text-zinc-400 border-zinc-100 dark:border-zinc-800'}`}
+                                    >
+                                        Preço Abaixo de
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mb-2 block">Preço Alvo (R$)</label>
+                                <input 
+                                    type="text"
+                                    value={alertPrice}
+                                    onChange={(e) => setAlertPrice(e.target.value)}
+                                    placeholder="0,00"
+                                    className="w-full px-6 py-4 bg-zinc-100 dark:bg-zinc-900 border-2 border-transparent focus:border-indigo-500/20 rounded-2xl text-xl font-black text-zinc-900 dark:text-white"
+                                />
+                            </div>
+
+                            <button 
+                                onClick={handleSetAlert}
+                                className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-indigo-600/20 active:scale-95 transition-all"
+                            >
+                                Salvar Alerta
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
 

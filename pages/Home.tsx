@@ -733,7 +733,12 @@ const StoryViewer = ({
                                     {getStoryIcon(story.type)}
                                 </div>
                                 <div>
-                                    <p className="text-sm font-bold text-white drop-shadow-md">{story.relatedTicker || 'Insight'}</p>
+                                    <div className="flex items-center gap-2">
+                                        <p className="text-sm font-bold text-white drop-shadow-md">{story.relatedTicker || 'Insight'}</p>
+                                        {story.id.includes('ai-insight') && (
+                                            <span className="px-1.5 py-0.5 rounded-md bg-white/20 backdrop-blur-md text-[8px] font-black text-white uppercase tracking-widest border border-white/20">IA</span>
+                                        )}
+                                    </div>
                                     <p className="text-[10px] text-white/80 font-medium">InvestFIIs AI • {currentIndex + 1} de {stories.length}</p>
                                 </div>
                             </div>
@@ -1121,7 +1126,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
       const achievements = [
           // PATRIMÔNIO (Wealth)
           { id: 'start', cat: 'WEALTH', label: 'Primeiro Passo', sub: 'Patrimônio > R$ 0', icon: Wallet, unlocked: safeBalance > 0, color: 'from-emerald-400 to-emerald-600' },
+          { id: '100r', cat: 'WEALTH', label: 'Cem Reais', sub: 'Patrimônio > R$ 100', icon: Coins, unlocked: safeBalance >= 100, color: 'from-emerald-300 to-teal-500' },
+          { id: '500r', cat: 'WEALTH', label: 'Quinhentos', sub: 'Patrimônio > R$ 500', icon: Coins, unlocked: safeBalance >= 500, color: 'from-teal-400 to-emerald-600' },
           { id: '1k', cat: 'WEALTH', label: 'Semente', sub: 'Patrimônio > 1k', icon: Star, unlocked: safeBalance >= 1000, color: 'from-lime-400 to-emerald-500' },
+          { id: '5k', cat: 'WEALTH', label: 'Jardineiro', sub: 'Patrimônio > 5k', icon: Star, unlocked: safeBalance >= 5000, color: 'from-green-400 to-emerald-600' },
           { id: '10k', cat: 'WEALTH', label: 'Clube 10k', sub: 'Patrimônio > 10k', icon: Coins, unlocked: safeBalance >= 10000, color: 'from-amber-400 to-orange-500' },
           { id: '25k', cat: 'WEALTH', label: 'Construtor', sub: 'Patrimônio > 25k', icon: Building2, unlocked: safeBalance >= 25000, color: 'from-cyan-400 to-blue-500' },
           { id: '50k', cat: 'WEALTH', label: 'Barão', sub: 'Patrimônio > 50k', icon: Gem, unlocked: safeBalance >= 50000, color: 'from-violet-400 to-purple-600' },
@@ -1131,7 +1139,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
 
           // RENDA (Income)
           { id: 'income_start', cat: 'INCOME', label: 'Renda Viva', sub: 'Recebeu proventos', icon: CircleDollarSign, unlocked: safeIncome > 0, color: 'from-emerald-400 to-green-600' },
+          { id: 'cafe', cat: 'INCOME', label: 'Cafezinho', sub: 'Renda > R$ 5', icon: Coffee, unlocked: safeIncome >= 5, color: 'from-amber-300 to-orange-500' },
+          { id: 'passagem', cat: 'INCOME', label: 'Passagem', sub: 'Renda > R$ 10', icon: Plane, unlocked: safeIncome >= 10, color: 'from-orange-400 to-red-500' },
           { id: 'lunch', cat: 'INCOME', label: 'Almoço Grátis', sub: 'Renda > R$ 20', icon: Coffee, unlocked: safeIncome >= 20, color: 'from-orange-400 to-amber-600' },
+          { id: 'streaming', cat: 'INCOME', label: 'Streaming', sub: 'Renda > R$ 50', icon: Play, unlocked: safeIncome >= 50, color: 'from-indigo-400 to-blue-600' },
           { id: 'dinner', cat: 'INCOME', label: 'Jantar Fora', sub: 'Renda > R$ 100', icon: Award, unlocked: safeIncome >= 100, color: 'from-pink-400 to-rose-500' },
           { id: 'market', cat: 'INCOME', label: 'Mercado Pago', sub: 'Renda > R$ 500', icon: ShoppingCart, unlocked: safeIncome >= 500, color: 'from-blue-400 to-indigo-600' },
           { id: 'half_wage', cat: 'INCOME', label: 'Meio Salário', sub: 'Renda > R$ 700', icon: Anchor, unlocked: safeIncome >= (MIN_WAGE/2), color: 'from-sky-400 to-cyan-600' },
@@ -1140,11 +1151,15 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
           { id: 'retire', cat: 'INCOME', label: 'Aposentado', sub: 'Renda > R$ 5k', icon: CheckCircle2, unlocked: safeIncome >= 5000, color: 'from-indigo-500 to-violet-700' },
 
           // ESTRATÉGIA (Strategy)
+          { id: 'first_asset', cat: 'STRATEGY', label: 'Pé na Porta', sub: '1+ Ativo', icon: Target, unlocked: portfolio.length >= 1, color: 'from-emerald-400 to-teal-500' },
+          { id: 'duo', cat: 'STRATEGY', label: 'Dupla Dinâmica', sub: '2+ Ativos', icon: Layers, unlocked: portfolio.length >= 2, color: 'from-teal-400 to-cyan-500' },
+          { id: 'trio', cat: 'STRATEGY', label: 'Trio Parada Dura', sub: '3+ Ativos', icon: Layers, unlocked: portfolio.length >= 3, color: 'from-cyan-400 to-blue-500' },
           { id: 'diversified', cat: 'STRATEGY', label: 'Iniciante', sub: '5+ Ativos', icon: Layers, unlocked: portfolio.length >= 5, color: 'from-blue-400 to-indigo-500' },
           { id: 'manager', cat: 'STRATEGY', label: 'Gestor', sub: '15+ Ativos', icon: Briefcase, unlocked: portfolio.length >= 15, color: 'from-slate-500 to-zinc-700' },
+          { id: 'sector_2', cat: 'STRATEGY', label: 'Setorista', sub: '2+ Setores', icon: PieIcon, unlocked: sectors.size >= 2, color: 'from-orange-400 to-amber-500' },
+          { id: 'sectors', cat: 'STRATEGY', label: 'Rei dos Setores', sub: '5+ Setores', icon: PieIcon, unlocked: sectors.size >= 5, color: 'from-pink-400 to-rose-500' },
           { id: 'snowball', cat: 'STRATEGY', label: 'Bola de Neve', sub: '1 Ativo Infinito', icon: Snowflake, unlocked: magicReachedCount >= 1, color: 'from-cyan-400 to-blue-500' },
           { id: 'avalanche', cat: 'STRATEGY', label: 'Avalanche', sub: '5 Ativos Infinitos', icon: Zap, unlocked: magicReachedCount >= 5, color: 'from-yellow-400 to-orange-500' },
-          { id: 'sectors', cat: 'STRATEGY', label: 'Rei dos Setores', sub: '5+ Setores', icon: PieIcon, unlocked: sectors.size >= 5, color: 'from-pink-400 to-rose-500' },
           { id: 'lover', cat: 'STRATEGY', label: 'FII Lover', sub: 'Mais FIIs', icon: Building2, unlocked: allocationData.totals.fiis > allocationData.totals.stocks, color: 'from-indigo-400 to-purple-500' },
           { id: 'stock_fan', cat: 'STRATEGY', label: 'Ações Fan', sub: 'Mais Ações', icon: TrendingUp, unlocked: allocationData.totals.stocks > allocationData.totals.fiis, color: 'from-sky-400 to-blue-600' },
           { id: 'fii_fan', cat: 'STRATEGY', label: 'Imobiliário', sub: 'Possui FIIs', icon: Building2, unlocked: allocationData.totals.fiis > 0, color: 'from-emerald-400 to-teal-600' },
@@ -1608,8 +1623,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                 <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar">
                     <div className="grid grid-cols-3 gap-2">
                         {filteredAchievements.map((achievement: any) => (
-                            <div 
+                            <motion.div 
                                 key={achievement.id} 
+                                layout
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
                                 className={`relative p-3 rounded-2xl flex flex-col items-center text-center transition-all duration-500 border overflow-hidden group aspect-square justify-center ${
                                     achievement.unlocked 
                                         ? 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 shadow-sm' 
@@ -1630,7 +1648,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                                 {achievement.unlocked && (
                                     <div className={`absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r ${achievement.color} opacity-50`}></div>
                                 )}
-                            </div>
+                            </motion.div>
                         ))}
                     </div>
                 </div>

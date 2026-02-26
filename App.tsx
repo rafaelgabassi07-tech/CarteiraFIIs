@@ -8,11 +8,12 @@ import { News } from './pages/News';
 import Watchlist from './pages/Watchlist';
 import { Settings } from './pages/Settings';
 import { Login } from './pages/Login';
-import { Transaction, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals, ServiceMetric, ThemeType, ScrapeResult, UpdateReportData } from './types';
+import { Transaction, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals, ServiceMetric, ThemeType, ScrapeResult, UpdateReportData, PortfolioInsight } from './types';
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData, triggerScraperUpdate, mapScraperToFundamentals, fetchFutureAnnouncements } from './services/dataService';
 import { getQuantityOnDate, isSameDayLocal, mapSupabaseToTx, processPortfolio, normalizeTicker } from './services/portfolioRules';
 import { analyzePortfolio } from './services/analysisService'; // IMPORT REATIVADO
+import { generateAIInsights } from './services/aiService';
 import { Check, Loader2, AlertTriangle, Info, Database, Activity, Globe } from 'lucide-react';
 import { useUpdateManager } from './hooks/useUpdateManager';
 import { supabase, SUPABASE_URL } from './services/supabase';
@@ -140,6 +141,7 @@ const App: React.FC = () => {
 
   // Status de Serviços
   const [isCheckingServices, setIsCheckingServices] = useState(false);
+  const [aiInsights, setAiInsights] = useState<PortfolioInsight[]>([]);
   
   const servicesRef = useRef<ServiceMetric[]>([
     { id: 'db', label: 'Supabase Database', url: SUPABASE_URL, icon: Database, status: 'unknown', latency: null, message: 'Aguardando verificação...' },
@@ -272,6 +274,14 @@ const App: React.FC = () => {
     setServices(results);
     setIsCheckingServices(false);
   }, []); 
+
+  useEffect(() => {
+    const fetchAI = async () => {
+        const insights = await generateAIInsights();
+        setAiInsights(insights);
+    };
+    fetchAI();
+  }, []);
 
   // --- SINCRONIZAÇÃO DE DADOS ---
 
@@ -590,8 +600,9 @@ const App: React.FC = () => {
 
   // --- GERAÇÃO DE STORIES (INSIGHTS) ---
   const insights = useMemo(() => {
-      return analyzePortfolio(memoizedPortfolioData.portfolio, marketIndicators.ipca);
-  }, [memoizedPortfolioData.portfolio, marketIndicators.ipca]);
+      const portfolioInsights = analyzePortfolio(memoizedPortfolioData.portfolio, marketIndicators.ipca);
+      return [...portfolioInsights, ...aiInsights].sort((a, b) => (b.score || 0) - (a.score || 0));
+  }, [memoizedPortfolioData.portfolio, marketIndicators.ipca, aiInsights]);
 
   // --- LOGICA DE NOTIFICAÇÕES INTELIGENTES ---
   useEffect(() => {
