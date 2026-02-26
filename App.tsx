@@ -600,8 +600,14 @@ const App: React.FC = () => {
 
   // --- GERAÇÃO DE STORIES (INSIGHTS) ---
   const insights = useMemo(() => {
-      const portfolioInsights = analyzePortfolio(memoizedPortfolioData.portfolio, marketIndicators.ipca);
-      return [...portfolioInsights, ...aiInsights].sort((a, b) => (b.score || 0) - (a.score || 0));
+      try {
+          const portfolioInsights = analyzePortfolio(memoizedPortfolioData.portfolio || [], marketIndicators.ipca || 0);
+          const safeAiInsights = Array.isArray(aiInsights) ? aiInsights : [];
+          return [...portfolioInsights, ...safeAiInsights].sort((a, b) => (b.score || 0) - (a.score || 0));
+      } catch (err) {
+          console.error("Error generating insights:", err);
+          return [];
+      }
   }, [memoizedPortfolioData.portfolio, marketIndicators.ipca, aiInsights]);
 
   // --- LOGICA DE NOTIFICAÇÕES INTELIGENTES ---

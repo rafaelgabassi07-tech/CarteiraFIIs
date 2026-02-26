@@ -1098,82 +1098,99 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
   const magicReachedCount = magicNumberData.achieved.length;
 
   const goalsData = useMemo(() => {
-      const safeBalance = balance || 0;
-      const safeIncome = incomeData.currentMonth || 0;
-      const sectors = new Set(portfolio.map(p => p.segment));
-      
-      const levels = [
-          { level: 1, name: 'Iniciante', target: 1000 },
-          { level: 2, name: 'Aprendiz', target: 5000 },
-          { level: 3, name: 'Poupador', target: 10000 },
-          { level: 4, name: 'Investidor', target: 25000 },
-          { level: 5, name: 'Acumulador', target: 50000 },
-          { level: 6, name: 'Multiplicador', target: 100000 },
-          { level: 7, name: 'Barão', target: 500000 },
-          { level: 8, name: 'Independente', target: 1000000 },
-          { level: 9, name: 'Magnata', target: 5000000 },
-      ];
+      try {
+          const safeBalance = balance || 0;
+          const safeIncome = (incomeData && incomeData.currentMonth) || 0;
+          const safePortfolio = portfolio || [];
+          const sectors = new Set(safePortfolio.map(p => p.segment || 'Geral'));
+          
+          const levels = [
+              { level: 1, name: 'Iniciante', target: 1000 },
+              { level: 2, name: 'Aprendiz', target: 5000 },
+              { level: 3, name: 'Poupador', target: 10000 },
+              { level: 4, name: 'Investidor', target: 25000 },
+              { level: 5, name: 'Acumulador', target: 50000 },
+              { level: 6, name: 'Multiplicador', target: 100000 },
+              { level: 7, name: 'Barão', target: 500000 },
+              { level: 8, name: 'Independente', target: 1000000 },
+              { level: 9, name: 'Magnata', target: 5000000 },
+          ];
 
-      const currentLevelIdx = levels.findIndex(l => safeBalance < l.target);
-      const currentLevel = levels[currentLevelIdx === -1 ? levels.length - 1 : Math.max(0, currentLevelIdx - 1)];
-      const nextLevel = levels[currentLevel.level] || { ...currentLevel, target: currentLevel.target * 2 };
-      const prevTarget = currentLevel.level > 1 ? levels[currentLevel.level - 2].target : 0;
-      const progress = Math.min(100, ((safeBalance - prevTarget) / (nextLevel.target - prevTarget)) * 100);
+          const currentLevelIdx = levels.findIndex(l => safeBalance < l.target);
+          const currentLevel = levels[currentLevelIdx === -1 ? levels.length - 1 : Math.max(0, currentLevelIdx - 1)];
+          const nextLevel = levels[currentLevel.level] || { ...currentLevel, target: currentLevel.target * 2 };
+          const prevTarget = currentLevel.level > 1 ? levels[currentLevel.level - 2].target : 0;
+          const progress = Math.min(100, ((safeBalance - prevTarget) / (nextLevel.target - prevTarget)) * 100);
 
-      const MIN_WAGE = 1412;
-      
-      // Conquistas organizadas por categoria (Total 25+)
-      const achievements = [
-          // PATRIMÔNIO (Wealth)
-          { id: 'start', cat: 'WEALTH', label: 'Primeiro Passo', sub: 'Patrimônio > R$ 0', icon: Wallet, unlocked: safeBalance > 0, color: 'from-emerald-400 to-emerald-600' },
-          { id: '100r', cat: 'WEALTH', label: 'Cem Reais', sub: 'Patrimônio > R$ 100', icon: Coins, unlocked: safeBalance >= 100, color: 'from-emerald-300 to-teal-500' },
-          { id: '500r', cat: 'WEALTH', label: 'Quinhentos', sub: 'Patrimônio > R$ 500', icon: Coins, unlocked: safeBalance >= 500, color: 'from-teal-400 to-emerald-600' },
-          { id: '1k', cat: 'WEALTH', label: 'Semente', sub: 'Patrimônio > 1k', icon: Star, unlocked: safeBalance >= 1000, color: 'from-lime-400 to-emerald-500' },
-          { id: '5k', cat: 'WEALTH', label: 'Jardineiro', sub: 'Patrimônio > 5k', icon: Star, unlocked: safeBalance >= 5000, color: 'from-green-400 to-emerald-600' },
-          { id: '10k', cat: 'WEALTH', label: 'Clube 10k', sub: 'Patrimônio > 10k', icon: Coins, unlocked: safeBalance >= 10000, color: 'from-amber-400 to-orange-500' },
-          { id: '25k', cat: 'WEALTH', label: 'Construtor', sub: 'Patrimônio > 25k', icon: Building2, unlocked: safeBalance >= 25000, color: 'from-cyan-400 to-blue-500' },
-          { id: '50k', cat: 'WEALTH', label: 'Barão', sub: 'Patrimônio > 50k', icon: Gem, unlocked: safeBalance >= 50000, color: 'from-violet-400 to-purple-600' },
-          { id: '100k', cat: 'WEALTH', label: 'Elite 100k', sub: 'Patrimônio > 100k', icon: Trophy, unlocked: safeBalance >= 100000, color: 'from-yellow-300 to-amber-500' },
-          { id: '500k', cat: 'WEALTH', label: 'Meio Milhão', sub: 'Patrimônio > 500k', icon: Crown, unlocked: safeBalance >= 500000, color: 'from-rose-400 to-red-600' },
-          { id: '1m', cat: 'WEALTH', label: 'Milionário', sub: 'Patrimônio > 1M', icon: Rocket, unlocked: safeBalance >= 1000000, color: 'from-fuchsia-500 to-pink-600' },
+          const MIN_WAGE = 1412;
+          const safeMagicCount = magicReachedCount || 0;
+          const safeAlloc = allocationData || { totals: { fiis: 0, stocks: 0 } };
+          
+          // Conquistas organizadas por categoria (Total 25+)
+          const achievements = [
+              // PATRIMÔNIO (Wealth)
+              { id: 'start', cat: 'WEALTH', label: 'Primeiro Passo', sub: 'Patrimônio > R$ 0', icon: Wallet, unlocked: safeBalance > 0, color: 'from-emerald-400 to-emerald-600' },
+              { id: '100r', cat: 'WEALTH', label: 'Cem Reais', sub: 'Patrimônio > R$ 100', icon: Coins, unlocked: safeBalance >= 100, color: 'from-emerald-300 to-teal-500' },
+              { id: '500r', cat: 'WEALTH', label: 'Quinhentos', sub: 'Patrimônio > R$ 500', icon: Coins, unlocked: safeBalance >= 500, color: 'from-teal-400 to-emerald-600' },
+              { id: '1k', cat: 'WEALTH', label: 'Semente', sub: 'Patrimônio > 1k', icon: Star, unlocked: safeBalance >= 1000, color: 'from-lime-400 to-emerald-500' },
+              { id: '5k', cat: 'WEALTH', label: 'Jardineiro', sub: 'Patrimônio > 5k', icon: Star, unlocked: safeBalance >= 5000, color: 'from-green-400 to-emerald-600' },
+              { id: '10k', cat: 'WEALTH', label: 'Clube 10k', sub: 'Patrimônio > 10k', icon: Coins, unlocked: safeBalance >= 10000, color: 'from-amber-400 to-orange-500' },
+              { id: '25k', cat: 'WEALTH', label: 'Construtor', sub: 'Patrimônio > 25k', icon: Building2, unlocked: safeBalance >= 25000, color: 'from-cyan-400 to-blue-500' },
+              { id: '50k', cat: 'WEALTH', label: 'Barão', sub: 'Patrimônio > 50k', icon: Gem, unlocked: safeBalance >= 50000, color: 'from-violet-400 to-purple-600' },
+              { id: '100k', cat: 'WEALTH', label: 'Elite 100k', sub: 'Patrimônio > 100k', icon: Trophy, unlocked: safeBalance >= 100000, color: 'from-yellow-300 to-amber-500' },
+              { id: '500k', cat: 'WEALTH', label: 'Meio Milhão', sub: 'Patrimônio > 500k', icon: Crown, unlocked: safeBalance >= 500000, color: 'from-rose-400 to-red-600' },
+              { id: '1m', cat: 'WEALTH', label: 'Milionário', sub: 'Patrimônio > 1M', icon: Rocket, unlocked: safeBalance >= 1000000, color: 'from-fuchsia-500 to-pink-600' },
 
-          // RENDA (Income)
-          { id: 'income_start', cat: 'INCOME', label: 'Renda Viva', sub: 'Recebeu proventos', icon: CircleDollarSign, unlocked: safeIncome > 0, color: 'from-emerald-400 to-green-600' },
-          { id: 'cafe', cat: 'INCOME', label: 'Cafezinho', sub: 'Renda > R$ 5', icon: Coffee, unlocked: safeIncome >= 5, color: 'from-amber-300 to-orange-500' },
-          { id: 'passagem', cat: 'INCOME', label: 'Passagem', sub: 'Renda > R$ 10', icon: Plane, unlocked: safeIncome >= 10, color: 'from-orange-400 to-red-500' },
-          { id: 'lunch', cat: 'INCOME', label: 'Almoço Grátis', sub: 'Renda > R$ 20', icon: Coffee, unlocked: safeIncome >= 20, color: 'from-orange-400 to-amber-600' },
-          { id: 'streaming', cat: 'INCOME', label: 'Streaming', sub: 'Renda > R$ 50', icon: Play, unlocked: safeIncome >= 50, color: 'from-indigo-400 to-blue-600' },
-          { id: 'dinner', cat: 'INCOME', label: 'Jantar Fora', sub: 'Renda > R$ 100', icon: Award, unlocked: safeIncome >= 100, color: 'from-pink-400 to-rose-500' },
-          { id: 'market', cat: 'INCOME', label: 'Mercado Pago', sub: 'Renda > R$ 500', icon: ShoppingCart, unlocked: safeIncome >= 500, color: 'from-blue-400 to-indigo-600' },
-          { id: 'half_wage', cat: 'INCOME', label: 'Meio Salário', sub: 'Renda > R$ 700', icon: Anchor, unlocked: safeIncome >= (MIN_WAGE/2), color: 'from-sky-400 to-cyan-600' },
-          { id: 'wage', cat: 'INCOME', label: 'Aluguel Free', sub: 'Renda > 1 Salário', icon: Umbrella, unlocked: safeIncome >= MIN_WAGE, color: 'from-violet-400 to-purple-600' },
-          { id: 'freedom', cat: 'INCOME', label: 'Liberdade', sub: 'Renda > R$ 3k', icon: Plane, unlocked: safeIncome >= 3000, color: 'from-teal-400 to-emerald-600' },
-          { id: 'retire', cat: 'INCOME', label: 'Aposentado', sub: 'Renda > R$ 5k', icon: CheckCircle2, unlocked: safeIncome >= 5000, color: 'from-indigo-500 to-violet-700' },
+              // RENDA (Income)
+              { id: 'income_start', cat: 'INCOME', label: 'Renda Viva', sub: 'Recebeu proventos', icon: CircleDollarSign, unlocked: safeIncome > 0, color: 'from-emerald-400 to-green-600' },
+              { id: 'cafe', cat: 'INCOME', label: 'Cafezinho', sub: 'Renda > R$ 5', icon: Coffee, unlocked: safeIncome >= 5, color: 'from-amber-300 to-orange-500' },
+              { id: 'passagem', cat: 'INCOME', label: 'Passagem', sub: 'Renda > R$ 10', icon: Plane, unlocked: safeIncome >= 10, color: 'from-orange-400 to-red-500' },
+              { id: 'lunch', cat: 'INCOME', label: 'Almoço Grátis', sub: 'Renda > R$ 20', icon: Coffee, unlocked: safeIncome >= 20, color: 'from-orange-400 to-amber-600' },
+              { id: 'streaming', cat: 'INCOME', label: 'Streaming', sub: 'Renda > R$ 50', icon: Play, unlocked: safeIncome >= 50, color: 'from-indigo-400 to-blue-600' },
+              { id: 'dinner', cat: 'INCOME', label: 'Jantar Fora', sub: 'Renda > R$ 100', icon: Award, unlocked: safeIncome >= 100, color: 'from-pink-400 to-rose-500' },
+              { id: 'market', cat: 'INCOME', label: 'Mercado Pago', sub: 'Renda > R$ 500', icon: ShoppingCart, unlocked: safeIncome >= 500, color: 'from-blue-400 to-indigo-600' },
+              { id: 'half_wage', cat: 'INCOME', label: 'Meio Salário', sub: 'Renda > R$ 700', icon: Anchor, unlocked: safeIncome >= (MIN_WAGE/2), color: 'from-sky-400 to-cyan-600' },
+              { id: 'wage', cat: 'INCOME', label: 'Aluguel Free', sub: 'Renda > 1 Salário', icon: Umbrella, unlocked: safeIncome >= MIN_WAGE, color: 'from-violet-400 to-purple-600' },
+              { id: 'freedom', cat: 'INCOME', label: 'Liberdade', sub: 'Renda > R$ 3k', icon: Plane, unlocked: safeIncome >= 3000, color: 'from-teal-400 to-emerald-600' },
+              { id: 'retire', cat: 'INCOME', label: 'Aposentado', sub: 'Renda > R$ 5k', icon: CheckCircle2, unlocked: safeIncome >= 5000, color: 'from-indigo-500 to-violet-700' },
 
-          // ESTRATÉGIA (Strategy)
-          { id: 'first_asset', cat: 'STRATEGY', label: 'Pé na Porta', sub: '1+ Ativo', icon: Target, unlocked: portfolio.length >= 1, color: 'from-emerald-400 to-teal-500' },
-          { id: 'duo', cat: 'STRATEGY', label: 'Dupla Dinâmica', sub: '2+ Ativos', icon: Layers, unlocked: portfolio.length >= 2, color: 'from-teal-400 to-cyan-500' },
-          { id: 'trio', cat: 'STRATEGY', label: 'Trio Parada Dura', sub: '3+ Ativos', icon: Layers, unlocked: portfolio.length >= 3, color: 'from-cyan-400 to-blue-500' },
-          { id: 'diversified', cat: 'STRATEGY', label: 'Iniciante', sub: '5+ Ativos', icon: Layers, unlocked: portfolio.length >= 5, color: 'from-blue-400 to-indigo-500' },
-          { id: 'manager', cat: 'STRATEGY', label: 'Gestor', sub: '15+ Ativos', icon: Briefcase, unlocked: portfolio.length >= 15, color: 'from-slate-500 to-zinc-700' },
-          { id: 'sector_2', cat: 'STRATEGY', label: 'Setorista', sub: '2+ Setores', icon: PieIcon, unlocked: sectors.size >= 2, color: 'from-orange-400 to-amber-500' },
-          { id: 'sectors', cat: 'STRATEGY', label: 'Rei dos Setores', sub: '5+ Setores', icon: PieIcon, unlocked: sectors.size >= 5, color: 'from-pink-400 to-rose-500' },
-          { id: 'snowball', cat: 'STRATEGY', label: 'Bola de Neve', sub: '1 Ativo Infinito', icon: Snowflake, unlocked: magicReachedCount >= 1, color: 'from-cyan-400 to-blue-500' },
-          { id: 'avalanche', cat: 'STRATEGY', label: 'Avalanche', sub: '5 Ativos Infinitos', icon: Zap, unlocked: magicReachedCount >= 5, color: 'from-yellow-400 to-orange-500' },
-          { id: 'lover', cat: 'STRATEGY', label: 'FII Lover', sub: 'Mais FIIs', icon: Building2, unlocked: allocationData.totals.fiis > allocationData.totals.stocks, color: 'from-indigo-400 to-purple-500' },
-          { id: 'stock_fan', cat: 'STRATEGY', label: 'Ações Fan', sub: 'Mais Ações', icon: TrendingUp, unlocked: allocationData.totals.stocks > allocationData.totals.fiis, color: 'from-sky-400 to-blue-600' },
-          { id: 'fii_fan', cat: 'STRATEGY', label: 'Imobiliário', sub: 'Possui FIIs', icon: Building2, unlocked: allocationData.totals.fiis > 0, color: 'from-emerald-400 to-teal-600' },
-          { id: 'balanced', cat: 'STRATEGY', label: 'Híbrido', sub: 'FIIs + Ações', icon: Target, unlocked: allocationData.totals.fiis > 0 && allocationData.totals.stocks > 0, color: 'from-amber-400 to-orange-500' }
-      ];
+              // ESTRATÉGIA (Strategy)
+              { id: 'first_asset', cat: 'STRATEGY', label: 'Pé na Porta', sub: '1+ Ativo', icon: Target, unlocked: safePortfolio.length >= 1, color: 'from-emerald-400 to-teal-500' },
+              { id: 'duo', cat: 'STRATEGY', label: 'Dupla Dinâmica', sub: '2+ Ativos', icon: Layers, unlocked: safePortfolio.length >= 2, color: 'from-teal-400 to-cyan-500' },
+              { id: 'trio', cat: 'STRATEGY', label: 'Trio Parada Dura', sub: '3+ Ativos', icon: Layers, unlocked: safePortfolio.length >= 3, color: 'from-cyan-400 to-blue-500' },
+              { id: 'diversified', cat: 'STRATEGY', label: 'Iniciante', sub: '5+ Ativos', icon: Layers, unlocked: safePortfolio.length >= 5, color: 'from-blue-400 to-indigo-500' },
+              { id: 'manager', cat: 'STRATEGY', label: 'Gestor', sub: '15+ Ativos', icon: Briefcase, unlocked: safePortfolio.length >= 15, color: 'from-slate-500 to-zinc-700' },
+              { id: 'sector_2', cat: 'STRATEGY', label: 'Setorista', sub: '2+ Setores', icon: PieIcon, unlocked: sectors.size >= 2, color: 'from-orange-400 to-amber-500' },
+              { id: 'sectors', cat: 'STRATEGY', label: 'Rei dos Setores', sub: '5+ Setores', icon: PieIcon, unlocked: sectors.size >= 5, color: 'from-pink-400 to-rose-500' },
+              { id: 'snowball', cat: 'STRATEGY', label: 'Bola de Neve', sub: '1 Ativo Infinito', icon: Snowflake, unlocked: safeMagicCount >= 1, color: 'from-cyan-400 to-blue-500' },
+              { id: 'avalanche', cat: 'STRATEGY', label: 'Avalanche', sub: '5 Ativos Infinitos', icon: Zap, unlocked: safeMagicCount >= 5, color: 'from-yellow-400 to-orange-500' },
+              { id: 'lover', cat: 'STRATEGY', label: 'FII Lover', sub: 'Mais FIIs', icon: Building2, unlocked: safeAlloc.totals.fiis > safeAlloc.totals.stocks, color: 'from-indigo-400 to-purple-500' },
+              { id: 'stock_fan', cat: 'STRATEGY', label: 'Ações Fan', sub: 'Mais Ações', icon: TrendingUp, unlocked: safeAlloc.totals.stocks > safeAlloc.totals.fiis, color: 'from-sky-400 to-blue-600' },
+              { id: 'fii_fan', cat: 'STRATEGY', label: 'Imobiliário', sub: 'Possui FIIs', icon: Building2, unlocked: safeAlloc.totals.fiis > 0, color: 'from-emerald-400 to-teal-600' },
+              { id: 'balanced', cat: 'STRATEGY', label: 'Híbrido', sub: 'FIIs + Ações', icon: Target, unlocked: safeAlloc.totals.fiis > 0 && safeAlloc.totals.stocks > 0, color: 'from-amber-400 to-orange-500' }
+          ];
 
-      return { 
-          currentLevel, nextLevel, progress, achievements,
-          unlockedCount: achievements.filter(a => a.unlocked).length,
-          totalAchievements: achievements.length,
-          income: { current: safeIncome, target: safeIncome * 1.5 || 100 },
-          freedom: { current: safeIncome, target: MIN_WAGE }
-      };
-  }, [balance, incomeData.currentMonth, magicReachedCount, portfolio.length, allocationData]);
+          return { 
+              currentLevel, nextLevel, progress, achievements,
+              unlockedCount: achievements.filter(a => a.unlocked).length,
+              totalAchievements: achievements.length,
+              income: { current: safeIncome, target: safeIncome * 1.5 || 100 },
+              freedom: { current: safeIncome, target: MIN_WAGE }
+          };
+      } catch (err) {
+          console.error("Error calculating goals data:", err);
+          return {
+              currentLevel: { level: 1, name: 'Erro', target: 0 },
+              nextLevel: { level: 2, name: 'Erro', target: 0 },
+              progress: 0,
+              achievements: [],
+              unlockedCount: 0,
+              totalAchievements: 0,
+              income: { current: 0, target: 100 },
+              freedom: { current: 0, target: 1412 }
+          };
+      }
+  }, [balance, incomeData, magicReachedCount, portfolio, allocationData]);
 
   const filteredAchievements = useMemo(() => {
       return goalsData.achievements.filter(a => a.cat === goalTab);
@@ -1620,30 +1637,30 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                     </button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar">
-                    <div className="grid grid-cols-3 gap-2">
+                <div className="flex-1 overflow-y-auto min-h-0 pb-20 no-scrollbar">
+                    <div className="grid grid-cols-3 gap-1.5">
                         {filteredAchievements.map((achievement: any) => (
                             <motion.div 
                                 key={achievement.id} 
                                 layout
                                 initial={{ opacity: 0, scale: 0.9 }}
                                 animate={{ opacity: 1, scale: 1 }}
-                                className={`relative p-3 rounded-2xl flex flex-col items-center text-center transition-all duration-500 border overflow-hidden group aspect-square justify-center ${
+                                className={`relative p-2.5 rounded-2xl flex flex-col items-center text-center transition-all duration-500 border overflow-hidden group aspect-square justify-center ${
                                     achievement.unlocked 
                                         ? 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 shadow-sm' 
                                         : 'bg-zinc-100 dark:bg-zinc-900/50 border-transparent opacity-50 grayscale'
                                 }`}
                             >
-                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 shadow-sm relative z-10 transition-transform duration-300 group-hover:scale-110 ${
+                                <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-1.5 shadow-sm relative z-10 transition-transform duration-300 group-hover:scale-110 ${
                                     achievement.unlocked 
                                         ? `bg-gradient-to-br ${achievement.color} text-white shadow-md` 
                                         : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-400'
                                 }`}>
-                                    {achievement.unlocked ? <achievement.icon className="w-5 h-5" strokeWidth={2} /> : <Lock className="w-4 h-4" />}
+                                    {achievement.unlocked ? <achievement.icon className="w-4.5 h-4.5" strokeWidth={2} /> : <Lock className="w-3.5 h-3.5" />}
                                 </div>
                                 
-                                <h4 className={`text-[10px] font-black leading-tight mb-0.5 ${achievement.unlocked ? 'text-zinc-900 dark:text-white' : 'text-zinc-500'}`}>{achievement.label}</h4>
-                                <p className="text-[8px] font-medium text-zinc-400 leading-tight line-clamp-2">{achievement.sub}</p>
+                                <h4 className={`text-[9px] font-black leading-tight mb-0.5 ${achievement.unlocked ? 'text-zinc-900 dark:text-white' : 'text-zinc-500'}`}>{achievement.label}</h4>
+                                <p className="text-[7.5px] font-medium text-zinc-400 leading-tight line-clamp-2">{achievement.sub}</p>
                                 
                                 {achievement.unlocked && (
                                     <div className={`absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r ${achievement.color} opacity-50`}></div>
