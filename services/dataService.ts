@@ -1,8 +1,8 @@
 
-import { DividendReceipt, AssetType, AssetFundamentals, MarketIndicators, ScrapeResult, AssetPosition } from "../types";
+import { DividendReceipt, AssetType, AssetFundamentals, MarketIndicators, ScrapeResult, AssetPosition, Transaction } from "../types";
 import { supabase } from "./supabase";
 import { getQuotes } from "./brapiService";
-import { normalizeTicker, preciseMul, parseDateToLocal } from "./portfolioRules";
+import { normalizeTicker, preciseMul, parseDateToLocal, getQuantityOnDate } from "./portfolioRules";
 
 export interface UnifiedMarketData {
   dividends: DividendReceipt[];
@@ -200,7 +200,7 @@ export const triggerScraperUpdate = async (tickers: string[], force = false): Pr
 };
 
 // --- ROBÔ DE PROVENTOS (SEM IA) ---
-export const fetchFutureAnnouncements = async (portfolio: AssetPosition[]): Promise<FutureDividendPrediction[]> => {
+export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], transactions: Transaction[]): Promise<FutureDividendPrediction[]> => {
     if (!portfolio || portfolio.length === 0) return [];
 
     const tickers = portfolio.map(p => normalizeTicker(p.ticker));
@@ -210,7 +210,6 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[]): Prom
 
     try {
         // 1. Dados Confirmados ("O Martelo do Supabase")
-        // Trazemos tudo para o cliente filtrar, é mais seguro contra fuso horário do DB
         const { data, error } = await supabase
             .from('market_dividends')
             .select('*')
@@ -223,43 +222,46 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[]): Prom
         }
         
         const predictions: FutureDividendPrediction[] = [];
-        
-        // Data de corte: Ontem (para não perder eventos de fuso horário de "hoje")
-        const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - 1);
-        const cutoffTime = cutoffDate.getTime();
-
         const now = new Date();
         now.setHours(0,0,0,0);
 
         if (data && data.length > 0) {
             data.forEach((div: any) => {
                 const normalizedTicker = normalizeTicker(div.ticker);
-                const asset = portfolio.find(p => normalizeTicker(p.ticker) === normalizedTicker);
-                if (!asset || asset.quantity <= 0) return;
+                
+                // --- LÓGICA DE ELEGIBILIDADE REAL ---
+                // Se temos a data com, verificamos a quantidade que o usuário tinha naquela data.
+                // Se não temos a data com (raro para confirmados), usamos a quantidade atual.
+                let quantityAtDateCom = 0;
+                if (div.date_com) {
+                    quantityAtDateCom = getQuantityOnDate(normalizedTicker, div.date_com, transactions);
+                } else {
+                    const asset = portfolio.find(p => normalizeTicker(p.ticker) === normalizedTicker);
+                    quantityAtDateCom = asset?.quantity || 0;
+                }
 
-                // --- LÓGICA DE AGENDA APRIMORADA ---
+                if (quantityAtDateCom <= 0) return;
+
+                // --- LÓGICA DE RELEVÂNCIA ---
                 let isRelevant = false;
                 
-                // 1. Pagamento Futuro ou Recente
                 if (div.payment_date) {
                     const payDate = parseDateToLocal(div.payment_date);
-                    // Mostra se for futuro ou se foi nos últimos 3 dias (para dar tempo de ver que caiu)
+                    // Mostra se for futuro ou se foi nos últimos 7 dias (janela maior para conferência)
                     const recentCutoff = new Date(now);
-                    recentCutoff.setDate(recentCutoff.getDate() - 3);
+                    recentCutoff.setDate(recentCutoff.getDate() - 7);
                     
                     if (payDate && payDate >= recentCutoff) isRelevant = true;
                 } else {
-                    // 2. Sem data de pagamento = A Definir (Relevante se Data Com for recente ou futura)
+                    // Sem data de pagamento = A Definir
                     if (div.date_com) {
                         const dCom = parseDateToLocal(div.date_com);
-                        // Se data com foi nos últimos 60 dias e ainda não pagou, é relevante
+                        // Se data com foi nos últimos 90 dias e ainda não pagou, é relevante
                         const comCutoff = new Date(now);
-                        comCutoff.setDate(comCutoff.getDate() - 60);
+                        comCutoff.setDate(comCutoff.getDate() - 90);
                         
                         if (dCom && dCom >= comCutoff) isRelevant = true;
                     } else {
-                        // Sem data com e sem data pag? Estranho, mas mostra.
                         isRelevant = true;
                     }
                 }
@@ -269,7 +271,7 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[]): Prom
                 const rate = Number(div.rate);
                 if (rate <= 0) return;
 
-                const total = preciseMul(asset.quantity, rate);
+                const total = preciseMul(quantityAtDateCom, rate);
                 
                 const dateCom = div.date_com ? parseDateToLocal(div.date_com) : null;
                 const refDate = dateCom || now;
@@ -281,25 +283,22 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[]): Prom
                     dateCom: div.date_com || 'Já ocorreu',
                     paymentDate: div.payment_date || 'A Definir',
                     rate: rate,
-                    quantity: asset.quantity,
+                    quantity: quantityAtDateCom,
                     projectedTotal: total,
                     type: div.type || 'DIV', 
                     daysToDateCom,
                     status: 'CONFIRMED', 
-                    reasoning: `Confirmado: ${div.type}`
+                    reasoning: `Confirmado: ${div.type} para quem possuía em ${div.date_com || 'data com'}`
                 });
             });
         }
 
         return predictions.sort((a,b) => {
-            // Ordena por data de pagamento (A Definir vai pro final ou inicio dependendo da logica, aqui queremos proximo)
-            // Se A Definir, usa Data Com + 15 dias como estimativa para ordenação
             const getSortDate = (p: FutureDividendPrediction) => {
                 if (p.paymentDate !== 'A Definir') return p.paymentDate;
-                if (p.dateCom !== 'Já ocorreu') return p.dateCom; // Fallback
-                return '9999-99-99'; // Fim da fila
+                if (p.dateCom !== 'Já ocorreu') return p.dateCom;
+                return '9999-99-99';
             };
-            
             return getSortDate(a).localeCompare(getSortDate(b));
         });
 

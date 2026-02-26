@@ -321,7 +321,7 @@ const App: React.FC = () => {
       // Calcula projeções baseadas nos dados atualizados e insere na agenda
       // Recalcula portfolio temporário para o robô ter qtd correta
       const tempPortfolio = processPortfolio(txsToUse, [], {}, data.metadata).portfolio;
-      const predictions = await fetchFutureAnnouncements(tempPortfolio);
+      const predictions = await fetchFutureAnnouncements(tempPortfolio, txsToUse);
       
       if (predictions.length > 0) {
           const predictionReceipts: DividendReceipt[] = predictions.map(p => ({
