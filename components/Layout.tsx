@@ -209,10 +209,39 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
   const { isMounted, isVisible } = useAnimatedVisibility(isOpen, 400);
   const [dragY, setDragY] = useState(0);
 
+  // Scroll Lock Effect
+  useEffect(() => {
+    if (isOpen) {
+      const scrollY = window.scrollY;
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+      document.body.style.top = `-${scrollY}px`;
+    } else {
+      const scrollY = document.body.style.top;
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+      document.body.style.top = '';
+      window.scrollTo(0, parseInt(scrollY || '0') * -1);
+    }
+    return () => {
+      // Cleanup only if unmounting while open (edge case)
+      if (isOpen) {
+          const scrollY = document.body.style.top;
+          document.body.style.overflow = '';
+          document.body.style.position = '';
+          document.body.style.width = '';
+          document.body.style.top = '';
+          window.scrollTo(0, parseInt(scrollY || '0') * -1);
+      }
+    };
+  }, [isOpen]);
+
   if (!isMounted) return null;
 
   return createPortal(
-    <div className={`fixed inset-0 z-[9999] flex flex-col justify-end isolate`}>
+    <div className={`fixed inset-0 z-[9999] flex flex-col justify-end isolate touch-none`}>
       <div 
           onClick={onClose} 
           className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-500"
@@ -228,6 +257,7 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
       >
         <div className="w-full flex justify-center pt-3 pb-3 bg-white dark:bg-zinc-900 shrink-0 cursor-grab active:cursor-grabbing touch-none z-10"
              onTouchMove={(e) => {
+               // Simple drag logic
                const val = e.touches[0].clientY - (window.innerHeight - (e.currentTarget.parentElement?.clientHeight || 0));
                if(val > 0) setDragY(val);
              }}
@@ -239,7 +269,7 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
           <div className="w-12 h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full transition-colors hover:bg-zinc-300 dark:hover:bg-zinc-700"></div>
         </div>
 
-        <div className="flex-1 min-h-0 w-full relative flex flex-col">
+        <div className="flex-1 min-h-0 w-full relative flex flex-col overflow-y-auto overscroll-contain">
             {children}
         </div>
       </div>

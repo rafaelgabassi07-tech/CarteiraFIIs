@@ -174,6 +174,20 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
         const divs = filteredData.map(d => d.dividend).filter(d => d > 0);
         const avgDividend = divs.length > 0 ? divs.reduce((a, b) => a + b, 0) / divs.length : 0;
 
+        // --- PROJEÇÃO DE DIVIDENDOS (MÉDIA 12M) ---
+        // Calcula o Yield on Cost médio dos últimos 12 meses
+        // Total de dividendos recebidos nos últimos 12 meses / Valor investido médio no período
+        const last12Months = fullHistory.slice(-12);
+        const totalDivs12m = last12Months.reduce((acc, d) => acc + d.dividend, 0);
+        const avgInvested12m = last12Months.reduce((acc, d) => acc + d.invested, 0) / (last12Months.length || 1);
+        
+        // Yield Anualizado Histórico
+        const historicalYield = avgInvested12m > 0 ? totalDivs12m / avgInvested12m : 0;
+        
+        // Projeção Anual: Investido Atual * Yield Histórico
+        const projectedAnnualDividends = totalInvested * historicalYield;
+        const projectedMonthlyDividends = projectedAnnualDividends / 12;
+
         // CAGR Calculation (Approximate)
         const years = filteredData.length / 12;
         const cagr = years >= 1 && first.marketValue > 0 ? (Math.pow(totalValue / first.marketValue, 1 / years) - 1) * 100 : roi;
@@ -221,9 +235,12 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
             negativeMonths,
             avgMonthlyReturn,
             volatility,
-            winRate: (positiveMonths + negativeMonths) > 0 ? (positiveMonths / (positiveMonths + negativeMonths)) * 100 : 0
+            winRate: (positiveMonths + negativeMonths) > 0 ? (positiveMonths / (positiveMonths + negativeMonths)) * 100 : 0,
+            projectedMonthlyDividends,
+            projectedAnnualDividends,
+            historicalYield
         };
-    }, [filteredData]);
+    }, [filteredData, fullHistory]);
 
     if (!stats) return null;
 
@@ -447,17 +464,38 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                                     <p className="text-base font-black text-zinc-800 dark:text-zinc-200 tracking-tight">{formatBRL(stats.avgContribution)}</p>
                                 </div>
                                 <div className="bg-zinc-50 dark:bg-zinc-900/30 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
-                                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Dividendos Médios</p>
-                                    <p className="text-base font-black text-zinc-800 dark:text-zinc-200 tracking-tight">{formatBRL(stats.avgDividend)}</p>
+                                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Proventos Totais</p>
+                                    <p className="text-base font-black text-indigo-500 tracking-tight">{formatBRL(stats.totalDividends)}</p>
                                 </div>
-                                <div className="col-span-2 bg-zinc-50 dark:bg-zinc-900/30 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 flex justify-between items-center">
+                            </div>
+                            
+                            {/* Projeção de Dividendos Destacada */}
+                            <div className="mt-4 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border border-emerald-500/20 rounded-2xl p-5 relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl -mr-10 -mt-10"></div>
+                                
+                                <div className="flex items-center gap-2 mb-3">
+                                    <div className="w-6 h-6 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                                        <Coins className="w-3.5 h-3.5" />
+                                    </div>
+                                    <h5 className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">Renda Passiva Projetada</h5>
+                                </div>
+                                
+                                <div className="flex justify-between items-end relative z-10">
                                     <div>
-                                        <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Proventos Totais</p>
-                                        <p className="text-lg font-black text-indigo-500 tracking-tight">{formatBRL(stats.totalDividends)}</p>
+                                        <p className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 mb-0.5">Média Mensal (Base 12M)</p>
+                                        <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 tracking-tighter">{formatBRL(stats.projectedMonthlyDividends)}</p>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Crescimento Orgânico</p>
-                                        <p className="text-lg font-black text-emerald-500 tracking-tight">+{((stats.marketValue - stats.invested) / stats.invested * 100).toFixed(1)}%</p>
+                                        <p className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 mb-0.5">Yield Histórico</p>
+                                        <p className="text-lg font-black text-zinc-700 dark:text-zinc-300 tracking-tight">{(stats.historicalYield * 100).toFixed(2)}%</p>
+                                    </div>
+                                </div>
+                                
+                                <div className="mt-3 pt-3 border-t border-emerald-500/10 flex items-center justify-between">
+                                    <p className="text-[9px] text-zinc-400">Projeção Anual: <span className="font-bold text-zinc-600 dark:text-zinc-300">{formatBRL(stats.projectedAnnualDividends)}</span></p>
+                                    <div className="flex items-center gap-1 text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                                        <TrendingUp className="w-2.5 h-2.5" />
+                                        Meta: {((stats.projectedMonthlyDividends / (nextLevel?.target ? nextLevel.target * 0.005 : 100)) * 100).toFixed(1)}%
                                     </div>
                                 </div>
                             </div>
@@ -563,17 +601,10 @@ const StoryViewer = ({
     const [currentIndex, setCurrentIndex] = useState(0);
     const [progress, setProgress] = useState(0);
     const [isPaused, setIsPaused] = useState(false);
+    const longPressTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+    const isLongPressRef = React.useRef(false);
 
-    const nextStory = stories[currentIndex + 1];
-
-    // Preload next image
-    useEffect(() => {
-        if (nextStory && nextStory.imageUrl) {
-            const img = new Image();
-            img.src = nextStory.imageUrl;
-        }
-    }, [nextStory]);
-
+    // Initialize index based on ID
     useEffect(() => {
         if (isOpen && initialStoryId) {
             const idx = stories.findIndex(s => s.id === initialStoryId);
@@ -582,27 +613,29 @@ const StoryViewer = ({
                 setProgress(0);
                 onMarkAsViewed(stories[idx].id);
             }
+        } else if (isOpen) {
+            setCurrentIndex(0);
+            setProgress(0);
         }
     }, [isOpen, initialStoryId]);
 
+    // Timer Logic
     useEffect(() => {
-        if (!isOpen) return;
+        if (!isOpen || isPaused) return;
 
-        const STORY_DURATION = 6000;
-        const INTERVAL = 50; 
-        const increment = (INTERVAL / STORY_DURATION) * 100;
+        const DURATION = 5000; // 5 seconds per story
+        const INTERVAL = 50;
+        const STEP = (INTERVAL / DURATION) * 100;
 
         const timer = setInterval(() => {
-            if (!isPaused) {
-                setProgress(prev => {
-                    const next = prev + increment;
-                    if (next >= 100) {
-                        handleNext();
-                        return 0;
-                    }
-                    return next;
-                });
-            }
+            setProgress(prev => {
+                const next = prev + STEP;
+                if (next >= 100) {
+                    handleNext();
+                    return 0;
+                }
+                return next;
+            });
         }, INTERVAL);
 
         return () => clearInterval(timer);
@@ -630,12 +663,37 @@ const StoryViewer = ({
         }
     };
 
-    const handleTap = (e: React.MouseEvent) => {
-        const width = window.innerWidth;
-        const x = e.clientX;
-        if (x < width * 0.35) handlePrev();
-        else handleNext();
+    const handleTouchStart = () => {
+        isLongPressRef.current = false;
+        longPressTimerRef.current = setTimeout(() => {
+            isLongPressRef.current = true;
+            setIsPaused(true);
+        }, 200); // 200ms threshold for long press
     };
+
+    const handleTouchEnd = (e: React.MouseEvent | React.TouchEvent, action: 'prev' | 'next') => {
+        if (longPressTimerRef.current) {
+            clearTimeout(longPressTimerRef.current);
+        }
+        
+        setIsPaused(false);
+
+        if (!isLongPressRef.current) {
+            if (action === 'prev') handlePrev();
+            else handleNext();
+        }
+    };
+
+    // Preload next image
+    useEffect(() => {
+        if (currentIndex < stories.length - 1) {
+            const nextStory = stories[currentIndex + 1];
+            if (nextStory.imageUrl) {
+                const img = new Image();
+                img.src = nextStory.imageUrl;
+            }
+        }
+    }, [currentIndex, stories]);
 
     if (!isOpen) return null;
     const story = stories[currentIndex];
@@ -644,101 +702,157 @@ const StoryViewer = ({
     const gradient = getStoryGradient(story.type);
 
     return createPortal(
-        <div className="fixed inset-0 z-[99999] bg-black flex flex-col animate-in fade-in duration-300 touch-none">
-            {story.imageUrl && (
-                <div key={story.id} className="absolute inset-0 z-0 overflow-hidden">
-                    <img 
-                        src={story.imageUrl} 
-                        className="w-full h-full object-cover opacity-50 animate-in fade-in zoom-in-105 duration-1000 fill-mode-forwards" 
-                        alt=""
-                    />
-                    <div className="absolute inset-0 bg-black/40"></div>
-                </div>
-            )}
-            
-            <div className={`absolute inset-0 bg-gradient-to-br ${gradient} ${story.imageUrl ? 'opacity-60 mix-blend-overlay' : 'opacity-20'} transition-colors duration-700`}></div>
-            {!story.imageUrl && <div className="absolute inset-0 backdrop-blur-3xl"></div>}
-            
-            <div 
-                className="absolute inset-0 z-10"
-                onClick={handleTap}
-                onMouseDown={() => setIsPaused(true)}
-                onMouseUp={() => setIsPaused(false)}
-                onTouchStart={() => setIsPaused(true)}
-                onTouchEnd={() => setIsPaused(false)}
-            ></div>
-
-            <div className="relative z-20 flex flex-col h-full pointer-events-none">
-                <div className="flex gap-1.5 px-3 pt-safe top-2 mt-2">
-                    {stories.map((s, idx) => (
-                        <div key={s.id} className="h-1 flex-1 bg-white/20 rounded-full overflow-hidden">
-                            <div 
-                                className="h-full bg-white transition-all duration-100 ease-linear" 
-                                style={{ width: idx < currentIndex ? '100%' : idx === currentIndex ? `${progress}%` : '0%' }}
-                            ></div>
-                        </div>
-                    ))}
-                </div>
-
-                <div className="px-4 py-6 flex justify-between items-center mt-2 pointer-events-auto">
-                    <div className="flex items-center gap-3">
-                        <div className={`w-9 h-9 rounded-full flex items-center justify-center bg-gradient-to-br ${gradient} shadow-lg ring-2 ring-black/20`}>
-                            {getStoryIcon(story.type)}
-                        </div>
-                        <div>
-                            <p className="text-sm font-bold text-white drop-shadow-md">{story.relatedTicker || 'Insight'}</p>
-                            <p className="text-[10px] text-white/70 font-medium">InvestFIIs AI • {currentIndex + 1}/{stories.length}</p>
-                        </div>
+        <AnimatePresence mode='wait'>
+            {isOpen && (
+                <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-[99999] bg-black flex flex-col touch-none select-none"
+                >
+                    {/* Background Image/Gradient Layer */}
+                    <div className="absolute inset-0 z-0 overflow-hidden">
+                        <AnimatePresence mode='popLayout'>
+                            <motion.div 
+                                key={story.id}
+                                initial={{ scale: 1.1, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.5 }}
+                                className="absolute inset-0 w-full h-full"
+                            >
+                                {story.imageUrl ? (
+                                    <>
+                                        <img 
+                                            src={story.imageUrl} 
+                                            className="w-full h-full object-cover opacity-60" 
+                                            alt=""
+                                        />
+                                        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/90"></div>
+                                    </>
+                                ) : (
+                                    <div className={`w-full h-full bg-gradient-to-br ${gradient} opacity-20`}></div>
+                                )}
+                            </motion.div>
+                        </AnimatePresence>
+                        
+                        {/* Dynamic Overlay Gradient */}
+                        <div className={`absolute inset-0 bg-gradient-to-br ${gradient} mix-blend-overlay opacity-40 transition-colors duration-700`}></div>
+                        <div className="absolute inset-0 backdrop-blur-3xl opacity-30"></div>
                     </div>
-                    <button 
-                        onClick={(e) => { e.stopPropagation(); onClose(); }}
-                        className="w-9 h-9 flex items-center justify-center rounded-full bg-black/20 backdrop-blur-md border border-white/10 active:scale-95 transition-transform"
-                    >
-                        <X className="w-5 h-5 text-white" />
-                    </button>
-                </div>
-
-                <div className="flex-1 flex flex-col justify-center px-8 pb-20">
-                    <h1 className="text-3xl font-black text-white leading-tight mb-6 drop-shadow-lg tracking-tight anim-slide-up">
-                        {story.title}
-                    </h1>
                     
-                    <div className="bg-white/10 backdrop-blur-xl border border-white/10 p-6 rounded-[2rem] shadow-2xl mb-8 relative overflow-hidden anim-scale-in">
-                        <div className={`absolute top-0 left-0 w-1 h-full bg-gradient-to-b ${gradient}`}></div>
-                        <p className="text-lg font-medium text-white/95 leading-relaxed">
-                            {story.message}
-                        </p>
+                    {/* Tap Areas for Navigation */}
+                    <div className="absolute inset-0 z-10 flex">
+                        <div 
+                            className="w-[30%] h-full active:bg-white/5 transition-colors"
+                            onMouseDown={handleTouchStart}
+                            onMouseUp={(e) => handleTouchEnd(e, 'prev')}
+                            onTouchStart={handleTouchStart}
+                            onTouchEnd={(e) => handleTouchEnd(e, 'prev')}
+                        ></div>
+                        <div 
+                            className="w-[70%] h-full active:bg-white/5 transition-colors"
+                            onMouseDown={handleTouchStart}
+                            onMouseUp={(e) => handleTouchEnd(e, 'next')}
+                            onTouchStart={handleTouchStart}
+                            onTouchEnd={(e) => handleTouchEnd(e, 'next')}
+                        ></div>
                     </div>
 
-                    <div className="flex gap-3 items-center opacity-80 bg-black/20 self-start px-3 py-1.5 rounded-full backdrop-blur-md border border-white/5 anim-fade-in">
-                        <Info className="w-4 h-4 text-white" />
-                        <p className="text-xs text-white font-medium">
-                            {story.type === 'opportunity' ? "Analistas indicam revisão." : 
-                             story.type === 'warning' ? "Atenção aos fundamentos." :
-                             "Mantenha foco no longo prazo."}
-                        </p>
-                    </div>
-                </div>
+                    {/* Content Layer */}
+                    <div className="relative z-20 flex flex-col h-full pointer-events-none">
+                        {/* Progress Bars */}
+                        <div className="flex gap-1.5 px-3 pt-safe top-2 mt-4">
+                            {stories.map((s, idx) => (
+                                <div key={s.id} className="h-1 flex-1 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
+                                    <motion.div 
+                                        className="h-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.5)]" 
+                                        initial={{ width: idx < currentIndex ? '100%' : '0%' }}
+                                        animate={{ width: idx < currentIndex ? '100%' : idx === currentIndex ? `${progress}%` : '0%' }}
+                                        transition={{ ease: "linear", duration: 0 }} // Direct control via state
+                                    ></motion.div>
+                                </div>
+                            ))}
+                        </div>
 
-                <div className="p-6 pb-12 pointer-events-auto">
-                    {story.relatedTicker ? (
-                        <button 
-                            onClick={(e) => { e.stopPropagation(); onClose(); onViewAsset(story.relatedTicker!); }}
-                            className="w-full py-4 bg-white text-black rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-transform hover:bg-zinc-100"
-                        >
-                            Ver {story.relatedTicker} <ArrowUpRight className="w-4 h-4" />
-                        </button>
-                    ) : (
-                        <button 
-                            onClick={(e) => { e.stopPropagation(); onClose(); }}
-                            className="w-full py-4 bg-white/10 border border-white/20 text-white rounded-2xl font-bold text-sm uppercase tracking-widest backdrop-blur-md active:scale-95 transition-transform hover:bg-white/20"
-                        >
-                            Fechar Story
-                        </button>
-                    )}
-                </div>
-            </div>
-        </div>,
+                        {/* Header */}
+                        <div className="px-4 py-6 flex justify-between items-center mt-2 pointer-events-auto">
+                            <div className="flex items-center gap-3">
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-gradient-to-br ${gradient} shadow-lg ring-2 ring-white/20 backdrop-blur-md`}>
+                                    {getStoryIcon(story.type)}
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-white drop-shadow-md">{story.relatedTicker || 'Insight'}</p>
+                                    <p className="text-[10px] text-white/80 font-medium">InvestFIIs AI • {currentIndex + 1} de {stories.length}</p>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); onClose(); }}
+                                className="w-10 h-10 flex items-center justify-center rounded-full bg-black/20 backdrop-blur-md border border-white/10 active:scale-95 transition-transform hover:bg-white/10"
+                            >
+                                <X className="w-5 h-5 text-white" />
+                            </button>
+                        </div>
+
+                        {/* Story Content */}
+                        <div className="flex-1 flex flex-col justify-center px-6 pb-20">
+                            <AnimatePresence mode='wait'>
+                                <motion.div
+                                    key={story.id}
+                                    initial={{ y: 20, opacity: 0 }}
+                                    animate={{ y: 0, opacity: 1 }}
+                                    exit={{ y: -20, opacity: 0 }}
+                                    transition={{ duration: 0.4, ease: "easeOut" }}
+                                    className="flex flex-col"
+                                >
+                                    <h1 className="text-3xl md:text-4xl font-black text-white leading-tight mb-8 drop-shadow-xl tracking-tight">
+                                        {story.title}
+                                    </h1>
+                                    
+                                    <div className="bg-white/10 backdrop-blur-xl border border-white/10 p-6 rounded-[2rem] shadow-2xl mb-8 relative overflow-hidden group">
+                                        <div className={`absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b ${gradient}`}></div>
+                                        <div className="absolute -right-10 -top-10 w-32 h-32 bg-white/5 rounded-full blur-3xl group-hover:bg-white/10 transition-colors duration-700"></div>
+                                        <p className="text-lg md:text-xl font-medium text-white/95 leading-relaxed relative z-10">
+                                            {story.message}
+                                        </p>
+                                    </div>
+
+                                    <div className="flex gap-3 items-center opacity-90 bg-black/40 self-start px-4 py-2.5 rounded-full backdrop-blur-md border border-white/10 shadow-lg">
+                                        <Info className="w-4 h-4 text-white" />
+                                        <p className="text-xs text-white font-bold tracking-wide">
+                                            {story.type === 'opportunity' ? "Analistas indicam revisão." : 
+                                             story.type === 'warning' ? "Atenção aos fundamentos." :
+                                             "Mantenha foco no longo prazo."}
+                                        </p>
+                                    </div>
+                                </motion.div>
+                            </AnimatePresence>
+                        </div>
+                        
+                        {/* CTA Button (if applicable) */}
+                        {story.relatedTicker ? (
+                             <div className="px-6 pb-10 pointer-events-auto">
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); onClose(); onViewAsset(story.relatedTicker!); }}
+                                    className="w-full bg-white text-black font-black py-4 rounded-2xl shadow-xl active:scale-95 transition-transform flex items-center justify-center gap-2 hover:bg-zinc-100"
+                                >
+                                    Ver Detalhes do Ativo <ArrowRight className="w-5 h-5" />
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="px-6 pb-10 pointer-events-auto">
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); onClose(); }}
+                                    className="w-full py-4 bg-white/10 border border-white/20 text-white rounded-2xl font-bold text-sm uppercase tracking-widest backdrop-blur-md active:scale-95 transition-transform hover:bg-white/20 shadow-lg"
+                                >
+                                    Fechar Story
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </motion.div>
+            )}
+        </AnimatePresence>,
         document.body
     );
 };
@@ -884,21 +998,42 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
   }, [portfolio, balance]);
 
   const agendaData = useMemo(() => {
-      const todayStr = new Date().toISOString().split('T')[0];
-      const validReceipts = dividendReceipts.filter(d => d && (d.paymentDate || d.dateCom));
-      
-      const future = validReceipts
-          .filter(d => (d.paymentDate && d.paymentDate >= todayStr) || (!d.paymentDate && d.dateCom >= todayStr))
-          .sort((a, b) => (a.paymentDate || a.dateCom || '').localeCompare(b.paymentDate || b.dateCom || ''));
-      
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayStr = today.toISOString().split('T')[0];
+
+      const future = dividendReceipts.filter(d => {
+          if (!d) return false;
+          
+          // Se tem data de pagamento válida (YYYY-MM-DD)
+          if (d.paymentDate && d.paymentDate !== 'A Definir' && d.paymentDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+              return d.paymentDate >= todayStr;
+          }
+          
+          // Se data de pagamento é "A Definir" ou inválida, mas tem Data Com válida
+          if ((!d.paymentDate || d.paymentDate === 'A Definir') && d.dateCom && d.dateCom !== 'Já ocorreu') {
+              return true; // Assume futuro se não pagou ainda e tem data com
+          }
+
+          return false;
+      });
+
+      future.sort((a, b) => {
+          const getSortDate = (item: DividendReceipt) => {
+              if (item.paymentDate && item.paymentDate !== 'A Definir' && item.paymentDate.match(/^\d{4}-\d{2}-\d{2}$/)) return item.paymentDate;
+              if (item.dateCom && item.dateCom !== 'Já ocorreu') return item.dateCom;
+              return '9999-12-31';
+          };
+          return getSortDate(a).localeCompare(getSortDate(b));
+      });
+
       const totalFuture = future.reduce((acc, curr) => acc + (curr.totalReceived || 0), 0);
-      const nextPayment = future[0];
+      const nextPayment = future.length > 0 ? future[0] : null;
       const daysToNext = nextPayment ? getDaysUntil(nextPayment.paymentDate || nextPayment.dateCom) : 0;
 
       const grouped: Record<string, DividendReceipt[]> = {};
       future.forEach(item => {
-          const dateRef = item.paymentDate || item.dateCom;
-          if (!dateRef) return;
+          const dateRef = (item.paymentDate && item.paymentDate !== 'A Definir') ? item.paymentDate : (item.dateCom || new Date().toISOString());
           const monthKey = dateRef.substring(0, 7);
           if (!grouped[monthKey]) grouped[monthKey] = [];
           grouped[monthKey].push(item);
