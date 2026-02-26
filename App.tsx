@@ -42,18 +42,23 @@ const MemoizedSettings = React.memo(Settings);
 const mergeDividends = (current: DividendReceipt[], incoming: DividendReceipt[]) => {
     const map = new Map<string, DividendReceipt>();
     
-    // Indexa os atuais pela chave de negócio (não pelo ID)
+    const getStableKey = (d: DividendReceipt) => {
+        const ticker = normalizeTicker(d.ticker);
+        const type = d.type || 'DIV';
+        // Normaliza a data para YYYY-MM-DD para evitar duplicatas por causa de fuso horário/timestamp
+        const date = (d.dateCom || '').split('T')[0];
+        const rate = Number(d.rate).toFixed(6); // Normaliza precisão do rate
+        return `${ticker}-${type}-${date}-${rate}`;
+    };
+
+    // Indexa os atuais pela chave de negócio
     current.forEach(d => {
-        const key = `${normalizeTicker(d.ticker)}-${d.type}-${d.dateCom}-${d.rate}`;
-        map.set(key, d);
+        map.set(getStableKey(d), d);
     });
 
     // Adiciona/Atualiza com os novos
     incoming.forEach(d => {
-        const key = `${normalizeTicker(d.ticker)}-${d.type}-${d.dateCom}-${d.rate}`;
-        // Se já existe, atualiza (o novo pode ter dados mais recentes como paymentDate)
-        // Se não existe, adiciona.
-        map.set(key, d);
+        map.set(getStableKey(d), d);
     });
 
     return Array.from(map.values());
@@ -323,7 +328,9 @@ const App: React.FC = () => {
               id: `pred-${p.ticker}-${p.paymentDate}-${p.rate}`,
               ticker: p.ticker,
               type: p.type,
-              dateCom: p.dateCom !== 'Já ocorreu' ? p.dateCom : new Date().toISOString(),
+              // Estabiliza a data: Se não tem data com, usa a data de pagamento ou uma data fixa
+              // Evita usar new Date().toISOString() que gera duplicatas a cada refresh
+              dateCom: p.dateCom !== 'Já ocorreu' ? p.dateCom : (p.paymentDate !== 'A Definir' ? p.paymentDate : '0000-00-00'),
               paymentDate: p.paymentDate !== 'A Definir' ? p.paymentDate : '',
               rate: p.rate,
               quantityOwned: p.quantity,

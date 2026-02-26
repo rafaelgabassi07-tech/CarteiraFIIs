@@ -349,9 +349,9 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
                   if (r.dividendsFound && r.dividendsFound.length > 0) {
                       const newDivs = r.dividendsFound.map((d: any) => ({
                           ticker: r.ticker,
-                          type: d.type,
-                          date_com: d.date_com,
-                          payment_date: d.payment_date,
+                          type: d.type || 'DIV',
+                          date_com: d.date_com || '',
+                          payment_date: d.payment_date || '',
                           rate: d.rate
                       }));
                       dividendsData = [...dividendsData, ...newDivs];
@@ -372,16 +372,16 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
       const dividends: DividendReceipt[] = dividendsData.map((d: any) => ({
             id: d.id || `${d.ticker}-${d.date_com}-${d.rate}`,
             ticker: normalizeTicker(d.ticker),
-            type: d.type,
-            dateCom: d.date_com, 
-            paymentDate: d.payment_date,
+            type: d.type || 'DIV',
+            dateCom: d.date_com || '', 
+            paymentDate: d.payment_date || '',
             rate: Number(d.rate),
             quantityOwned: 0, 
             totalReceived: 0
       }));
 
       const uniqueDividends = Array.from(new Map(dividends.map(item => [
-          `${item.ticker}-${item.dateCom}-${item.rate}`, item
+          `${item.ticker}-${item.type}-${(item.dateCom || '').split('T')[0]}-${Number(item.rate).toFixed(6)}`, item
       ])).values());
 
       const metadata: Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }> = {};
