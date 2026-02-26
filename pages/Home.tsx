@@ -3,7 +3,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { AssetPosition, DividendReceipt, AssetType, PortfolioInsight, Transaction } from '../types';
 import { CircleDollarSign, CalendarClock, PieChart as PieIcon, ArrowUpRight, ArrowDownLeft, Wallet, ArrowRight, Sparkles, Trophy, Anchor, Coins, Crown, Info, X, Zap, ShieldCheck, AlertTriangle, Play, Pause, TrendingUp, TrendingDown, Target, Snowflake, Layers, Medal, Rocket, Gem, Lock, Building2, Briefcase, ShoppingCart, Coffee, Plane, Star, Award, Umbrella, ZapOff, CheckCircle2, ListFilter, History, Activity, Calendar, Percent, BarChart3, Share2, ChevronDown, ArrowRightLeft } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, CartesianGrid, AreaChart, Area, XAxis, YAxis, ComposedChart, Bar, Line, ReferenceLine, Label, BarChart } from 'recharts';
 import { formatBRL, formatDateShort, getMonthName, getDaysUntil } from '../utils/formatters';

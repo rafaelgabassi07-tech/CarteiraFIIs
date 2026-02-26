@@ -1,7 +1,16 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { PortfolioInsight } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+const getApiKey = () => {
+    try {
+        // @ts-ignore
+        return process.env.GEMINI_API_KEY || '';
+    } catch {
+        return import.meta.env.VITE_GEMINI_API_KEY || '';
+    }
+};
+
+const ai = new GoogleGenAI({ apiKey: getApiKey() });
 
 export interface AIEducationalContent {
     title: string;
