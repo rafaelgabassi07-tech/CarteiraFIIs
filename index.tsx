@@ -7,7 +7,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { logger } from './services/logger';
 
 // Inicializa o interceptador de logs
-logger.init();
+// logger.init();
 
 // Registro do Service Worker movido para o ponto de entrada principal.
 // Isso garante que ele seja registrado o mais rápido possível,

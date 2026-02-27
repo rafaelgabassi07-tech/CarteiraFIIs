@@ -4,13 +4,28 @@ import { PortfolioInsight } from "../types";
 const getApiKey = () => {
     try {
         // @ts-ignore
-        return process.env.GEMINI_API_KEY || '';
-    } catch {
-        return import.meta.env.VITE_GEMINI_API_KEY || '';
-    }
+        const key = process.env.GEMINI_API_KEY;
+        if (key) return key;
+    } catch {}
+    try {
+        // @ts-ignore
+        const key = import.meta.env.VITE_GEMINI_API_KEY;
+        if (key) return key;
+    } catch {}
+    return '';
 };
 
-const ai = new GoogleGenAI({ apiKey: getApiKey() });
+let ai: GoogleGenAI | null = null;
+try {
+    const key = getApiKey();
+    if (key) {
+        ai = new GoogleGenAI({ apiKey: key });
+    } else {
+        console.warn("Gemini API Key is missing. AI features will be disabled.");
+    }
+} catch (e) {
+    console.error("Failed to initialize GoogleGenAI:", e);
+}
 
 export interface AIEducationalContent {
     title: string;
@@ -19,6 +34,7 @@ export interface AIEducationalContent {
 }
 
 export const generateAIInsights = async (): Promise<PortfolioInsight[]> => {
+    if (!ai) return [];
     try {
         const response = await ai.models.generateContent({
             model: "gemini-3-flash-preview",

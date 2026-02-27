@@ -47,6 +47,7 @@ class LogManager {
     };
 
     // 2. Captura Erros Globais (Uncaught Exceptions)
+    const originalOnError = window.onerror;
     window.onerror = (message, source, lineno, colno, error) => {
         this.addLog('error', [
             'Uncaught Exception:',
@@ -54,12 +55,21 @@ class LogManager {
             `at ${source}:${lineno}:${colno}`,
             error ? error.stack : ''
         ]);
+        if (originalOnError) {
+            // @ts-ignore
+            return originalOnError(message, source, lineno, colno, error);
+        }
         // Não retorna true para permitir que o navegador também logue o erro
     };
 
     // 3. Captura Promessas Rejeitadas (Unhandled Rejections)
+    const originalOnUnhandledRejection = window.onunhandledrejection;
     window.onunhandledrejection = (event) => {
         this.addLog('error', ['Unhandled Rejection:', event.reason]);
+        if (originalOnUnhandledRejection) {
+            // @ts-ignore
+            originalOnUnhandledRejection.call(window, event);
+        }
     };
 
     this.addLog('info', ['System Logger Initialized v2.0']);

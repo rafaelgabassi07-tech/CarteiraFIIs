@@ -12,7 +12,7 @@ import { Transaction, BrapiQuote, DividendReceipt, AssetType, AppNotification, A
 import { getQuotes } from './services/brapiService';
 import { fetchUnifiedMarketData, triggerScraperUpdate, mapScraperToFundamentals, fetchFutureAnnouncements } from './services/dataService';
 import { getQuantityOnDate, isSameDayLocal, mapSupabaseToTx, processPortfolio, normalizeTicker } from './services/portfolioRules';
-import { analyzePortfolio } from './services/analysisService'; // IMPORT REATIVADO
+import { analyzePortfolio } from './services/analysisService';
 import { generateAIInsights } from './services/aiService';
 import { Check, Loader2, AlertTriangle, Info, Database, Activity, Globe } from 'lucide-react';
 import { useUpdateManager } from './hooks/useUpdateManager';
@@ -32,6 +32,24 @@ const STORAGE_KEYS = {
   PUSH_ENABLED: 'investfiis_push_enabled',
   NOTIF_HISTORY: 'investfiis_notification_history_v3',
   METADATA: 'investfiis_metadata_v2' 
+};
+
+// Helpers for safe localStorage access
+const safeGetItem = <T,>(key: string, defaultVal: T): T => {
+  try {
+    const item = localStorage.getItem(key);
+    return item ? JSON.parse(item) : defaultVal;
+  } catch {
+    return defaultVal;
+  }
+};
+
+const safeGetString = (key: string, defaultVal: string): string => {
+  try {
+    return localStorage.getItem(key) || defaultVal;
+  } catch {
+    return defaultVal;
+  }
 };
 
 // Pages like Home, Portfolio, Transactions are already memoized in their files.
@@ -101,10 +119,10 @@ const App: React.FC = () => {
   const [showInstallModal, setShowInstallModal] = useState(false);
 
   // Preferências
-  const [theme, setTheme] = useState<ThemeType>(() => (localStorage.getItem(STORAGE_KEYS.THEME) as ThemeType) || 'system');
-  const [accentColor, setAccentColor] = useState(() => localStorage.getItem(STORAGE_KEYS.ACCENT) || '#0ea5e9');
-  const [privacyMode, setPrivacyMode] = useState(() => localStorage.getItem(STORAGE_KEYS.PRIVACY) === 'true');
-  const [pushEnabled, setPushEnabled] = useState(() => localStorage.getItem(STORAGE_KEYS.PUSH_ENABLED) === 'true');
+  const [theme, setTheme] = useState<ThemeType>(() => safeGetString(STORAGE_KEYS.THEME, 'system') as ThemeType);
+  const [accentColor, setAccentColor] = useState(() => safeGetString(STORAGE_KEYS.ACCENT, '#0ea5e9'));
+  const [privacyMode, setPrivacyMode] = useState(() => safeGetString(STORAGE_KEYS.PRIVACY, 'false') === 'true');
+  const [pushEnabled, setPushEnabled] = useState(() => safeGetString(STORAGE_KEYS.PUSH_ENABLED, 'false') === 'true');
   
   // Feedback
   const [toast, setToast] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
@@ -116,24 +134,19 @@ const App: React.FC = () => {
   
   // Dados de Negócio
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [notifications, setNotifications] = useState<AppNotification[]>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.NOTIF_HISTORY); return s ? JSON.parse(s) : []; } catch { return []; } });
+  const [notifications, setNotifications] = useState<AppNotification[]>(() => safeGetItem(STORAGE_KEYS.NOTIF_HISTORY, []));
   
-  const [quotes, setQuotes] = useState<Record<string, BrapiQuote>>(() => {
-    try { const s = localStorage.getItem(STORAGE_KEYS.QUOTES); return s ? JSON.parse(s) : {}; } catch { return {}; }
-  });
+  const [quotes, setQuotes] = useState<Record<string, BrapiQuote>>(() => safeGetItem(STORAGE_KEYS.QUOTES, {}));
   
-  const [dividends, setDividends] = useState<DividendReceipt[]>(() => { try { const s = localStorage.getItem(STORAGE_KEYS.DIVS); return s ? JSON.parse(s) : []; } catch { return []; } });
+  const [dividends, setDividends] = useState<DividendReceipt[]>(() => safeGetItem(STORAGE_KEYS.DIVS, []));
   
-  const [marketIndicators, setMarketIndicators] = useState<{ipca: number, cdi: number, startDate: string}>(() => { 
-      try { 
-          const s = localStorage.getItem(STORAGE_KEYS.INDICATORS); 
-          return s ? JSON.parse(s) : { ipca: 4.62, cdi: 11.25, startDate: '' }; 
-      } catch { return { ipca: 4.62, cdi: 11.25, startDate: '' }; } 
-  });
+  const [marketIndicators, setMarketIndicators] = useState<{ipca: number, cdi: number, startDate: string}>(() => 
+      safeGetItem(STORAGE_KEYS.INDICATORS, { ipca: 4.62, cdi: 11.25, startDate: '' })
+  );
   
-  const [assetsMetadata, setAssetsMetadata] = useState<Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }>>(() => {
-      try { const s = localStorage.getItem(STORAGE_KEYS.METADATA); return s ? JSON.parse(s) : {}; } catch { return {}; }
-  });
+  const [assetsMetadata, setAssetsMetadata] = useState<Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }>>(() => 
+      safeGetItem(STORAGE_KEYS.METADATA, {})
+  );
 
   // Status de Processos
   const [isScraping, setIsScraping] = useState(false); 
@@ -151,27 +164,33 @@ const App: React.FC = () => {
   const [services, setServices] = useState<ServiceMetric[]>(servicesRef.current);
 
   // --- EFEITOS DE PERSISTÊNCIA ---
-  useEffect(() => { localStorage.setItem(STORAGE_KEYS.DIVS, JSON.stringify(dividends)); }, [dividends]);
-  useEffect(() => { localStorage.setItem(STORAGE_KEYS.QUOTES, JSON.stringify(quotes)); }, [quotes]);
-  useEffect(() => { localStorage.setItem(STORAGE_KEYS.INDICATORS, JSON.stringify(marketIndicators)); }, [marketIndicators]);
-  useEffect(() => { localStorage.setItem(STORAGE_KEYS.NOTIF_HISTORY, JSON.stringify(notifications.slice(0, 50))); }, [notifications]);
-  useEffect(() => { localStorage.setItem(STORAGE_KEYS.METADATA, JSON.stringify(assetsMetadata)); }, [assetsMetadata]);
+  useEffect(() => { try { localStorage.setItem(STORAGE_KEYS.DIVS, JSON.stringify(dividends)); } catch {} }, [dividends]);
+  useEffect(() => { try { localStorage.setItem(STORAGE_KEYS.QUOTES, JSON.stringify(quotes)); } catch {} }, [quotes]);
+  useEffect(() => { try { localStorage.setItem(STORAGE_KEYS.INDICATORS, JSON.stringify(marketIndicators)); } catch {} }, [marketIndicators]);
+  useEffect(() => { try { localStorage.setItem(STORAGE_KEYS.NOTIF_HISTORY, JSON.stringify(notifications.slice(0, 50))); } catch {} }, [notifications]);
+  useEffect(() => { try { localStorage.setItem(STORAGE_KEYS.METADATA, JSON.stringify(assetsMetadata)); } catch {} }, [assetsMetadata]);
 
   // Tema e Cores
   useEffect(() => {
-    const root = window.document.documentElement;
-    const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    root.classList.toggle('dark', isDark);
-    localStorage.setItem(STORAGE_KEYS.THEME, theme);
+    try {
+        const root = window.document.documentElement;
+        const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        root.classList.toggle('dark', isDark);
+        localStorage.setItem(STORAGE_KEYS.THEME, theme);
+    } catch {}
   }, [theme]);
 
   useEffect(() => {
-    document.documentElement.style.setProperty('--color-accent-rgb', accentColor.replace('#', '').match(/.{2}/g)?.map(x => parseInt(x, 16)).join(' ') || '14 165 233');
-    localStorage.setItem(STORAGE_KEYS.ACCENT, accentColor);
+    try {
+        document.documentElement.style.setProperty('--color-accent-rgb', accentColor.replace('#', '').match(/.{2}/g)?.map(x => parseInt(x, 16)).join(' ') || '14 165 233');
+        localStorage.setItem(STORAGE_KEYS.ACCENT, accentColor);
+    } catch {}
   }, [accentColor]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.PUSH_ENABLED, String(pushEnabled));
+    try {
+        localStorage.setItem(STORAGE_KEYS.PUSH_ENABLED, String(pushEnabled));
+    } catch {}
   }, [pushEnabled]);
 
   // --- CORREÇÃO DE SCROLL ---
@@ -277,8 +296,12 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const fetchAI = async () => {
-        const insights = await generateAIInsights();
-        setAiInsights(insights);
+        try {
+            const insights = await generateAIInsights();
+            setAiInsights(insights);
+        } catch (e) {
+            console.error("AI Insights Error:", e);
+        }
     };
     fetchAI();
   }, []);
@@ -798,11 +821,12 @@ const App: React.FC = () => {
                 </div>
               )}
             </main>
-            {!showSettings && <BottomNav currentTab={currentTab} onTabChange={setCurrentTab} isVisible={isHeaderVisible} />}
-            <ChangelogModal isOpen={isChangelogOpen} onClose={() => setShowChangelog(false)} version={updateManager.availableVersion || APP_VERSION} notes={releaseNotes} isUpdatePending={isUpdateAvailable} onUpdate={startUpdateProcess} isUpdating={isUpdating} progress={updateProgress} />
+            
+            <BottomNav currentTab={currentTab} onTabChange={setCurrentTab} isVisible={!showSettings} />
+            
+            <ChangelogModal isOpen={isChangelogOpen} onClose={() => setShowChangelog(false)} version={APP_VERSION} notes={releaseNotes} onUpdate={startUpdateProcess} isUpdating={isUpdating} />
             <NotificationsModal isOpen={showNotifications} onClose={() => setShowNotifications(false)} notifications={notifications} onClear={handleClearNotifications} />
-            <ConfirmationModal isOpen={!!confirmModal} title={confirmModal?.title || ''} message={confirmModal?.message || ''} onConfirm={() => confirmModal?.onConfirm()} onCancel={() => setConfirmModal(null)} />
-            <InstallPromptModal isOpen={showInstallModal} onInstall={handleInstallApp} onDismiss={() => setShowInstallModal(false)} />
+            <ConfirmationModal {...confirmModal} onCancel={() => setConfirmModal(null)} />
             <UpdateReportModal isOpen={showUpdateReport} onClose={() => setShowUpdateReport(false)} results={lastUpdateReport} />
         </>
     </div>

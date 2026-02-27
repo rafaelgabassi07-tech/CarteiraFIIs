@@ -51,7 +51,7 @@
   /* Root Container */
   #root {
     transition: opacity var(--duration-slow) var(--ease-out-soft);
-    opacity: 0;
+    /* opacity: 0; REMOVED FOR DEBUGGING */
     width: 100%;
     min-height: 100vh;
     display: flex;
