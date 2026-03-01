@@ -8,6 +8,8 @@ import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, CartesianGrid, AreaChart, Area, XAxis, YAxis, ComposedChart, Bar, Line, ReferenceLine, Label, BarChart } from 'recharts';
 import { formatBRL, formatDateShort, getMonthName, getDaysUntil } from '../utils/formatters';
 
+import { MarketTicker } from '../components/MarketTicker';
+
 // --- CONSTANTS ---
 const CHART_COLORS = ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#f43f5e', '#84cc16'];
 
@@ -1230,6 +1232,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
         animate={{ opacity: 1, y: 0 }}
         className="space-y-4 pb-8"
     >
+        <MarketTicker />
+        
         <StoriesBar 
             insights={insights} 
             onSelectStory={(s) => setSelectedStoryId(s.id)} 
