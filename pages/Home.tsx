@@ -1450,7 +1450,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                         <div className="flex items-center gap-2 mt-0.5">
                             <span className="text-xs text-zinc-500 font-medium">12 Meses: {formatBRL(incomeData.last12mTotal, privacyMode)}</span>
                             {incomeData.provisionedTotal > 0 && (
-                                <span className="text-xs font-bold text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 px-1.5 rounded">
+                                <span className="text-xs font-bold text-sky-500 bg-sky-50 dark:bg-sky-900/20 px-1.5 rounded">
                                     +{formatBRL(incomeData.provisionedTotal, privacyMode)} Futuro
                                 </span>
                             )}
@@ -1467,9 +1467,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                                         <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
                                         <stop offset="95%" stopColor="#10b981" stopOpacity={0.3}/>
                                     </linearGradient>
-                                    <pattern id="patternStripes" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-                                        <rect width="4" height="8" transform="translate(0,0)" fill="#10b981" opacity="0.2"></rect>
-                                    </pattern>
+                                    <linearGradient id="colorIncomeBarFuture" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                                    </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
                                 <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 700 }} dy={5} />
@@ -1484,11 +1485,14 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                                 />
                                 <Bar 
                                     dataKey="value" 
-                                    fill="url(#colorIncomeBar)" 
                                     radius={[4, 4, 0, 0]}
                                     maxBarSize={32}
                                     animationDuration={1500}
-                                />
+                                >
+                                    {incomeData.chartData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.isFuture ? "url(#colorIncomeBarFuture)" : "url(#colorIncomeBar)"} />
+                                    ))}
+                                </Bar>
                                 <Line 
                                     type="monotone" 
                                     dataKey="value" 
@@ -1518,14 +1522,14 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                                         {getMonthName(monthKey + '-01')}
                                     </h4>
                                     {monthKey > new Date().toISOString().substring(0, 7) && (
-                                        <span className="text-[9px] font-bold text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 px-1.5 py-0.5 rounded uppercase">Futuro</span>
+                                        <span className="text-[9px] font-bold text-sky-500 bg-sky-50 dark:bg-sky-900/20 px-1.5 py-0.5 rounded uppercase">Futuro</span>
                                     )}
                                 </div>
                                 <div className="space-y-1">
                                     {incomeData.groupedHistory[monthKey].map((item, idx) => (
-                                        <div key={`${item.ticker}-${idx}`} className={`flex items-center justify-between py-2 px-2 rounded-xl transition-colors ${item.status === 'provisioned' ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50'}`}>
+                                        <div key={`${item.ticker}-${idx}`} className={`flex items-center justify-between py-2 px-2 rounded-xl transition-colors ${item.status === 'provisioned' ? 'bg-sky-50/50 dark:bg-sky-900/10 border border-sky-100 dark:border-sky-900/30' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50'}`}>
                                             <div className="flex items-center gap-3">
-                                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black border ${item.status === 'provisioned' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 border-emerald-200 dark:border-emerald-800' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border-zinc-200 dark:border-zinc-700'}`}>
+                                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black border ${item.status === 'provisioned' ? 'bg-sky-100 dark:bg-sky-900/30 text-sky-600 border-sky-200 dark:border-sky-800' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border-zinc-200 dark:border-zinc-700'}`}>
                                                     {item.ticker.substring(0, 2)}
                                                 </div>
                                                 <div>
@@ -1541,7 +1545,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                                                     </span>
                                                 </div>
                                             </div>
-                                            <span className={`text-sm font-bold tabular-nums ${item.status === 'provisioned' ? 'text-emerald-500 opacity-80' : 'text-zinc-900 dark:text-white'}`}>
+                                            <span className={`text-sm font-bold tabular-nums ${item.status === 'provisioned' ? 'text-sky-500 opacity-80' : 'text-zinc-900 dark:text-white'}`}>
                                                 +{formatBRL(item.amount, privacyMode)}
                                             </span>
                                         </div>
