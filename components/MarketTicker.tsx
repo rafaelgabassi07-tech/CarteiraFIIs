@@ -16,29 +16,58 @@ export const MarketTicker: React.FC = () => {
     useEffect(() => {
         const fetchIndices = async () => {
             try {
-                // Tickers de mercado: Ibovespa, IFIX, Dólar, Bitcoin, CDI (CDI geralmente não tem ticker de bolsa fácil, vamos focar nos negociáveis)
-                const tickers = ['^BVSP', 'IFIX.SA', 'USDBRL', 'BTC-BRL'];
-                const { quotes } = await getQuotes(tickers);
-                
-                if (quotes && quotes.length > 0) {
-                    const formatted = quotes.map(q => {
-                        let name = q.symbol;
-                        let val = q.regularMarketPrice;
-                        
-                        if (q.symbol === '^BVSP') name = 'IBOVESPA';
-                        if (q.symbol === 'IFIX.SA') name = 'IFIX';
-                        if (q.symbol === 'USDBRL') name = 'DÓLAR';
-                        if (q.symbol === 'BTC-BRL') name = 'BITCOIN';
+                const results: MarketIndex[] = [];
 
-                        return {
-                            ticker: q.symbol,
-                            name,
-                            value: val,
-                            change: q.regularMarketChangePercent || 0
-                        };
-                    });
-                    setIndices(formatted);
+                // 1. Busca Índices (IBOV, IFIX) na Brapi
+                try {
+                    const { quotes } = await getQuotes(['^BVSP', 'IFIX.SA']);
+                    if (quotes && quotes.length > 0) {
+                        quotes.forEach(q => {
+                            let name = q.symbol;
+                            if (q.symbol === '^BVSP') name = 'IBOVESPA';
+                            if (q.symbol === 'IFIX.SA') name = 'IFIX';
+                            
+                            results.push({
+                                ticker: q.symbol,
+                                name,
+                                value: q.regularMarketPrice,
+                                change: q.regularMarketChangePercent || 0
+                            });
+                        });
+                    }
+                } catch (e) {
+                    console.error("Failed to fetch Brapi indices", e);
                 }
+
+                // 2. Busca Moedas (Dólar, Bitcoin) na AwesomeAPI (Mais confiável para pares BRL)
+                try {
+                    const res = await fetch('https://economia.awesomeapi.com.br/last/USD-BRL,BTC-BRL');
+                    if (res.ok) {
+                        const data = await res.json();
+                        
+                        if (data.USDBRL) {
+                            results.push({
+                                ticker: 'USDBRL',
+                                name: 'DÓLAR',
+                                value: parseFloat(data.USDBRL.bid),
+                                change: parseFloat(data.USDBRL.pctChange)
+                            });
+                        }
+
+                        if (data.BTCBRL) {
+                            results.push({
+                                ticker: 'BTCBRL',
+                                name: 'BITCOIN',
+                                value: parseFloat(data.BTCBRL.bid),
+                                change: parseFloat(data.BTCBRL.pctChange)
+                            });
+                        }
+                    }
+                } catch (e) {
+                    console.error("Failed to fetch currencies", e);
+                }
+
+                setIndices(results);
             } catch (e) {
                 console.error("Failed to fetch market indices", e);
             } finally {
