@@ -797,6 +797,7 @@ const App: React.FC = () => {
                       <Home 
                           {...memoizedPortfolioData} 
                           transactions={transactions}
+                          marketDividends={dividends} // Passa dados brutos para a Agenda
                           totalAppreciation={memoizedPortfolioData.balance - memoizedPortfolioData.invested} 
                           privacyMode={privacyMode} 
                           onViewAsset={handleViewAsset}

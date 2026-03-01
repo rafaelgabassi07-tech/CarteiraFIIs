@@ -867,6 +867,7 @@ interface HomeProps {
   portfolio: AssetPosition[];
   transactions: Transaction[];
   dividendReceipts: DividendReceipt[];
+  marketDividends: DividendReceipt[]; // Added prop
   salesGain: number;
   totalDividendsReceived: number;
   invested: number;
@@ -877,7 +878,7 @@ interface HomeProps {
   insights?: PortfolioInsight[];
 }
 
-const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendReceipts, salesGain, totalDividendsReceived, invested, balance, totalAppreciation, privacyMode = false, onViewAsset, insights = [] }) => {
+const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendReceipts, marketDividends = [], salesGain, totalDividendsReceived, invested, balance, totalAppreciation, privacyMode = false, onViewAsset, insights = [] }) => {
   const [showAgenda, setShowAgenda] = useState(false);
   const [showProventos, setShowProventos] = useState(false);
   const [showAllocation, setShowAllocation] = useState(false);
@@ -954,62 +955,72 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
   }, [portfolio, balance]);
 
   const agendaData = useMemo(() => {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const todayStr = today.toISOString().split('T')[0];
+      const todayStr = new Date().toISOString().split('T')[0];
+      
+      // 1. Filtra dividendos de mercado apenas para ativos na carteira ATUAL
+      const myTickers = new Set(portfolio.map(p => p.ticker));
+      const relevantDividends = marketDividends.filter(d => myTickers.has(d.ticker));
 
-      const future = dividendReceipts.filter(d => {
-          if (!d) return false;
+      // 2. Filtra eventos futuros (Pagamento >= Hoje OU (Sem Pagamento e DataCom >= Hoje))
+      const future = relevantDividends.filter(d => {
+          const payDate = d.paymentDate;
+          const dateCom = d.dateCom;
           
-          // Se tem data de pagamento válida (YYYY-MM-DD)
-          if (d.paymentDate && d.paymentDate !== 'A Definir' && d.paymentDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-              return d.paymentDate >= todayStr;
-          }
-          
-          // Se data de pagamento é "A Definir" ou inválida, mas tem Data Com válida
-          if ((!d.paymentDate || d.paymentDate === 'A Definir') && d.dateCom && d.dateCom !== 'Já ocorreu') {
-              return true; // Assume futuro se não pagou ainda e tem data com
-          }
-
+          if (payDate && payDate !== 'A Definir' && payDate >= todayStr) return true;
+          if ((!payDate || payDate === 'A Definir') && dateCom && dateCom >= todayStr) return true;
           return false;
       });
 
-      future.sort((a, b) => {
-          const getSortDate = (item: DividendReceipt) => {
-              if (item.paymentDate && item.paymentDate !== 'A Definir' && item.paymentDate.match(/^\d{4}-\d{2}-\d{2}$/)) return item.paymentDate;
-              if (item.dateCom && item.dateCom !== 'Já ocorreu') return item.dateCom;
-              return '9999-12-31';
+      // 3. Calcula projeção baseada na quantidade ATUAL (Agenda = Previsão)
+      const list = future.map(d => {
+          const asset = portfolio.find(p => p.ticker === d.ticker);
+          const qty = asset ? asset.quantity : 0;
+          return {
+              ...d,
+              quantityOwned: qty,
+              totalReceived: qty * d.rate, // Valor projetado com a carteira de hoje
+              isSimulated: true
           };
-          return getSortDate(a).localeCompare(getSortDate(b));
+      }).filter(d => d.quantityOwned > 0) // Mostra apenas se tiver quantidade
+      .sort((a, b) => {
+          const dateA = (a.paymentDate && a.paymentDate !== 'A Definir') ? a.paymentDate : a.dateCom;
+          const dateB = (b.paymentDate && b.paymentDate !== 'A Definir') ? b.paymentDate : b.dateCom;
+          return dateA.localeCompare(dateB);
       });
 
-      const totalFuture = future.reduce((acc, curr) => acc + (curr.totalReceived || 0), 0);
-      const nextPayment = future.length > 0 ? future[0] : null;
-      const daysToNext = nextPayment ? getDaysUntil(nextPayment.paymentDate || nextPayment.dateCom) : 0;
-
-      const grouped: Record<string, DividendReceipt[]> = {};
-      future.forEach(item => {
-          const dateRef = (item.paymentDate && item.paymentDate !== 'A Definir') ? item.paymentDate : (item.dateCom || new Date().toISOString());
+      const totalFuture = list.reduce((acc, curr) => acc + curr.totalReceived, 0);
+      const nextPayment = list[0] || null;
+      
+      const grouped: Record<string, typeof list> = {};
+      list.forEach(item => {
+          const dateRef = (item.paymentDate && item.paymentDate !== 'A Definir') ? item.paymentDate : item.dateCom;
           const monthKey = dateRef.substring(0, 7);
           if (!grouped[monthKey]) grouped[monthKey] = [];
           grouped[monthKey].push(item);
       });
 
-      return { list: future, grouped, totalFuture, nextPayment, daysToNext };
-  }, [dividendReceipts]);
+      return { list, grouped, totalFuture, nextPayment };
+  }, [marketDividends, portfolio]);
 
   const incomeData = useMemo(() => {
       const groups: Record<string, number> = {};
-      const historyList: { date: string, ticker: string, type: string, amount: number, paymentDate: string }[] = [];
+      const historyList: { date: string, ticker: string, type: string, amount: number, paymentDate: string, status: 'paid' | 'provisioned' }[] = [];
       const todayStr = new Date().toISOString().split('T')[0];
       
-      for (let i = 11; i >= 0; i--) {
+      // Inicializa últimos 12 meses + meses futuros encontrados
+      const allDates = dividendReceipts.map(d => d.paymentDate).filter(d => d && d !== 'A Definir').sort();
+      const minDate = new Date(); 
+      minDate.setMonth(minDate.getMonth() - 11);
+      
+      // Garante chaves para o gráfico
+      for (let i = 0; i < 12; i++) {
           const d = new Date();
           d.setMonth(d.getMonth() - i);
           groups[d.toISOString().substring(0, 7)] = 0;
       }
 
       let last12mTotal = 0;
+      let provisionedTotal = 0;
       const oneYearAgoStr = new Date(new Date().setFullYear(new Date().getFullYear() - 1)).toISOString().split('T')[0];
 
       const sortedReceipts = [...dividendReceipts].sort((a, b) => {
@@ -1019,19 +1030,29 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
       });
 
       sortedReceipts.forEach(d => {
-          if (!d.paymentDate || d.paymentDate > todayStr) return;
+          if (!d.paymentDate || d.paymentDate === 'A Definir') return;
           
-          if (d.paymentDate >= oneYearAgoStr) last12mTotal += d.totalReceived;
+          const isFuture = d.paymentDate > todayStr;
+          const status = isFuture ? 'provisioned' : 'paid';
+
+          if (isFuture) {
+              provisionedTotal += d.totalReceived;
+          } else {
+              if (d.paymentDate >= oneYearAgoStr) last12mTotal += d.totalReceived;
+          }
 
           const monthKey = d.paymentDate.substring(0, 7);
-          if (groups[monthKey] !== undefined) groups[monthKey] += d.totalReceived;
+          // Adiciona ao grupo (cria se não existir, pois pode ser futuro)
+          if (groups[monthKey] === undefined) groups[monthKey] = 0;
+          groups[monthKey] += d.totalReceived;
 
           historyList.push({
               date: d.paymentDate,
               ticker: d.ticker,
               type: d.type,
               amount: d.totalReceived,
-              paymentDate: d.paymentDate
+              paymentDate: d.paymentDate,
+              status
           });
       });
       
@@ -1039,7 +1060,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
           .map(([date, value]) => ({ 
               date, 
               value, 
-              label: getMonthName(date + '-01').substring(0,3).toUpperCase()
+              label: getMonthName(date + '-01').substring(0,3).toUpperCase(),
+              isFuture: date > todayStr.substring(0, 7)
           }))
           .sort((a, b) => a.date.localeCompare(b.date));
 
@@ -1050,10 +1072,16 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
           groupedHistory[mKey].push(h);
       });
 
-      const average = chartData.reduce((acc, cur) => acc + cur.value, 0) / 12;
+      // Calcula média apenas dos meses passados/fechados para não distorcer
+      const pastMonths = chartData.filter(d => !d.isFuture);
+      const average = pastMonths.length > 0 ? pastMonths.reduce((acc, cur) => acc + cur.value, 0) / pastMonths.length : 0;
       const max = Math.max(...chartData.map(d => d.value));
+      
+      // Current Month Total (Paid + Provisioned)
+      const currentMonthKey = todayStr.substring(0, 7);
+      const currentMonth = groups[currentMonthKey] || 0;
 
-      return { chartData, average, max, last12mTotal, currentMonth: chartData[chartData.length - 1]?.value || 0, groupedHistory };
+      return { chartData, average, max, last12mTotal, provisionedTotal, currentMonth, groupedHistory };
   }, [dividendReceipts]);
 
   const magicNumberData = useMemo(() => {
@@ -1343,37 +1371,57 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                     </div>
                     <div>
                         <h2 className="text-xl font-bold text-zinc-900 dark:text-white leading-none">Agenda</h2>
-                        <p className="text-xs text-zinc-500 font-medium mt-0.5">Previsão: {formatBRL(agendaData.totalFuture, privacyMode)}</p>
+                        <p className="text-xs text-zinc-500 font-medium mt-0.5">Previsão (Carteira Atual): {formatBRL(agendaData.totalFuture, privacyMode)}</p>
                     </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar">
                     {Object.keys(agendaData.grouped).length > 0 ? (
-                        <div className="space-y-4">
+                        <div className="space-y-6">
                             {Object.entries(agendaData.grouped).map(([monthKey, items]) => (
                                 <div key={monthKey}>
-                                    <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2 sticky top-0 bg-white dark:bg-zinc-900 py-2 z-10 border-b border-zinc-100 dark:border-zinc-800">
-                                        {getMonthName(monthKey + '-01')}
-                                    </h3>
-                                    <div className="space-y-0">
-                                        {(items as DividendReceipt[]).map((item, idx) => (
-                                            <div key={idx} className="flex items-center justify-between py-2 border-b border-zinc-50 dark:border-zinc-800/50 last:border-0">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-black text-zinc-500">
-                                                        {item.ticker.substring(0, 2)}
-                                                    </div>
-                                                    <div>
-                                                        <h4 className="font-bold text-xs text-zinc-900 dark:text-white">{item.ticker}</h4>
-                                                        <div className="flex items-center gap-2 text-[9px] text-zinc-500 font-medium">
-                                                            <span>Pag: {formatDateShort(item.paymentDate)}</span>
-                                                            <span className="w-1 h-1 rounded-full bg-zinc-300"></span>
-                                                            <span>Com: {formatDateShort(item.dateCom)}</span>
+                                    <div className="sticky top-0 bg-white dark:bg-zinc-900 py-2 z-10 border-b border-zinc-100 dark:border-zinc-800 mb-2">
+                                        <h3 className="text-xs font-black text-zinc-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
+                                            <Calendar className="w-3 h-3 text-violet-500" />
+                                            {getMonthName(monthKey + '-01')}
+                                        </h3>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {(items as any[]).map((item, idx) => (
+                                            <div key={idx} className="relative overflow-hidden p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800">
+                                                <div className="flex justify-between items-start">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 rounded-lg bg-white dark:bg-zinc-800 flex flex-col items-center justify-center shadow-sm border border-zinc-100 dark:border-zinc-700">
+                                                            <span className="text-[8px] font-bold text-zinc-400 uppercase">{item.paymentDate ? 'PAG' : 'COM'}</span>
+                                                            <span className="text-sm font-black text-zinc-900 dark:text-white">
+                                                                {new Date(item.paymentDate || item.dateCom).getDate()}
+                                                            </span>
+                                                        </div>
+                                                        <div>
+                                                            <div className="flex items-center gap-1.5">
+                                                                <h4 className="font-bold text-sm text-zinc-900 dark:text-white">{item.ticker}</h4>
+                                                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 uppercase">
+                                                                    {item.type}
+                                                                </span>
+                                                            </div>
+                                                            <p className="text-[10px] text-zinc-500 font-medium mt-0.5">
+                                                                {item.quantityOwned} cotas x {formatBRL(item.rate, false)}
+                                                            </p>
                                                         </div>
                                                     </div>
+                                                    <div className="text-right">
+                                                        <p className="font-black text-base text-violet-600 dark:text-violet-400 tabular-nums">
+                                                            {formatBRL(item.totalReceived, privacyMode)}
+                                                        </p>
+                                                        <p className="text-[9px] text-zinc-400 font-medium">Previsão</p>
+                                                    </div>
                                                 </div>
-                                                <div className="text-right">
-                                                    <p className="font-bold text-sm text-emerald-600 dark:text-emerald-400">{formatBRL(item.totalReceived, privacyMode)}</p>
-                                                </div>
+                                                {item.dateCom && item.paymentDate && (
+                                                    <div className="mt-2 pt-2 border-t border-zinc-200 dark:border-zinc-700/50 flex items-center justify-between text-[9px] text-zinc-400">
+                                                        <span>Data Com: {formatDateShort(item.dateCom)}</span>
+                                                        <span>Pagamento: {formatDateShort(item.paymentDate)}</span>
+                                                    </div>
+                                                )}
                                             </div>
                                         ))}
                                     </div>
@@ -1381,8 +1429,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                             ))}
                         </div>
                     ) : (
-                        <div className="text-center py-10 opacity-50">
-                            <p className="text-sm font-bold text-zinc-500">Sem proventos futuros.</p>
+                        <div className="flex flex-col items-center justify-center h-64 text-center opacity-50">
+                            <CalendarClock className="w-12 h-12 text-zinc-300 mb-3" />
+                            <p className="text-sm font-bold text-zinc-500">Nenhum pagamento futuro previsto.</p>
+                            <p className="text-xs text-zinc-400 mt-1 max-w-[200px]">Os pagamentos aparecerão aqui assim que forem anunciados pelas empresas.</p>
                         </div>
                     )}
                 </div>
@@ -1397,7 +1447,14 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                     </div>
                     <div>
                         <h2 className="text-xl font-bold text-zinc-900 dark:text-white leading-none">Renda</h2>
-                        <p className="text-xs text-zinc-500 font-medium mt-0.5">Últimos 12 meses: {formatBRL(incomeData.last12mTotal, privacyMode)}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-xs text-zinc-500 font-medium">12 Meses: {formatBRL(incomeData.last12mTotal, privacyMode)}</span>
+                            {incomeData.provisionedTotal > 0 && (
+                                <span className="text-xs font-bold text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 px-1.5 rounded">
+                                    +{formatBRL(incomeData.provisionedTotal, privacyMode)} Futuro
+                                </span>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -1410,6 +1467,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                                         <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
                                         <stop offset="95%" stopColor="#10b981" stopOpacity={0.3}/>
                                     </linearGradient>
+                                    <pattern id="patternStripes" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                                        <rect width="4" height="8" transform="translate(0,0)" fill="#10b981" opacity="0.2"></rect>
+                                    </pattern>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
                                 <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 700 }} dy={5} />
@@ -1417,7 +1477,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                                 <RechartsTooltip 
                                     cursor={{fill: 'rgba(16, 185, 129, 0.05)'}}
                                     contentStyle={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '10px', padding: '8px 12px', backdropFilter: 'blur(8px)' }}
-                                    formatter={(value: number) => [formatBRL(value), 'Proventos']}
+                                    formatter={(value: number, name: string, props: any) => [
+                                        formatBRL(value), 
+                                        props.payload.isFuture ? 'Projetado' : 'Recebido'
+                                    ]}
                                 />
                                 <Bar 
                                     dataKey="value" 
@@ -1446,20 +1509,23 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
 
                     <div className="space-y-4">
                         <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
-                            <CalendarClock className="w-3 h-3" /> Histórico de Recebimentos
+                            <CalendarClock className="w-3 h-3" /> Histórico e Previsões
                         </h3>
                         {Object.keys(incomeData.groupedHistory).sort((a,b) => b.localeCompare(a)).map(monthKey => (
                             <div key={monthKey}>
-                                <div className="sticky top-0 bg-white dark:bg-zinc-900 z-10 py-1.5 border-b border-zinc-100 dark:border-zinc-800 mb-1">
+                                <div className="sticky top-0 bg-white dark:bg-zinc-900 z-10 py-1.5 border-b border-zinc-100 dark:border-zinc-800 mb-1 flex justify-between items-center">
                                     <h4 className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wider">
                                         {getMonthName(monthKey + '-01')}
                                     </h4>
+                                    {monthKey > new Date().toISOString().substring(0, 7) && (
+                                        <span className="text-[9px] font-bold text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 px-1.5 py-0.5 rounded uppercase">Futuro</span>
+                                    )}
                                 </div>
                                 <div className="space-y-1">
                                     {incomeData.groupedHistory[monthKey].map((item, idx) => (
-                                        <div key={`${item.ticker}-${idx}`} className="flex items-center justify-between py-2 px-2 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 rounded-xl transition-colors">
+                                        <div key={`${item.ticker}-${idx}`} className={`flex items-center justify-between py-2 px-2 rounded-xl transition-colors ${item.status === 'provisioned' ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50'}`}>
                                             <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-black text-zinc-500 border border-zinc-200 dark:border-zinc-700">
+                                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black border ${item.status === 'provisioned' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 border-emerald-200 dark:border-emerald-800' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border-zinc-200 dark:border-zinc-700'}`}>
                                                     {item.ticker.substring(0, 2)}
                                                 </div>
                                                 <div>
@@ -1469,10 +1535,13 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                                                             {item.type}
                                                         </span>
                                                     </div>
-                                                    <span className="text-[10px] text-zinc-400">{formatDateShort(item.paymentDate)}</span>
+                                                    <span className="text-[10px] text-zinc-400">
+                                                        {item.status === 'provisioned' ? 'Agendado: ' : 'Pago: '}
+                                                        {formatDateShort(item.paymentDate)}
+                                                    </span>
                                                 </div>
                                             </div>
-                                            <span className="text-sm font-bold text-zinc-900 dark:text-white tabular-nums">
+                                            <span className={`text-sm font-bold tabular-nums ${item.status === 'provisioned' ? 'text-emerald-500 opacity-80' : 'text-zinc-900 dark:text-white'}`}>
                                                 +{formatBRL(item.amount, privacyMode)}
                                             </span>
                                         </div>
