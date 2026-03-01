@@ -360,11 +360,8 @@ export default function Watchlist() {
         <div className="pb-24 px-4 max-w-md mx-auto min-h-screen bg-zinc-50 dark:bg-zinc-950">
             {/* Header Actions & Stats */}
             <div className="pt-8 mb-6">
-                <div className="flex items-center justify-between mb-6">
-                    <div>
-                        <h1 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter">Favoritos</h1>
-                        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mt-1">Acompanhamento em tempo real</p>
-                    </div>
+                <div className="flex items-center justify-between">
+                    <h1 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter">Favoritos</h1>
                     <div className="flex gap-2">
                         <button 
                             onClick={() => fetchData(true)}
@@ -381,37 +378,11 @@ export default function Watchlist() {
                         </button>
                     </div>
                 </div>
-
-                {watchlist.length > 0 && (
-                    <div className="grid grid-cols-3 gap-2">
-                        <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                            <div className="flex items-center gap-1.5 mb-1">
-                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                                <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Altas</span>
-                            </div>
-                            <p className="text-lg font-black text-zinc-900 dark:text-white leading-none">{stats.up}</p>
-                        </div>
-                        <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                            <div className="flex items-center gap-1.5 mb-1">
-                                <div className="w-1.5 h-1.5 rounded-full bg-rose-500"></div>
-                                <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Baixas</span>
-                            </div>
-                            <p className="text-lg font-black text-zinc-900 dark:text-white leading-none">{stats.down}</p>
-                        </div>
-                        <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                            <div className="flex items-center gap-1.5 mb-1">
-                                <div className="w-1.5 h-1.5 rounded-full bg-zinc-400"></div>
-                                <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Estáveis</span>
-                            </div>
-                            <p className="text-lg font-black text-zinc-900 dark:text-white leading-none">{stats.neutral}</p>
-                        </div>
-                    </div>
-                )}
             </div>
 
             {/* Filters & Sorting */}
             {watchlist.length > 0 && (
-                <div className="space-y-4 mb-6">
+                <div className="space-y-4 mb-4">
                     <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
                         {(['ALL', 'STOCK', 'FII'] as const).map((f) => (
                             <button 

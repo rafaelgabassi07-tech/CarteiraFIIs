@@ -616,7 +616,7 @@ const StoryViewer = ({
         }
     };
 
-    const handleTouchStart = () => {
+    const handlePointerDown = () => {
         isLongPressRef.current = false;
         longPressTimerRef.current = setTimeout(() => {
             isLongPressRef.current = true;
@@ -624,7 +624,7 @@ const StoryViewer = ({
         }, 200); // 200ms threshold for long press
     };
 
-    const handleTouchEnd = (e: React.MouseEvent | React.TouchEvent, action: 'prev' | 'next') => {
+    const handlePointerUp = (e: React.PointerEvent, action: 'prev' | 'next') => {
         if (longPressTimerRef.current) {
             clearTimeout(longPressTimerRef.current);
         }
@@ -698,17 +698,13 @@ const StoryViewer = ({
                     <div className="absolute inset-0 z-10 flex">
                         <div 
                             className="w-[30%] h-full active:bg-white/5 transition-colors"
-                            onMouseDown={handleTouchStart}
-                            onMouseUp={(e) => handleTouchEnd(e, 'prev')}
-                            onTouchStart={handleTouchStart}
-                            onTouchEnd={(e) => handleTouchEnd(e, 'prev')}
+                            onPointerDown={handlePointerDown}
+                            onPointerUp={(e) => handlePointerUp(e, 'prev')}
                         ></div>
                         <div 
                             className="w-[70%] h-full active:bg-white/5 transition-colors"
-                            onMouseDown={handleTouchStart}
-                            onMouseUp={(e) => handleTouchEnd(e, 'next')}
-                            onTouchStart={handleTouchStart}
-                            onTouchEnd={(e) => handleTouchEnd(e, 'next')}
+                            onPointerDown={handlePointerDown}
+                            onPointerUp={(e) => handlePointerUp(e, 'next')}
                         ></div>
                     </div>
 
@@ -1751,57 +1747,42 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
 
         <SwipeableModal isOpen={showAllocation} onClose={() => setShowAllocation(false)}>
             <div className="p-4 h-full flex flex-col anim-slide-up">
-                <div className="flex items-center justify-between mb-6 shrink-0">
-                    <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-sky-400 to-blue-600 text-white flex items-center justify-center shadow-lg shadow-sky-500/20 ring-4 ring-sky-50 dark:ring-sky-900/20">
-                            <PieIcon className="w-6 h-6" strokeWidth={2.5} />
-                        </div>
-                        <div>
-                            <h2 className="text-xl font-black text-zinc-900 dark:text-white leading-none tracking-tight">Alocação</h2>
-                            <p className="text-sm font-bold text-sky-600 dark:text-sky-400 mt-0.5">Diversificação da Carteira</p>
-                        </div>
+                <div className="flex items-center justify-between mb-8 shrink-0">
+                    <div>
+                        <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter">Alocação</h2>
+                        <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mt-1">Diversificação & Risco</p>
+                    </div>
+                    <div className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center text-zinc-900 dark:text-white shadow-sm border border-zinc-200 dark:border-zinc-800">
+                        <PieIcon className="w-6 h-6" strokeWidth={2} />
                     </div>
                 </div>
 
-                <div className="flex bg-white dark:bg-zinc-900 p-1 rounded-xl shadow-sm border border-zinc-100 dark:border-zinc-800 mb-6 shrink-0">
-                    <button 
-                        onClick={() => setAllocationView('CLASS')} 
-                        className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${allocationView === 'CLASS' ? 'bg-zinc-100 dark:bg-zinc-800 text-sky-600 dark:text-sky-400 shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
-                    >
-                        Classe
-                    </button>
-                    <button 
-                        onClick={() => setAllocationView('SECTOR')} 
-                        className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${allocationView === 'SECTOR' ? 'bg-zinc-100 dark:bg-zinc-800 text-sky-600 dark:text-sky-400 shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
-                    >
-                        Setor
-                    </button>
-                    <button 
-                        onClick={() => setAllocationView('ASSET')} 
-                        className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${allocationView === 'ASSET' ? 'bg-zinc-100 dark:bg-zinc-800 text-sky-600 dark:text-sky-400 shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
-                    >
-                        Ativo
-                    </button>
+                <div className="flex bg-zinc-200/50 dark:bg-zinc-900 p-1.5 rounded-2xl mb-8 shrink-0">
+                    {(['CLASS', 'SECTOR', 'ASSET'] as const).map((view) => (
+                        <button 
+                            key={view}
+                            onClick={() => setAllocationView(view)} 
+                            className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${allocationView === view ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-lg shadow-zinc-200/50 dark:shadow-none' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                        >
+                            {view === 'CLASS' ? 'Classe' : view === 'SECTOR' ? 'Setor' : 'Ativo'}
+                        </button>
+                    ))}
                 </div>
 
-                <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar">
-                    <div className="bg-white dark:bg-zinc-900 rounded-[2rem] p-6 mb-6 border border-zinc-100 dark:border-zinc-800 shadow-xl shadow-sky-500/5 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-sky-500/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
-                        <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl -ml-10 -mb-10 pointer-events-none"></div>
-                        
+                <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar space-y-6">
+                    {/* Chart Section */}
+                    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] p-8 border border-zinc-100 dark:border-zinc-800 shadow-xl shadow-zinc-200/50 dark:shadow-none relative overflow-hidden">
                         <div className="h-64 w-full relative z-10">
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
                                     <Pie
                                         data={allocationView === 'CLASS' ? allocationData.byClass : allocationView === 'SECTOR' ? allocationData.bySector : allocationData.byAsset}
-                                        innerRadius={80}
-                                        outerRadius={100}
-                                        paddingAngle={4}
+                                        innerRadius={60}
+                                        outerRadius={80}
+                                        paddingAngle={5}
                                         dataKey="value"
-                                        cornerRadius={6}
+                                        cornerRadius={8}
                                         stroke="none"
-                                        animationDuration={1500}
-                                        animationEasing="ease-out"
                                     >
                                         {(allocationView === 'CLASS' ? allocationData.byClass : allocationView === 'SECTOR' ? allocationData.bySector : allocationData.byAsset).map((entry, index) => (
                                             <Cell 
@@ -1818,7 +1799,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                                             if (active && payload && payload.length) {
                                                 const data = payload[0].payload;
                                                 return (
-                                                    <div className="bg-zinc-900/95 border border-white/10 p-3 rounded-xl shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-200">
+                                                    <div className="bg-zinc-900/95 border border-white/10 p-4 rounded-2xl shadow-2xl backdrop-blur-md">
                                                         <div className="flex items-center gap-2 mb-1">
                                                             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: data.color }}></div>
                                                             <span className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">{data.name}</span>
@@ -1836,67 +1817,47 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                             
                             {/* Central Info */}
                             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Total Investido</span>
-                                <span className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">{formatBRL(balance, privacyMode)}</span>
-                                <div className="flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
-                                    <TrendingUp className="w-3 h-3" />
-                                    <span className="text-[10px] font-bold">100%</span>
-                                </div>
+                                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Total</span>
+                                <span className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">{formatBRL(balance, privacyMode)}</span>
                             </div>
                         </div>
                     </div>
 
-                    <div className="space-y-3">
-                        <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1 flex items-center gap-2">
-                            <ListFilter className="w-3 h-3" /> Detalhamento
-                        </h3>
+                    {/* List Section */}
+                    <div className="space-y-4">
+                        <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-2">Detalhamento</h3>
                         {(allocationView === 'CLASS' ? allocationData.byClass : allocationView === 'SECTOR' ? allocationData.bySector : allocationData.byAsset).map((item, idx) => (
-                            <div 
-                                key={idx} 
-                                className="group relative bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm hover:shadow-md transition-all active:scale-[0.98] duration-200 overflow-hidden"
-                                style={{ animationDelay: `${idx * 50}ms` }}
-                            >
-                                <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: item.color }}></div>
-                                <div className="absolute right-0 top-0 w-24 h-24 bg-gradient-to-bl from-zinc-50 to-transparent dark:from-zinc-800/20 rounded-bl-full -mr-4 -mt-4 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-
-                                <div className="flex items-center justify-between relative z-10">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-xs shadow-sm" style={{ backgroundColor: item.color }}>
-                                            {item.name.substring(0, 2).toUpperCase()}
-                                        </div>
-                                        <div>
-                                            <h4 className="font-bold text-sm text-zinc-900 dark:text-white line-clamp-1">{item.name}</h4>
-                                            <div className="flex items-center gap-2 mt-0.5">
-                                                <div className="h-1.5 w-16 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                                                    <div className="h-full rounded-full" style={{ width: `${(item as any).percent}%`, backgroundColor: item.color }}></div>
-                                                </div>
-                                                <span className="text-[10px] font-medium text-zinc-400">{((item as any).percent || 0).toFixed(1)}%</span>
-                                            </div>
-                                        </div>
+                            <div key={idx} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-xs shadow-sm" style={{ backgroundColor: item.color }}>
+                                        {item.percent.toFixed(0)}%
                                     </div>
-                                    <div className="text-right">
-                                        <p className="text-sm font-black text-zinc-900 dark:text-white tabular-nums">{formatBRL(item.value, privacyMode)}</p>
-                                        {allocationView === 'CLASS' && (
-                                            <p className="text-[10px] font-medium text-zinc-400">
-                                                {portfolio.filter(p => p.assetType === (item.name === 'Ações' ? 'STOCK' : 'FII')).length} ativos
-                                            </p>
-                                        )}
-                                        {allocationView === 'SECTOR' && (
-                                            <p className="text-[10px] font-medium text-zinc-400">
-                                                {portfolio.filter(p => (p.segment || 'Outros') === item.name).length} ativos
-                                            </p>
-                                        )}
-                                        {allocationView === 'ASSET' && (
-                                            <p className="text-[10px] font-medium text-zinc-400">
-                                                {formatBRL(portfolio.find(p => p.ticker === item.name)?.currentPrice || 0, privacyMode)}
-                                            </p>
-                                        )}
+                                    <div>
+                                        <p className="text-sm font-black text-zinc-900 dark:text-white leading-none mb-1">{item.name}</p>
+                                        <div className="w-24 h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                                            <div className="h-full rounded-full" style={{ width: `${item.percent}%`, backgroundColor: item.color }}></div>
+                                        </div>
                                     </div>
                                 </div>
+                                <p className="text-sm font-bold text-zinc-600 dark:text-zinc-400 tabular-nums">{formatBRL(item.value, privacyMode)}</p>
                             </div>
                         ))}
                     </div>
+
+                    {/* Concentration Risk Warning */}
+                    {allocationView === 'ASSET' && allocationData.byAsset.some(a => a.percent > 20) && (
+                        <div className="bg-amber-50 dark:bg-amber-900/10 p-4 rounded-2xl border border-amber-100 dark:border-amber-800/30 flex gap-3">
+                            <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
+                            <div>
+                                <h4 className="text-xs font-black text-amber-700 dark:text-amber-500 uppercase tracking-wide mb-1">Risco de Concentração</h4>
+                                <p className="text-[10px] font-medium text-amber-600 dark:text-amber-400 leading-relaxed">
+                                    Alguns ativos representam mais de 20% da sua carteira. Considere diversificar para reduzir riscos.
+                                </p>
+                            </div>
+                        </div>
+                    )}
                 </div>
+
             </div>
         </SwipeableModal>
 
