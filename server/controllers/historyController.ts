@@ -89,14 +89,76 @@ const formatDateBCB = (date: Date) => {
     return `${d}/${m}/${y}`;
 };
 
+async function fetchBrapiHistory(ticker: string, range: string) {
+    const token = process.env.BRAPI_TOKEN;
+    if (!token) return null;
+
+    let brapiRange = '1y';
+    let brapiInterval = '1d';
+
+    switch (range.toLowerCase()) {
+        case '1d': brapiRange = '1d'; brapiInterval = '15m'; break;
+        case '5d': brapiRange = '5d'; brapiInterval = '60m'; break;
+        case '1m': case '1mo': brapiRange = '1mo'; brapiInterval = '1d'; break;
+        case '3m': case '3mo': brapiRange = '3mo'; brapiInterval = '1d'; break;
+        case '6m': case '6mo': brapiRange = '6mo'; brapiInterval = '1d'; break;
+        case '1y': brapiRange = '1y'; brapiInterval = '1d'; break;
+        case '2y': brapiRange = '2y'; brapiInterval = '1wk'; break;
+        case '5y': brapiRange = '5y'; brapiInterval = '1wk'; break;
+        case '10y': brapiRange = '10y'; brapiInterval = '1mo'; break;
+        case 'max': brapiRange = 'max'; brapiInterval = '1mo'; break;
+        default: brapiRange = '1y'; brapiInterval = '1d';
+    }
+
+    try {
+        const url = `https://brapi.dev/api/quote/${ticker}?range=${brapiRange}&interval=${brapiInterval}&token=${token}`;
+        const { data } = await axios.get(url, { headers: HEADERS, httpsAgent, timeout: 8000 });
+        
+        if (data && data.results && data.results.length > 0 && data.results[0].historicalDataPrice) {
+            const historical = data.results[0].historicalDataPrice;
+            const timestamps: number[] = [];
+            const prices: number[] = [];
+            
+            historical.forEach((h: any) => {
+                if (h.date && h.close) {
+                    timestamps.push(h.date); 
+                    prices.push(h.close);
+                }
+            });
+
+            return {
+                timestamps,
+                prices,
+                opens: prices,
+                highs: prices,
+                lows: prices
+            };
+        }
+        return null;
+    } catch (e: any) {
+        console.warn(`Brapi fetch failed for ${ticker}:`, e.message);
+        return null;
+    }
+}
+
 async function fetchInvestidor10History(ticker: string, range: string) {
     const days = getInvestidor10Days(range);
+    const cleanTicker = ticker.toLowerCase().replace('.sa', '');
     
     try {
-        // 1. Try Stock Endpoint first (most common)
+        // 1. Try Index Endpoint (Fastest for indices like ifix, ibov)
+        try {
+            const indexUrl = `https://investidor10.com.br/api/indices/chart/${cleanTicker}/${days}`;
+            const { data } = await axios.get(indexUrl, { headers: HEADERS, httpsAgent, timeout: 5000 });
+            if (data && data.real && data.real.length > 0) {
+                return parseInvestidor10Data(data.real);
+            }
+        } catch (e) { }
+
+        // 2. Try Stock Endpoint first (most common)
         // Stocks use ticker directly: /api/cotacoes/acao/chart/{ticker}/{days}
         try {
-            const stockUrl = `https://investidor10.com.br/api/cotacoes/acao/chart/${ticker}/${days}`;
+            const stockUrl = `https://investidor10.com.br/api/cotacoes/acao/chart/${cleanTicker.toUpperCase()}/${days}`;
             const { data } = await axios.get(stockUrl, { headers: HEADERS, httpsAgent, timeout: 5000 });
             if (data && data.real && data.real.length > 0) {
                 return parseInvestidor10Data(data.real);
@@ -105,10 +167,10 @@ async function fetchInvestidor10History(ticker: string, range: string) {
             // Ignore error, try next method
         }
 
-        // 2. Try FII Endpoint
+        // 3. Try FII Endpoint
         // FIIs need an ID. We must scrape the FII page to get the ID.
         // Try fetching the FII page
-        const fiiPageUrl = `https://investidor10.com.br/fiis/${ticker}/`;
+        const fiiPageUrl = `https://investidor10.com.br/fiis/${cleanTicker.toUpperCase()}/`;
         const { data: pageHtml } = await axios.get(fiiPageUrl, { headers: HEADERS, httpsAgent, timeout: 5000 });
         
         // Extract ID: look for "id: 56" or similar
@@ -275,7 +337,7 @@ export async function getHistory(req: Request, res: Response) {
 
         const [ibovData, ifixData, cdiMap, ipcaMap] = await Promise.all([
             fetchYahooData('^BVSP', range),
-            fetchYahooData('IFIX.SA', range),
+            fetchBrapiHistory('IFIX', range).then(d => d || fetchYahooData('IFIX.SA', range)).then(d => d || fetchInvestidor10History('ifix', range)),
             fetchBcbSeries(12, startDateBCB),  // CDI Diário
             fetchBcbSeries(433, startDateBCB)  // IPCA Mensal
         ]);
