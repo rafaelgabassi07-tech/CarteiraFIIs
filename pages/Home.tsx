@@ -1351,15 +1351,15 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
       return goalsData.achievements.filter(a => a.cat === goalTab);
   }, [goalsData, goalTab]);
 
-  return (
+    return (
     <motion.div 
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="space-y-3 pb-8"
+        className="space-y-2 pb-8"
     >
         <MarketTicker />
         
-        <div className="-mt-1">
+        <div className="-mt-3">
             <StoriesBar 
                 insights={sortedInsights} 
                 onSelectStory={(s) => {
@@ -1373,7 +1373,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
         <motion.div 
             whileHover={{ scale: 1.005 }}
             whileTap={{ scale: 0.995 }}
-            className="relative w-full min-h-[210px] rounded-[2rem] bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl shadow-black/40 group anim-fade-in cursor-pointer transition-all duration-300"
+            className="relative w-full min-h-[220px] rounded-[2.5rem] bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl shadow-black/40 group anim-fade-in cursor-pointer transition-all duration-300"
             onClick={() => {
                 if (!isDragging.current) setShowEvolution(true);
             }}
@@ -1383,8 +1383,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
             <div className="absolute bottom-0 left-0 w-[250px] h-[250px] bg-emerald-600/10 blur-[80px] rounded-full pointer-events-none -ml-20 -mb-20 mix-blend-screen"></div>
             <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-50"></div>
 
-            <div className="relative z-10 p-5 flex flex-col justify-between h-full">
-                <div className="relative overflow-hidden h-[100px]">
+            <div className="relative z-10 p-6 flex flex-col justify-between h-full">
+                <div className="relative overflow-hidden h-[110px]">
                     <AnimatePresence initial={false} custom={swipeDirection} mode="popLayout">
                         <motion.div
                             key={cardView}
@@ -1405,15 +1405,15 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                                             <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
                                             <span className="text-[10px] font-black text-zinc-200 uppercase tracking-widest">Patrimônio Total</span>
                                         </div>
-                                        <div className="w-8 h-8 rounded-full bg-white/5 group-hover:bg-white/10 flex items-center justify-center backdrop-blur-md transition-colors border border-white/5">
+                                        <div className="w-9 h-9 rounded-full bg-white/5 group-hover:bg-white/10 flex items-center justify-center backdrop-blur-md transition-colors border border-white/5">
                                             <TrendingUp className="w-4 h-4 text-zinc-300" />
                                         </div>
                                     </div>
                                     <div className="flex flex-col">
-                                        <h1 className="text-[2.5rem] font-black text-white leading-none tracking-tighter tabular-nums drop-shadow-lg select-none">
+                                        <h1 className="text-5xl font-black text-white leading-none tracking-tighter tabular-nums drop-shadow-lg select-none">
                                             {formatBRL(balance, privacyMode)}
                                         </h1>
-                                        <div className="flex items-center gap-2 mt-2 ml-1">
+                                        <div className="flex items-center gap-2 mt-3 ml-1">
                                             <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Custo Total</span>
                                             <span className="text-xs font-bold text-zinc-300 tabular-nums">{formatBRL(invested, privacyMode)}</span>
                                         </div>
@@ -1428,15 +1428,15 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                                             <div className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse"></div>
                                             <span className="text-[10px] font-black text-zinc-200 uppercase tracking-widest">Proventos (12M)</span>
                                         </div>
-                                        <div className="w-8 h-8 rounded-full bg-white/5 group-hover:bg-white/10 flex items-center justify-center backdrop-blur-md transition-colors border border-white/5">
+                                        <div className="w-9 h-9 rounded-full bg-white/5 group-hover:bg-white/10 flex items-center justify-center backdrop-blur-md transition-colors border border-white/5">
                                             <Coins className="w-4 h-4 text-zinc-300" />
                                         </div>
                                     </div>
                                     <div className="flex flex-col">
-                                        <h1 className="text-[2.5rem] font-black text-white leading-none tracking-tighter tabular-nums drop-shadow-lg select-none">
+                                        <h1 className="text-5xl font-black text-white leading-none tracking-tighter tabular-nums drop-shadow-lg select-none">
                                             {formatBRL(incomeData.last12mTotal, privacyMode)}
                                         </h1>
-                                        <div className="flex items-center gap-2 mt-2 ml-1">
+                                        <div className="flex items-center gap-2 mt-3 ml-1">
                                             <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Média Mensal</span>
                                             <span className="text-xs font-bold text-zinc-300 tabular-nums">{formatBRL(incomeData.average, privacyMode)}</span>
                                         </div>
@@ -1451,15 +1451,15 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                                             <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></div>
                                             <span className="text-[10px] font-black text-zinc-200 uppercase tracking-widest">Rentabilidade</span>
                                         </div>
-                                        <div className="w-8 h-8 rounded-full bg-white/5 group-hover:bg-white/10 flex items-center justify-center backdrop-blur-md transition-colors border border-white/5">
+                                        <div className="w-9 h-9 rounded-full bg-white/5 group-hover:bg-white/10 flex items-center justify-center backdrop-blur-md transition-colors border border-white/5">
                                             <Activity className="w-4 h-4 text-zinc-300" />
                                         </div>
                                     </div>
                                     <div className="flex flex-col">
-                                        <h1 className={`text-[2.5rem] font-black leading-none tracking-tighter tabular-nums drop-shadow-lg select-none ${totalReturnPercent >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                        <h1 className={`text-5xl font-black leading-none tracking-tighter tabular-nums drop-shadow-lg select-none ${totalReturnPercent >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                                             {totalReturnPercent >= 0 ? '+' : ''}{totalReturnPercent.toFixed(2)}%
                                         </h1>
-                                        <div className="flex items-center gap-2 mt-2 ml-1">
+                                        <div className="flex items-center gap-2 mt-3 ml-1">
                                             <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Retorno Absoluto</span>
                                             <span className="text-xs font-bold text-zinc-300 tabular-nums">{totalReturn >= 0 ? '+' : ''}{formatBRL(totalReturn, privacyMode)}</span>
                                         </div>
@@ -1470,7 +1470,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                     </AnimatePresence>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4 pt-6 mt-4 border-t border-white/10">
+                <div className="grid grid-cols-3 gap-4 pt-6 mt-5 border-t border-white/10">
                     <div className="relative">
                         <span className="text-[9px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Valorização</span>
                         <div className={`flex items-center gap-1.5 ${capitalGain >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
@@ -1500,21 +1500,21 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                 </div>
 
                 {/* Pagination Dots */}
-                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
                     {[0, 1, 2].map(i => (
-                        <div key={i} className={`h-1 rounded-full transition-all duration-300 ${cardView === i ? 'w-4 bg-white' : 'w-1.5 bg-white/30'}`} />
+                        <div key={i} className={`h-1.5 rounded-full transition-all duration-300 ${cardView === i ? 'w-5 bg-white' : 'w-1.5 bg-white/30'}`} />
                     ))}
                 </div>
             </div>
         </motion.div>
 
-        <div className="grid grid-cols-2 gap-2 anim-slide-up">
+        <div className="grid grid-cols-2 gap-3 anim-slide-up mt-2">
             <BentoCard 
                 title="Agenda" 
                 value={agendaData.nextPayment ? formatDateShort(agendaData.nextPayment.paymentDate || agendaData.nextPayment.dateCom) : '--'} 
                 subtext={agendaData.nextPayment ? `Próx: ${agendaData.nextPayment.ticker}` : 'Sem previsões'}
                 icon={CalendarClock} 
-                colorClass="bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400"
+                colorClass="bg-violet-100 text-violet-600 dark:bg-violet-900/40 dark:text-violet-400"
                 onClick={() => setShowAgenda(true)}
                 info="Previsão de pagamentos futuros baseada nas datas 'Com' confirmadas pela B3."
             />
@@ -1524,7 +1524,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                 value={formatBRL(incomeData.currentMonth, privacyMode)} 
                 subtext="Neste Mês"
                 icon={CircleDollarSign} 
-                colorClass="bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
+                colorClass="bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400"
                 onClick={() => setShowProventos(true)}
                 info="Total de proventos (Dividendos, JCP) recebidos acumulados no mês atual."
             />
@@ -1534,7 +1534,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                 value={magicReachedCount.toString()} 
                 subtext="Ativos Atingidos"
                 icon={Sparkles} 
-                colorClass="bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
+                colorClass="bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400"
                 onClick={() => setShowMagicNumber(true)}
                 info="Quantidade de cotas necessária para que os dividendos mensais comprem uma nova cota do mesmo ativo (Bola de Neve)."
             />
@@ -1544,7 +1544,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                 value={`Nv. ${goalsData.currentLevel.level}`} 
                 subtext={goalsData.currentLevel.name}
                 icon={Trophy} 
-                colorClass="bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400"
+                colorClass="bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400"
                 onClick={() => setShowGoals(true)}
                 info="Seu nível na jornada de investidor, baseado no patrimônio acumulado e metas atingidas."
             />
@@ -1554,7 +1554,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                 value="Carteira" 
                 subtext="Ver Distribuição"
                 icon={PieIcon} 
-                colorClass="bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400"
+                colorClass="bg-sky-100 text-sky-600 dark:bg-sky-900/40 dark:text-sky-400"
                 onClick={() => setShowAllocation(true)}
                 info="Visualize a distribuição do seu patrimônio por classe de ativos, setores e ativos individuais."
                 className="col-span-2"

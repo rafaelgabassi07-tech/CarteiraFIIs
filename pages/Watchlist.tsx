@@ -582,46 +582,46 @@ export default function Watchlist({ showToast }: WatchlistProps) {
                                 <div 
                                     key={ticker} 
                                     onClick={() => handleAssetClick(ticker)}
-                                    className={`group bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm hover:shadow-lg hover:shadow-zinc-200/50 dark:hover:shadow-none transition-all cursor-pointer active:scale-[0.99] relative overflow-hidden ${isUpdating ? 'opacity-80' : ''}`}
+                                    className={`group bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-zinc-200/60 dark:border-zinc-800/60 shadow-sm hover:shadow-lg hover:shadow-zinc-200/50 dark:hover:shadow-none transition-all cursor-pointer active:scale-[0.98] relative overflow-hidden hover:border-indigo-200 dark:hover:border-zinc-700 ${isUpdating ? 'opacity-80' : ''}`}
                                 >
                                     {/* Subtle background indicator for trend */}
-                                    <div className={`absolute top-0 right-0 w-24 h-24 -mr-12 -mt-12 rounded-full blur-2xl opacity-[0.03] dark:opacity-[0.05] transition-colors ${isPositive ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
+                                    <div className={`absolute top-0 right-0 w-32 h-32 -mr-16 -mt-16 rounded-full blur-3xl opacity-[0.04] dark:opacity-[0.06] transition-colors ${isPositive ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
 
-                                    <div className="flex items-center justify-between relative z-10 mb-2">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-9 h-9 rounded-lg bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center overflow-hidden border border-zinc-100 dark:border-zinc-700/50 shadow-inner relative">
+                                    <div className="flex items-center justify-between relative z-10 mb-3">
+                                        <div className="flex items-center gap-3.5">
+                                            <div className="w-11 h-11 rounded-2xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center overflow-hidden border border-zinc-100 dark:border-zinc-700/50 shadow-sm relative">
                                                 {quote?.logo ? (
                                                     <img src={quote.logo} alt={ticker} className="w-full h-full object-cover" />
                                                 ) : (
-                                                    <span className="text-[10px] font-black text-zinc-300 dark:text-zinc-600">{ticker.substring(0, 2)}</span>
+                                                    <span className="text-xs font-black text-zinc-300 dark:text-zinc-600">{ticker.substring(0, 2)}</span>
                                                 )}
                                                 {isUpdating && (
                                                     <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px] flex items-center justify-center">
-                                                        <RefreshCcw className="w-3 h-3 text-white animate-spin" />
+                                                        <RefreshCcw className="w-4 h-4 text-white animate-spin" />
                                                     </div>
                                                 )}
                                             </div>
                                             <div>
-                                                <div className="flex items-center gap-1.5">
-                                                    <h3 className="font-black text-zinc-900 dark:text-white text-sm tracking-tighter leading-none">{ticker}</h3>
-                                                    <span className={`text-[6px] font-black px-1 py-0.5 rounded uppercase tracking-tighter ${quote?.type === 'FII' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400'}`}>
+                                                <div className="flex items-center gap-2">
+                                                    <h3 className="font-black text-zinc-900 dark:text-white text-lg tracking-tight leading-none">{ticker}</h3>
+                                                    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider ${quote?.type === 'FII' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400'}`}>
                                                         {quote?.type || (ticker.endsWith('11') ? 'FII' : 'Ação')}
                                                     </span>
                                                 </div>
-                                                <p className="text-[8px] font-bold text-zinc-400 mt-0.5 uppercase tracking-wide truncate max-w-[100px]">
+                                                <p className="text-[10px] font-bold text-zinc-400 mt-1 uppercase tracking-widest truncate max-w-[120px]">
                                                     {quote?.name || (isLoadingInitial ? 'Atualizando...' : 'Ativo')}
                                                 </p>
                                             </div>
                                         </div>
 
-                                        <div className="flex flex-col items-end gap-0.5">
-                                            <p className="font-black text-zinc-900 dark:text-white tabular-nums text-sm tracking-tight">
+                                        <div className="flex flex-col items-end gap-1">
+                                            <p className="font-black text-zinc-900 dark:text-white tabular-nums text-lg tracking-tight">
                                                 {hasData ? formatBRL(price) : (isLoadingInitial ? <span className="animate-pulse text-zinc-200">---</span> : <span className="text-zinc-300 text-[10px] font-bold">Indisp.</span>)}
                                             </p>
                                             
                                             {hasData && (
-                                                <div className={`flex items-center gap-0.5 px-1 py-0.5 rounded text-[8px] font-black ${isPositive ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'}`}>
-                                                    {isPositive ? <ArrowUpRight className="w-2 h-2" /> : <ArrowDownRight className="w-2 h-2" />}
+                                                <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-black ${isPositive ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'}`}>
+                                                    {isPositive ? <ArrowUpRight className="w-2.5 h-2.5" /> : <ArrowDownRight className="w-2.5 h-2.5" />}
                                                     {Math.abs(change).toFixed(2)}%
                                                 </div>
                                             )}
@@ -630,20 +630,20 @@ export default function Watchlist({ showToast }: WatchlistProps) {
 
                                     {/* Additional Info Grid */}
                                     {hasData && (
-                                        <div className="grid grid-cols-3 gap-1 pt-2 border-t border-zinc-50 dark:border-zinc-800/50 relative z-10">
+                                        <div className="grid grid-cols-3 gap-2 pt-3 border-t border-dashed border-zinc-200 dark:border-zinc-800/60 relative z-10">
                                             <div className="flex flex-col">
-                                                <span className="text-[6px] font-black text-zinc-400 uppercase tracking-widest">DY (12M)</span>
-                                                <span className="text-[9px] font-black text-zinc-900 dark:text-white">{fundamentals.dy_12m ? `${fundamentals.dy_12m.toFixed(2)}%` : '--'}</span>
+                                                <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mb-0.5">DY (12M)</span>
+                                                <span className="text-[11px] font-black text-zinc-900 dark:text-white">{fundamentals.dy_12m ? `${fundamentals.dy_12m.toFixed(2)}%` : '--'}</span>
                                             </div>
                                             <div className="flex flex-col text-center">
-                                                <span className="text-[6px] font-black text-zinc-400 uppercase tracking-widest">P/VP</span>
-                                                <span className={`text-[9px] font-black ${fundamentals.p_vp > 1.1 ? 'text-rose-500' : fundamentals.p_vp < 0.9 ? 'text-emerald-500' : 'text-zinc-900 dark:text-white'}`}>
+                                                <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mb-0.5">P/VP</span>
+                                                <span className={`text-[11px] font-black ${fundamentals.p_vp > 1.1 ? 'text-rose-500' : fundamentals.p_vp < 0.9 ? 'text-emerald-500' : 'text-zinc-900 dark:text-white'}`}>
                                                     {fundamentals.p_vp ? fundamentals.p_vp.toFixed(2) : '--'}
                                                 </span>
                                             </div>
                                             <div className="flex flex-col items-end">
-                                                <span className="text-[6px] font-black text-zinc-400 uppercase tracking-widest">Segmento</span>
-                                                <span className="text-[9px] font-black text-zinc-900 dark:text-white truncate max-w-[70px]">{quote?.segment || 'Geral'}</span>
+                                                <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mb-0.5">Segmento</span>
+                                                <span className="text-[11px] font-black text-zinc-900 dark:text-white truncate max-w-[80px]">{quote?.segment || 'Geral'}</span>
                                             </div>
                                         </div>
                                     )}

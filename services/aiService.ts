@@ -64,9 +64,9 @@ export const generateAIInsights = async (): Promise<PortfolioInsight[]> => {
             let imageUrl = `https://picsum.photos/seed/ai-${item.type}-${index}/1080/1920?blur=2`;
             
             try {
-                // Tenta gerar uma imagem temática usando o modelo nano banana
+                // Tenta gerar/buscar uma imagem temática usando o modelo com busca
                 const imgResponse = await ai!.models.generateContent({
-                    model: 'gemini-2.5-flash-image',
+                    model: 'gemini-3.1-flash-image-preview',
                     contents: {
                         parts: [
                             { text: `Uma imagem vertical (9:16) artística, moderna e minimalista para um app de investimentos sobre o tema: "${item.title}". Estilo fintech premium, cores sóbrias (azul, verde esmeralda, dourado), iluminação cinematográfica.` }
@@ -75,7 +75,17 @@ export const generateAIInsights = async (): Promise<PortfolioInsight[]> => {
                     config: {
                         imageConfig: {
                             aspectRatio: "9:16"
-                        }
+                        },
+                        tools: [
+                            {
+                                googleSearch: {
+                                    // @ts-ignore
+                                    searchTypes: {
+                                        imageSearch: {}
+                                    }
+                                } as any
+                            }
+                        ]
                     }
                 });
 

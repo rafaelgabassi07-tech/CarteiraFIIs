@@ -112,12 +112,12 @@ export const Header: React.FC<HeaderProps> = ({
             ) : (
               <div className="flex flex-col justify-center">
                  <div className="flex items-center gap-3">
-                    {headerIcon && <div className="w-8 h-8 flex items-center justify-center anim-scale-in shrink-0">{headerIcon}</div>}
-                    <h1 className="text-xl font-black tracking-tight text-zinc-900 dark:text-white truncate leading-none">
+                    {headerIcon && <div className="w-9 h-9 flex items-center justify-center anim-scale-in shrink-0 bg-zinc-100 dark:bg-zinc-800/50 rounded-xl border border-zinc-200/50 dark:border-zinc-700/50 shadow-sm">{headerIcon}</div>}
+                    <h1 className="text-2xl font-black tracking-tight text-zinc-900 dark:text-white truncate leading-none">
                       {title}
                     </h1>
                  </div>
-                 {subtitle && <div className={`text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1 ${headerIcon ? 'ml-11' : 'ml-0'}`}>{subtitle}</div>}
+                 {subtitle && <div className={`text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1.5 ${headerIcon ? 'ml-12' : 'ml-0'}`}>{subtitle}</div>}
               </div>
             )}
           </div>

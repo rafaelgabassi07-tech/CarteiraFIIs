@@ -282,49 +282,49 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
                                 href={item.url} 
                                 target="_blank" 
                                 rel="noopener noreferrer"
-                                className="block bg-white dark:bg-zinc-900 rounded-2xl p-4 border border-zinc-100 dark:border-zinc-800 shadow-sm active:scale-[0.98] transition-transform duration-150 relative group overflow-hidden"
+                                className="block bg-white dark:bg-zinc-900 rounded-3xl p-5 border border-zinc-200/60 dark:border-zinc-800/60 shadow-sm active:scale-[0.98] transition-all relative group overflow-hidden hover:border-indigo-200 dark:hover:border-zinc-700"
                             >
-                                <div className="flex justify-between items-start mb-2">
-                                    <div className="flex items-center gap-2">
+                                <div className="flex justify-between items-start mb-3">
+                                    <div className="flex items-center gap-2.5">
                                         {item.imageUrl ? (
-                                            <img src={item.imageUrl} alt={item.source} className="w-5 h-5 rounded-full object-cover bg-zinc-100" onError={(e) => (e.target as HTMLImageElement).style.display = 'none'} />
+                                            <img src={item.imageUrl} alt={item.source} className="w-6 h-6 rounded-full object-cover bg-zinc-100 border border-zinc-200 dark:border-zinc-700" onError={(e) => (e.target as HTMLImageElement).style.display = 'none'} />
                                         ) : (
-                                            <div className="w-5 h-5 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-bold text-zinc-400 uppercase">
+                                            <div className="w-6 h-6 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-bold text-zinc-400 uppercase border border-zinc-200 dark:border-zinc-700">
                                                 {item.source.substring(0, 1)}
                                             </div>
                                         )}
-                                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wide">{item.source}</span>
+                                        <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">{item.source}</span>
                                     </div>
-                                    <span className="text-[10px] text-zinc-400 font-medium">{item.date}</span>
+                                    <span className="text-[10px] text-zinc-400 font-bold">{item.date}</span>
                                 </div>
 
-                                <h3 className="text-sm font-bold text-zinc-900 dark:text-white leading-tight mb-2 line-clamp-2">
+                                <h3 className="text-base font-black text-zinc-900 dark:text-white leading-tight mb-2 line-clamp-2 tracking-tight">
                                     {item.title}
                                 </h3>
 
-                                <p className="text-xs text-zinc-500 dark:text-zinc-400 line-clamp-2 leading-relaxed mb-3">
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400 line-clamp-2 leading-relaxed mb-4 font-medium">
                                     {item.summary.replace(/<[^>]*>?/gm, '')}
                                 </p>
 
-                                <div className="flex items-center justify-between mt-auto pt-3 border-t border-zinc-50 dark:border-zinc-800/50">
+                                <div className="flex items-center justify-between mt-auto pt-4 border-t border-dashed border-zinc-200 dark:border-zinc-800/60">
                                     <div className="flex gap-2">
                                         {item.impact === 'high' && (
-                                            <span className="px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 text-[9px] font-black uppercase flex items-center gap-1 border border-rose-100 dark:border-rose-800/30">
+                                            <span className="px-2 py-1 rounded-md bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 text-[9px] font-black uppercase tracking-wider flex items-center gap-1 border border-rose-100 dark:border-rose-800/30">
                                                 <AlertTriangle className="w-3 h-3" /> Impacto
                                             </span>
                                         )}
                                         {item.impact === 'risk' && (
-                                            <span className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 text-[9px] font-black uppercase flex items-center gap-1 border border-amber-100 dark:border-amber-800/30">
+                                            <span className="px-2 py-1 rounded-md bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 text-[9px] font-black uppercase tracking-wider flex items-center gap-1 border border-amber-100 dark:border-amber-800/30">
                                                 <AlertTriangle className="w-3 h-3" /> Risco
                                             </span>
                                         )}
                                         {item.sentiment === 'positive' && (
-                                            <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 text-[9px] font-black uppercase flex items-center gap-1 border border-emerald-100 dark:border-emerald-800/30">
+                                            <span className="px-2 py-1 rounded-md bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 text-[9px] font-black uppercase tracking-wider flex items-center gap-1 border border-emerald-100 dark:border-emerald-800/30">
                                                 <TrendingUp className="w-3 h-3" /> Otimista
                                             </span>
                                         )}
                                         {item.sentiment === 'negative' && (
-                                            <span className="px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 text-[9px] font-black uppercase flex items-center gap-1 border border-rose-100 dark:border-rose-800/30">
+                                            <span className="px-2 py-1 rounded-md bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 text-[9px] font-black uppercase tracking-wider flex items-center gap-1 border border-rose-100 dark:border-rose-800/30">
                                                 <TrendingDown className="w-3 h-3" /> Pessimista
                                             </span>
                                         )}
