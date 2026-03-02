@@ -38,7 +38,7 @@ export const generateAIInsights = async (): Promise<PortfolioInsight[]> => {
     try {
         const response = await ai.models.generateContent({
             model: "gemini-3-flash-preview",
-            contents: "Gere 3 mensagens motivacionais curtas para investidores e 3 dicas de educação financeira baseadas em fatos reais e comprovados (ex: juros compostos, diversificação, foco no longo prazo). Para cada uma, forneça também um 'imagePrompt' curto e descritivo em inglês para gerar uma imagem minimalista e profissional relacionada ao tema. Retorne em JSON.",
+            contents: "Gere 3 mensagens motivacionais curtas para investidores e 3 dicas de educação financeira baseadas em fatos reais e comprovados (ex: juros compostos, diversificação, foco no longo prazo). Retorne em JSON.",
             config: {
                 responseMimeType: "application/json",
                 responseSchema: {
@@ -48,10 +48,9 @@ export const generateAIInsights = async (): Promise<PortfolioInsight[]> => {
                         properties: {
                             title: { type: Type.STRING },
                             message: { type: Type.STRING },
-                            type: { type: Type.STRING, enum: ['motivation', 'education'] },
-                            imagePrompt: { type: Type.STRING }
+                            type: { type: Type.STRING, enum: ['motivation', 'education'] }
                         },
-                        required: ['title', 'message', 'type', 'imagePrompt']
+                        required: ['title', 'message', 'type']
                     }
                 }
             }
@@ -59,45 +58,17 @@ export const generateAIInsights = async (): Promise<PortfolioInsight[]> => {
 
         const text = response.text;
         if (!text) return [];
-        const data = JSON.parse(text) as (AIEducationalContent & { imagePrompt: string })[];
+        const data = JSON.parse(text) as AIEducationalContent[];
         
-        const insights = await Promise.all(data.map(async (item, index) => {
-            let imageUrl = `https://picsum.photos/seed/ai-${item.type}-${index}/1080/1920?blur=2`;
-            
-            try {
-                // Tenta gerar imagem com Gemini
-                const imgResponse = await ai!.models.generateContent({
-                    model: 'gemini-2.5-flash-image',
-                    contents: {
-                        parts: [{ text: `A high-quality, professional, minimalist vertical background image for a financial app story. Theme: ${item.imagePrompt}. Style: clean, modern, slightly blurred, abstract financial elements.` }]
-                    },
-                    config: {
-                        imageConfig: {
-                            aspectRatio: "9:16"
-                        }
-                    }
-                });
-
-                const imgPart = imgResponse.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
-                if (imgPart?.inlineData?.data) {
-                    imageUrl = `data:image/png;base64,${imgPart.inlineData.data}`;
-                }
-            } catch (imgError) {
-                console.warn("Failed to generate image for story:", item.title, imgError);
-            }
-
-            return {
-                id: `ai-insight-${item.type}-${index}-${Date.now()}`,
-                type: (item.type === 'motivation' ? 'success' : 'news') as any,
-                title: item.title,
-                message: item.message,
-                score: 80 - index,
-                timestamp: Date.now(),
-                imageUrl
-            };
+        return data.map((item, index) => ({
+            id: `ai-insight-${item.type}-${index}-${Date.now()}`,
+            type: item.type === 'motivation' ? 'success' : 'news',
+            title: item.title,
+            message: item.message,
+            score: 80 - index, // Slightly lower than portfolio insights to not dominate
+            timestamp: Date.now(),
+            imageUrl: `https://picsum.photos/seed/ai-${item.type}-${index}/1080/1920?blur=2`
         }));
-
-        return insights;
     } catch (error) {
         console.error("Error generating AI insights:", error);
         return [];

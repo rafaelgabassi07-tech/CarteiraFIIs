@@ -32,7 +32,7 @@ export const useDailyVariationHistory = (
 
     // Update history when values change
     useEffect(() => {
-        if (currentTotalValue === 0 || Math.abs(currentDailyVariation) < 0.01) return;
+        if (currentTotalValue === 0) return;
 
         const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
         
