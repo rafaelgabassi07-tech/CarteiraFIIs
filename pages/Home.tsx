@@ -625,13 +625,15 @@ const StoryViewer = ({
         }, 200); // 200ms threshold for long press
     };
 
-    const handlePointerUp = (e: React.PointerEvent, action: 'prev' | 'next') => {
+    const handlePointerUp = () => {
         if (longPressTimerRef.current) {
             clearTimeout(longPressTimerRef.current);
         }
-        
         setIsPaused(false);
+    };
 
+    const handleClick = (e: React.MouseEvent, action: 'prev' | 'next') => {
+        e.stopPropagation();
         if (!isLongPressRef.current) {
             if (action === 'prev') handlePrev();
             else handleNext();
@@ -700,12 +702,14 @@ const StoryViewer = ({
                         <div 
                             className="w-[30%] h-full active:bg-white/5 transition-colors"
                             onPointerDown={handlePointerDown}
-                            onPointerUp={(e) => handlePointerUp(e, 'prev')}
+                            onPointerUp={handlePointerUp}
+                            onClick={(e) => handleClick(e, 'prev')}
                         ></div>
                         <div 
                             className="w-[70%] h-full active:bg-white/5 transition-colors"
                             onPointerDown={handlePointerDown}
-                            onPointerUp={(e) => handlePointerUp(e, 'next')}
+                            onPointerUp={handlePointerUp}
+                            onClick={(e) => handleClick(e, 'next')}
                         ></div>
                     </div>
 
