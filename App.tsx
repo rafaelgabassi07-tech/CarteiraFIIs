@@ -824,6 +824,8 @@ const App: React.FC = () => {
                           headerVisible={isHeaderVisible} 
                           targetAsset={targetAssetTicker} 
                           onClearTarget={() => setTargetAssetTicker(null)} 
+                          transactions={transactions}
+                          currentBalance={memoizedPortfolioData.balance}
                       />
                   )}
                   {currentTab === 'transactions' && <Transactions transactions={transactions} onAddTransaction={handleAddTransaction} onUpdateTransaction={handleUpdateTransaction} onRequestDeleteConfirmation={handleDeleteTransaction} privacyMode={privacyMode} />}

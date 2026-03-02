@@ -1,8 +1,9 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { AssetPosition, AssetType, DividendReceipt } from '../types';
-import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, BarChart3, PieChart, Coins, DollarSign, Building2, FileText, MapPin, Zap, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, SquareStack, Map as MapIcon, CandlestickChart, LineChart as LineChartIcon, Award, RefreshCcw, ArrowLeft, Briefcase, MoreHorizontal, LayoutGrid, List, Activity, Scale, Percent, ChevronDown, ChevronUp, ListFilter } from 'lucide-react';
+import { AssetPosition, AssetType, DividendReceipt, Transaction } from '../types';
+import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, BarChart3, PieChart, Coins, DollarSign, Building2, FileText, MapPin, Zap, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, SquareStack, Map as MapIcon, CandlestickChart, LineChart as LineChartIcon, Award, RefreshCcw, ArrowLeft, Briefcase, MoreHorizontal, LayoutGrid, List, Activity, Scale, Percent, ChevronDown, ChevronUp, ListFilter, ChevronRight } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
+import { EvolutionModal } from '../components/EvolutionModal';
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, ReferenceLine, ComposedChart, CartesianGrid, AreaChart, Area, YAxis, PieChart as RePieChart, Pie, Cell, LineChart, Line, Label, Legend, Scatter } from 'recharts';
 import { formatBRL, formatDateShort, getMonthName } from '../utils/formatters';
 
@@ -1645,6 +1646,8 @@ interface PortfolioProps {
   headerVisible: boolean;
   targetAsset: string | null;
   onClearTarget: () => void;
+  transactions?: Transaction[];
+  currentBalance?: number;
 }
 
 // Novo Card de Ativo Aprimorado
@@ -1722,11 +1725,13 @@ const AssetCard = ({ asset, maxVal, totalVal, privacyMode, onClick }: { asset: A
 
 const PortfolioComponent: React.FC<PortfolioProps> = ({ 
     portfolio, dividends, marketDividends, privacyMode, 
-    onAssetRefresh, headerVisible, targetAsset, onClearTarget 
+    onAssetRefresh, headerVisible, targetAsset, onClearTarget,
+    transactions = [], currentBalance = 0
 }) => {
     const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
     const [filter, setFilter] = useState('');
     const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'ANALYSIS' | 'INCOME'>('OVERVIEW');
+    const [showEvolutionModal, setShowEvolutionModal] = useState(false);
 
     useEffect(() => {
         if (targetAsset) {
@@ -1947,10 +1952,18 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
                             <p className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">{formatBRL(groupedAssets.totalVal, privacyMode)}</p>
                         </div>
                         <div className="text-right">
-                            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Variação Dia</p>
-                            <span className={`text-sm font-black ${groupedAssets.totalDailyChange >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                {groupedAssets.totalDailyChange >= 0 ? '+' : ''}{formatBRL(groupedAssets.totalDailyChange, privacyMode)}
-                            </span>
+                            <button 
+                                onClick={() => setShowEvolutionModal(true)}
+                                className="flex flex-col items-end active:scale-95 transition-transform"
+                            >
+                                <div className="flex items-center gap-1 mb-0.5">
+                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Variação Dia</p>
+                                    <ChevronRight className="w-3 h-3 text-zinc-400" />
+                                </div>
+                                <span className={`text-sm font-black ${groupedAssets.totalDailyChange >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                    {groupedAssets.totalDailyChange >= 0 ? '+' : ''}{formatBRL(groupedAssets.totalDailyChange, privacyMode)}
+                                </span>
+                            </button>
                         </div>
                     </div>
                 )}
@@ -2008,6 +2021,14 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
                     )}
                 </div>
             )}
+            
+            <EvolutionModal 
+                isOpen={showEvolutionModal} 
+                onClose={() => setShowEvolutionModal(false)} 
+                transactions={transactions} 
+                dividends={dividends} 
+                currentBalance={currentBalance} 
+            />
         </div>
     );
 };
