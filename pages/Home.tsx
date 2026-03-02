@@ -1131,7 +1131,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
           .sort((a, b) => b.value - a.value);
   }, [portfolio]);
 
-  const [incomeHistoryTab, setIncomeHistoryTab] = useState<'MONTHLY' | 'ANNUAL' | 'PROVENTOS'>('MONTHLY');
+  const [incomeHistoryTab, setIncomeHistoryTab] = useState<'MONTHLY' | 'ANNUAL' | 'PROVENTOS'>('PROVENTOS');
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
 
   const toggleMonth = (monthKey: string) => {
@@ -1681,6 +1681,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                             </h3>
                             <div className="bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl flex gap-1 w-full">
                                 <button 
+                                    onClick={() => setIncomeHistoryTab('PROVENTOS')}
+                                    className={`flex-1 px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${incomeHistoryTab === 'PROVENTOS' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                                >
+                                    Proventos
+                                </button>
+                                <button 
                                     onClick={() => setIncomeHistoryTab('MONTHLY')}
                                     className={`flex-1 px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${incomeHistoryTab === 'MONTHLY' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                                 >
@@ -1691,12 +1697,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                                     className={`flex-1 px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${incomeHistoryTab === 'ANNUAL' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                                 >
                                     Anual
-                                </button>
-                                <button 
-                                    onClick={() => setIncomeHistoryTab('PROVENTOS')}
-                                    className={`flex-1 px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${incomeHistoryTab === 'PROVENTOS' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
-                                >
-                                    Proventos
                                 </button>
                             </div>
                         </div>
