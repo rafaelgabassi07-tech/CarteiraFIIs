@@ -888,7 +888,17 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
   const [goalTab, setGoalTab] = useState<'WEALTH' | 'INCOME' | 'STRATEGY'>('WEALTH');
   
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
+  const [viewerStories, setViewerStories] = useState<PortfolioInsight[]>([]);
   const [viewedStories, setViewedStories] = useState<Set<string>>(new Set());
+
+  const sortedInsights = useMemo(() => {
+      return [...insights].sort((a, b) => {
+          const aViewed = viewedStories.has(a.id);
+          const bViewed = viewedStories.has(b.id);
+          if (aViewed === bViewed) return 0;
+          return aViewed ? 1 : -1;
+      });
+  }, [insights, viewedStories]);
 
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -1323,8 +1333,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
         <MarketTicker />
         
         <StoriesBar 
-            insights={insights} 
-            onSelectStory={(s) => setSelectedStoryId(s.id)} 
+            insights={sortedInsights} 
+            onSelectStory={(s) => {
+                setViewerStories(sortedInsights);
+                setSelectedStoryId(s.id);
+            }} 
             viewedIds={viewedStories}
         />
 
@@ -1448,7 +1461,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
 
         <StoryViewer 
             isOpen={!!selectedStoryId}
-            stories={insights}
+            stories={viewerStories}
             initialStoryId={selectedStoryId} 
             onClose={() => setSelectedStoryId(null)} 
             onViewAsset={(t) => { setSelectedStoryId(null); if(onViewAsset) onViewAsset(t); }} 
