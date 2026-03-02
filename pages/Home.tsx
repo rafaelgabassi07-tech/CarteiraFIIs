@@ -1675,26 +1675,26 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                     </div>
 
                     <div className="space-y-4">
-                        <div className="flex items-center justify-between mb-4">
+                        <div className="flex flex-col gap-3 mb-4">
                             <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
                                 HISTÓRICO DE PROVENTOS
                             </h3>
-                            <div className="bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl flex gap-1">
+                            <div className="bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl flex gap-1 w-full">
                                 <button 
                                     onClick={() => setIncomeHistoryTab('MONTHLY')}
-                                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${incomeHistoryTab === 'MONTHLY' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                                    className={`flex-1 px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${incomeHistoryTab === 'MONTHLY' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                                 >
                                     Mensal
                                 </button>
                                 <button 
                                     onClick={() => setIncomeHistoryTab('ANNUAL')}
-                                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${incomeHistoryTab === 'ANNUAL' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                                    className={`flex-1 px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${incomeHistoryTab === 'ANNUAL' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                                 >
                                     Anual
                                 </button>
                                 <button 
                                     onClick={() => setIncomeHistoryTab('PROVENTOS')}
-                                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${incomeHistoryTab === 'PROVENTOS' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                                    className={`flex-1 px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${incomeHistoryTab === 'PROVENTOS' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                                 >
                                     Proventos
                                 </button>
