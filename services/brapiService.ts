@@ -3,14 +3,21 @@ import { BrapiQuote } from '../types';
 
 // Função segura para obter o Token com fallback
 const getBrapiToken = () => {
-    // Tenta via injeção do Vite (Define)
-    if (typeof process !== 'undefined' && process.env && process.env.BRAPI_TOKEN) {
-        return process.env.BRAPI_TOKEN.replace(/"/g, ''); // Remove aspas extras se houver
+    // 1. Tenta via import.meta.env (Padrão Vite - Recomendado: VITE_BRAPI_TOKEN)
+    const viteToken = import.meta.env.VITE_BRAPI_TOKEN;
+    if (viteToken) return viteToken;
+
+    // 2. Tenta via process.env (Injeção via define no vite.config.ts: BRAPI_TOKEN)
+    // O Vite substitui 'process.env.BRAPI_TOKEN' pelo valor string durante o build.
+    // Removemos a verificação de 'process' para permitir que a substituição funcione mesmo no browser.
+    try {
+        // @ts-ignore
+        const envToken = process.env.BRAPI_TOKEN;
+        if (envToken) return envToken.replace(/"/g, '');
+    } catch (e) {
+        // Ignora ReferenceError se process não estiver definido e a substituição não ocorrer
     }
-    // Tenta via import.meta (Vite nativo)
-    if ((import.meta as any).env?.VITE_BRAPI_TOKEN) {
-        return (import.meta as any).env.VITE_BRAPI_TOKEN;
-    }
+
     return '';
 };
 
