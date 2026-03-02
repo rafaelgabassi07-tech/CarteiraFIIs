@@ -891,6 +891,29 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
   const [showGoals, setShowGoals] = useState(false);
   const [goalTab, setGoalTab] = useState<'WEALTH' | 'INCOME' | 'STRATEGY'>('WEALTH');
   
+  // Gestures State
+  const [cardView, setCardView] = useState(0);
+  const [swipeDirection, setSwipeDirection] = useState(0);
+  const isDragging = React.useRef(false);
+
+  const handlePanEnd = (e: any, info: any) => {
+      setTimeout(() => isDragging.current = false, 50);
+      const threshold = 40;
+      if (info.offset.x < -threshold) {
+          setSwipeDirection(1);
+          setCardView(prev => (prev + 1) % 3);
+      } else if (info.offset.x > threshold) {
+          setSwipeDirection(-1);
+          setCardView(prev => (prev - 1 + 3) % 3);
+      }
+  };
+
+  const cardVariants = {
+      enter: (direction: number) => ({ x: direction > 0 ? '100%' : '-100%', opacity: 0 }),
+      center: { x: 0, opacity: 1 },
+      exit: (direction: number) => ({ x: direction < 0 ? '100%' : '-100%', opacity: 0 })
+  };
+  
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
   const [viewerStories, setViewerStories] = useState<PortfolioInsight[]>([]);
   const [viewedStories, setViewedStories] = useState<Set<string>>(new Set());
@@ -1350,8 +1373,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
         <motion.div 
             whileHover={{ scale: 1.005 }}
             whileTap={{ scale: 0.995 }}
-            onClick={() => setShowEvolution(true)}
-            className="relative w-full min-h-[190px] rounded-[2rem] bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl shadow-black/40 group anim-fade-in cursor-pointer transition-all duration-300"
+            className="relative w-full min-h-[210px] rounded-[2rem] bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl shadow-black/40 group anim-fade-in cursor-pointer transition-all duration-300"
+            onClick={() => {
+                if (!isDragging.current) setShowEvolution(true);
+            }}
         >
             {/* Background Effects */}
             <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-indigo-600/20 blur-[100px] rounded-full pointer-events-none -mr-20 -mt-20 mix-blend-screen animate-pulse-slow group-hover:bg-indigo-600/30 transition-colors"></div>
@@ -1359,29 +1384,93 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
             <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-50"></div>
 
             <div className="relative z-10 p-5 flex flex-col justify-between h-full">
-                <div>
-                    <div className="flex justify-between items-start mb-4">
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/10 backdrop-blur-md shadow-lg">
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
-                            <span className="text-[10px] font-black text-zinc-200 uppercase tracking-widest">Patrimônio Total</span>
-                        </div>
-                        <div className="w-8 h-8 rounded-full bg-white/5 group-hover:bg-white/10 flex items-center justify-center backdrop-blur-md transition-colors border border-white/5">
-                            <TrendingUp className="w-4 h-4 text-zinc-300" />
-                        </div>
-                    </div>
+                <div className="relative overflow-hidden h-[100px]">
+                    <AnimatePresence initial={false} custom={swipeDirection} mode="popLayout">
+                        <motion.div
+                            key={cardView}
+                            custom={swipeDirection}
+                            variants={cardVariants}
+                            initial="enter"
+                            animate="center"
+                            exit="exit"
+                            transition={{ x: { type: "spring", stiffness: 300, damping: 30 }, opacity: { duration: 0.2 } }}
+                            className="absolute inset-0 w-full"
+                            onPanStart={() => isDragging.current = true}
+                            onPanEnd={handlePanEnd}
+                        >
+                            {cardView === 0 && (
+                                <div>
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/10 backdrop-blur-md shadow-lg">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
+                                            <span className="text-[10px] font-black text-zinc-200 uppercase tracking-widest">Patrimônio Total</span>
+                                        </div>
+                                        <div className="w-8 h-8 rounded-full bg-white/5 group-hover:bg-white/10 flex items-center justify-center backdrop-blur-md transition-colors border border-white/5">
+                                            <TrendingUp className="w-4 h-4 text-zinc-300" />
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <h1 className="text-[2.5rem] font-black text-white leading-none tracking-tighter tabular-nums drop-shadow-lg select-none">
+                                            {formatBRL(balance, privacyMode)}
+                                        </h1>
+                                        <div className="flex items-center gap-2 mt-2 ml-1">
+                                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Custo Total</span>
+                                            <span className="text-xs font-bold text-zinc-300 tabular-nums">{formatBRL(invested, privacyMode)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
-                    <div className="flex flex-col">
-                        <h1 className="text-[2.5rem] font-black text-white leading-none tracking-tighter tabular-nums drop-shadow-lg select-none">
-                            {formatBRL(balance, privacyMode)}
-                        </h1>
-                        <div className="flex items-center gap-2 mt-2 ml-1">
-                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Custo Total</span>
-                            <span className="text-xs font-bold text-zinc-300 tabular-nums">{formatBRL(invested, privacyMode)}</span>
-                        </div>
-                    </div>
+                            {cardView === 1 && (
+                                <div>
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/10 backdrop-blur-md shadow-lg">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse"></div>
+                                            <span className="text-[10px] font-black text-zinc-200 uppercase tracking-widest">Proventos (12M)</span>
+                                        </div>
+                                        <div className="w-8 h-8 rounded-full bg-white/5 group-hover:bg-white/10 flex items-center justify-center backdrop-blur-md transition-colors border border-white/5">
+                                            <Coins className="w-4 h-4 text-zinc-300" />
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <h1 className="text-[2.5rem] font-black text-white leading-none tracking-tighter tabular-nums drop-shadow-lg select-none">
+                                            {formatBRL(incomeData.last12mTotal, privacyMode)}
+                                        </h1>
+                                        <div className="flex items-center gap-2 mt-2 ml-1">
+                                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Média Mensal</span>
+                                            <span className="text-xs font-bold text-zinc-300 tabular-nums">{formatBRL(incomeData.average, privacyMode)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {cardView === 2 && (
+                                <div>
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/10 backdrop-blur-md shadow-lg">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></div>
+                                            <span className="text-[10px] font-black text-zinc-200 uppercase tracking-widest">Rentabilidade</span>
+                                        </div>
+                                        <div className="w-8 h-8 rounded-full bg-white/5 group-hover:bg-white/10 flex items-center justify-center backdrop-blur-md transition-colors border border-white/5">
+                                            <Activity className="w-4 h-4 text-zinc-300" />
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <h1 className={`text-[2.5rem] font-black leading-none tracking-tighter tabular-nums drop-shadow-lg select-none ${totalReturnPercent >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                            {totalReturnPercent >= 0 ? '+' : ''}{totalReturnPercent.toFixed(2)}%
+                                        </h1>
+                                        <div className="flex items-center gap-2 mt-2 ml-1">
+                                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Retorno Absoluto</span>
+                                            <span className="text-xs font-bold text-zinc-300 tabular-nums">{totalReturn >= 0 ? '+' : ''}{formatBRL(totalReturn, privacyMode)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </motion.div>
+                    </AnimatePresence>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4 pt-6 mt-2">
+                <div className="grid grid-cols-3 gap-4 pt-6 mt-4 border-t border-white/10">
                     <div className="relative">
                         <span className="text-[9px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Valorização</span>
                         <div className={`flex items-center gap-1.5 ${capitalGain >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
@@ -1408,6 +1497,13 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                             </span>
                         </div>
                     </div>
+                </div>
+
+                {/* Pagination Dots */}
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
+                    {[0, 1, 2].map(i => (
+                        <div key={i} className={`h-1 rounded-full transition-all duration-300 ${cardView === i ? 'w-4 bg-white' : 'w-1.5 bg-white/30'}`} />
+                    ))}
                 </div>
             </div>
         </motion.div>
