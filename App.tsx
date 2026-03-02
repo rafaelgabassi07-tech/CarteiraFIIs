@@ -9,7 +9,7 @@ import Watchlist from './pages/Watchlist';
 import { Settings } from './pages/Settings';
 import { Login } from './pages/Login';
 import { Transaction, BrapiQuote, DividendReceipt, AssetType, AppNotification, AssetFundamentals, ServiceMetric, ThemeType, ScrapeResult, UpdateReportData, PortfolioInsight } from './types';
-import { getQuotes } from './services/brapiService';
+import { getQuotes, isTokenValid } from './services/brapiService';
 import { fetchUnifiedMarketData, triggerScraperUpdate, mapScraperToFundamentals, fetchFutureAnnouncements } from './services/dataService';
 import { getQuantityOnDate, isSameDayLocal, mapSupabaseToTx, processPortfolio, normalizeTicker } from './services/portfolioRules';
 import { analyzePortfolio } from './services/analysisService';
@@ -265,6 +265,9 @@ const App: React.FC = () => {
                 message = 'Conexão com Banco de Dados OK.';
             } 
             else if (s.id === 'market') {
+                if (!isTokenValid()) {
+                    throw new Error('Token Brapi não configurado.');
+                }
                 // Brapi Check - No-CORS allows opaque check. If fetch doesn't throw, server is reachable.
                 await fetch('https://brapi.dev/api/quote/PETR4', { mode: 'no-cors', signal: controller.signal });
                 message = 'API de Cotações acessível.';
@@ -315,8 +318,13 @@ const App: React.FC = () => {
     if (initialLoad) setLoadingProgress(50);
     
     try {
-      const { quotes: newQuotesData } = await getQuotes(tickers);
-      if (newQuotesData.length > 0) {
+      const { quotes: newQuotesData, error } = await getQuotes(tickers);
+      if (error) {
+          console.error("Brapi Error:", error);
+          if (initialLoad) showToast('error', `Falha nas cotações: ${error}`);
+      }
+      
+      if (newQuotesData && newQuotesData.length > 0) {
         setQuotes(prev => ({...prev, ...newQuotesData.reduce((acc: any, q: any) => ({...acc, [q.symbol]: q }), {})}));
       }
       
@@ -528,8 +536,10 @@ const App: React.FC = () => {
           const tickers: string[] = Array.from(new Set(transactions.map(t => t.ticker.toUpperCase())));
           
           // 1. Atualiza Cotações (Brapi) - Rápido
-          const { quotes: newQuotesData } = await getQuotes(tickers);
-          if (newQuotesData.length > 0) {
+          const { quotes: newQuotesData, error } = await getQuotes(tickers);
+          if (error) showToast('error', `Brapi: ${error}`);
+          
+          if (newQuotesData && newQuotesData.length > 0) {
               setQuotes(prev => ({...prev, ...newQuotesData.reduce((acc: any, q: any) => ({...acc, [q.symbol]: q }), {})}));
           }
           
@@ -817,7 +827,7 @@ const App: React.FC = () => {
                       />
                   )}
                   {currentTab === 'transactions' && <Transactions transactions={transactions} onAddTransaction={handleAddTransaction} onUpdateTransaction={handleUpdateTransaction} onRequestDeleteConfirmation={handleDeleteTransaction} privacyMode={privacyMode} />}
-                  {currentTab === 'watchlist' && <Watchlist />}
+                  {currentTab === 'watchlist' && <Watchlist showToast={showToast} />}
                   {currentTab === 'news' && <MemoizedNews transactions={transactions} />}
                 </div>
               )}

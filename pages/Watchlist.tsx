@@ -31,7 +31,11 @@ const POPULAR_ASSETS = [
     { ticker: 'VISC11', name: 'Vinci Shopping', type: 'FII' },
 ];
 
-export default function Watchlist() {
+interface WatchlistProps {
+    showToast?: (type: 'success' | 'error' | 'info', text: string) => void;
+}
+
+export default function Watchlist({ showToast }: WatchlistProps) {
     const [watchlist, setWatchlist] = useState<string[]>([]);
     const [alerts, setAlerts] = useState<Record<string, { target: number; type: 'ABOVE' | 'BELOW' }>>({});
     const [quotes, setQuotes] = useState<Record<string, WatchlistItem>>({});
@@ -126,6 +130,7 @@ export default function Watchlist() {
             // 1. Fetch Real-time Quotes from Brapi
             const quotesPromise = getQuotes(tickersToFetch).catch(err => {
                 console.error("[Watchlist] Brapi Error:", err);
+                if (showToast) showToast('error', `Brapi: ${err}`);
                 return { quotes: [], error: err };
             });
             

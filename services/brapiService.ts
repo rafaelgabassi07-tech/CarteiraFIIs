@@ -24,6 +24,8 @@ const getBrapiToken = () => {
 const BRAPI_TOKEN = getBrapiToken();
 console.log('[BrapiService] Token Loaded:', BRAPI_TOKEN ? `YES (Length: ${BRAPI_TOKEN.length})` : 'NO');
 
+export const isTokenValid = () => !!BRAPI_TOKEN && BRAPI_TOKEN.length > 5;
+
 /**
  * Busca cotações de ativos na API da Brapi.
  * Refatorado para buscar em lote (batch) para evitar rate limiting.
@@ -33,8 +35,8 @@ export const getQuotes = async (tickers: string[]): Promise<{ quotes: BrapiQuote
     return { quotes: [] };
   }
   
-  if (!BRAPI_TOKEN) {
-    console.warn("[BrapiService] Token not found. Cotações em tempo real indisponíveis.");
+  if (!isTokenValid()) {
+    console.warn("[BrapiService] Token not found or invalid. Cotações em tempo real indisponíveis.");
     return { quotes: [], error: "Token não configurado" };
   }
 
