@@ -1586,6 +1586,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                                                             paddingAngle={2}
                                                             dataKey="value"
                                                             onMouseEnter={onPieEnter}
+                                                            onClick={onPieEnter}
                                                         >
                                                             {dividendsByAsset.map((entry, index) => (
                                                                 <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
@@ -1604,6 +1605,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                                                             key={entry.name} 
                                                             className={`flex items-center justify-between p-1.5 rounded-lg transition-all cursor-pointer ${index === activeIndex ? 'bg-zinc-50 dark:bg-zinc-800 scale-105 shadow-sm' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50'}`}
                                                             onMouseEnter={() => setActiveIndex(index)}
+                                                            onClick={() => setActiveIndex(index)}
+                                                            onTouchStart={() => setActiveIndex(index)}
                                                         >
                                                             <div className="flex items-center gap-1.5">
                                                                 <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: entry.color }}></div>
@@ -1627,13 +1630,15 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                         </div>
                         
                         {/* Scroll Indicators */}
-                        <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 pointer-events-none">
-                            <div className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600"></div>
-                            <div className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600"></div>
+                        <div className="flex flex-col items-center gap-2 mt-2">
+                            <div className="flex justify-center gap-1.5 pointer-events-none">
+                                <div className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600"></div>
+                                <div className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600"></div>
+                            </div>
+                            <p className="text-[9px] text-zinc-400 text-center font-medium flex items-center justify-center gap-1">
+                                <ArrowRightLeft className="w-3 h-3" /> Deslize para ver mais
+                            </p>
                         </div>
-                        <p className="text-[9px] text-zinc-400 text-center font-medium mt-1 flex items-center justify-center gap-1">
-                            <ArrowRightLeft className="w-3 h-3" /> Deslize para ver mais
-                        </p>
                     </div>
 
                     <div className="space-y-4">
