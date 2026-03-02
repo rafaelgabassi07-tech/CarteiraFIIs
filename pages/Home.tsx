@@ -1725,39 +1725,63 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                         )}
 
                         {incomeHistoryTab === 'MONTHLY' && (
-                            <div className="space-y-4 animate-in fade-in slide-in-from-left-4 duration-300">
-                                <div className="grid grid-cols-3 gap-4 py-2 border-b border-zinc-100 dark:border-zinc-800 text-[10px] font-black text-zinc-400 uppercase tracking-widest">
-                                    <span className="col-span-1">Mês</span>
-                                    <span className="col-span-2 text-right">Total Recebido</span>
-                                </div>
-                                
-                                {Object.keys(incomeData.groupedHistory).sort((a,b) => b.localeCompare(a)).map(monthKey => {
-                                    const monthItems = incomeData.groupedHistory[monthKey];
-                                    const monthTotal = monthItems.reduce((acc, item) => acc + item.amount, 0);
-                                    const isFuture = monthKey > new Date().toISOString().substring(0, 7);
-                                    const maxMonthValue = Math.max(...Object.values(incomeData.groupedHistory).map(items => items.reduce((acc, i) => acc + i.amount, 0)));
-                                    const percentage = (monthTotal / (maxMonthValue || 1)) * 100;
+                            <div className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-300">
+                                {(() => {
+                                    const monthsByYear = Object.keys(incomeData.groupedHistory).reduce((acc, monthKey) => {
+                                        const year = monthKey.substring(0, 4);
+                                        if (!acc[year]) acc[year] = [];
+                                        acc[year].push(monthKey);
+                                        return acc;
+                                    }, {} as Record<string, string[]>);
                                     
-                                    return (
-                                        <div key={monthKey} className="grid grid-cols-3 gap-4 py-3 border-b border-zinc-50 dark:border-zinc-800/50 items-center hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors group">
-                                            <div className="col-span-1 flex items-center gap-2">
-                                                <span className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wider">
-                                                    {getMonthName(monthKey + '-01')}
+                                    const maxMonthValue = Math.max(...Object.values(incomeData.groupedHistory).map(items => items.reduce((acc, i) => acc + i.amount, 0)));
+
+                                    return Object.keys(monthsByYear).sort((a, b) => b.localeCompare(a)).map(year => (
+                                        <div key={year}>
+                                            <div className="flex items-center gap-2 mb-2 px-1">
+                                                <span className="text-xs font-black text-zinc-300 dark:text-zinc-700 bg-zinc-100 dark:bg-zinc-800/50 px-2 py-0.5 rounded-md">
+                                                    {year}
                                                 </span>
-                                                {isFuture && <span className="text-[9px] font-bold text-sky-500 bg-sky-50 dark:bg-sky-900/20 px-1.5 py-0.5 rounded uppercase">Futuro</span>}
+                                                <div className="h-px flex-1 bg-zinc-100 dark:bg-zinc-800"></div>
                                             </div>
-                                            <div className="col-span-2 flex flex-col items-end gap-1">
-                                                <span className="text-xs font-bold text-zinc-900 dark:text-white">{formatBRL(monthTotal, privacyMode)}</span>
-                                                <div className="w-full h-1.5 bg-zinc-100 dark:bg-zinc-800/50 rounded-full overflow-hidden flex justify-end">
-                                                    <div 
-                                                        className="h-full bg-emerald-500 rounded-full opacity-60 group-hover:opacity-100 transition-all" 
-                                                        style={{ width: `${percentage}%` }}
-                                                    ></div>
-                                                </div>
+                                            <div className="space-y-2">
+                                                {monthsByYear[year].sort((a, b) => b.localeCompare(a)).map(monthKey => {
+                                                    const monthItems = incomeData.groupedHistory[monthKey];
+                                                    const monthTotal = monthItems.reduce((acc, item) => acc + item.amount, 0);
+                                                    const isFuture = monthKey > new Date().toISOString().substring(0, 7);
+                                                    const percentage = (monthTotal / (maxMonthValue || 1)) * 100;
+                                                    
+                                                    // Get month name without year
+                                                    const date = new Date(monthKey + '-02T12:00:00'); // Safe day to avoid timezone issues
+                                                    const monthName = date.toLocaleDateString('pt-BR', { month: 'long' });
+                                                    const capitalizedMonth = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+
+                                                    return (
+                                                        <div key={monthKey} className="relative py-2 px-2 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 rounded-lg transition-colors group">
+                                                            <div className="flex items-center justify-between relative z-10 mb-1.5">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 w-20">
+                                                                        {capitalizedMonth}
+                                                                    </span>
+                                                                    {isFuture && <span className="text-[8px] font-black text-sky-500 bg-sky-50 dark:bg-sky-900/20 px-1.5 py-0.5 rounded uppercase tracking-wider">Futuro</span>}
+                                                                </div>
+                                                                <span className="text-xs font-bold text-zinc-900 dark:text-white">{formatBRL(monthTotal, privacyMode)}</span>
+                                                            </div>
+                                                            
+                                                            {/* Background Bar */}
+                                                            <div className="w-full h-1.5 bg-zinc-100 dark:bg-zinc-800/50 rounded-full overflow-hidden">
+                                                                <div 
+                                                                    className="h-full bg-emerald-500 rounded-full opacity-60 group-hover:opacity-100 transition-all duration-500" 
+                                                                    style={{ width: `${percentage}%` }}
+                                                                ></div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
                                         </div>
-                                    );
-                                })}
+                                    ));
+                                })()}
                             </div>
                         )}
 
