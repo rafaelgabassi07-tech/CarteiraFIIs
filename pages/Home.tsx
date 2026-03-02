@@ -5,7 +5,7 @@ import { AssetPosition, DividendReceipt, AssetType, PortfolioInsight, Transactio
 import { CircleDollarSign, CalendarClock, PieChart as PieIcon, ArrowUpRight, ArrowDownLeft, Wallet, ArrowRight, Sparkles, Trophy, Anchor, Coins, Crown, Info, X, Zap, ShieldCheck, AlertTriangle, Play, Pause, TrendingUp, TrendingDown, Target, Snowflake, Layers, Medal, Rocket, Gem, Lock, Building2, Briefcase, ShoppingCart, Coffee, Plane, Star, Award, Umbrella, ZapOff, CheckCircle2, ListFilter, History, Activity, Calendar, Percent, BarChart3, Share2, ChevronDown, ArrowRightLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, CartesianGrid, AreaChart, Area, XAxis, YAxis, ComposedChart, Bar, Line, ReferenceLine, Label, BarChart, Legend } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, CartesianGrid, AreaChart, Area, XAxis, YAxis, ComposedChart, Bar, Line, ReferenceLine, Label, BarChart, Legend, Sector } from 'recharts';
 import { formatBRL, formatDateShort, getMonthName, getDaysUntil } from '../utils/formatters';
 
 import { MarketTicker } from '../components/MarketTicker';
@@ -889,6 +889,44 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
   const [viewedStories, setViewedStories] = useState<Set<string>>(new Set());
 
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  const onPieEnter = (_: any, index: number) => {
+    setActiveIndex(index);
+  };
+
+  const renderActiveShape = (props: any) => {
+    const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, value } = props;
+    return (
+      <g>
+        <text x={cx} y={cy} dy={-10} textAnchor="middle" fill={fill} className="text-xs font-black uppercase tracking-widest">
+          {payload.name}
+        </text>
+        <text x={cx} y={cy} dy={10} textAnchor="middle" fill={fill} className="text-[10px] font-bold opacity-80">
+          {formatBRL(value)}
+        </text>
+        <Sector
+          cx={cx}
+          cy={cy}
+          innerRadius={innerRadius}
+          outerRadius={outerRadius + 4}
+          startAngle={startAngle}
+          endAngle={endAngle}
+          fill={fill}
+        />
+        <Sector
+          cx={cx}
+          cy={cy}
+          startAngle={startAngle}
+          endAngle={endAngle}
+          innerRadius={innerRadius - 4}
+          outerRadius={innerRadius}
+          fill={fill}
+        />
+      </g>
+    );
+  };
+
   useEffect(() => {
       try {
           const saved = localStorage.getItem('investfiis_viewed_stories');
@@ -1533,35 +1571,52 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                                 <div className="h-64 w-full rounded-2xl border border-zinc-100 dark:border-zinc-800 p-2 relative overflow-hidden bg-white dark:bg-zinc-900 shadow-sm flex flex-col">
                                     <h3 className="absolute top-3 left-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest z-10">Por Ativo</h3>
                                     {dividendsByAsset.length > 0 ? (
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <PieChart margin={{ top: 20 }}>
-                                                <Pie
-                                                    data={dividendsByAsset}
-                                                    cx="50%"
-                                                    cy="50%"
-                                                    innerRadius={60}
-                                                    outerRadius={80}
-                                                    paddingAngle={2}
-                                                    dataKey="value"
-                                                >
-                                                    {dividendsByAsset.map((entry, index) => (
-                                                        <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
-                                                    ))}
-                                                </Pie>
-                                                <RechartsTooltip 
-                                                    contentStyle={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '10px', padding: '8px 12px', backdropFilter: 'blur(8px)' }}
-                                                    formatter={(value: number) => formatBRL(value)}
-                                                />
-                                                <Legend 
-                                                    layout="vertical" 
-                                                    verticalAlign="middle" 
-                                                    align="right"
-                                                    iconType="circle"
-                                                    iconSize={6}
-                                                    wrapperStyle={{ fontSize: '9px', fontWeight: 700, color: '#a1a1aa' }}
-                                                />
-                                            </PieChart>
-                                        </ResponsiveContainer>
+                                        <div className="flex items-center h-full pt-4">
+                                            <div className="w-[60%] h-full relative">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <PieChart>
+                                                        <Pie
+                                                            activeIndex={activeIndex}
+                                                            activeShape={renderActiveShape}
+                                                            data={dividendsByAsset}
+                                                            cx="50%"
+                                                            cy="50%"
+                                                            innerRadius={55}
+                                                            outerRadius={75}
+                                                            paddingAngle={2}
+                                                            dataKey="value"
+                                                            onMouseEnter={onPieEnter}
+                                                        >
+                                                            {dividendsByAsset.map((entry, index) => (
+                                                                <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
+                                                            ))}
+                                                        </Pie>
+                                                    </PieChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                            <div className="w-[40%] h-full overflow-y-auto pr-2 custom-scrollbar flex flex-col justify-center gap-2">
+                                                {dividendsByAsset.map((entry, index) => {
+                                                    const totalVal = dividendsByAsset.reduce((acc, curr) => acc + curr.value, 0);
+                                                    const percent = ((entry.value / (totalVal || 1)) * 100).toFixed(0);
+                                                    
+                                                    return (
+                                                        <div 
+                                                            key={entry.name} 
+                                                            className={`flex items-center justify-between p-1.5 rounded-lg transition-all cursor-pointer ${index === activeIndex ? 'bg-zinc-50 dark:bg-zinc-800 scale-105 shadow-sm' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50'}`}
+                                                            onMouseEnter={() => setActiveIndex(index)}
+                                                        >
+                                                            <div className="flex items-center gap-1.5">
+                                                                <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: entry.color }}></div>
+                                                                <span className={`text-[9px] font-black ${index === activeIndex ? 'text-zinc-900 dark:text-white' : 'text-zinc-500'}`}>{entry.name}</span>
+                                                            </div>
+                                                            <span className="text-[9px] font-bold text-zinc-400">
+                                                                {percent}%
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
                                     ) : (
                                         <div className="flex items-center justify-center h-full text-zinc-400 text-xs font-bold">
                                             Sem dados de proventos por ativo
