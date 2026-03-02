@@ -1131,7 +1131,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
           .sort((a, b) => b.value - a.value);
   }, [portfolio]);
 
-  const [incomeHistoryTab, setIncomeHistoryTab] = useState<'MONTHLY' | 'ANNUAL'>('MONTHLY');
+  const [incomeHistoryTab, setIncomeHistoryTab] = useState<'MONTHLY' | 'ANNUAL' | 'PROVENTOS'>('MONTHLY');
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
 
   const toggleMonth = (monthKey: string) => {
@@ -1692,10 +1692,16 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                                 >
                                     Anual
                                 </button>
+                                <button 
+                                    onClick={() => setIncomeHistoryTab('PROVENTOS')}
+                                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${incomeHistoryTab === 'PROVENTOS' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                                >
+                                    Proventos
+                                </button>
                             </div>
                         </div>
 
-                        {incomeHistoryTab === 'ANNUAL' ? (
+                        {incomeHistoryTab === 'ANNUAL' && (
                             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                                 <div className="flex justify-between items-center py-2 border-b border-zinc-100 dark:border-zinc-800">
                                     <span className="text-sm font-bold text-zinc-900 dark:text-white">Total de Proventos:</span>
@@ -1716,8 +1722,37 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                                     </div>
                                 ))}
                             </div>
-                        ) : (
-                            <div className="space-y-2 animate-in fade-in slide-in-from-left-4 duration-300">
+                        )}
+
+                        {incomeHistoryTab === 'MONTHLY' && (
+                            <div className="space-y-4 animate-in fade-in slide-in-from-left-4 duration-300">
+                                <div className="grid grid-cols-2 gap-4 py-2 border-b border-zinc-100 dark:border-zinc-800 text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                                    <span>Mês</span>
+                                    <span className="text-right">Total Recebido</span>
+                                </div>
+                                
+                                {Object.keys(incomeData.groupedHistory).sort((a,b) => b.localeCompare(a)).map(monthKey => {
+                                    const monthItems = incomeData.groupedHistory[monthKey];
+                                    const monthTotal = monthItems.reduce((acc, item) => acc + item.amount, 0);
+                                    const isFuture = monthKey > new Date().toISOString().substring(0, 7);
+                                    
+                                    return (
+                                        <div key={monthKey} className="grid grid-cols-2 gap-4 py-3 border-b border-zinc-50 dark:border-zinc-800/50 items-center hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wider">
+                                                    {getMonthName(monthKey + '-01')}
+                                                </span>
+                                                {isFuture && <span className="text-[9px] font-bold text-sky-500 bg-sky-50 dark:bg-sky-900/20 px-1.5 py-0.5 rounded uppercase">Futuro</span>}
+                                            </div>
+                                            <span className="text-xs font-bold text-zinc-900 dark:text-white text-right">{formatBRL(monthTotal, privacyMode)}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        {incomeHistoryTab === 'PROVENTOS' && (
+                            <div className="space-y-2 animate-in fade-in slide-in-from-right-4 duration-300">
                                 {Object.keys(incomeData.groupedHistory).sort((a,b) => b.localeCompare(a)).map(monthKey => {
                                     const monthItems = incomeData.groupedHistory[monthKey];
                                     const monthTotal = monthItems.reduce((acc, item) => acc + item.amount, 0);
