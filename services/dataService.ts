@@ -156,7 +156,8 @@ const fetchMarketIndicators = async (): Promise<{ ipca: number, cdi: number }> =
 };
 
 export const triggerScraperUpdate = async (tickers: string[], force = false): Promise<ScrapeResult[]> => {
-    const uniqueTickers = Array.from(new Set(tickers.map(normalizeTicker)));
+    // Filtra tickers vazios ou inválidos para evitar erro 400 na API
+    const uniqueTickers = Array.from(new Set(tickers.map(normalizeTicker))).filter(t => t && t.length > 0);
     const results: ScrapeResult[] = [];
     
     // Batch processing

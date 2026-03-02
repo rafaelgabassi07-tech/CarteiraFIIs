@@ -28,7 +28,8 @@ export const isTokenValid = () => !!BRAPI_TOKEN && BRAPI_TOKEN.length > 5;
 
 /**
  * Busca cotações de ativos na API da Brapi.
- * Refatorado para buscar em lote (batch) para evitar rate limiting.
+ * Alterado para buscar UM POR VEZ (individualmente) conforme solicitado,
+ * mas em paralelo para performance.
  */
 export const getQuotes = async (tickers: string[]): Promise<{ quotes: BrapiQuote[], error?: string }> => {
   if (!tickers || tickers.length === 0) {
@@ -40,36 +41,36 @@ export const getQuotes = async (tickers: string[]): Promise<{ quotes: BrapiQuote
     return { quotes: [], error: "Token não configurado" };
   }
 
-  // Remove duplicatas e junta os tickers com vírgula para busca em lote
   const uniqueTickers = Array.from(new Set(tickers.map(t => t.trim().toUpperCase())));
-  const tickersParam = uniqueTickers.join(',');
   
   try {
-    // console.log(`[BrapiService] Fetching batch: ${tickersParam}`);
-    const response = await fetch(`https://brapi.dev/api/quote/${tickersParam}?token=${BRAPI_TOKEN}`, {
-        cache: 'no-store'
-    });
-    
-    if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {
-            console.error(`[BrapiService] Erro de Autenticação (Token Inválido ou Expirado). Status: ${response.status}`);
-            return { quotes: [], error: "Token Inválido" };
-        }
-        if (response.status === 404) {
-             console.warn(`[BrapiService] Nenhum ticker encontrado para: ${tickersParam}`);
-             return { quotes: [] };
-        }
-        console.warn(`[BrapiService] Batch Request Failed -> HTTP ${response.status}`);
-        return { quotes: [], error: `Erro HTTP ${response.status}` };
-    }
+    // Busca individual (um request por ticker) em paralelo
+    const promises = uniqueTickers.map(async (ticker) => {
+        try {
+            const response = await fetch(`https://brapi.dev/api/quote/${ticker}?token=${BRAPI_TOKEN}`, {
+                cache: 'no-store'
+            });
 
-    const data = await response.json();
-    
-    if (data.results && Array.isArray(data.results)) {
-        return { quotes: data.results as BrapiQuote[] };
-    }
-    
-    return { quotes: [] };
+            if (!response.ok) {
+                console.warn(`[BrapiService] Falha ao buscar ${ticker}: ${response.status}`);
+                return null;
+            }
+
+            const data = await response.json();
+            if (data.results && Array.isArray(data.results) && data.results.length > 0) {
+                return data.results[0] as BrapiQuote;
+            }
+            return null;
+        } catch (err) {
+            console.error(`[BrapiService] Erro ao buscar ${ticker}`, err);
+            return null;
+        }
+    });
+
+    const results = await Promise.all(promises);
+    const validQuotes = results.filter((q): q is BrapiQuote => q !== null);
+
+    return { quotes: validQuotes };
 
   } catch (e: any) {
     console.error("Brapi Service Error:", e);
