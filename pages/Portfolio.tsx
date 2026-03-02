@@ -3,6 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt, Transaction } from '../types';
 import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, BarChart3, PieChart, Coins, DollarSign, Building2, FileText, MapPin, Zap, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, SquareStack, Map as MapIcon, CandlestickChart, LineChart as LineChartIcon, Award, RefreshCcw, ArrowLeft, Briefcase, MoreHorizontal, LayoutGrid, List, Activity, Scale, Percent, ChevronDown, ChevronUp, ListFilter, ChevronRight } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
+import { useDailyVariationHistory } from '../hooks/useDailyVariationHistory';
 import { DailyVariationModal } from '../components/DailyVariationModal';
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, ReferenceLine, ComposedChart, CartesianGrid, AreaChart, Area, YAxis, PieChart as RePieChart, Pie, Cell, LineChart, Line, Label, Legend, Scatter } from 'recharts';
 import { formatBRL, formatDateShort, getMonthName } from '../utils/formatters';
@@ -1782,6 +1783,11 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
         portfolio.find(p => p.ticker === selectedTicker), 
     [portfolio, selectedTicker]);
 
+    const dailyHistory = useDailyVariationHistory(
+        groupedAssets.totalVal,
+        groupedAssets.totalDailyChange
+    );
+
     // Data prep for IncomeAnalysisSection
     const incomeChartData = useMemo(() => {
         if (!selectedAsset) return { data: [], average: 0, activeTypes: [] };
@@ -2028,6 +2034,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
                 transactions={transactions} 
                 dividends={dividends} 
                 currentBalance={currentBalance} 
+                history={dailyHistory}
             />
         </div>
     );
