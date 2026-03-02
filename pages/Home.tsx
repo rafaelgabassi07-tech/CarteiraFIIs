@@ -5,7 +5,7 @@ import { AssetPosition, DividendReceipt, AssetType, PortfolioInsight, Transactio
 import { CircleDollarSign, CalendarClock, PieChart as PieIcon, ArrowUpRight, ArrowDownLeft, Wallet, ArrowRight, Sparkles, Trophy, Anchor, Coins, Crown, Info, X, Zap, ShieldCheck, AlertTriangle, Play, Pause, TrendingUp, TrendingDown, Target, Snowflake, Layers, Medal, Rocket, Gem, Lock, Building2, Briefcase, ShoppingCart, Coffee, Plane, Star, Award, Umbrella, ZapOff, CheckCircle2, ListFilter, History, Activity, Calendar, Percent, BarChart3, Share2, ChevronDown, ArrowRightLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, CartesianGrid, AreaChart, Area, XAxis, YAxis, ComposedChart, Bar, Line, ReferenceLine, Label, BarChart } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, CartesianGrid, AreaChart, Area, XAxis, YAxis, ComposedChart, Bar, Line, ReferenceLine, Label, BarChart, Legend } from 'recharts';
 import { formatBRL, formatDateShort, getMonthName, getDaysUntil } from '../utils/formatters';
 
 import { MarketTicker } from '../components/MarketTicker';
@@ -1082,6 +1082,17 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
       return { chartData, average, max, last12mTotal, provisionedTotal, currentMonth, groupedHistory };
   }, [dividendReceipts]);
 
+  const dividendsByAsset = useMemo(() => {
+      return portfolio
+          .map((asset, index) => ({
+              name: asset.ticker,
+              value: asset.totalDividends || 0,
+              color: CHART_COLORS[index % CHART_COLORS.length]
+          }))
+          .filter(d => d.value > 0)
+          .sort((a, b) => b.value - a.value);
+  }, [portfolio]);
+
   const magicNumberData = useMemo(() => {
       const all = portfolio
           .map(asset => {
@@ -1459,56 +1470,115 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                 </div>
 
                 <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar">
-                    <div className="h-56 w-full mb-6 shrink-0 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-2 relative overflow-hidden bg-white dark:bg-zinc-900 shadow-sm">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <ComposedChart data={incomeData.chartData} margin={{ top: 10, right: 5, left: -20, bottom: 0 }}>
-                                <defs>
-                                    <linearGradient id="colorIncomeBar" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
-                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0.3}/>
-                                    </linearGradient>
-                                    <linearGradient id="colorIncomeBarFuture" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
-                                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 700 }} dy={5} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a' }} tickFormatter={(val) => `R$${val}`} />
-                                <RechartsTooltip 
-                                    cursor={{fill: 'rgba(16, 185, 129, 0.05)'}}
-                                    contentStyle={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '10px', padding: '8px 12px', backdropFilter: 'blur(8px)' }}
-                                    formatter={(value: number, name: string, props: any) => [
-                                        formatBRL(value), 
-                                        props.payload.isFuture ? 'Projetado' : 'Recebido'
-                                    ]}
-                                />
-                                <Bar 
-                                    dataKey="value" 
-                                    radius={[4, 4, 0, 0]}
-                                    maxBarSize={32}
-                                    animationDuration={1500}
-                                >
-                                    {incomeData.chartData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.isFuture ? "url(#colorIncomeBarFuture)" : "url(#colorIncomeBar)"} />
-                                    ))}
-                                </Bar>
-                                <Line 
-                                    type="monotone" 
-                                    dataKey="value" 
-                                    stroke="#059669" 
-                                    strokeWidth={2} 
-                                    dot={{r: 3, fill: "#059669", strokeWidth: 2, stroke: "#fff"}} 
-                                    activeDot={{ r: 5, strokeWidth: 0, fill: '#059669' }}
-                                    animationDuration={2000}
-                                />
-                                {incomeData.average > 0 && (
-                                    <ReferenceLine y={incomeData.average} stroke="#f59e0b" strokeDasharray="3 3" strokeOpacity={0.8}>
-                                        <Label value="Média" position="insideBottomRight" fill="#f59e0b" fontSize={9} fontWeight="bold" />
-                                    </ReferenceLine>
-                                )}
-                            </ComposedChart>
-                        </ResponsiveContainer>
+                    <div className="mb-6 shrink-0 relative group">
+                        <div className="flex overflow-x-auto snap-x snap-mandatory pb-6 gap-4 no-scrollbar" id="income-charts-scroll">
+                            {/* Slide 1: Evolution */}
+                            <div className="min-w-full snap-center">
+                                <div className="h-64 w-full rounded-2xl border border-zinc-100 dark:border-zinc-800 p-2 relative overflow-hidden bg-white dark:bg-zinc-900 shadow-sm">
+                                    <h3 className="absolute top-3 left-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest z-10">Evolução Mensal</h3>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <ComposedChart data={incomeData.chartData} margin={{ top: 25, right: 5, left: -20, bottom: 0 }}>
+                                            <defs>
+                                                <linearGradient id="colorIncomeBar" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                                                    <stop offset="95%" stopColor="#10b981" stopOpacity={0.3}/>
+                                                </linearGradient>
+                                                <linearGradient id="colorIncomeBarFuture" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                                                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                                                </linearGradient>
+                                            </defs>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
+                                            <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 700 }} dy={5} />
+                                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a' }} tickFormatter={(val) => `R$${val}`} />
+                                            <RechartsTooltip 
+                                                cursor={{fill: 'rgba(16, 185, 129, 0.05)'}}
+                                                contentStyle={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '10px', padding: '8px 12px', backdropFilter: 'blur(8px)' }}
+                                                formatter={(value: number, name: string, props: any) => [
+                                                    formatBRL(value), 
+                                                    props.payload.isFuture ? 'Projetado' : 'Recebido'
+                                                ]}
+                                            />
+                                            <Bar 
+                                                dataKey="value" 
+                                                radius={[4, 4, 0, 0]}
+                                                maxBarSize={32}
+                                                animationDuration={1500}
+                                            >
+                                                {incomeData.chartData.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={entry.isFuture ? "url(#colorIncomeBarFuture)" : "url(#colorIncomeBar)"} />
+                                                ))}
+                                            </Bar>
+                                            <Line 
+                                                type="monotone" 
+                                                dataKey="value" 
+                                                stroke="#059669" 
+                                                strokeWidth={2} 
+                                                dot={{r: 3, fill: "#059669", strokeWidth: 2, stroke: "#fff"}} 
+                                                activeDot={{ r: 5, strokeWidth: 0, fill: '#059669' }}
+                                                animationDuration={2000}
+                                            />
+                                            {incomeData.average > 0 && (
+                                                <ReferenceLine y={incomeData.average} stroke="#f59e0b" strokeDasharray="3 3" strokeOpacity={0.8}>
+                                                    <Label value="Média" position="insideBottomRight" fill="#f59e0b" fontSize={9} fontWeight="bold" />
+                                                </ReferenceLine>
+                                            )}
+                                        </ComposedChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+
+                            {/* Slide 2: Breakdown */}
+                            <div className="min-w-full snap-center">
+                                <div className="h-64 w-full rounded-2xl border border-zinc-100 dark:border-zinc-800 p-2 relative overflow-hidden bg-white dark:bg-zinc-900 shadow-sm flex flex-col">
+                                    <h3 className="absolute top-3 left-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest z-10">Por Ativo</h3>
+                                    {dividendsByAsset.length > 0 ? (
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart margin={{ top: 20 }}>
+                                                <Pie
+                                                    data={dividendsByAsset}
+                                                    cx="50%"
+                                                    cy="50%"
+                                                    innerRadius={60}
+                                                    outerRadius={80}
+                                                    paddingAngle={2}
+                                                    dataKey="value"
+                                                >
+                                                    {dividendsByAsset.map((entry, index) => (
+                                                        <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
+                                                    ))}
+                                                </Pie>
+                                                <RechartsTooltip 
+                                                    contentStyle={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '10px', padding: '8px 12px', backdropFilter: 'blur(8px)' }}
+                                                    formatter={(value: number) => formatBRL(value)}
+                                                />
+                                                <Legend 
+                                                    layout="vertical" 
+                                                    verticalAlign="middle" 
+                                                    align="right"
+                                                    iconType="circle"
+                                                    iconSize={6}
+                                                    wrapperStyle={{ fontSize: '9px', fontWeight: 700, color: '#a1a1aa' }}
+                                                />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    ) : (
+                                        <div className="flex items-center justify-center h-full text-zinc-400 text-xs font-bold">
+                                            Sem dados de proventos por ativo
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {/* Scroll Indicators */}
+                        <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 pointer-events-none">
+                            <div className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600"></div>
+                            <div className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600"></div>
+                        </div>
+                        <p className="text-[9px] text-zinc-400 text-center font-medium mt-1 flex items-center justify-center gap-1">
+                            <ArrowRightLeft className="w-3 h-3" /> Deslize para ver mais
+                        </p>
                     </div>
 
                     <div className="space-y-4">

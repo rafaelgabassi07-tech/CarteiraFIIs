@@ -359,24 +359,21 @@ export default function Watchlist() {
     return (
         <div className="pb-24 px-4 max-w-md mx-auto min-h-screen bg-zinc-50 dark:bg-zinc-950">
             {/* Header Actions & Stats */}
-            <div className="pt-8 mb-6">
-                <div className="flex items-center justify-between">
-                    <h1 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter">Favoritos</h1>
-                    <div className="flex gap-2">
-                        <button 
-                            onClick={() => fetchData(true)}
-                            disabled={loading}
-                            className={`w-10 h-10 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all shadow-sm ${loading ? 'animate-spin text-indigo-500' : ''}`}
-                        >
-                            <RefreshCcw className="w-4 h-4" />
-                        </button>
-                        <button 
-                            onClick={() => setIsAdding(true)}
-                            className="w-10 h-10 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 flex items-center justify-center shadow-xl shadow-zinc-900/20 active:scale-95 transition-all"
-                        >
-                            <Plus className="w-5 h-5" />
-                        </button>
-                    </div>
+            <div className="pt-8 mb-6 flex justify-end">
+                <div className="flex gap-2">
+                    <button 
+                        onClick={() => fetchData(true)}
+                        disabled={loading}
+                        className={`w-10 h-10 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all shadow-sm ${loading ? 'animate-spin text-indigo-500' : ''}`}
+                    >
+                        <RefreshCcw className="w-4 h-4" />
+                    </button>
+                    <button 
+                        onClick={() => setIsAdding(true)}
+                        className="w-10 h-10 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 flex items-center justify-center shadow-xl shadow-zinc-900/20 active:scale-95 transition-all"
+                    >
+                        <Plus className="w-5 h-5" />
+                    </button>
                 </div>
             </div>
 
