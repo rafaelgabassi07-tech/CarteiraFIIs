@@ -847,18 +847,18 @@ const BentoCard = ({ title, value, subtext, icon: Icon, colorClass, onClick, cla
 const ProgressBar = ({ current, target, label, colorClass, privacyMode }: any) => {
     const progress = Math.min(100, Math.max(0, (current / (target || 1)) * 100));
     return (
-        <div className="mb-4 last:mb-0">
-            <div className="flex justify-between items-end mb-1.5">
+        <div className="mb-3 last:mb-0">
+            <div className="flex justify-between items-end mb-1">
                 <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{label}</span>
                 <span className="text-[10px] font-black text-zinc-900 dark:text-white">{progress.toFixed(1)}%</span>
             </div>
-            <div className="h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+            <div className="h-1.5 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
                 <div 
                     className={`h-full rounded-full transition-all duration-1000 ease-out ${colorClass}`} 
                     style={{ width: `${progress}%` }}
                 ></div>
             </div>
-            <div className="flex justify-between mt-1 text-[9px] text-zinc-400 font-medium">
+            <div className="flex justify-between mt-0.5 text-[9px] text-zinc-400 font-medium">
                 <span>{formatBRL(current, privacyMode)}</span>
                 <span>Meta: {formatBRL(target, privacyMode)}</span>
             </div>
@@ -1334,9 +1334,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
         animate={{ opacity: 1, y: 0 }}
         className="space-y-3 pb-8"
     >
-        <div className="-mx-4 -mt-2">
-            <MarketTicker />
-        </div>
+        <MarketTicker />
         
         <div className="-mt-1">
             <StoriesBar 
@@ -1350,10 +1348,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
         </div>
 
         <motion.div 
-            whileHover={{ scale: 1.01 }}
-            whileTap={{ scale: 0.99 }}
+            whileHover={{ scale: 1.005 }}
+            whileTap={{ scale: 0.995 }}
             onClick={() => setShowEvolution(true)}
-            className="relative w-full min-h-[190px] rounded-[2rem] bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl shadow-black/40 group anim-fade-in cursor-pointer transition-all duration-300 -mt-2"
+            className="relative w-full min-h-[190px] rounded-[2rem] bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl shadow-black/40 group anim-fade-in cursor-pointer transition-all duration-300"
         >
             {/* Background Effects */}
             <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-indigo-600/20 blur-[100px] rounded-full pointer-events-none -mr-20 -mt-20 mix-blend-screen animate-pulse-slow group-hover:bg-indigo-600/30 transition-colors"></div>

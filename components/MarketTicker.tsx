@@ -100,7 +100,7 @@ export const MarketTicker: React.FC = () => {
 
     return (
         <div 
-            className="w-full overflow-hidden bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md border-y border-zinc-200/50 dark:border-zinc-800/50 py-2.5 relative group z-40"
+            className="w-full overflow-hidden bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md border-b border-zinc-200/50 dark:border-zinc-800/50 py-1.5 relative group z-40"
             onMouseEnter={() => setPaused(true)}
             onMouseLeave={() => setPaused(false)}
         >

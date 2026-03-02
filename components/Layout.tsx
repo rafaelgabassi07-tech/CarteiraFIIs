@@ -103,21 +103,21 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="relative z-10 flex flex-col justify-end px-4 h-[calc(3.2rem+env(safe-area-inset-top))] pb-2 pt-safe">
         <div className="flex items-center justify-between">
           
-          <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center gap-3.5 min-w-0">
             {showBack ? (
-              <button onClick={onBack} className="flex items-center gap-2 text-zinc-900 dark:text-white -ml-1 press-effect">
+              <button onClick={onBack} className="flex items-center gap-1.5 text-zinc-900 dark:text-white -ml-2 press-effect">
                 <ChevronLeft className="w-7 h-7" strokeWidth={2.5} />
-                <span className="text-xl font-extrabold tracking-tight">Voltar</span>
+                <span className="text-xl font-black tracking-tight">Voltar</span>
               </button>
             ) : (
-              <div className="flex flex-col">
+              <div className="flex flex-col justify-center">
                  <div className="flex items-center gap-3">
-                    {headerIcon && <div className="w-9 h-9 flex items-center justify-center bg-zinc-100 dark:bg-zinc-800/50 rounded-xl border border-zinc-200/50 dark:border-zinc-700/50 shadow-sm anim-scale-in">{headerIcon}</div>}
-                    <h1 className="text-xl font-extrabold tracking-tight text-zinc-900 dark:text-white truncate">
+                    {headerIcon && <div className="w-8 h-8 flex items-center justify-center anim-scale-in shrink-0">{headerIcon}</div>}
+                    <h1 className="text-xl font-black tracking-tight text-zinc-900 dark:text-white truncate leading-none">
                       {title}
                     </h1>
                  </div>
-                 {subtitle && <div className="text-xs text-zinc-500 font-medium ml-12">{subtitle}</div>}
+                 {subtitle && <div className={`text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1 ${headerIcon ? 'ml-11' : 'ml-0'}`}>{subtitle}</div>}
               </div>
             )}
           </div>

@@ -38,7 +38,7 @@ export const generateAIInsights = async (): Promise<PortfolioInsight[]> => {
     try {
         const response = await ai.models.generateContent({
             model: "gemini-3-flash-preview",
-            contents: "Gere 3 mensagens motivacionais curtas para investidores e 3 dicas de educação financeira baseadas em fatos reais e comprovados (ex: juros compostos, diversificação, foco no longo prazo). Para cada uma, forneça também um 'imagePrompt' curto e descritivo em inglês para gerar uma imagem minimalista e profissional relacionada ao tema. Retorne em JSON.",
+            contents: "Gere 3 mensagens motivacionais curtas para investidores e 3 dicas de educação financeira baseadas em fatos reais e comprovados (ex: juros compostos, diversificação, foco no longo prazo). Retorne em JSON.",
             config: {
                 responseMimeType: "application/json",
                 responseSchema: {
@@ -48,10 +48,9 @@ export const generateAIInsights = async (): Promise<PortfolioInsight[]> => {
                         properties: {
                             title: { type: Type.STRING },
                             message: { type: Type.STRING },
-                            type: { type: Type.STRING, enum: ['motivation', 'education'] },
-                            imagePrompt: { type: Type.STRING }
+                            type: { type: Type.STRING, enum: ['motivation', 'education'] }
                         },
-                        required: ['title', 'message', 'type', 'imagePrompt']
+                        required: ['title', 'message', 'type']
                     }
                 }
             }
@@ -59,17 +58,19 @@ export const generateAIInsights = async (): Promise<PortfolioInsight[]> => {
 
         const text = response.text;
         if (!text) return [];
-        const data = JSON.parse(text) as (AIEducationalContent & { imagePrompt: string })[];
+        const data = JSON.parse(text) as AIEducationalContent[];
         
-        const insights = await Promise.all(data.map(async (item, index) => {
+        return await Promise.all(data.map(async (item, index) => {
             let imageUrl = `https://picsum.photos/seed/ai-${item.type}-${index}/1080/1920?blur=2`;
             
             try {
-                // Tenta gerar imagem com Gemini
+                // Tenta gerar uma imagem temática usando o modelo nano banana
                 const imgResponse = await ai!.models.generateContent({
                     model: 'gemini-2.5-flash-image',
                     contents: {
-                        parts: [{ text: `A high-quality, professional, minimalist vertical background image for a financial app story. Theme: ${item.imagePrompt}. Style: clean, modern, slightly blurred, abstract financial elements.` }]
+                        parts: [
+                            { text: `Uma imagem vertical (9:16) artística, moderna e minimalista para um app de investimentos sobre o tema: "${item.title}". Estilo fintech premium, cores sóbrias (azul, verde esmeralda, dourado), iluminação cinematográfica.` }
+                        ]
                     },
                     config: {
                         imageConfig: {
@@ -79,16 +80,16 @@ export const generateAIInsights = async (): Promise<PortfolioInsight[]> => {
                 });
 
                 const imgPart = imgResponse.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
-                if (imgPart?.inlineData?.data) {
+                if (imgPart?.inlineData) {
                     imageUrl = `data:image/png;base64,${imgPart.inlineData.data}`;
                 }
-            } catch (imgError) {
-                console.warn("Failed to generate image for story:", item.title, imgError);
+            } catch (e) {
+                console.warn("Failed to generate AI image for story:", e);
             }
 
             return {
                 id: `ai-insight-${item.type}-${index}-${Date.now()}`,
-                type: (item.type === 'motivation' ? 'success' : 'news') as any,
+                type: item.type === 'motivation' ? 'success' : 'news',
                 title: item.title,
                 message: item.message,
                 score: 80 - index,
@@ -96,8 +97,6 @@ export const generateAIInsights = async (): Promise<PortfolioInsight[]> => {
                 imageUrl
             };
         }));
-
-        return insights;
     } catch (error) {
         console.error("Error generating AI insights:", error);
         return [];
