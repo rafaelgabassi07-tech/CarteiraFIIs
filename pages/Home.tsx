@@ -1726,25 +1726,35 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
 
                         {incomeHistoryTab === 'MONTHLY' && (
                             <div className="space-y-4 animate-in fade-in slide-in-from-left-4 duration-300">
-                                <div className="grid grid-cols-2 gap-4 py-2 border-b border-zinc-100 dark:border-zinc-800 text-[10px] font-black text-zinc-400 uppercase tracking-widest">
-                                    <span>Mês</span>
-                                    <span className="text-right">Total Recebido</span>
+                                <div className="grid grid-cols-3 gap-4 py-2 border-b border-zinc-100 dark:border-zinc-800 text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                                    <span className="col-span-1">Mês</span>
+                                    <span className="col-span-2 text-right">Total Recebido</span>
                                 </div>
                                 
                                 {Object.keys(incomeData.groupedHistory).sort((a,b) => b.localeCompare(a)).map(monthKey => {
                                     const monthItems = incomeData.groupedHistory[monthKey];
                                     const monthTotal = monthItems.reduce((acc, item) => acc + item.amount, 0);
                                     const isFuture = monthKey > new Date().toISOString().substring(0, 7);
+                                    const maxMonthValue = Math.max(...Object.values(incomeData.groupedHistory).map(items => items.reduce((acc, i) => acc + i.amount, 0)));
+                                    const percentage = (monthTotal / (maxMonthValue || 1)) * 100;
                                     
                                     return (
-                                        <div key={monthKey} className="grid grid-cols-2 gap-4 py-3 border-b border-zinc-50 dark:border-zinc-800/50 items-center hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
-                                            <div className="flex items-center gap-2">
+                                        <div key={monthKey} className="grid grid-cols-3 gap-4 py-3 border-b border-zinc-50 dark:border-zinc-800/50 items-center hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors group">
+                                            <div className="col-span-1 flex items-center gap-2">
                                                 <span className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wider">
                                                     {getMonthName(monthKey + '-01')}
                                                 </span>
                                                 {isFuture && <span className="text-[9px] font-bold text-sky-500 bg-sky-50 dark:bg-sky-900/20 px-1.5 py-0.5 rounded uppercase">Futuro</span>}
                                             </div>
-                                            <span className="text-xs font-bold text-zinc-900 dark:text-white text-right">{formatBRL(monthTotal, privacyMode)}</span>
+                                            <div className="col-span-2 flex flex-col items-end gap-1">
+                                                <span className="text-xs font-bold text-zinc-900 dark:text-white">{formatBRL(monthTotal, privacyMode)}</span>
+                                                <div className="w-full h-1.5 bg-zinc-100 dark:bg-zinc-800/50 rounded-full overflow-hidden flex justify-end">
+                                                    <div 
+                                                        className="h-full bg-emerald-500 rounded-full opacity-60 group-hover:opacity-100 transition-all" 
+                                                        style={{ width: `${percentage}%` }}
+                                                    ></div>
+                                                </div>
+                                            </div>
                                         </div>
                                     );
                                 })}
@@ -1752,68 +1762,47 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                         )}
 
                         {incomeHistoryTab === 'PROVENTOS' && (
-                            <div className="space-y-2 animate-in fade-in slide-in-from-right-4 duration-300">
+                            <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                                 {Object.keys(incomeData.groupedHistory).sort((a,b) => b.localeCompare(a)).map(monthKey => {
                                     const monthItems = incomeData.groupedHistory[monthKey];
-                                    const monthTotal = monthItems.reduce((acc, item) => acc + item.amount, 0);
                                     const isFuture = monthKey > new Date().toISOString().substring(0, 7);
-                                    const isExpanded = expandedMonths.has(monthKey);
                                     
                                     return (
-                                        <div key={monthKey} className="overflow-hidden rounded-xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800/50 transition-all">
-                                            <div 
-                                                className="flex items-center justify-between py-3 px-4 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                                                onClick={() => toggleMonth(monthKey)}
-                                            >
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wider">
-                                                        {getMonthName(monthKey + '-01')}
-                                                    </span>
-                                                    {isFuture && <span className="text-[9px] font-bold text-sky-500 bg-sky-50 dark:bg-sky-900/20 px-1.5 py-0.5 rounded uppercase">Futuro</span>}
-                                                </div>
-                                                <div className="flex items-center gap-3">
-                                                    <span className="text-xs font-bold text-zinc-900 dark:text-white">{formatBRL(monthTotal, privacyMode)}</span>
-                                                    <ChevronDown className={`w-4 h-4 text-zinc-400 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
-                                                </div>
+                                        <div key={monthKey}>
+                                            <div className="sticky top-0 bg-white dark:bg-zinc-900 z-10 py-1.5 border-b border-zinc-100 dark:border-zinc-800 mb-1 flex justify-between items-center">
+                                                <h4 className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wider">
+                                                    {getMonthName(monthKey + '-01')}
+                                                </h4>
+                                                {isFuture && (
+                                                    <span className="text-[9px] font-bold text-sky-500 bg-sky-50 dark:bg-sky-900/20 px-1.5 py-0.5 rounded uppercase">Futuro</span>
+                                                )}
                                             </div>
-                                            
-                                            <AnimatePresence>
-                                                {isExpanded && (
-                                                    <motion.div 
-                                                        initial={{ height: 0, opacity: 0 }}
-                                                        animate={{ height: 'auto', opacity: 1 }}
-                                                        exit={{ height: 0, opacity: 0 }}
-                                                        className="border-t border-zinc-100 dark:border-zinc-800"
-                                                    >
-                                                        <div className="px-2 py-2 space-y-1 bg-white dark:bg-zinc-900/30">
-                                                            {monthItems.map((item, idx) => (
-                                                                <div key={`${item.ticker}-${idx}`} className={`flex items-center justify-between py-2 px-2 rounded-lg transition-colors ${item.status === 'provisioned' ? 'bg-sky-50/50 dark:bg-sky-900/10' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50'}`}>
-                                                                    <div className="flex items-center gap-3">
-                                                                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black border ${item.status === 'provisioned' ? 'bg-sky-100 dark:bg-sky-900/30 text-sky-600 border-sky-200 dark:border-sky-800' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border-zinc-200 dark:border-zinc-700'}`}>
-                                                                            {item.ticker.substring(0, 2)}
-                                                                        </div>
-                                                                        <div>
-                                                                            <div className="flex items-center gap-1.5">
-                                                                                <span className="text-xs font-bold text-zinc-900 dark:text-white">{item.ticker}</span>
-                                                                                <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded uppercase ${item.type === 'JCP' ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'}`}>
-                                                                                    {item.type}
-                                                                                </span>
-                                                                            </div>
-                                                                            <span className="text-[10px] text-zinc-400">
-                                                                                {item.status === 'provisioned' ? 'Agendado: ' : 'Pago: '}
-                                                                                {formatDateShort(item.paymentDate)}
-                                                                            </span>
-                                                                        </div>
-                                                                    </div>
-                                                                    <span className={`text-sm font-bold tabular-nums ${item.status === 'provisioned' ? 'text-sky-500 opacity-80' : 'text-zinc-900 dark:text-white'}`}>
-                                                                        +{formatBRL(item.amount, privacyMode)}
+                                            <div className="space-y-1">
+                                                {monthItems.map((item, idx) => (
+                                                    <div key={`${item.ticker}-${idx}`} className={`flex items-center justify-between py-2 px-2 rounded-xl transition-colors ${item.status === 'provisioned' ? 'bg-sky-50/50 dark:bg-sky-900/10 border border-sky-100 dark:border-sky-900/30' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50'}`}>
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black border ${item.status === 'provisioned' ? 'bg-sky-100 dark:bg-sky-900/30 text-sky-600 border-sky-200 dark:border-sky-800' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border-zinc-200 dark:border-zinc-700'}`}>
+                                                                {item.ticker.substring(0, 2)}
+                                                            </div>
+                                                            <div>
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <span className="text-xs font-bold text-zinc-900 dark:text-white">{item.ticker}</span>
+                                                                    <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded uppercase ${item.type === 'JCP' ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'}`}>
+                                                                        {item.type}
                                                                     </span>
                                                                 </div>
-                                                            ))}
+                                                                <span className="text-[10px] text-zinc-400">
+                                                                    {item.status === 'provisioned' ? 'Agendado: ' : 'Pago: '}
+                                                                    {formatDateShort(item.paymentDate)}
+                                                                </span>
+                                                            </div>
                                                         </div>
-                                                    </motion.div>
-                                                )}
-                                            </AnimatePresence>
+                                                        <span className={`text-sm font-bold tabular-nums ${item.status === 'provisioned' ? 'text-sky-500 opacity-80' : 'text-zinc-900 dark:text-white'}`}>
+                                                            +{formatBRL(item.amount, privacyMode)}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
                                     );
                                 })}
