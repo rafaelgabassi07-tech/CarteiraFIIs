@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt, Transaction } from '../types';
 import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, BarChart3, PieChart, Coins, DollarSign, Building2, FileText, MapPin, Zap, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, SquareStack, Map as MapIcon, CandlestickChart, LineChart as LineChartIcon, Award, RefreshCcw, ArrowLeft, Briefcase, MoreHorizontal, LayoutGrid, List, Activity, Scale, Percent, ChevronDown, ChevronUp, ListFilter, ChevronRight } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
-import { EvolutionModal } from '../components/EvolutionModal';
+import { DailyVariationModal } from '../components/DailyVariationModal';
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, ReferenceLine, ComposedChart, CartesianGrid, AreaChart, Area, YAxis, PieChart as RePieChart, Pie, Cell, LineChart, Line, Label, Legend, Scatter } from 'recharts';
 import { formatBRL, formatDateShort, getMonthName } from '../utils/formatters';
 
@@ -1731,7 +1731,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
     const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
     const [filter, setFilter] = useState('');
     const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'ANALYSIS' | 'INCOME'>('OVERVIEW');
-    const [showEvolutionModal, setShowEvolutionModal] = useState(false);
+    const [showDailyVariationModal, setShowDailyVariationModal] = useState(false);
 
     useEffect(() => {
         if (targetAsset) {
@@ -1953,7 +1953,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
                         </div>
                         <div className="text-right">
                             <button 
-                                onClick={() => setShowEvolutionModal(true)}
+                                onClick={() => setShowDailyVariationModal(true)}
                                 className="flex flex-col items-end active:scale-95 transition-transform"
                             >
                                 <div className="flex items-center gap-1 mb-0.5">
@@ -2022,9 +2022,9 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
                 </div>
             )}
             
-            <EvolutionModal 
-                isOpen={showEvolutionModal} 
-                onClose={() => setShowEvolutionModal(false)} 
+            <DailyVariationModal 
+                isOpen={showDailyVariationModal} 
+                onClose={() => setShowDailyVariationModal(false)} 
                 transactions={transactions} 
                 dividends={dividends} 
                 currentBalance={currentBalance} 
