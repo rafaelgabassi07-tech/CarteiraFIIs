@@ -359,18 +359,19 @@ export default function Watchlist() {
     return (
         <div className="pb-24 px-4 max-w-md mx-auto min-h-screen bg-zinc-50 dark:bg-zinc-950">
             {/* Header Actions & Stats */}
-            <div className="pt-8 mb-6 flex justify-end">
+            <div className="pt-6 mb-4 flex items-center justify-between">
+                <h1 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">Favoritos</h1>
                 <div className="flex gap-2">
                     <button 
                         onClick={() => fetchData(true)}
                         disabled={loading}
-                        className={`w-10 h-10 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all shadow-sm ${loading ? 'animate-spin text-indigo-500' : ''}`}
+                        className={`w-9 h-9 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all shadow-sm ${loading ? 'animate-spin text-indigo-500' : ''}`}
                     >
                         <RefreshCcw className="w-4 h-4" />
                     </button>
                     <button 
                         onClick={() => setIsAdding(true)}
-                        className="w-10 h-10 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 flex items-center justify-center shadow-xl shadow-zinc-900/20 active:scale-95 transition-all"
+                        className="w-9 h-9 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 flex items-center justify-center shadow-lg shadow-zinc-900/20 active:scale-95 transition-all"
                     >
                         <Plus className="w-5 h-5" />
                     </button>
@@ -379,13 +380,13 @@ export default function Watchlist() {
 
             {/* Filters & Sorting */}
             {watchlist.length > 0 && (
-                <div className="space-y-4 mb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                     <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
                         {(['ALL', 'STOCK', 'FII'] as const).map((f) => (
                             <button 
                                 key={f}
                                 onClick={() => setFilter(f)}
-                                className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border shrink-0 ${filter === f ? 'bg-zinc-900 dark:bg-white border-transparent text-white dark:text-zinc-900 shadow-lg shadow-zinc-900/10' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 shadow-sm'}`}
+                                className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all border shrink-0 ${filter === f ? 'bg-zinc-900 dark:bg-white border-transparent text-white dark:text-zinc-900 shadow-md' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 shadow-sm'}`}
                             >
                                 {f === 'ALL' ? 'Todos' : f === 'STOCK' ? 'Ações' : 'FIIs'}
                             </button>
@@ -393,7 +394,7 @@ export default function Watchlist() {
                     </div>
                     
                     <div className="flex items-center gap-3 px-1">
-                        <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Ordenar por:</span>
+                        <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Ordenar:</span>
                         <div className="flex gap-3">
                             <button 
                                 onClick={() => toggleSort('TICKER')}
@@ -533,28 +534,28 @@ export default function Watchlist() {
             )}
 
             {watchlist.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-24 text-center">
-                    <div className="w-24 h-24 bg-white dark:bg-zinc-900 rounded-[2.5rem] flex items-center justify-center mb-8 shadow-xl shadow-zinc-200 dark:shadow-none border border-zinc-100 dark:border-zinc-800 relative">
-                        <Star className="w-10 h-10 text-indigo-500" fill="currentColor" />
-                        <div className="absolute -top-2 -right-2 w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center text-white shadow-lg animate-bounce">
-                            <Plus className="w-5 h-5" />
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                    <div className="w-20 h-20 bg-white dark:bg-zinc-900 rounded-[2rem] flex items-center justify-center mb-6 shadow-xl shadow-zinc-200 dark:shadow-none border border-zinc-100 dark:border-zinc-800 relative">
+                        <Star className="w-8 h-8 text-indigo-500" fill="currentColor" />
+                        <div className="absolute -top-1.5 -right-1.5 w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center text-white shadow-lg animate-bounce">
+                            <Plus className="w-3.5 h-3.5" />
                         </div>
                     </div>
-                    <h3 className="text-xl font-black text-zinc-900 dark:text-white mb-2 tracking-tight">Sua lista está vazia</h3>
-                    <p className="text-zinc-500 font-bold text-xs uppercase tracking-widest max-w-[240px] mb-8 leading-relaxed">Comece adicionando ativos que você quer acompanhar de perto.</p>
+                    <h3 className="text-lg font-black text-zinc-900 dark:text-white mb-1 tracking-tight">Lista vazia</h3>
+                    <p className="text-zinc-500 font-bold text-[10px] uppercase tracking-widest max-w-[200px] mb-6 leading-relaxed">Adicione ativos para acompanhar.</p>
                     <button 
                         onClick={() => setIsAdding(true)} 
-                        className="px-8 py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-2xl shadow-zinc-900/20 dark:shadow-white/10 transition-all active:scale-95 hover:bg-zinc-800 dark:hover:bg-zinc-100"
+                        className="px-6 py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-zinc-900/20 dark:shadow-white/10 transition-all active:scale-95 hover:bg-zinc-800 dark:hover:bg-zinc-100"
                     >
-                        Adicionar Ativo
+                        Adicionar
                     </button>
                 </div>
             ) : (
-                <div className="space-y-4">
+                <div className="space-y-3">
                     {sortedAndFilteredWatchlist.length === 0 ? (
-                        <div className="text-center py-16 bg-white dark:bg-zinc-900 rounded-[2rem] border border-dashed border-zinc-200 dark:border-zinc-800">
-                            <Filter className="w-10 h-10 text-zinc-200 dark:text-zinc-800 mx-auto mb-4" />
-                            <p className="text-zinc-400 font-black text-[10px] uppercase tracking-widest">Nenhum ativo neste filtro</p>
+                        <div className="text-center py-12 bg-white dark:bg-zinc-900 rounded-[1.5rem] border border-dashed border-zinc-200 dark:border-zinc-800">
+                            <Filter className="w-8 h-8 text-zinc-200 dark:text-zinc-800 mx-auto mb-3" />
+                            <p className="text-zinc-400 font-black text-[9px] uppercase tracking-widest">Nenhum ativo encontrado</p>
                         </div>
                     ) : (
                         sortedAndFilteredWatchlist.map(ticker => {
@@ -576,18 +577,18 @@ export default function Watchlist() {
                                 <div 
                                     key={ticker} 
                                     onClick={() => handleAssetClick(ticker)}
-                                    className={`group bg-white dark:bg-zinc-900 p-4 rounded-[1.75rem] border border-zinc-100 dark:border-zinc-800 shadow-sm hover:shadow-xl hover:shadow-zinc-200/50 dark:hover:shadow-none transition-all cursor-pointer active:scale-[0.98] relative overflow-hidden ${isUpdating ? 'opacity-80' : ''}`}
+                                    className={`group bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm hover:shadow-lg hover:shadow-zinc-200/50 dark:hover:shadow-none transition-all cursor-pointer active:scale-[0.99] relative overflow-hidden ${isUpdating ? 'opacity-80' : ''}`}
                                 >
                                     {/* Subtle background indicator for trend */}
-                                    <div className={`absolute top-0 right-0 w-32 h-32 -mr-16 -mt-16 rounded-full blur-3xl opacity-[0.03] dark:opacity-[0.05] transition-colors ${isPositive ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
+                                    <div className={`absolute top-0 right-0 w-24 h-24 -mr-12 -mt-12 rounded-full blur-2xl opacity-[0.03] dark:opacity-[0.05] transition-colors ${isPositive ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
 
-                                    <div className="flex items-center justify-between relative z-10 mb-3">
+                                    <div className="flex items-center justify-between relative z-10 mb-2">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center overflow-hidden border border-zinc-100 dark:border-zinc-700/50 shadow-inner relative">
+                                            <div className="w-9 h-9 rounded-lg bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center overflow-hidden border border-zinc-100 dark:border-zinc-700/50 shadow-inner relative">
                                                 {quote?.logo ? (
                                                     <img src={quote.logo} alt={ticker} className="w-full h-full object-cover" />
                                                 ) : (
-                                                    <span className="text-xs font-black text-zinc-300 dark:text-zinc-600">{ticker.substring(0, 2)}</span>
+                                                    <span className="text-[10px] font-black text-zinc-300 dark:text-zinc-600">{ticker.substring(0, 2)}</span>
                                                 )}
                                                 {isUpdating && (
                                                     <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px] flex items-center justify-center">
@@ -597,25 +598,25 @@ export default function Watchlist() {
                                             </div>
                                             <div>
                                                 <div className="flex items-center gap-1.5">
-                                                    <h3 className="font-black text-zinc-900 dark:text-white text-base tracking-tighter leading-none">{ticker}</h3>
-                                                    <span className={`text-[7px] font-black px-1 py-0.5 rounded uppercase tracking-tighter ${quote?.type === 'FII' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400'}`}>
+                                                    <h3 className="font-black text-zinc-900 dark:text-white text-sm tracking-tighter leading-none">{ticker}</h3>
+                                                    <span className={`text-[6px] font-black px-1 py-0.5 rounded uppercase tracking-tighter ${quote?.type === 'FII' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400'}`}>
                                                         {quote?.type || (ticker.endsWith('11') ? 'FII' : 'Ação')}
                                                     </span>
                                                 </div>
-                                                <p className="text-[9px] font-bold text-zinc-400 mt-0.5 uppercase tracking-wide truncate max-w-[120px]">
+                                                <p className="text-[8px] font-bold text-zinc-400 mt-0.5 uppercase tracking-wide truncate max-w-[100px]">
                                                     {quote?.name || (isLoadingInitial ? 'Atualizando...' : 'Ativo')}
                                                 </p>
                                             </div>
                                         </div>
 
-                                        <div className="flex flex-col items-end gap-1">
-                                            <p className="font-black text-zinc-900 dark:text-white tabular-nums text-base tracking-tight">
-                                                {hasData ? formatBRL(price) : (isLoadingInitial ? <span className="animate-pulse text-zinc-200">---</span> : <span className="text-zinc-300 text-xs font-bold">Indisp.</span>)}
+                                        <div className="flex flex-col items-end gap-0.5">
+                                            <p className="font-black text-zinc-900 dark:text-white tabular-nums text-sm tracking-tight">
+                                                {hasData ? formatBRL(price) : (isLoadingInitial ? <span className="animate-pulse text-zinc-200">---</span> : <span className="text-zinc-300 text-[10px] font-bold">Indisp.</span>)}
                                             </p>
                                             
                                             {hasData && (
-                                                <div className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-lg text-[9px] font-black ${isPositive ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'}`}>
-                                                    {isPositive ? <ArrowUpRight className="w-2.5 h-2.5" /> : <ArrowDownRight className="w-2.5 h-2.5" />}
+                                                <div className={`flex items-center gap-0.5 px-1 py-0.5 rounded text-[8px] font-black ${isPositive ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'}`}>
+                                                    {isPositive ? <ArrowUpRight className="w-2 h-2" /> : <ArrowDownRight className="w-2 h-2" />}
                                                     {Math.abs(change).toFixed(2)}%
                                                 </div>
                                             )}
@@ -624,20 +625,20 @@ export default function Watchlist() {
 
                                     {/* Additional Info Grid */}
                                     {hasData && (
-                                        <div className="grid grid-cols-3 gap-2 pt-3 border-t border-zinc-50 dark:border-zinc-800/50 relative z-10">
+                                        <div className="grid grid-cols-3 gap-1 pt-2 border-t border-zinc-50 dark:border-zinc-800/50 relative z-10">
                                             <div className="flex flex-col">
-                                                <span className="text-[7px] font-black text-zinc-400 uppercase tracking-widest">DY (12M)</span>
-                                                <span className="text-[10px] font-black text-zinc-900 dark:text-white">{fundamentals.dy_12m ? `${fundamentals.dy_12m.toFixed(2)}%` : '--'}</span>
+                                                <span className="text-[6px] font-black text-zinc-400 uppercase tracking-widest">DY (12M)</span>
+                                                <span className="text-[9px] font-black text-zinc-900 dark:text-white">{fundamentals.dy_12m ? `${fundamentals.dy_12m.toFixed(2)}%` : '--'}</span>
                                             </div>
-                                            <div className="flex flex-col">
-                                                <span className="text-[7px] font-black text-zinc-400 uppercase tracking-widest">P/VP</span>
-                                                <span className={`text-[10px] font-black ${fundamentals.p_vp > 1.1 ? 'text-rose-500' : fundamentals.p_vp < 0.9 ? 'text-emerald-500' : 'text-zinc-900 dark:text-white'}`}>
+                                            <div className="flex flex-col text-center">
+                                                <span className="text-[6px] font-black text-zinc-400 uppercase tracking-widest">P/VP</span>
+                                                <span className={`text-[9px] font-black ${fundamentals.p_vp > 1.1 ? 'text-rose-500' : fundamentals.p_vp < 0.9 ? 'text-emerald-500' : 'text-zinc-900 dark:text-white'}`}>
                                                     {fundamentals.p_vp ? fundamentals.p_vp.toFixed(2) : '--'}
                                                 </span>
                                             </div>
                                             <div className="flex flex-col items-end">
-                                                <span className="text-[7px] font-black text-zinc-400 uppercase tracking-widest">Segmento</span>
-                                                <span className="text-[10px] font-black text-zinc-900 dark:text-white truncate max-w-[80px]">{quote?.segment || 'Geral'}</span>
+                                                <span className="text-[6px] font-black text-zinc-400 uppercase tracking-widest">Segmento</span>
+                                                <span className="text-[9px] font-black text-zinc-900 dark:text-white truncate max-w-[70px]">{quote?.segment || 'Geral'}</span>
                                             </div>
                                         </div>
                                     )}

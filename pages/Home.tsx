@@ -1133,6 +1133,15 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
 
   const [incomeHistoryTab, setIncomeHistoryTab] = useState<'MONTHLY' | 'ANNUAL' | 'PROVENTOS'>('PROVENTOS');
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
+  const [evolutionRange, setEvolutionRange] = useState<'3M' | '6M' | '12M' | 'ALL'>('ALL');
+
+  const filteredChartData = useMemo(() => {
+      const data = incomeData.chartData;
+      if (evolutionRange === '3M') return data.slice(-3);
+      if (evolutionRange === '6M') return data.slice(-6);
+      if (evolutionRange === '12M') return data.slice(-12);
+      return data;
+  }, [incomeData.chartData, evolutionRange]);
 
   const toggleMonth = (monthKey: string) => {
       setExpandedMonths(prev => {
@@ -1545,57 +1554,72 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                         <div className="flex overflow-x-auto snap-x snap-mandatory pb-6 gap-4 no-scrollbar" id="income-charts-scroll">
                             {/* Slide 1: Evolution */}
                             <div className="min-w-full snap-center">
-                                <div className="h-64 w-full rounded-2xl border border-zinc-100 dark:border-zinc-800 p-2 relative overflow-hidden bg-white dark:bg-zinc-900 shadow-sm">
-                                    <h3 className="absolute top-3 left-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest z-10">Evolução Mensal</h3>
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <ComposedChart data={incomeData.chartData} margin={{ top: 25, right: 5, left: -20, bottom: 0 }}>
-                                            <defs>
-                                                <linearGradient id="colorIncomeBar" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
-                                                    <stop offset="95%" stopColor="#10b981" stopOpacity={0.3}/>
-                                                </linearGradient>
-                                                <linearGradient id="colorIncomeBarFuture" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                                                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                                                </linearGradient>
-                                            </defs>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
-                                            <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 700 }} dy={5} />
-                                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a' }} tickFormatter={(val) => `R$${val}`} />
-                                            <RechartsTooltip 
-                                                cursor={{fill: 'rgba(16, 185, 129, 0.05)'}}
-                                                contentStyle={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '10px', padding: '8px 12px', backdropFilter: 'blur(8px)' }}
-                                                formatter={(value: number, name: string, props: any) => [
-                                                    formatBRL(value), 
-                                                    props.payload.isFuture ? 'Projetado' : 'Recebido'
-                                                ]}
-                                            />
-                                            <Bar 
-                                                dataKey="value" 
-                                                radius={[4, 4, 0, 0]}
-                                                maxBarSize={32}
-                                                animationDuration={1500}
-                                            >
-                                                {incomeData.chartData.map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={entry.isFuture ? "url(#colorIncomeBarFuture)" : "url(#colorIncomeBar)"} />
-                                                ))}
-                                            </Bar>
-                                            <Line 
-                                                type="monotone" 
-                                                dataKey="value" 
-                                                stroke="#059669" 
-                                                strokeWidth={2} 
-                                                dot={{r: 3, fill: "#059669", strokeWidth: 2, stroke: "#fff"}} 
-                                                activeDot={{ r: 5, strokeWidth: 0, fill: '#059669' }}
-                                                animationDuration={2000}
-                                            />
-                                            {incomeData.average > 0 && (
-                                                <ReferenceLine y={incomeData.average} stroke="#f59e0b" strokeDasharray="3 3" strokeOpacity={0.8}>
-                                                    <Label value="Média" position="insideBottomRight" fill="#f59e0b" fontSize={9} fontWeight="bold" />
-                                                </ReferenceLine>
-                                            )}
-                                        </ComposedChart>
-                                    </ResponsiveContainer>
+                                <div className="h-72 w-full rounded-2xl border border-zinc-100 dark:border-zinc-800 p-4 relative overflow-hidden bg-white dark:bg-zinc-900 shadow-sm flex flex-col">
+                                    <div className="flex items-center justify-between mb-4 z-10 relative">
+                                        <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Evolução Mensal</h3>
+                                        <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5">
+                                            {(['3M', '6M', '12M', 'ALL'] as const).map((range) => (
+                                                <button
+                                                    key={range}
+                                                    onClick={() => setEvolutionRange(range)}
+                                                    className={`px-2 py-1 rounded-md text-[9px] font-black transition-all ${evolutionRange === range ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                                                >
+                                                    {range === 'ALL' ? 'Tudo' : range}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="flex-1 w-full min-h-0">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <ComposedChart data={filteredChartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                                                <defs>
+                                                    <linearGradient id="colorIncomeBar" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0.3}/>
+                                                    </linearGradient>
+                                                    <linearGradient id="colorIncomeBarFuture" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                                                    </linearGradient>
+                                                </defs>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
+                                                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 700 }} dy={10} />
+                                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a' }} tickFormatter={(val) => `R$${val}`} />
+                                                <RechartsTooltip 
+                                                    cursor={{fill: 'rgba(16, 185, 129, 0.05)'}}
+                                                    contentStyle={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '10px', padding: '8px 12px', backdropFilter: 'blur(8px)' }}
+                                                    formatter={(value: number, name: string, props: any) => [
+                                                        formatBRL(value), 
+                                                        props.payload.isFuture ? 'Projetado' : 'Recebido'
+                                                    ]}
+                                                />
+                                                <Bar 
+                                                    dataKey="value" 
+                                                    radius={[4, 4, 0, 0]}
+                                                    maxBarSize={32}
+                                                    animationDuration={1500}
+                                                >
+                                                    {filteredChartData.map((entry, index) => (
+                                                        <Cell key={`cell-${index}`} fill={entry.isFuture ? "url(#colorIncomeBarFuture)" : "url(#colorIncomeBar)"} />
+                                                    ))}
+                                                </Bar>
+                                                <Line 
+                                                    type="monotone" 
+                                                    dataKey="value" 
+                                                    stroke="#059669" 
+                                                    strokeWidth={2} 
+                                                    dot={{r: 3, fill: "#059669", strokeWidth: 2, stroke: "#fff"}} 
+                                                    activeDot={{ r: 5, strokeWidth: 0, fill: '#059669' }}
+                                                    animationDuration={2000}
+                                                />
+                                                {incomeData.average > 0 && (
+                                                    <ReferenceLine y={incomeData.average} stroke="#f59e0b" strokeDasharray="3 3" strokeOpacity={0.8}>
+                                                        <Label value="Média" position="insideBottomRight" fill="#f59e0b" fontSize={9} fontWeight="bold" />
+                                                    </ReferenceLine>
+                                                )}
+                                            </ComposedChart>
+                                        </ResponsiveContainer>
+                                    </div>
                                 </div>
                             </div>
 
