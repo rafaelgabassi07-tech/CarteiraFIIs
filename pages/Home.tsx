@@ -1131,6 +1131,39 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
           .sort((a, b) => b.value - a.value);
   }, [portfolio]);
 
+  const [incomeHistoryTab, setIncomeHistoryTab] = useState<'MONTHLY' | 'ANNUAL'>('MONTHLY');
+  const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
+
+  const toggleMonth = (monthKey: string) => {
+      setExpandedMonths(prev => {
+          const next = new Set(prev);
+          if (next.has(monthKey)) next.delete(monthKey);
+          else next.add(monthKey);
+          return next;
+      });
+  };
+
+  const annualIncomeData = useMemo(() => {
+      const years: Record<string, { total: number, months: Set<string> }> = {};
+      
+      if (incomeData?.groupedHistory) {
+          Object.entries(incomeData.groupedHistory).forEach(([monthKey, items]) => {
+              const year = monthKey.substring(0, 4);
+              const monthTotal = items.reduce((acc, item) => acc + item.amount, 0); // item has 'amount', not 'value'
+              
+              if (!years[year]) years[year] = { total: 0, months: new Set() };
+              years[year].total += monthTotal;
+              years[year].months.add(monthKey);
+          });
+      }
+      
+      return Object.entries(years).map(([year, data]) => ({
+          year,
+          total: data.total,
+          average: data.total / (data.months.size || 1)
+      })).sort((a, b) => b.year.localeCompare(a.year));
+  }, [incomeData]);
+
   const magicNumberData = useMemo(() => {
       const all = portfolio
           .map(asset => {
@@ -1642,47 +1675,115 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                     </div>
 
                     <div className="space-y-4">
-                        <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
-                            <CalendarClock className="w-3 h-3" /> Histórico e Previsões
-                        </h3>
-                        {Object.keys(incomeData.groupedHistory).sort((a,b) => b.localeCompare(a)).map(monthKey => (
-                            <div key={monthKey}>
-                                <div className="sticky top-0 bg-white dark:bg-zinc-900 z-10 py-1.5 border-b border-zinc-100 dark:border-zinc-800 mb-1 flex justify-between items-center">
-                                    <h4 className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wider">
-                                        {getMonthName(monthKey + '-01')}
-                                    </h4>
-                                    {monthKey > new Date().toISOString().substring(0, 7) && (
-                                        <span className="text-[9px] font-bold text-sky-500 bg-sky-50 dark:bg-sky-900/20 px-1.5 py-0.5 rounded uppercase">Futuro</span>
-                                    )}
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                                HISTÓRICO DE PROVENTOS
+                            </h3>
+                            <div className="bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl flex gap-1">
+                                <button 
+                                    onClick={() => setIncomeHistoryTab('MONTHLY')}
+                                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${incomeHistoryTab === 'MONTHLY' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                                >
+                                    Mensal
+                                </button>
+                                <button 
+                                    onClick={() => setIncomeHistoryTab('ANNUAL')}
+                                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${incomeHistoryTab === 'ANNUAL' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                                >
+                                    Anual
+                                </button>
+                            </div>
+                        </div>
+
+                        {incomeHistoryTab === 'ANNUAL' ? (
+                            <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                                <div className="flex justify-between items-center py-2 border-b border-zinc-100 dark:border-zinc-800">
+                                    <span className="text-sm font-bold text-zinc-900 dark:text-white">Total de Proventos:</span>
+                                    <span className="text-sm font-black text-emerald-500">{formatBRL(totalDividendsReceived, privacyMode)}</span>
                                 </div>
-                                <div className="space-y-1">
-                                    {incomeData.groupedHistory[monthKey].map((item, idx) => (
-                                        <div key={`${item.ticker}-${idx}`} className={`flex items-center justify-between py-2 px-2 rounded-xl transition-colors ${item.status === 'provisioned' ? 'bg-sky-50/50 dark:bg-sky-900/10 border border-sky-100 dark:border-sky-900/30' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50'}`}>
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black border ${item.status === 'provisioned' ? 'bg-sky-100 dark:bg-sky-900/30 text-sky-600 border-sky-200 dark:border-sky-800' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border-zinc-200 dark:border-zinc-700'}`}>
-                                                    {item.ticker.substring(0, 2)}
-                                                </div>
-                                                <div>
-                                                    <div className="flex items-center gap-1.5">
-                                                        <span className="text-xs font-bold text-zinc-900 dark:text-white">{item.ticker}</span>
-                                                        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded uppercase ${item.type === 'JCP' ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'}`}>
-                                                            {item.type}
-                                                        </span>
-                                                    </div>
-                                                    <span className="text-[10px] text-zinc-400">
-                                                        {item.status === 'provisioned' ? 'Agendado: ' : 'Pago: '}
-                                                        {formatDateShort(item.paymentDate)}
+                                
+                                <div className="grid grid-cols-3 gap-4 py-2 border-b border-zinc-100 dark:border-zinc-800 text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                                    <span>Ano</span>
+                                    <span className="text-right">Média mensal</span>
+                                    <span className="text-right">Total</span>
+                                </div>
+                                
+                                {annualIncomeData.map(yearData => (
+                                    <div key={yearData.year} className="grid grid-cols-3 gap-4 py-3 border-b border-zinc-50 dark:border-zinc-800/50 items-center hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
+                                        <span className="text-xs font-bold text-zinc-900 dark:text-white">{yearData.year}</span>
+                                        <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400 text-right">{formatBRL(yearData.average, privacyMode)}</span>
+                                        <span className="text-xs font-bold text-zinc-900 dark:text-white text-right">{formatBRL(yearData.total, privacyMode)}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="space-y-2 animate-in fade-in slide-in-from-left-4 duration-300">
+                                {Object.keys(incomeData.groupedHistory).sort((a,b) => b.localeCompare(a)).map(monthKey => {
+                                    const monthItems = incomeData.groupedHistory[monthKey];
+                                    const monthTotal = monthItems.reduce((acc, item) => acc + item.amount, 0);
+                                    const isFuture = monthKey > new Date().toISOString().substring(0, 7);
+                                    const isExpanded = expandedMonths.has(monthKey);
+                                    
+                                    return (
+                                        <div key={monthKey} className="overflow-hidden rounded-xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800/50 transition-all">
+                                            <div 
+                                                className="flex items-center justify-between py-3 px-4 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                                                onClick={() => toggleMonth(monthKey)}
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wider">
+                                                        {getMonthName(monthKey + '-01')}
                                                     </span>
+                                                    {isFuture && <span className="text-[9px] font-bold text-sky-500 bg-sky-50 dark:bg-sky-900/20 px-1.5 py-0.5 rounded uppercase">Futuro</span>}
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-xs font-bold text-zinc-900 dark:text-white">{formatBRL(monthTotal, privacyMode)}</span>
+                                                    <ChevronDown className={`w-4 h-4 text-zinc-400 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
                                                 </div>
                                             </div>
-                                            <span className={`text-sm font-bold tabular-nums ${item.status === 'provisioned' ? 'text-sky-500 opacity-80' : 'text-zinc-900 dark:text-white'}`}>
-                                                +{formatBRL(item.amount, privacyMode)}
-                                            </span>
+                                            
+                                            <AnimatePresence>
+                                                {isExpanded && (
+                                                    <motion.div 
+                                                        initial={{ height: 0, opacity: 0 }}
+                                                        animate={{ height: 'auto', opacity: 1 }}
+                                                        exit={{ height: 0, opacity: 0 }}
+                                                        className="border-t border-zinc-100 dark:border-zinc-800"
+                                                    >
+                                                        <div className="px-2 py-2 space-y-1 bg-white dark:bg-zinc-900/30">
+                                                            {monthItems.map((item, idx) => (
+                                                                <div key={`${item.ticker}-${idx}`} className={`flex items-center justify-between py-2 px-2 rounded-lg transition-colors ${item.status === 'provisioned' ? 'bg-sky-50/50 dark:bg-sky-900/10' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50'}`}>
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black border ${item.status === 'provisioned' ? 'bg-sky-100 dark:bg-sky-900/30 text-sky-600 border-sky-200 dark:border-sky-800' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border-zinc-200 dark:border-zinc-700'}`}>
+                                                                            {item.ticker.substring(0, 2)}
+                                                                        </div>
+                                                                        <div>
+                                                                            <div className="flex items-center gap-1.5">
+                                                                                <span className="text-xs font-bold text-zinc-900 dark:text-white">{item.ticker}</span>
+                                                                                <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded uppercase ${item.type === 'JCP' ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'}`}>
+                                                                                    {item.type}
+                                                                                </span>
+                                                                            </div>
+                                                                            <span className="text-[10px] text-zinc-400">
+                                                                                {item.status === 'provisioned' ? 'Agendado: ' : 'Pago: '}
+                                                                                {formatDateShort(item.paymentDate)}
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                    <span className={`text-sm font-bold tabular-nums ${item.status === 'provisioned' ? 'text-sky-500 opacity-80' : 'text-zinc-900 dark:text-white'}`}>
+                                                                        +{formatBRL(item.amount, privacyMode)}
+                                                                    </span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
                                         </div>
-                                    ))}
-                                </div>
+                                    );
+                                })}
                             </div>
-                        ))}
+                        )}
                     </div>
                 </div>
             </div>
