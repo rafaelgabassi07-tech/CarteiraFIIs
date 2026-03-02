@@ -3,6 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { AssetPosition, AssetType, DividendReceipt, Transaction } from '../types';
 import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, BarChart3, PieChart, Coins, DollarSign, Building2, FileText, MapPin, Zap, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, SquareStack, Map as MapIcon, CandlestickChart, LineChart as LineChartIcon, Award, RefreshCcw, ArrowLeft, Briefcase, MoreHorizontal, LayoutGrid, List, Activity, Scale, Percent, ChevronDown, ChevronUp, ListFilter, ChevronRight } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
+import AssetModal from '../components/AssetModal';
 import { useDailyVariationHistory } from '../hooks/useDailyVariationHistory';
 import { DailyVariationModal } from '../components/DailyVariationModal';
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, ReferenceLine, ComposedChart, CartesianGrid, AreaChart, Area, YAxis, PieChart as RePieChart, Pie, Cell, LineChart, Line, Label, Legend, Scatter } from 'recharts';
@@ -1832,111 +1833,6 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
         return marketDividends.filter(d => d.ticker === selectedAsset.ticker);
     }, [selectedAsset, marketDividends]);
 
-    if (selectedAsset) {
-        return (
-            <div className="pb-24 animate-in slide-in-from-right duration-300">
-                <div className="sticky top-[calc(3.2rem+env(safe-area-inset-top))] z-30 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800 -mx-4 px-4 py-2 mb-4">
-                    <div className="flex items-center justify-between mb-3">
-                        <button onClick={handleBack} className="flex items-center gap-1 text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors">
-                            <ArrowLeft className="w-5 h-5" />
-                            <span className="font-bold text-sm">Voltar</span>
-                        </button>
-                        <div className="flex items-center gap-2">
-                            {selectedAsset.logoUrl && <img src={selectedAsset.logoUrl} className="w-6 h-6 rounded-full" />}
-                            <span className="font-black text-lg">{selectedAsset.ticker}</span>
-                        </div>
-                        <button onClick={() => onAssetRefresh(selectedAsset.ticker)} className="p-2 bg-zinc-100 dark:bg-zinc-800 rounded-full active:scale-95 transition-transform">
-                            <RefreshCcw className="w-4 h-4 text-zinc-500" />
-                        </button>
-                    </div>
-
-                    <div className="flex p-1 bg-zinc-100 dark:bg-zinc-800 rounded-xl">
-                        <button 
-                            onClick={() => setActiveTab('OVERVIEW')} 
-                            className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'OVERVIEW' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
-                        >
-                            <LayoutGrid className="w-3.5 h-3.5" /> Resumo
-                        </button>
-                        <button 
-                            onClick={() => setActiveTab('ANALYSIS')} 
-                            className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'ANALYSIS' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
-                        >
-                            <FileText className="w-3.5 h-3.5" /> Análises
-                        </button>
-                        <button 
-                            onClick={() => setActiveTab('INCOME')} 
-                            className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'INCOME' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
-                        >
-                            <Coins className="w-3.5 h-3.5" /> Renda
-                        </button>
-                    </div>
-                </div>
-
-                <div className="space-y-6">
-                    {activeTab === 'OVERVIEW' && (
-                        <div className="anim-fade-in space-y-6">
-                            <div className="flex items-center gap-3 mb-2">
-                                <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Sua Posição</h3>
-                                <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
-                            </div>
-                            <PositionSummaryCard asset={selectedAsset} privacyMode={privacyMode} />
-                            
-                            <div className="flex items-center gap-3 mt-8 mb-2">
-                                <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Gráficos</h3>
-                                <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
-                            </div>
-                            <ChartsContainer 
-                                ticker={selectedAsset.ticker} 
-                                type={selectedAsset.assetType} 
-                                marketDividends={assetMarketHistory}
-                            />
-                        </div>
-                    )}
-
-                    {activeTab === 'ANALYSIS' && (
-                        <div className="anim-fade-in space-y-6">
-                            <div className="flex items-center gap-3 mb-2">
-                                <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Valuation</h3>
-                                <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
-                            </div>
-                            <ValuationCard asset={selectedAsset} />
-                            
-                            <div className="flex items-center gap-3 mt-8 mb-2">
-                                <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Indicadores</h3>
-                                <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
-                            </div>
-                            <DetailedInfoBlock asset={selectedAsset} />
-                            
-                            {selectedAsset.properties && selectedAsset.properties.length > 0 && (
-                                <>
-                                    <div className="flex items-center gap-3 mt-8 mb-2">
-                                        <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Portfólio Físico</h3>
-                                        <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
-                                    </div>
-                                    <PropertiesAnalysis properties={selectedAsset.properties} />
-                                </>
-                            )}
-                        </div>
-                    )}
-
-                    {activeTab === 'INCOME' && (
-                        <div className="anim-fade-in space-y-6">
-                            <div className="flex items-center gap-3 mb-2">
-                                <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Geração de Renda</h3>
-                                <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
-                            </div>
-                            <IncomeAnalysisSection 
-                                asset={selectedAsset} 
-                                chartData={incomeChartData} 
-                                marketHistory={assetMarketHistory} 
-                            />
-                        </div>
-                    )}
-                </div>
-            </div>
-        );
-    }
-
     return (
         <div className="pb-24">
             <div className="sticky top-[calc(3.2rem+env(safe-area-inset-top))] z-20 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-xl -mx-4 px-4 pb-4 pt-2 transition-all">
@@ -2036,6 +1932,17 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
                 currentBalance={currentBalance} 
                 history={dailyHistory}
             />
+
+            {selectedAsset && (
+                <AssetModal 
+                    asset={selectedAsset}
+                    onClose={() => setSelectedTicker(null)}
+                    onAssetRefresh={onAssetRefresh}
+                    marketDividends={assetMarketHistory}
+                    incomeChartData={incomeChartData}
+                    privacyMode={privacyMode}
+                />
+            )}
         </div>
     );
 };

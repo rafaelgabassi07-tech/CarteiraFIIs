@@ -105,19 +105,19 @@ export const Header: React.FC<HeaderProps> = ({
           
           <div className="flex items-center gap-3 min-w-0">
             {showBack ? (
-              <button onClick={onBack} className="flex items-center gap-1 text-zinc-900 dark:text-white -ml-2 press-effect">
-                <ChevronLeft className="w-6 h-6" strokeWidth={2} />
-                <span className="text-lg font-bold">Voltar</span>
+              <button onClick={onBack} className="flex items-center gap-2 text-zinc-900 dark:text-white -ml-1 press-effect">
+                <ChevronLeft className="w-7 h-7" strokeWidth={2.5} />
+                <span className="text-xl font-extrabold tracking-tight">Voltar</span>
               </button>
             ) : (
               <div className="flex flex-col">
-                 <div className="flex items-center gap-2">
-                    {headerIcon && <div className="w-6 h-6 anim-scale-in">{headerIcon}</div>}
-                    <h1 className="text-lg font-bold tracking-tight text-zinc-900 dark:text-white truncate">
+                 <div className="flex items-center gap-3">
+                    {headerIcon && <div className="w-9 h-9 flex items-center justify-center bg-zinc-100 dark:bg-zinc-800/50 rounded-xl border border-zinc-200/50 dark:border-zinc-700/50 shadow-sm anim-scale-in">{headerIcon}</div>}
+                    <h1 className="text-xl font-extrabold tracking-tight text-zinc-900 dark:text-white truncate">
                       {title}
                     </h1>
                  </div>
-                 {subtitle && <div className="text-xs text-zinc-500 font-medium ml-8">{subtitle}</div>}
+                 {subtitle && <div className="text-xs text-zinc-500 font-medium ml-12">{subtitle}</div>}
               </div>
             )}
           </div>

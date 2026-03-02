@@ -14,19 +14,19 @@
     
     /* Modern Fintech Palette - Light */
     --color-accent-rgb: 79 70 229; /* Indigo 600 */
-    --bg-main: #F8FAFC; /* Slate 50 */
+    --bg-main: #F1F5F9; /* Slate 100 - Slightly more gray than 50 */
     --bg-surface: #FFFFFF;
     --border-subtle: #E2E8F0; /* Slate 200 */
     --text-primary: #0F172A; /* Slate 900 */
-    --text-secondary: #64748B; /* Slate 500 */
+    --text-secondary: #475569; /* Slate 600 */
   }
 
   .dark {
     /* Modern Fintech Palette - Dark */
     --color-accent-rgb: 99 102 241; /* Indigo 500 */
-    --bg-main: #09090B; /* Zinc 950 */
-    --bg-surface: #18181B; /* Zinc 900 */
-    --border-subtle: #27272A; /* Zinc 800 */
+    --bg-main: #0F0F12; /* Zinc 950/900 mix */
+    --bg-surface: #1C1C21; /* Zinc 800/900 mix */
+    --border-subtle: #2D2D35; /* Zinc 800 mix */
     --text-primary: #F8FAFC; /* Slate 50 */
     --text-secondary: #94A3B8; /* Slate 400 */
   }

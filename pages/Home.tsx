@@ -1332,24 +1332,28 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
     <motion.div 
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="space-y-4 pb-8"
+        className="space-y-3 pb-8"
     >
-        <MarketTicker />
+        <div className="-mx-4 -mt-2">
+            <MarketTicker />
+        </div>
         
-        <StoriesBar 
-            insights={sortedInsights} 
-            onSelectStory={(s) => {
-                setViewerStories(sortedInsights);
-                setSelectedStoryId(s.id);
-            }} 
-            viewedIds={viewedStories}
-        />
+        <div className="-mt-1">
+            <StoriesBar 
+                insights={sortedInsights} 
+                onSelectStory={(s) => {
+                    setViewerStories(sortedInsights);
+                    setSelectedStoryId(s.id);
+                }} 
+                viewedIds={viewedStories}
+            />
+        </div>
 
         <motion.div 
             whileHover={{ scale: 1.01 }}
             whileTap={{ scale: 0.99 }}
             onClick={() => setShowEvolution(true)}
-            className="relative w-full min-h-[200px] rounded-[2rem] bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl shadow-black/40 group anim-fade-in cursor-pointer transition-all duration-300"
+            className="relative w-full min-h-[190px] rounded-[2rem] bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl shadow-black/40 group anim-fade-in cursor-pointer transition-all duration-300 -mt-2"
         >
             {/* Background Effects */}
             <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-indigo-600/20 blur-[100px] rounded-full pointer-events-none -mr-20 -mt-20 mix-blend-screen animate-pulse-slow group-hover:bg-indigo-600/30 transition-colors"></div>
