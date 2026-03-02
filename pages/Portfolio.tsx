@@ -757,280 +757,6 @@ const ChartsContainer = ({ ticker, type, marketDividends }: { ticker: string, ty
                 ticker={ticker} 
                 type={type} 
             />
-            <SimulatorCard 
-                data={historyData} 
-                ticker={ticker} 
-                dividends={marketDividends} 
-            />
-        </div>
-    );
-};
-
-const SimulatorCard = ({ data, ticker, dividends = [] }: any) => {
-    const [amount, setAmount] = useState(1000);
-    const [reinvest, setReinvest] = useState(true);
-    
-    const simulation = useMemo(() => {
-        if (!data || data.length === 0) return null;
-        
-        const cutoff = new Date();
-        cutoff.setFullYear(cutoff.getFullYear() - 5);
-        const simData = data.filter((d: any) => new Date(d.date) >= cutoff);
-        
-        if (simData.length === 0) return null;
-
-        const first = simData[0];
-        const last = simData[simData.length - 1];
-        
-        const startPrice = first.price || first.close;
-        const startDate = new Date(first.date);
-        const endDate = new Date(last.date);
-        const totalDays = Math.max(1, (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-        
-        if (!startPrice) return null;
-
-        // Initial State
-        let shares = Math.floor(amount / startPrice);
-        let cash = amount - (shares * startPrice);
-        let totalDividends = 0;
-        let totalReinvested = 0;
-
-        // Sort dividends
-        const sortedDivs = [...dividends]
-            .filter(d => new Date(d.paymentDate || d.dateCom) >= startDate)
-            .sort((a: any, b: any) => new Date(a.paymentDate || a.dateCom).getTime() - new Date(b.paymentDate || b.dateCom).getTime());
-
-        let divIndex = 0;
-        const chartData: any[] = [];
-        const cdiTotalGrowth = (last.cdiPct || 0) / 100;
-
-        // Sample data for chart to avoid performance issues
-        const step = Math.max(1, Math.floor(simData.length / 80)); 
-
-        simData.forEach((point: any, index: number) => {
-            const date = new Date(point.date);
-            const price = point.price || point.close;
-
-            // Process dividends up to this date
-            while (divIndex < sortedDivs.length) {
-                const div = sortedDivs[divIndex];
-                const divDate = new Date(div.paymentDate || div.dateCom);
-                
-                if (divDate <= date) {
-                    const receipt = shares * div.rate;
-                    totalDividends += receipt;
-                    
-                    if (reinvest) {
-                        cash += receipt;
-                        // Try to buy more shares
-                        if (price && cash >= price) {
-                            const newShares = Math.floor(cash / price);
-                            shares += newShares;
-                            cash -= (newShares * price);
-                            totalReinvested += (newShares * price);
-                        }
-                    }
-                    divIndex++;
-                } else {
-                    break;
-                }
-            }
-
-            // Add point to chart data
-            if (index % step === 0 || index === simData.length - 1) {
-                const currentEquity = shares * price;
-                const totalValue = reinvest ? (currentEquity + cash) : (currentEquity + cash + totalDividends);
-                
-                // Approximate CDI curve
-                const daysPassed = (date.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
-                const progress = Math.min(1, daysPassed / totalDays);
-                const cdiValue = amount * Math.pow(1 + cdiTotalGrowth, progress);
-
-                chartData.push({
-                    date: point.date,
-                    label: formatDateShort(point.date),
-                    value: totalValue,
-                    cdi: cdiValue,
-                    invested: amount
-                });
-            }
-        });
-
-        const finalValue = chartData[chartData.length - 1].value;
-        const finalCDI = chartData[chartData.length - 1].cdi;
-
-        return {
-            chartData,
-            finalValue,
-            finalCDI,
-            totalDividends,
-            shares,
-            initialShares: Math.floor(amount / startPrice),
-            roi: ((finalValue - amount) / amount) * 100,
-            cdiRoi: ((finalCDI - amount) / amount) * 100
-        };
-
-    }, [data, amount, dividends, reinvest]);
-
-    if (!simulation) return null;
-
-    return (
-        <div className="bg-white dark:bg-zinc-900 rounded-[1.5rem] p-4 border border-zinc-200 dark:border-zinc-800 shadow-sm mb-4">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4">
-                <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-                        <Calculator className="w-4 h-4" />
-                    </div>
-                    <div>
-                        <h3 className="text-sm font-black text-zinc-900 dark:text-white leading-tight">Simulador de Retorno</h3>
-                        <p className="text-[9px] font-medium text-zinc-500">Histórico de 5 Anos</p>
-                    </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                    <button 
-                        onClick={() => setReinvest(!reinvest)}
-                        className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-[9px] font-black uppercase transition-all border ${reinvest ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/30 dark:border-indigo-800 dark:text-indigo-300' : 'bg-transparent border-zinc-200 text-zinc-500 dark:border-zinc-700'}`}
-                    >
-                        <RefreshCcw className={`w-2.5 h-2.5 ${reinvest ? 'animate-spin-slow' : ''}`} />
-                        {reinvest ? 'Reinvestindo' : 'Sem Reinvestir'}
-                    </button>
-
-                    <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-md p-0.5">
-                        {[1000, 5000, 10000].map(val => (
-                            <button 
-                                key={val} 
-                                onClick={() => setAmount(val)} 
-                                className={`px-2 py-0.5 text-[9px] font-black rounded-sm transition-all ${amount === val ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
-                            >
-                                {val/1000}k
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
-            {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                
-                {/* Left: Stats */}
-                <div className="lg:col-span-1 flex flex-col gap-2">
-                    {/* Main Result */}
-                    <div className="bg-zinc-50 dark:bg-zinc-800/20 rounded-xl p-3 border border-zinc-100 dark:border-zinc-800/50">
-                        <div className="flex justify-between items-start mb-1">
-                            <div>
-                                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Resultado Final</p>
-                                <h2 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight leading-none">
-                                    {formatBRL(simulation.finalValue)}
-                                </h2>
-                            </div>
-                            <div className={`px-1.5 py-0.5 rounded-md text-[9px] font-black ${simulation.roi >= 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400'}`}>
-                                {simulation.roi > 0 ? '+' : ''}{simulation.roi.toFixed(1)}%
-                            </div>
-                        </div>
-                        <p className="text-[9px] font-medium text-zinc-500">
-                            Rend. vs CDI: <span className="text-zinc-700 dark:text-zinc-300">{simulation.cdiRoi.toFixed(1)}%</span>
-                        </p>
-                    </div>
-
-                    {/* Secondary Stats */}
-                    <div className="grid grid-cols-2 gap-2">
-                        <div className="px-3 py-2 rounded-xl bg-zinc-50 dark:bg-zinc-800/20 border border-zinc-100 dark:border-zinc-800/50">
-                            <div className="flex items-center gap-1.5 mb-0.5">
-                                <Coins className="w-3 h-3 text-zinc-400" />
-                                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Dividendos</p>
-                            </div>
-                            <p className="text-sm font-black text-zinc-900 dark:text-white leading-tight">{formatBRL(simulation.totalDividends)}</p>
-                        </div>
-
-                        <div className="px-3 py-2 rounded-xl bg-zinc-50 dark:bg-zinc-800/20 border border-zinc-100 dark:border-zinc-800/50">
-                            <div className="flex items-center gap-1.5 mb-0.5">
-                                <Wallet className="w-3 h-3 text-zinc-400" />
-                                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Cotas</p>
-                            </div>
-                            <div className="flex items-baseline gap-1">
-                                <p className="text-sm font-black text-zinc-900 dark:text-white leading-tight">{simulation.shares}</p>
-                                {reinvest && simulation.shares > simulation.initialShares && (
-                                    <span className="text-[9px] font-bold text-emerald-500">+{simulation.shares - simulation.initialShares}</span>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Right: Chart */}
-                <div className="lg:col-span-2 h-[140px] w-full bg-zinc-50 dark:bg-zinc-800/20 rounded-xl border border-zinc-100 dark:border-zinc-800/50 p-2 relative">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={simulation.chartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-                            <defs>
-                                <linearGradient id="colorSimValue" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
-                                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#71717a" opacity={0.1} />
-                            <XAxis 
-                                dataKey="label" 
-                                axisLine={false} 
-                                tickLine={false} 
-                                tick={{ fontSize: 9, fill: '#a1a1aa', fontWeight: 600 }} 
-                                minTickGap={40}
-                            />
-                            <YAxis 
-                                axisLine={false} 
-                                tickLine={false} 
-                                tick={{ fontSize: 9, fill: '#a1a1aa' }} 
-                                tickFormatter={(val) => `R$${val/1000}k`} 
-                            />
-                            <Tooltip 
-                                contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '11px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
-                                formatter={(value: number, name: string) => [formatBRL(value), name === 'value' ? 'Patrimônio' : name === 'cdi' ? 'CDI' : 'Investido']}
-                                labelStyle={{ color: '#a1a1aa', marginBottom: '4px' }}
-                            />
-                            <Area 
-                                type="monotone" 
-                                dataKey="value" 
-                                stroke="#6366f1" 
-                                strokeWidth={3} 
-                                fill="url(#colorSimValue)" 
-                                name="value"
-                            />
-                            <Line 
-                                type="monotone" 
-                                dataKey="cdi" 
-                                stroke="#a1a1aa" 
-                                strokeWidth={2} 
-                                strokeDasharray="4 4" 
-                                dot={false} 
-                                name="cdi"
-                                opacity={0.6}
-                            />
-                            <Line 
-                                type="monotone" 
-                                dataKey="invested" 
-                                stroke="#52525b" 
-                                strokeWidth={1} 
-                                strokeDasharray="2 2" 
-                                dot={false} 
-                                name="invested"
-                                opacity={0.3}
-                            />
-                        </AreaChart>
-                    </ResponsiveContainer>
-                    
-                    <div className="absolute top-4 right-4 flex gap-3">
-                        <div className="flex items-center gap-1.5">
-                            <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
-                            <span className="text-[9px] font-bold text-zinc-500 uppercase">Patrimônio</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                            <div className="w-2 h-2 rounded-full bg-zinc-400"></div>
-                            <span className="text-[9px] font-bold text-zinc-500 uppercase">CDI</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
     );
 };
@@ -1583,56 +1309,56 @@ const AssetCard = ({ asset, maxVal, totalVal, privacyMode, onClick }: { asset: A
     return (
         <button 
             onClick={onClick}
-            className="w-full bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200/60 dark:border-zinc-800/60 shadow-sm active:scale-[0.98] transition-all relative overflow-hidden group hover:border-indigo-200 dark:hover:border-zinc-700 p-4"
+            className="w-full bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 shadow-sm active:scale-[0.98] transition-all relative overflow-hidden group hover:border-indigo-200 dark:hover:border-zinc-700 p-2.5"
         >
             {/* Progress Bar Background */}
             <div className="absolute bottom-0 left-0 h-1 bg-indigo-500/20 dark:bg-indigo-400/20 transition-all duration-1000" style={{ width: `${relativePercent}%` }}></div>
 
-            <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center gap-3.5">
+            <div className="flex justify-between items-center mb-3">
+                <div className="flex items-center gap-3">
                     <div className="relative">
                         {asset.logoUrl ? (
-                            <img src={asset.logoUrl} className="w-12 h-12 rounded-2xl object-cover bg-white shadow-sm border border-zinc-100 dark:border-zinc-800" />
+                            <img src={asset.logoUrl} className="w-10 h-10 rounded-xl object-cover bg-white shadow-sm border border-zinc-100 dark:border-zinc-800" />
                         ) : (
-                            <div className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center font-black text-xs text-zinc-400 border border-zinc-200 dark:border-zinc-700">
+                            <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center font-black text-[10px] text-zinc-400 border border-zinc-200 dark:border-zinc-700">
                                 {asset.ticker.substring(0, 2)}
                             </div>
                         )}
-                        <div className={`absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full border-[3px] border-white dark:border-zinc-900 flex items-center justify-center text-[10px] font-black ${isPositive ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
-                            {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                        <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white dark:border-zinc-900 flex items-center justify-center text-[8px] font-black ${isPositive ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
+                            {isPositive ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
                         </div>
                     </div>
                     
                     <div className="text-left">
-                        <h3 className="font-display font-black text-xl text-zinc-900 dark:text-white tracking-tight leading-none mb-1">{asset.ticker}</h3>
-                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest truncate max-w-[120px]">
+                        <h3 className="font-display font-black text-sm text-zinc-900 dark:text-white tracking-tight leading-none mb-0.5">{asset.ticker}</h3>
+                        <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest truncate max-w-[100px]">
                             {asset.company_name || 'Ativo'}
                         </p>
                     </div>
                 </div>
 
                 <div className="text-right">
-                    <p className="font-black text-xl text-zinc-900 dark:text-white tracking-tight leading-none mb-1">{formatBRL(currentVal, privacyMode)}</p>
+                    <p className="font-black text-sm text-zinc-900 dark:text-white tracking-tight leading-none mb-0.5">{formatBRL(currentVal, privacyMode)}</p>
                     <div className="flex items-center justify-end gap-1.5">
-                        <span className="text-[10px] font-medium text-zinc-400">{asset.quantity} un</span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${isPositive ? 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-rose-100 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400'}`}>
+                        <span className="text-[9px] font-medium text-zinc-400">{asset.quantity} un</span>
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${isPositive ? 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-rose-100 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400'}`}>
                             {isPositive ? '+' : ''}{gainLossPercent.toFixed(1)}%
                         </span>
                     </div>
                 </div>
             </div>
 
-            <div className="flex items-center justify-between pt-3 border-t border-dashed border-zinc-200 dark:border-zinc-800/60">
+            <div className="flex items-center justify-between pt-2 border-t border-dashed border-zinc-200 dark:border-zinc-800/60">
                 <div className="flex flex-col items-start">
-                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Preço Médio</span>
-                    <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400">{formatBRL(asset.averagePrice, privacyMode)}</span>
+                    <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Preço Médio</span>
+                    <span className="text-[10px] font-bold text-zinc-600 dark:text-zinc-400">{formatBRL(asset.averagePrice, privacyMode)}</span>
                 </div>
                 <div className="flex flex-col items-end">
-                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Preço Atual</span>
-                    <div className="flex items-baseline gap-2">
-                        <span className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(asset.currentPrice, privacyMode)}</span>
+                    <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Preço Atual</span>
+                    <div className="flex items-baseline gap-1.5">
+                        <span className="text-xs font-black text-zinc-900 dark:text-white">{formatBRL(asset.currentPrice, privacyMode)}</span>
                         {asset.dailyChange !== undefined && (
-                            <span className={`text-[10px] font-bold ${asset.dailyChange >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                            <span className={`text-[9px] font-bold ${asset.dailyChange >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                                 {asset.dailyChange >= 0 ? '+' : ''}{asset.dailyChange.toFixed(2)}%
                             </span>
                         )}
@@ -1906,16 +1632,6 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
                                 chartData={incomeChartData} 
                                 marketHistory={assetMarketHistory} 
                             />
-                            
-                            <div className="flex items-center gap-3 mt-8 mb-2">
-                                <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Simulador de Aporte</h3>
-                                <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
-                            </div>
-                            <SimulatorCard 
-                                data={historyData} 
-                                ticker={selectedAsset.ticker} 
-                                dividends={assetMarketHistory} 
-                            />
                         </div>
                     )}
                 </div>
@@ -1975,7 +1691,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
                                 <Building2 className="w-4 h-4 text-indigo-500" />
                                 <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest">Fundos Imobiliários ({groupedAssets.fiis.length})</h3>
                             </div>
-                            <div className="space-y-3">
+                            <div className="space-y-2">
                                 {groupedAssets.fiis.map(asset => (
                                     <AssetCard 
                                         key={asset.ticker} 
@@ -1993,11 +1709,11 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
                     {/* Grupo Ações */}
                     {groupedAssets.stocks.length > 0 && (
                         <div>
-                            <div className="flex items-center gap-2 mb-3 px-1 pt-2">
+                            <div className="flex items-center gap-2 mb-2 px-1 pt-2">
                                 <TrendingUp className="w-4 h-4 text-sky-500" />
                                 <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest">Ações ({groupedAssets.stocks.length})</h3>
                             </div>
-                            <div className="space-y-3">
+                            <div className="space-y-2">
                                 {groupedAssets.stocks.map(asset => (
                                     <AssetCard 
                                         key={asset.ticker} 

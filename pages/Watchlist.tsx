@@ -363,10 +363,20 @@ export default function Watchlist({ showToast }: WatchlistProps) {
 
     return (
         <div className="pb-24 px-4 max-w-md mx-auto min-h-screen bg-zinc-50 dark:bg-zinc-950">
-            {/* Header Actions & Stats */}
-            <div className="pt-6 mb-4 flex items-center justify-between">
-                <h1 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">Favoritos</h1>
-                <div className="flex gap-2">
+            {/* Header Actions & Filters */}
+            <div className="pt-6 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar flex-1">
+                    {(['ALL', 'STOCK', 'FII'] as const).map((f) => (
+                        <button 
+                            key={f}
+                            onClick={() => setFilter(f)}
+                            className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all border shrink-0 ${filter === f ? 'bg-zinc-900 dark:bg-white border-transparent text-white dark:text-zinc-900 shadow-md' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 shadow-sm'}`}
+                        >
+                            {f === 'ALL' ? 'Todos' : f === 'STOCK' ? 'Ações' : 'FIIs'}
+                        </button>
+                    ))}
+                </div>
+                <div className="flex gap-2 shrink-0">
                     <button 
                         onClick={() => fetchData(true)}
                         disabled={loading}
@@ -383,43 +393,29 @@ export default function Watchlist({ showToast }: WatchlistProps) {
                 </div>
             </div>
 
-            {/* Filters & Sorting */}
+            {/* Sorting */}
             {watchlist.length > 0 && (
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-                    <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-                        {(['ALL', 'STOCK', 'FII'] as const).map((f) => (
-                            <button 
-                                key={f}
-                                onClick={() => setFilter(f)}
-                                className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all border shrink-0 ${filter === f ? 'bg-zinc-900 dark:bg-white border-transparent text-white dark:text-zinc-900 shadow-md' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 shadow-sm'}`}
-                            >
-                                {f === 'ALL' ? 'Todos' : f === 'STOCK' ? 'Ações' : 'FIIs'}
-                            </button>
-                        ))}
-                    </div>
-                    
-                    <div className="flex items-center gap-3 px-1">
-                        <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Ordenar:</span>
-                        <div className="flex gap-3">
-                            <button 
-                                onClick={() => toggleSort('TICKER')}
-                                className={`text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 ${sortBy === 'TICKER' ? 'text-indigo-500' : 'text-zinc-400'}`}
-                            >
-                                Ticker {sortBy === 'TICKER' && (sortOrder === 'ASC' ? '↑' : '↓')}
-                            </button>
-                            <button 
-                                onClick={() => toggleSort('PRICE')}
-                                className={`text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 ${sortBy === 'PRICE' ? 'text-indigo-500' : 'text-zinc-400'}`}
-                            >
-                                Preço {sortBy === 'PRICE' && (sortOrder === 'ASC' ? '↑' : '↓')}
-                            </button>
-                            <button 
-                                onClick={() => toggleSort('CHANGE')}
-                                className={`text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 ${sortBy === 'CHANGE' ? 'text-indigo-500' : 'text-zinc-400'}`}
-                            >
-                                Var. {sortBy === 'CHANGE' && (sortOrder === 'ASC' ? '↑' : '↓')}
-                            </button>
-                        </div>
+                <div className="flex items-center justify-end gap-3 px-1 mb-4">
+                    <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Ordenar:</span>
+                    <div className="flex gap-3">
+                        <button 
+                            onClick={() => toggleSort('TICKER')}
+                            className={`text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 ${sortBy === 'TICKER' ? 'text-indigo-500' : 'text-zinc-400'}`}
+                        >
+                            Ticker {sortBy === 'TICKER' && (sortOrder === 'ASC' ? '↑' : '↓')}
+                        </button>
+                        <button 
+                            onClick={() => toggleSort('PRICE')}
+                            className={`text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 ${sortBy === 'PRICE' ? 'text-indigo-500' : 'text-zinc-400'}`}
+                        >
+                            Preço {sortBy === 'PRICE' && (sortOrder === 'ASC' ? '↑' : '↓')}
+                        </button>
+                        <button 
+                            onClick={() => toggleSort('CHANGE')}
+                            className={`text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 ${sortBy === 'CHANGE' ? 'text-indigo-500' : 'text-zinc-400'}`}
+                        >
+                            Var. {sortBy === 'CHANGE' && (sortOrder === 'ASC' ? '↑' : '↓')}
+                        </button>
                     </div>
                 </div>
             )}

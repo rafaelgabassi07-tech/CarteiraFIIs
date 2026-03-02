@@ -1395,8 +1395,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                             exit="exit"
                             transition={{ x: { type: "spring", stiffness: 300, damping: 30 }, opacity: { duration: 0.2 } }}
                             className="absolute inset-0 w-full"
-                            onPanStart={() => isDragging.current = true}
-                            onPanEnd={handlePanEnd}
+                            drag="x"
+                            dragConstraints={{ left: 0, right: 0 }}
+                            dragElastic={0.2}
+                            onDragStart={() => isDragging.current = true}
+                            onDragEnd={handlePanEnd}
                         >
                             {cardView === 0 && (
                                 <div>
