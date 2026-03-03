@@ -1135,10 +1135,10 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends, incomeCha
                             
                             {/* TAB: VISÃO GERAL */}
                             {activeTab === 'OVERVIEW' && (
-                                <div className="anim-fade-in space-y-8">
+                                <div className="anim-fade-in space-y-6">
                                     {!isWatchlist && (
-                                        <div className="space-y-4">
-                                            <div className="flex items-center gap-2">
+                                        <div className="space-y-3">
+                                            <div className="flex items-center gap-2 px-1">
                                                 <Wallet className="w-4 h-4 text-indigo-500" />
                                                 <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Sua Posição</h3>
                                             </div>
@@ -1146,8 +1146,8 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends, incomeCha
                                         </div>
                                     )}
                                     
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-2">
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-2 px-1">
                                             <BarChart3 className="w-4 h-4 text-indigo-500" />
                                             <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Cotação & Performance</h3>
                                         </div>
@@ -1160,7 +1160,12 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends, incomeCha
                                             onRangeChange={setRange}
                                         />
                                     </div>
+                                </div>
+                            )}
 
+                            {/* TAB: ANÁLISE */}
+                            {activeTab === 'ANALYSIS' && (
+                                <div className="anim-fade-in space-y-8">
                                     <div className="space-y-4">
                                         <div className="flex items-center gap-2">
                                             <List className="w-4 h-4 text-indigo-500" />
@@ -1168,12 +1173,7 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends, incomeCha
                                         </div>
                                         <DetailedInfoBlock asset={selectedAsset} />
                                     </div>
-                                </div>
-                            )}
 
-                            {/* TAB: ANÁLISE */}
-                            {activeTab === 'ANALYSIS' && (
-                                <div className="anim-fade-in space-y-8">
                                     <div className="space-y-4">
                                         <div className="flex items-center gap-2">
                                             <Activity className="w-4 h-4 text-indigo-500" />

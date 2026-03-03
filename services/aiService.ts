@@ -97,8 +97,9 @@ export const generateAIInsights = async (): Promise<PortfolioInsight[]> => {
                 console.warn("Failed to generate AI image for story:", e);
             }
 
+            const todayStr = new Date().toISOString().split('T')[0];
             return {
-                id: `ai-insight-${item.type}-${index}-${Date.now()}`,
+                id: `ai-insight-${item.type}-${index}-${todayStr}`,
                 type: item.type === 'motivation' ? 'success' : 'news',
                 title: item.title,
                 message: item.message,

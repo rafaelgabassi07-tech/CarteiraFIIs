@@ -891,29 +891,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
   const [showGoals, setShowGoals] = useState(false);
   const [goalTab, setGoalTab] = useState<'WEALTH' | 'INCOME' | 'STRATEGY'>('WEALTH');
   
-  // Gestures State
-  const [cardView, setCardView] = useState(0);
-  const [swipeDirection, setSwipeDirection] = useState(0);
-  const isDragging = React.useRef(false);
-
-  const handlePanEnd = (e: any, info: any) => {
-      setTimeout(() => isDragging.current = false, 50);
-      const threshold = 40;
-      if (info.offset.x < -threshold) {
-          setSwipeDirection(1);
-          setCardView(prev => (prev + 1) % 3);
-      } else if (info.offset.x > threshold) {
-          setSwipeDirection(-1);
-          setCardView(prev => (prev - 1 + 3) % 3);
-      }
-  };
-
-  const cardVariants = {
-      enter: (direction: number) => ({ x: direction > 0 ? '100%' : '-100%', opacity: 0 }),
-      center: { x: 0, opacity: 1 },
-      exit: (direction: number) => ({ x: direction < 0 ? '100%' : '-100%', opacity: 0 })
-  };
-  
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
   const [viewerStories, setViewerStories] = useState<PortfolioInsight[]>([]);
   const [viewedStories, setViewedStories] = useState<Set<string>>(new Set());
@@ -1375,7 +1352,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
             whileTap={{ scale: 0.995 }}
             className="relative w-full min-h-[220px] rounded-[2.5rem] bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl shadow-black/40 group anim-fade-in cursor-pointer transition-all duration-300"
             onClick={() => {
-                if (!isDragging.current) setShowEvolution(true);
+                setShowEvolution(true);
             }}
         >
             {/* Background Effects */}
