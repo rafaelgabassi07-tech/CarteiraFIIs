@@ -332,17 +332,17 @@ export const UpdateReportModal: React.FC<any> = (props) => (
 
             <div className="space-y-3 flex-1 overflow-y-auto pb-20">
                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                    <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800">
                         <p className="text-[9px] font-bold text-zinc-400 uppercase mb-1">Ativos</p>
                         <p className="text-xl font-black text-zinc-900 dark:text-white">{props.results?.results?.length || 0}</p>
                     </div>
-                    <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                    <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800">
                         <p className="text-[9px] font-bold text-zinc-400 uppercase mb-1">Proventos</p>
                         <p className="text-xl font-black text-emerald-500">+{props.results?.totalDividendsFound || 0}</p>
                     </div>
                  </div>
 
-                 <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                 <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800">
                      <div className="flex justify-between items-center mb-3 pb-3 border-b border-zinc-100 dark:border-zinc-800/50">
                          <div className="flex items-center gap-2">
                              <TrendingUp className="w-3.5 h-3.5 text-indigo-500" />
@@ -363,7 +363,7 @@ export const UpdateReportModal: React.FC<any> = (props) => (
                     <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-3 ml-1">Ativos Sincronizados</p>
                     <div className="space-y-2">
                         {props.results?.results?.slice(0, 10).map((r: any, i: number) => (
-                            <div key={i} className="flex items-center justify-between p-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                            <div key={i} className="flex items-center justify-between p-3 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
                                 <span className="text-xs font-black text-zinc-700 dark:text-zinc-200">{r.ticker}</span>
                                 <div className="flex items-center gap-1.5">
                                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>

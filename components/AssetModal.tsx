@@ -223,7 +223,7 @@ const PriceHistoryChart = ({ fullData, loading, error, ticker, range, onRangeCha
 
     return (
         <>
-        <div className="bg-white dark:bg-zinc-900 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 p-3 shadow-xl shadow-zinc-200/50 dark:shadow-black/20 mb-6 relative overflow-hidden">
+        <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 p-3 shadow-xl shadow-zinc-200/50 dark:shadow-black/20 mb-6 relative overflow-hidden">
             <div className="flex flex-col gap-3 mb-3">
                 <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2.5">
@@ -521,7 +521,7 @@ const ComparativeChart = ({ ticker, type }: any) => {
 
     return (
         <>
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-3 shadow-sm mb-4 relative overflow-hidden transition-all duration-300">
+        <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 p-3 shadow-sm mb-4 relative overflow-hidden transition-all duration-300">
             <div className="flex flex-col gap-3 mb-3">
                 <div className="flex justify-between items-center">
                     <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
@@ -692,12 +692,12 @@ const PositionSummaryCard = ({ asset, privacyMode }: { asset: AssetPosition, pri
 
     return (
         <div className="grid grid-cols-2 gap-3">
-            <div className="bg-white dark:bg-zinc-900 p-4 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
+            <div className="bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
                 <p className="text-[9px] font-black text-zinc-400 uppercase tracking-[0.15em] mb-1">Patrimônio</p>
                 <p className="text-xl font-black text-zinc-900 dark:text-white tracking-tighter">{formatBRL(totalValue, privacyMode)}</p>
                 <p className="text-[10px] font-bold text-zinc-500 mt-1">{asset.quantity} cotas</p>
             </div>
-            <div className="bg-white dark:bg-zinc-900 p-4 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
+            <div className="bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
                 <p className="text-[9px] font-black text-zinc-400 uppercase tracking-[0.15em] mb-1">Resultado Total</p>
                 <div className="flex items-baseline gap-1.5">
                     <p className={`text-xl font-black tracking-tighter ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
@@ -726,15 +726,15 @@ const ValuationCard = ({ asset }: { asset: AssetPosition }) => {
 
     return (
         <div className="grid grid-cols-3 gap-3">
-            <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 text-center">
+            <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800/50 text-center">
                 <p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">P/VP <InfoTooltip title="P/VP" text="Preço sobre Valor Patrimonial. Idealmente abaixo de 1." /></p>
                 <p className={`text-lg font-black tracking-tighter ${getValuationColor(pvp, [1, 1.5])}`}>{pvp.toFixed(2)}</p>
             </div>
-            <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 text-center">
+            <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800/50 text-center">
                 <p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">P/L <InfoTooltip title="P/L" text="Preço sobre Lucro. Mede o quão 'caro' o ativo está em relação ao lucro que gera." /></p>
                 <p className={`text-lg font-black tracking-tighter ${getValuationColor(pl, [10, 15])}`}>{pl.toFixed(2)}</p>
             </div>
-            <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 text-center">
+            <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800/50 text-center">
                 <p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">Dividend Yield</p>
                 <p className="text-lg font-black tracking-tighter text-emerald-500">{(dy * 100).toFixed(2)}%</p>
             </div>
@@ -757,7 +757,7 @@ const DetailedInfoBlock = ({ asset }: { asset: AssetPosition }) => {
     ].filter(d => d.value);
 
     return (
-        <div className="bg-white dark:bg-zinc-900 p-5 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
+        <div className="bg-white dark:bg-zinc-900 p-5 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
             <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                 {dataPoints.map(({ label, value, icon: Icon }) => (
                     <div key={label} className="flex items-center gap-3">
@@ -844,12 +844,12 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory, isWatchlist = 
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-2 gap-3">
-                <div className="bg-white dark:bg-zinc-900 p-4 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                <div className="bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
                     <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Último Provento</p>
                     <p className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">{formatBRL(lastDividend?.value || lastDividend?.rate || 0)}</p>
                     <p className="text-[10px] font-bold text-zinc-500 mt-1">Pago em {formatDateShort(lastDividend?.paymentDate)}</p>
                 </div>
-                <div className="bg-white dark:bg-zinc-900 p-4 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                <div className="bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
                     <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">{yieldLabel}</p>
                     <p className="text-xl font-black text-emerald-500 tracking-tight">{displayYield.toFixed(2)}%</p>
                     <p className="text-[10px] font-bold text-zinc-500 mt-1">{isWatchlist ? 'Anualizado' : 'Yield on Cost'}</p>
@@ -857,7 +857,7 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory, isWatchlist = 
             </div>
 
             {nextEvents.length > 0 && (
-                <div className="bg-zinc-50 dark:bg-zinc-900/50 p-5 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800/50">
+                <div className="bg-zinc-50 dark:bg-zinc-900/50 p-5 rounded-[2rem] border border-zinc-100 dark:border-zinc-800/50">
                     <div className="flex items-center gap-2 mb-4">
                         <Calendar className="w-4 h-4 text-indigo-500" />
                         <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Próximos Pagamentos</h4>
@@ -884,7 +884,7 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory, isWatchlist = 
                 </div>
             )}
 
-            <div className="bg-white dark:bg-zinc-900 p-5 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
+            <div className="bg-white dark:bg-zinc-900 p-5 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
                 <div className="flex items-center justify-between mb-6">
                     <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Histórico de Proventos</h4>
                     <span className="text-[9px] font-bold text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-md uppercase tracking-tighter">Por Cota</span>
@@ -964,7 +964,7 @@ const Investidor10ChartsSection = ({ ticker, assetType, onlyPayout = false }: an
     }
 
     return (
-        <div className="bg-zinc-100 dark:bg-zinc-800/50 p-3 rounded-2xl">
+        <div className="bg-zinc-100 dark:bg-zinc-800/50 p-3 rounded-[2rem]">
             <div className="flex justify-between items-center mb-3">
                 <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{currentChart.title}</h4>
                 <div className="flex p-0.5 bg-zinc-200 dark:bg-zinc-700 rounded-lg">
@@ -1053,14 +1053,14 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends, incomeCha
     return (
         <SwipeableModal isOpen={!!asset} onClose={onClose}>
             {selectedAsset && (
-                <div className="bg-white dark:bg-zinc-950 rounded-t-[2.5rem] md:rounded-2xl shadow-2xl flex flex-col h-full max-h-[92dvh]">
+                <div className="bg-white dark:bg-zinc-950 rounded-t-[2.5rem] md:rounded-[2.5rem] shadow-2xl flex flex-col h-full max-h-[92dvh]">
                     {/* Header Moderno */}
-                    <div className="px-6 pt-6 pb-2 shrink-0 bg-white dark:bg-zinc-950 z-20">
+                    <div className="px-6 pt-6 pb-2 shrink-0 bg-white dark:bg-zinc-950 z-20 rounded-t-[2.5rem]">
                         <div className="flex justify-between items-start mb-6">
                             <div className="flex items-center gap-4">
                                 <div className="relative group">
                                     <div className="absolute inset-0 bg-indigo-500/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                                    <div className="w-16 h-16 rounded-2xl bg-white dark:bg-zinc-900 flex items-center justify-center overflow-hidden shadow-lg shadow-zinc-200/50 dark:shadow-black/50 border border-zinc-100 dark:border-zinc-800 relative z-10">
+                                    <div className="w-16 h-16 rounded-[1.5rem] bg-white dark:bg-zinc-900 flex items-center justify-center overflow-hidden shadow-lg shadow-zinc-200/50 dark:shadow-black/50 border border-zinc-100 dark:border-zinc-800 relative z-10">
                                         {selectedAsset.logoUrl ? (
                                             <img src={selectedAsset.logoUrl} className="w-full h-full object-cover" alt={selectedAsset.ticker} />
                                         ) : (
@@ -1083,7 +1083,7 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends, incomeCha
                                         <div className="flex items-center gap-2 mt-1">
                                             <span className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">{formatBRL(selectedAsset.currentPrice)}</span>
                                             {selectedAsset.dailyChange !== undefined && (
-                                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${selectedAsset.dailyChange >= 0 ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400'}`}>
+                                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-lg ${selectedAsset.dailyChange >= 0 ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400'}`}>
                                                     {selectedAsset.dailyChange >= 0 ? '+' : ''}{selectedAsset.dailyChange.toFixed(2)}%
                                                 </span>
                                             )}
@@ -1094,13 +1094,13 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends, incomeCha
                             <div className="flex gap-2">
                                 <button 
                                     onClick={() => onAssetRefresh(selectedAsset.ticker)} 
-                                    className="w-10 h-10 bg-zinc-50 dark:bg-zinc-900 rounded-xl flex items-center justify-center text-zinc-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all active:scale-90"
+                                    className="w-10 h-10 bg-zinc-50 dark:bg-zinc-900 rounded-2xl flex items-center justify-center text-zinc-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all active:scale-90"
                                 >
                                     <RefreshCcw className="w-4.5 h-4.5" />
                                 </button>
                                 <button 
                                     onClick={onClose}
-                                    className="w-10 h-10 bg-zinc-50 dark:bg-zinc-900 rounded-xl flex items-center justify-center text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all active:scale-90"
+                                    className="w-10 h-10 bg-zinc-50 dark:bg-zinc-900 rounded-2xl flex items-center justify-center text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all active:scale-90"
                                 >
                                     <X className="w-5 h-5" />
                                 </button>
@@ -1108,22 +1108,22 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends, incomeCha
                         </div>
 
                         {/* Tabs Navegação */}
-                        <div className="flex p-1 bg-zinc-100 dark:bg-zinc-900 rounded-xl overflow-hidden">
+                        <div className="flex p-1.5 bg-zinc-100 dark:bg-zinc-900 rounded-[1.2rem] overflow-hidden">
                             <button 
                                 onClick={() => setActiveTab('OVERVIEW')} 
-                                className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 ${activeTab === 'OVERVIEW' ? 'bg-white dark:bg-zinc-800 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                                className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 ${activeTab === 'OVERVIEW' ? 'bg-white dark:bg-zinc-800 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                             >
                                 <LayoutGrid className="w-3.5 h-3.5" /> Visão Geral
                             </button>
                             <button 
                                 onClick={() => setActiveTab('ANALYSIS')} 
-                                className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 ${activeTab === 'ANALYSIS' ? 'bg-white dark:bg-zinc-800 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                                className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 ${activeTab === 'ANALYSIS' ? 'bg-white dark:bg-zinc-800 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                             >
                                 <Activity className="w-3.5 h-3.5" /> Análise
                             </button>
                             <button 
                                 onClick={() => setActiveTab('INCOME')} 
-                                className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 ${activeTab === 'INCOME' ? 'bg-white dark:bg-zinc-800 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                                className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 ${activeTab === 'INCOME' ? 'bg-white dark:bg-zinc-800 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                             >
                                 <Coins className="w-3.5 h-3.5" /> Proventos
                             </button>
