@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Search, Trash2, TrendingUp, TrendingDown, Plus, Star, ArrowLeft, RefreshCcw, AlertCircle, X, Filter, BarChart3, ArrowUpRight, ArrowDownRight, Bell, BellOff } from 'lucide-react';
+import { Search, Trash2, TrendingUp, TrendingDown, Plus, Star, ArrowLeft, RefreshCcw, AlertCircle, X, Filter, BarChart3, ArrowUpRight, ArrowDownRight, Bell, BellOff, ChevronRight } from 'lucide-react';
 import { getQuotes } from '../services/brapiService';
 import { fetchUnifiedMarketData } from '../services/dataService';
 import { formatBRL } from '../utils/formatters';
@@ -364,13 +364,13 @@ export default function Watchlist({ showToast }: WatchlistProps) {
     return (
         <div className="pb-24 px-4 max-w-md mx-auto min-h-screen bg-zinc-50 dark:bg-zinc-950">
             {/* Header Actions & Filters */}
-            <div className="pt-6 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="pt-6 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar flex-1">
                     {(['ALL', 'STOCK', 'FII'] as const).map((f) => (
                         <button 
                             key={f}
                             onClick={() => setFilter(f)}
-                            className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all border shrink-0 ${filter === f ? 'bg-zinc-900 dark:bg-white border-transparent text-white dark:text-zinc-900 shadow-md' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 shadow-sm'}`}
+                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border shrink-0 ${filter === f ? 'bg-zinc-900 dark:bg-white border-transparent text-white dark:text-zinc-900 shadow-lg shadow-zinc-900/10 dark:shadow-white/10' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 shadow-sm'}`}
                         >
                             {f === 'ALL' ? 'Todos' : f === 'STOCK' ? 'Ações' : 'FIIs'}
                         </button>
@@ -380,13 +380,13 @@ export default function Watchlist({ showToast }: WatchlistProps) {
                     <button 
                         onClick={() => fetchData(true)}
                         disabled={loading}
-                        className={`w-9 h-9 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all shadow-sm ${loading ? 'animate-spin text-indigo-500' : ''}`}
+                        className={`w-10 h-10 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all shadow-sm ${loading ? 'animate-spin text-indigo-500' : ''}`}
                     >
                         <RefreshCcw className="w-4 h-4" />
                     </button>
                     <button 
                         onClick={() => setIsAdding(true)}
-                        className="w-9 h-9 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 flex items-center justify-center shadow-lg shadow-zinc-900/20 active:scale-95 transition-all"
+                        className="w-10 h-10 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 flex items-center justify-center shadow-lg shadow-zinc-900/20 active:scale-95 transition-all hover:bg-zinc-800 dark:hover:bg-zinc-100"
                     >
                         <Plus className="w-5 h-5" />
                     </button>
@@ -395,24 +395,24 @@ export default function Watchlist({ showToast }: WatchlistProps) {
 
             {/* Sorting */}
             {watchlist.length > 0 && (
-                <div className="flex items-center justify-end gap-3 px-1 mb-4">
-                    <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Ordenar:</span>
-                    <div className="flex gap-3">
+                <div className="flex items-center justify-end gap-4 px-2 mb-4">
+                    <span className="text-[9px] font-black text-zinc-300 dark:text-zinc-700 uppercase tracking-widest">Ordenar por:</span>
+                    <div className="flex gap-4">
                         <button 
                             onClick={() => toggleSort('TICKER')}
-                            className={`text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 ${sortBy === 'TICKER' ? 'text-indigo-500' : 'text-zinc-400'}`}
+                            className={`text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 transition-colors ${sortBy === 'TICKER' ? 'text-indigo-500' : 'text-zinc-400 hover:text-zinc-600'}`}
                         >
                             Ticker {sortBy === 'TICKER' && (sortOrder === 'ASC' ? '↑' : '↓')}
                         </button>
                         <button 
                             onClick={() => toggleSort('PRICE')}
-                            className={`text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 ${sortBy === 'PRICE' ? 'text-indigo-500' : 'text-zinc-400'}`}
+                            className={`text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 transition-colors ${sortBy === 'PRICE' ? 'text-indigo-500' : 'text-zinc-400 hover:text-zinc-600'}`}
                         >
                             Preço {sortBy === 'PRICE' && (sortOrder === 'ASC' ? '↑' : '↓')}
                         </button>
                         <button 
                             onClick={() => toggleSort('CHANGE')}
-                            className={`text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 ${sortBy === 'CHANGE' ? 'text-indigo-500' : 'text-zinc-400'}`}
+                            className={`text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 transition-colors ${sortBy === 'CHANGE' ? 'text-indigo-500' : 'text-zinc-400 hover:text-zinc-600'}`}
                         >
                             Var. {sortBy === 'CHANGE' && (sortOrder === 'ASC' ? '↑' : '↓')}
                         </button>
@@ -422,41 +422,41 @@ export default function Watchlist({ showToast }: WatchlistProps) {
 
             {/* Add Asset Sheet/Modal - Enhanced UI */}
             {isAdding && (
-                <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-0 sm:p-4 animate-in fade-in duration-300">
+                <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-md p-0 sm:p-4 animate-in fade-in duration-300">
                     <div 
-                        className="bg-white/90 dark:bg-zinc-950/90 backdrop-blur-2xl w-full max-w-md rounded-t-[3rem] sm:rounded-[3rem] p-8 shadow-2xl animate-in slide-in-from-bottom-full duration-500 ease-out border-t sm:border border-white/20 dark:border-zinc-800/50 ring-1 ring-black/5"
+                        className="bg-zinc-50 dark:bg-zinc-950 w-full max-w-md rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 sm:p-8 shadow-2xl animate-in slide-in-from-bottom-full duration-500 ease-out border-t sm:border border-white/20 dark:border-zinc-800/50 ring-1 ring-black/5"
                     >
                         {/* Handle for mobile */}
-                        <div className="w-12 h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full mx-auto mb-10 sm:hidden"></div>
+                        <div className="w-12 h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full mx-auto mb-8 sm:hidden"></div>
 
-                        <div className="flex justify-between items-start mb-10">
+                        <div className="flex justify-between items-start mb-8">
                             <div>
                                 <h2 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter">Novo Favorito</h2>
-                                <p className="text-[10px] text-zinc-400 font-black mt-1 uppercase tracking-[0.2em]">Acompanhe em tempo real</p>
+                                <p className="text-[10px] text-zinc-400 font-black mt-1.5 uppercase tracking-[0.2em]">Acompanhe em tempo real</p>
                             </div>
-                            <button onClick={() => setIsAdding(false)} className="w-12 h-12 bg-zinc-100 dark:bg-zinc-900 rounded-[1.25rem] flex items-center justify-center text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all active:scale-90">
-                                <X className="w-6 h-6" />
+                            <button onClick={() => setIsAdding(false)} className="w-10 h-10 bg-zinc-100 dark:bg-zinc-900 rounded-full flex items-center justify-center text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all active:scale-90">
+                                <X className="w-5 h-5" />
                             </button>
                         </div>
 
-                        <div className="relative mb-12">
-                            <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none">
-                                <Search className="h-6 w-6 text-zinc-300" />
+                        <div className="relative mb-8">
+                            <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                                <Search className="h-5 w-5 text-zinc-400" />
                             </div>
                             <input
                                 type="text"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                placeholder="EX: PETR4, MXRF11..."
-                                className="block w-full pl-16 pr-16 py-6 bg-zinc-100/50 dark:bg-zinc-900/50 border-2 border-transparent focus:border-indigo-500/20 focus:bg-white dark:focus:bg-zinc-900 rounded-[2rem] text-2xl font-black text-zinc-900 dark:text-white placeholder:text-zinc-300 dark:placeholder:text-zinc-800 focus:ring-0 transition-all uppercase shadow-inner"
+                                placeholder="BUSCAR ATIVO (EX: PETR4)"
+                                className="block w-full pl-12 pr-12 py-5 bg-white dark:bg-zinc-900 border-2 border-transparent focus:border-indigo-500/20 rounded-2xl text-lg font-black text-zinc-900 dark:text-white placeholder:text-zinc-300 dark:placeholder:text-zinc-700 focus:ring-0 transition-all uppercase shadow-sm"
                                 autoFocus
                             />
-                            <div className="absolute inset-y-0 right-0 pr-6 flex items-center">
+                            <div className="absolute inset-y-0 right-0 pr-4 flex items-center">
                                 {isSearching ? (
-                                    <RefreshCcw className="h-6 w-6 text-indigo-500 animate-spin" />
+                                    <RefreshCcw className="h-5 w-5 text-indigo-500 animate-spin" />
                                 ) : searchTerm && (
-                                    <button onClick={() => setSearchTerm('')} className="bg-zinc-200 dark:bg-zinc-800 rounded-full p-1.5 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors">
-                                        <X className="h-4 w-4 text-zinc-500" />
+                                    <button onClick={() => setSearchTerm('')} className="bg-zinc-100 dark:bg-zinc-800 rounded-full p-1 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">
+                                        <X className="h-3 w-3 text-zinc-500" />
                                     </button>
                                 )}
                             </div>
@@ -466,57 +466,57 @@ export default function Watchlist({ showToast }: WatchlistProps) {
                             {searchResult ? (
                                 <div 
                                     onClick={() => handleAddTicker(searchResult.ticker)}
-                                    className="bg-gradient-to-br from-indigo-500 to-purple-600 p-[1px] rounded-[2.5rem] cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] shadow-2xl shadow-indigo-500/20 group"
+                                    className="bg-white dark:bg-zinc-900 rounded-[2rem] p-1 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] shadow-xl shadow-zinc-200/50 dark:shadow-none border border-zinc-100 dark:border-zinc-800 group"
                                 >
-                                    <div className="bg-white dark:bg-zinc-950 rounded-[2.45rem] p-6 flex items-center justify-between">
-                                        <div className="flex items-center gap-5">
-                                            <div className="w-16 h-16 rounded-[1.5rem] bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center overflow-hidden shadow-inner border border-zinc-100 dark:border-zinc-800">
+                                    <div className="bg-zinc-50 dark:bg-zinc-950/50 rounded-[1.8rem] p-5 flex items-center justify-between border border-zinc-100 dark:border-zinc-800/50">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-14 h-14 rounded-2xl bg-white dark:bg-zinc-900 flex items-center justify-center overflow-hidden shadow-sm border border-zinc-100 dark:border-zinc-800">
                                                 {searchResult.logo ? (
                                                     <img src={searchResult.logo} alt={searchResult.ticker} className="w-full h-full object-cover" />
                                                 ) : (
-                                                    <span className="font-black text-xl text-zinc-300">{searchResult.ticker.substring(0, 2)}</span>
+                                                    <span className="font-black text-lg text-zinc-300">{searchResult.ticker.substring(0, 2)}</span>
                                                 )}
                                             </div>
                                             <div>
-                                                <h3 className="font-black text-3xl text-zinc-900 dark:text-white tracking-tighter leading-none">{searchResult.ticker}</h3>
-                                                <p className="text-[10px] font-bold text-zinc-400 mt-2 uppercase tracking-wide truncate max-w-[160px]">{searchResult.name}</p>
+                                                <h3 className="font-black text-2xl text-zinc-900 dark:text-white tracking-tighter leading-none">{searchResult.ticker}</h3>
+                                                <p className="text-[10px] font-bold text-zinc-400 mt-1.5 uppercase tracking-wide truncate max-w-[140px]">{searchResult.name}</p>
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            <p className="font-black text-2xl text-zinc-900 dark:text-white tracking-tight">{formatBRL(searchResult.price || 0)}</p>
-                                            <div className="flex items-center justify-end gap-2 text-indigo-600 dark:text-indigo-400 mt-2">
-                                                <Plus className="w-4 h-4" strokeWidth={3} />
-                                                <span className="text-[10px] font-black uppercase tracking-widest">Adicionar</span>
+                                            <p className="font-black text-xl text-zinc-900 dark:text-white tracking-tight">{formatBRL(searchResult.price || 0)}</p>
+                                            <div className="flex items-center justify-end gap-1.5 text-indigo-600 dark:text-indigo-400 mt-1">
+                                                <Plus className="w-3.5 h-3.5" strokeWidth={3} />
+                                                <span className="text-[9px] font-black uppercase tracking-widest">Adicionar</span>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             ) : searchTerm.length > 0 && !isSearching && searchError ? (
-                                <div className="text-center py-16 bg-rose-50/50 dark:bg-rose-900/10 rounded-[2.5rem] border border-dashed border-rose-200 dark:border-rose-900/30">
-                                    <div className="w-16 h-16 bg-rose-100 dark:bg-rose-900/30 rounded-full flex items-center justify-center mx-auto mb-6 text-rose-500">
-                                        <AlertCircle className="w-8 h-8" />
+                                <div className="text-center py-12 bg-white dark:bg-zinc-900 rounded-[2rem] border border-dashed border-zinc-200 dark:border-zinc-800">
+                                    <div className="w-12 h-12 bg-rose-50 dark:bg-rose-900/20 rounded-full flex items-center justify-center mx-auto mb-4 text-rose-500">
+                                        <AlertCircle className="w-6 h-6" />
                                     </div>
-                                    <p className="text-base font-black text-zinc-900 dark:text-white tracking-tight">Ativo não encontrado</p>
-                                    <p className="text-[10px] text-zinc-400 font-bold mt-1 uppercase tracking-widest">Verifique o código e tente novamente</p>
+                                    <p className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">Ativo não encontrado</p>
+                                    <p className="text-[10px] text-zinc-400 font-bold mt-1 uppercase tracking-widest">Verifique o código</p>
                                 </div>
                             ) : (
                                 <div>
-                                    <div className="flex items-center gap-2 mb-6">
-                                        <TrendingUp className="w-5 h-5 text-emerald-500" />
-                                        <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.25em]">Ativos Populares</h3>
+                                    <div className="flex items-center gap-2 mb-4 px-1">
+                                        <TrendingUp className="w-4 h-4 text-emerald-500" />
+                                        <h3 className="text-[9px] font-black text-zinc-400 uppercase tracking-[0.25em]">Sugestões</h3>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-2 gap-3">
                                         {POPULAR_ASSETS.slice(0, 6).map(asset => (
                                             <button
                                                 key={asset.ticker}
                                                 onClick={() => handleAddTicker(asset.ticker)}
-                                                className="flex items-center justify-between px-5 py-4 bg-zinc-100/50 dark:bg-zinc-900/50 hover:bg-white dark:hover:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 hover:border-indigo-500/30 rounded-[1.5rem] transition-all group active:scale-95 shadow-sm"
+                                                className="flex items-center justify-between px-4 py-3 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 border border-zinc-100 dark:border-zinc-800 rounded-2xl transition-all group active:scale-95 shadow-sm"
                                             >
                                                 <div className="flex flex-col items-start">
-                                                    <span className="text-base font-black text-zinc-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{asset.ticker}</span>
-                                                    <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-tighter truncate max-w-[90px]">{asset.name}</span>
+                                                    <span className="text-sm font-black text-zinc-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{asset.ticker}</span>
+                                                    <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-tighter truncate max-w-[80px]">{asset.name}</span>
                                                 </div>
-                                                <div className={`w-2.5 h-2.5 rounded-full ${asset.type === 'FII' ? 'bg-emerald-400' : 'bg-sky-400'} shadow-sm`}></div>
+                                                <div className={`w-2 h-2 rounded-full ${asset.type === 'FII' ? 'bg-emerald-400' : 'bg-sky-400'} shadow-sm`}></div>
                                             </button>
                                         ))}
                                     </div>
@@ -528,35 +528,35 @@ export default function Watchlist({ showToast }: WatchlistProps) {
             )}
 
             {error && (
-                <div className="mb-6 p-4 bg-rose-50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-800/30 rounded-2xl flex items-center gap-3 text-sm text-rose-600 dark:text-rose-400 font-medium">
+                <div className="mb-6 p-4 bg-rose-50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-800/30 rounded-2xl flex items-center gap-3 text-sm text-rose-600 dark:text-rose-400 font-medium animate-in fade-in slide-in-from-top-2">
                     <AlertCircle className="w-5 h-5 shrink-0" />
                     {error}
                 </div>
             )}
 
             {watchlist.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
-                    <div className="w-20 h-20 bg-white dark:bg-zinc-900 rounded-[2rem] flex items-center justify-center mb-6 shadow-xl shadow-zinc-200 dark:shadow-none border border-zinc-100 dark:border-zinc-800 relative">
-                        <Star className="w-8 h-8 text-indigo-500" fill="currentColor" />
-                        <div className="absolute -top-1.5 -right-1.5 w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center text-white shadow-lg animate-bounce">
-                            <Plus className="w-3.5 h-3.5" />
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                    <div className="w-24 h-24 bg-white dark:bg-zinc-900 rounded-[2.5rem] flex items-center justify-center mb-8 shadow-2xl shadow-zinc-200/50 dark:shadow-none border border-zinc-100 dark:border-zinc-800 relative group">
+                        <Star className="w-10 h-10 text-zinc-300 dark:text-zinc-700 group-hover:text-indigo-500 transition-colors duration-500" fill="currentColor" />
+                        <div className="absolute -top-2 -right-2 w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-white shadow-lg animate-bounce delay-700">
+                            <Plus className="w-4 h-4" />
                         </div>
                     </div>
-                    <h3 className="text-lg font-black text-zinc-900 dark:text-white mb-1 tracking-tight">Lista vazia</h3>
-                    <p className="text-zinc-500 font-bold text-[10px] uppercase tracking-widest max-w-[200px] mb-6 leading-relaxed">Adicione ativos para acompanhar.</p>
+                    <h3 className="text-2xl font-black text-zinc-900 dark:text-white mb-2 tracking-tighter">Sua Lista</h3>
+                    <p className="text-zinc-400 font-bold text-[10px] uppercase tracking-widest max-w-[220px] mb-8 leading-relaxed">Adicione ativos para acompanhar cotações e indicadores em tempo real.</p>
                     <button 
                         onClick={() => setIsAdding(true)} 
-                        className="px-6 py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-zinc-900/20 dark:shadow-white/10 transition-all active:scale-95 hover:bg-zinc-800 dark:hover:bg-zinc-100"
+                        className="px-8 py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-zinc-900/20 dark:shadow-white/10 transition-all active:scale-95 hover:bg-zinc-800 dark:hover:bg-zinc-100 hover:shadow-2xl hover:-translate-y-1"
                     >
-                        Adicionar
+                        Adicionar Ativo
                     </button>
                 </div>
             ) : (
                 <div className="space-y-3">
                     {sortedAndFilteredWatchlist.length === 0 ? (
-                        <div className="text-center py-12 bg-white dark:bg-zinc-900 rounded-[1.5rem] border border-dashed border-zinc-200 dark:border-zinc-800">
-                            <Filter className="w-8 h-8 text-zinc-200 dark:text-zinc-800 mx-auto mb-3" />
-                            <p className="text-zinc-400 font-black text-[9px] uppercase tracking-widest">Nenhum ativo encontrado</p>
+                        <div className="text-center py-16 bg-white dark:bg-zinc-900 rounded-[2rem] border border-dashed border-zinc-200 dark:border-zinc-800">
+                            <Filter className="w-10 h-10 text-zinc-200 dark:text-zinc-800 mx-auto mb-4" />
+                            <p className="text-zinc-400 font-black text-[10px] uppercase tracking-widest">Nenhum ativo encontrado</p>
                         </div>
                     ) : (
                         sortedAndFilteredWatchlist.map(ticker => {
@@ -578,14 +578,14 @@ export default function Watchlist({ showToast }: WatchlistProps) {
                                 <div 
                                     key={ticker} 
                                     onClick={() => handleAssetClick(ticker)}
-                                    className={`group bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-zinc-200/60 dark:border-zinc-800/60 shadow-sm hover:shadow-lg hover:shadow-zinc-200/50 dark:hover:shadow-none transition-all cursor-pointer active:scale-[0.98] relative overflow-hidden hover:border-indigo-200 dark:hover:border-zinc-700 ${isUpdating ? 'opacity-80' : ''}`}
+                                    className={`group bg-white dark:bg-zinc-900 p-5 rounded-[2rem] border border-zinc-100 dark:border-zinc-800/60 shadow-sm hover:shadow-xl hover:shadow-zinc-200/40 dark:hover:shadow-black/40 transition-all duration-300 cursor-pointer active:scale-[0.98] relative overflow-hidden hover:border-indigo-500/20 dark:hover:border-indigo-500/20 ${isUpdating ? 'opacity-90' : ''}`}
                                 >
-                                    {/* Subtle background indicator for trend */}
-                                    <div className={`absolute top-0 right-0 w-32 h-32 -mr-16 -mt-16 rounded-full blur-3xl opacity-[0.04] dark:opacity-[0.06] transition-colors ${isPositive ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
+                                    {/* Subtle background gradient */}
+                                    <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-zinc-50/50 dark:to-zinc-800/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
 
-                                    <div className="flex items-center justify-between relative z-10 mb-3">
-                                    <div className="flex items-center gap-3.5">
-                                            <div className="w-12 h-12 rounded-2xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center overflow-hidden border border-zinc-100 dark:border-zinc-700/50 shadow-sm relative group-hover:scale-105 transition-transform duration-500">
+                                    <div className="flex items-center justify-between relative z-10 mb-5">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-14 h-14 rounded-2xl bg-zinc-50 dark:bg-zinc-800/50 flex items-center justify-center overflow-hidden border border-zinc-100 dark:border-zinc-700/30 shadow-sm relative group-hover:scale-105 transition-transform duration-500">
                                                 {quote?.logo ? (
                                                     <img 
                                                         src={quote.logo} 
@@ -597,35 +597,35 @@ export default function Watchlist({ showToast }: WatchlistProps) {
                                                         }} 
                                                     />
                                                 ) : null}
-                                                <span className={`text-xs font-black text-zinc-300 dark:text-zinc-600 absolute inset-0 flex items-center justify-center ${quote?.logo ? 'hidden fallback-initials:flex' : 'flex'}`}>
+                                                <span className={`text-sm font-black text-zinc-300 dark:text-zinc-600 absolute inset-0 flex items-center justify-center ${quote?.logo ? 'hidden fallback-initials:flex' : 'flex'}`}>
                                                     {ticker.substring(0, 2)}
                                                 </span>
                                                 {isUpdating && (
-                                                    <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px] flex items-center justify-center">
-                                                        <RefreshCcw className="w-4 h-4 text-white animate-spin" />
+                                                    <div className="absolute inset-0 bg-white/50 dark:bg-black/50 backdrop-blur-[1px] flex items-center justify-center">
+                                                        <RefreshCcw className="w-4 h-4 text-indigo-500 animate-spin" />
                                                     </div>
                                                 )}
                                             </div>
                                             <div>
                                                 <div className="flex items-center gap-2">
-                                                    <h3 className="font-black text-zinc-900 dark:text-white text-lg tracking-tight leading-none">{ticker}</h3>
-                                                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider ${quote?.type === 'FII' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400'}`}>
+                                                    <h3 className="font-black text-zinc-900 dark:text-white text-xl tracking-tighter leading-none">{ticker}</h3>
+                                                    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider ${quote?.type === 'FII' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400'}`}>
                                                         {quote?.type || (ticker.endsWith('11') ? 'FII' : 'Ação')}
                                                     </span>
                                                 </div>
-                                                <p className="text-[10px] font-bold text-zinc-400 mt-1 uppercase tracking-widest truncate max-w-[140px]">
+                                                <p className="text-[10px] font-bold text-zinc-400 mt-1.5 uppercase tracking-widest truncate max-w-[140px] group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-colors">
                                                     {quote?.name || (isLoadingInitial ? 'Atualizando...' : 'Ativo')}
                                                 </p>
                                             </div>
                                         </div>
 
-                                        <div className="flex flex-col items-end gap-0.5">
-                                            <p className="font-black text-zinc-900 dark:text-white tabular-nums text-xl tracking-tight">
+                                        <div className="flex flex-col items-end gap-1">
+                                            <p className="font-black text-zinc-900 dark:text-white tabular-nums text-2xl tracking-tighter">
                                                 {hasData ? formatBRL(price) : (isLoadingInitial ? <span className="animate-pulse text-zinc-200">---</span> : <span className="text-zinc-300 text-[10px] font-bold">Indisp.</span>)}
                                             </p>
                                             
                                             {hasData && (
-                                                <div className={`flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-black ${isPositive ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400'}`}>
+                                                <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-black ${isPositive ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400'}`}>
                                                     {isPositive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
                                                     {Math.abs(change).toFixed(2)}%
                                                 </div>
@@ -633,60 +633,65 @@ export default function Watchlist({ showToast }: WatchlistProps) {
                                         </div>
                                     </div>
 
-                                    {/* Additional Info Grid */}
+                                    {/* Additional Info Grid - More Spacious */}
                                     {hasData && (
-                                        <div className="grid grid-cols-3 gap-2 pt-3 border-t border-dashed border-zinc-200 dark:border-zinc-800/60 relative z-10">
+                                        <div className="grid grid-cols-3 gap-4 pt-4 border-t border-dashed border-zinc-100 dark:border-zinc-800/60 relative z-10">
                                             <div className="flex flex-col">
-                                                <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mb-0.5">DY (12M)</span>
-                                                <span className="text-[11px] font-black text-zinc-900 dark:text-white">{fundamentals.dy_12m ? `${fundamentals.dy_12m.toFixed(2)}%` : '--'}</span>
+                                                <span className="text-[8px] font-black text-zinc-300 dark:text-zinc-600 uppercase tracking-widest mb-1">DY (12M)</span>
+                                                <span className="text-xs font-black text-zinc-700 dark:text-zinc-200">{fundamentals.dy_12m ? `${fundamentals.dy_12m.toFixed(2)}%` : '--'}</span>
                                             </div>
-                                            <div className="flex flex-col text-center">
-                                                <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mb-0.5">P/VP</span>
-                                                <span className={`text-[11px] font-black ${fundamentals.p_vp > 1.1 ? 'text-rose-500' : fundamentals.p_vp < 0.9 ? 'text-emerald-500' : 'text-zinc-900 dark:text-white'}`}>
+                                            <div className="flex flex-col text-center border-l border-zinc-50 dark:border-zinc-800/50">
+                                                <span className="text-[8px] font-black text-zinc-300 dark:text-zinc-600 uppercase tracking-widest mb-1">P/VP</span>
+                                                <span className={`text-xs font-black ${fundamentals.p_vp > 1.1 ? 'text-rose-500' : fundamentals.p_vp < 0.9 ? 'text-emerald-500' : 'text-zinc-700 dark:text-zinc-200'}`}>
                                                     {fundamentals.p_vp ? fundamentals.p_vp.toFixed(2) : '--'}
                                                 </span>
                                             </div>
-                                            <div className="flex flex-col items-end">
-                                                <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mb-0.5">Segmento</span>
-                                                <span className="text-[11px] font-black text-zinc-900 dark:text-white truncate max-w-[80px]">{quote?.segment || 'Geral'}</span>
+                                            <div className="flex flex-col items-end border-l border-zinc-50 dark:border-zinc-800/50">
+                                                <span className="text-[8px] font-black text-zinc-300 dark:text-zinc-600 uppercase tracking-widest mb-1">Segmento</span>
+                                                <span className="text-xs font-black text-zinc-700 dark:text-zinc-200 truncate max-w-[90px]">{quote?.segment || 'Geral'}</span>
                                             </div>
                                         </div>
                                     )}
 
                                     {/* Alert Status */}
                                     {alert && (
-                                        <div className={`mt-3 flex items-center justify-between px-3 py-2 rounded-xl border ${isAlertTriggered ? 'bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800/50' : 'bg-zinc-50 border-zinc-100 dark:bg-zinc-800/30 dark:border-zinc-700/50'} relative z-10`}>
+                                        <div className={`mt-4 flex items-center justify-between px-4 py-3 rounded-xl border ${isAlertTriggered ? 'bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800/50' : 'bg-zinc-50 border-zinc-100 dark:bg-zinc-800/30 dark:border-zinc-700/50'} relative z-10 animate-in slide-in-from-top-2`}>
                                             <div className="flex items-center gap-2">
-                                                <Bell className={`w-3 h-3 ${isAlertTriggered ? 'text-amber-500 animate-bounce' : 'text-zinc-400'}`} />
-                                                <span className={`text-[8px] font-black uppercase tracking-widest ${isAlertTriggered ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-400'}`}>
-                                                    Alerta: {alert.type === 'ABOVE' ? 'Acima' : 'Abaixo'} {formatBRL(alert.target)}
+                                                <Bell className={`w-3.5 h-3.5 ${isAlertTriggered ? 'text-amber-500 animate-bounce' : 'text-zinc-400'}`} />
+                                                <span className={`text-[9px] font-black uppercase tracking-widest ${isAlertTriggered ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-400'}`}>
+                                                    Alerta: {alert.type === 'ABOVE' ? 'Acima de' : 'Abaixo de'} {formatBRL(alert.target)}
                                                 </span>
                                             </div>
                                             <button 
                                                 onClick={(e) => { e.stopPropagation(); removeAlert(ticker); }}
-                                                className="text-[8px] font-black text-zinc-400 hover:text-rose-500 uppercase tracking-widest"
+                                                className="text-[8px] font-black text-zinc-400 hover:text-rose-500 uppercase tracking-widest transition-colors"
                                             >
                                                 Remover
                                             </button>
                                         </div>
                                     )}
 
-                                    {/* Actions Overlay */}
-                                    <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all z-20">
+                                    {/* Actions Overlay - Improved visibility */}
+                                    <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 z-20 translate-x-2 group-hover:translate-x-0">
                                         <button 
                                             onClick={(e) => { e.stopPropagation(); setAlertingTicker(ticker); setAlertPrice(price?.toString() || ''); }}
-                                            className="p-1.5 text-zinc-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-all"
+                                            className="w-8 h-8 flex items-center justify-center text-zinc-400 hover:text-indigo-500 bg-white dark:bg-zinc-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-full shadow-sm border border-zinc-100 dark:border-zinc-700 transition-all"
                                             title="Definir Alerta"
                                         >
                                             <Bell className="w-3.5 h-3.5" />
                                         </button>
                                         <button 
                                             onClick={(e) => { e.stopPropagation(); removeTicker(ticker); }}
-                                            className="p-1.5 text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-all"
+                                            className="w-8 h-8 flex items-center justify-center text-zinc-400 hover:text-rose-500 bg-white dark:bg-zinc-800 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-full shadow-sm border border-zinc-100 dark:border-zinc-700 transition-all"
                                             title="Remover"
                                         >
                                             <Trash2 className="w-3.5 h-3.5" />
                                         </button>
+                                    </div>
+                                    
+                                    {/* Chevron indicator */}
+                                    <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-2 group-hover:translate-y-0 delay-100">
+                                        <ChevronRight className="w-4 h-4 text-zinc-300 dark:text-zinc-700" />
                                     </div>
                                 </div>
                             );
@@ -697,31 +702,31 @@ export default function Watchlist({ showToast }: WatchlistProps) {
 
             {/* Price Alert Modal */}
             {alertingTicker && (
-                <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-0 sm:p-4 animate-in fade-in duration-300">
+                <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-md p-0 sm:p-4 animate-in fade-in duration-300">
                     <div className="bg-white dark:bg-zinc-950 w-full max-w-md rounded-t-[2.5rem] sm:rounded-[2.5rem] p-8 shadow-2xl animate-in slide-in-from-bottom-full duration-500 ease-out border-t sm:border border-white/20 dark:border-zinc-800/50">
                         <div className="flex justify-between items-start mb-8">
                             <div>
                                 <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter">Alerta de Preço</h2>
-                                <p className="text-[10px] text-zinc-400 font-black mt-1 uppercase tracking-[0.2em]">{alertingTicker}</p>
+                                <p className="text-[10px] text-zinc-400 font-black mt-1.5 uppercase tracking-[0.2em]">{alertingTicker}</p>
                             </div>
-                            <button onClick={() => setAlertingTicker(null)} className="w-10 h-10 bg-zinc-100 dark:bg-zinc-900 rounded-xl flex items-center justify-center text-zinc-400">
+                            <button onClick={() => setAlertingTicker(null)} className="w-10 h-10 bg-zinc-100 dark:bg-zinc-900 rounded-xl flex items-center justify-center text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
 
                         <div className="space-y-6">
                             <div>
-                                <label className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mb-2 block">Tipo de Alerta</label>
-                                <div className="grid grid-cols-2 gap-2">
+                                <label className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mb-3 block">Tipo de Alerta</label>
+                                <div className="grid grid-cols-2 gap-3">
                                     <button 
                                         onClick={() => setAlertType('ABOVE')}
-                                        className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${alertType === 'ABOVE' ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-transparent' : 'bg-white dark:bg-zinc-900 text-zinc-400 border-zinc-100 dark:border-zinc-800'}`}
+                                        className={`py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all ${alertType === 'ABOVE' ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-transparent shadow-lg shadow-zinc-900/10' : 'bg-white dark:bg-zinc-900 text-zinc-400 border-zinc-100 dark:border-zinc-800 hover:bg-zinc-50'}`}
                                     >
                                         Preço Acima de
                                     </button>
                                     <button 
                                         onClick={() => setAlertType('BELOW')}
-                                        className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${alertType === 'BELOW' ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-transparent' : 'bg-white dark:bg-zinc-900 text-zinc-400 border-zinc-100 dark:border-zinc-800'}`}
+                                        className={`py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all ${alertType === 'BELOW' ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-transparent shadow-lg shadow-zinc-900/10' : 'bg-white dark:bg-zinc-900 text-zinc-400 border-zinc-100 dark:border-zinc-800 hover:bg-zinc-50'}`}
                                     >
                                         Preço Abaixo de
                                     </button>
@@ -729,19 +734,23 @@ export default function Watchlist({ showToast }: WatchlistProps) {
                             </div>
 
                             <div>
-                                <label className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mb-2 block">Preço Alvo (R$)</label>
-                                <input 
-                                    type="text"
-                                    value={alertPrice}
-                                    onChange={(e) => setAlertPrice(e.target.value)}
-                                    placeholder="0,00"
-                                    className="w-full px-6 py-4 bg-zinc-100 dark:bg-zinc-900 border-2 border-transparent focus:border-indigo-500/20 rounded-2xl text-xl font-black text-zinc-900 dark:text-white"
-                                />
+                                <label className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mb-3 block">Preço Alvo (R$)</label>
+                                <div className="relative">
+                                    <span className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-400 font-bold">R$</span>
+                                    <input 
+                                        type="text"
+                                        value={alertPrice}
+                                        onChange={(e) => setAlertPrice(e.target.value)}
+                                        placeholder="0,00"
+                                        className="w-full pl-14 pr-6 py-5 bg-zinc-50 dark:bg-zinc-900 border-2 border-transparent focus:border-indigo-500/20 rounded-2xl text-2xl font-black text-zinc-900 dark:text-white transition-all"
+                                        autoFocus
+                                    />
+                                </div>
                             </div>
 
                             <button 
                                 onClick={handleSetAlert}
-                                className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-indigo-600/20 active:scale-95 transition-all"
+                                className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-indigo-600/20 active:scale-95 transition-all hover:bg-indigo-700 hover:shadow-2xl hover:-translate-y-1"
                             >
                                 Salvar Alerta
                             </button>

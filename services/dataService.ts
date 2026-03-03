@@ -309,15 +309,70 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], trans
     }
 };
 
+const UNIFIED_DATA_CACHE_KEY = 'investfiis_unified_data_cache_v2';
+const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
+
+interface CachedUnifiedData {
+    timestamp: number;
+    data: UnifiedMarketData;
+    tickers: string[];
+}
+
 export const fetchUnifiedMarketData = async (tickers: string[], startDate?: string, forceRefresh = false): Promise<UnifiedMarketData> => {
   if (!tickers || tickers.length === 0) return { dividends: [], metadata: {} };
 
-  const uniqueTickers = Array.from(new Set(tickers.map(normalizeTicker)));
+  const uniqueTickers = Array.from(new Set(tickers.map(normalizeTicker))).sort();
+  
+  // 1. Load Cache
+  let cachedData: CachedUnifiedData = { timestamp: 0, data: { dividends: [], metadata: {} }, tickers: [] };
+  try {
+      const cachedStr = localStorage.getItem(UNIFIED_DATA_CACHE_KEY);
+      if (cachedStr) {
+          cachedData = JSON.parse(cachedStr);
+      }
+  } catch (e) {
+      console.warn("[DataService] Cache read error", e);
+  }
+
+  const now = Date.now();
+  const isCacheExpired = (now - cachedData.timestamp) > CACHE_TTL;
+
+  // 2. Identify missing or stale tickers
+  // If forceRefresh or cache is globally expired, we treat all as missing/stale
+  // Otherwise, we check individual tickers in the cache
+  let tickersToFetch: string[] = [];
+  
+  if (forceRefresh || isCacheExpired) {
+      tickersToFetch = uniqueTickers;
+  } else {
+      tickersToFetch = uniqueTickers.filter(t => !cachedData.tickers.includes(t) || !cachedData.data.metadata[t]);
+  }
+
+  // If no tickers need fetching, return cached data filtered for requested tickers
+  if (tickersToFetch.length === 0) {
+      console.log(`[DataService] Returning cached data for ${uniqueTickers.length} tickers`);
+      const filteredMetadata: any = {};
+      uniqueTickers.forEach(t => {
+          if (cachedData.data.metadata[t]) filteredMetadata[t] = cachedData.data.metadata[t];
+      });
+      
+      // Filter dividends for requested tickers
+      const filteredDividends = cachedData.data.dividends.filter(d => uniqueTickers.includes(d.ticker));
+
+      return {
+          ...cachedData.data,
+          dividends: filteredDividends,
+          metadata: filteredMetadata
+      };
+  }
+
+  console.log(`[DataService] Fetching data for ${tickersToFetch.length} tickers (Cache hit: ${uniqueTickers.length - tickersToFetch.length})`);
 
   try {
+      // 3. Fetch missing/stale data
       let [divResponse, metaResponse] = await Promise.all([
-          supabase.from('market_dividends').select('*').in('ticker', uniqueTickers),
-          supabase.from('ativos_metadata').select('*').in('ticker', uniqueTickers)
+          supabase.from('market_dividends').select('*').in('ticker', tickersToFetch),
+          supabase.from('ativos_metadata').select('*').in('ticker', tickersToFetch)
       ]);
 
       let dividendsData = divResponse.data || [];
@@ -326,23 +381,17 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
       const metadataMap: Record<string, any> = {};
       metaData.forEach((m: any) => { metadataMap[normalizeTicker(m.ticker)] = m; });
 
-      const missing = uniqueTickers.filter(t => !metadataMap[t]);
+      // Identify which are STILL missing (not in Supabase)
+      const missingInSupabase = tickersToFetch.filter(t => !metadataMap[t]);
       
-      const staleOrSuspicious = uniqueTickers.filter(t => {
-          const m = metadataMap[t];
-          if (!m) return false; // Already in missing
-          const hasSuspiciousData = m.dy_12m === 0 || m.dy_12m === null || m.dy_12m === undefined || m.dy_12m === '0';
-          return (m.updated_at && isStale(m.updated_at)) || hasSuspiciousData;
-      });
-
-      // Se forçar refresh, atualiza tudo.
-      // Se não, atualiza 'missing' (aguardando) e 'stale' (background).
-      const toUpdateImmediately = forceRefresh ? uniqueTickers : missing;
-      const toUpdateBackground = forceRefresh ? [] : staleOrSuspicious;
-
-      // 1. Atualização Imediata (Bloqueante) - Para novos ativos ou Force Refresh
-      if (toUpdateImmediately.length > 0) {
-          const results = await triggerScraperUpdate(toUpdateImmediately, true);
+      // Also check for stale data in what we just fetched (if it was a fetch)
+      // or if we are forcing refresh, we might want to trigger scraper anyway
+      
+      // 4. Trigger Scraper for missing or stale items
+      if (missingInSupabase.length > 0) {
+          console.log(`[DataService] Triggering scraper for ${missingInSupabase.length} missing assets`);
+          const results = await triggerScraperUpdate(missingInSupabase, true);
+          
           results.forEach(r => {
               if (r.status === 'success' && r.rawFundamentals) {
                   metadataMap[normalizeTicker(r.ticker)] = r.rawFundamentals;
@@ -360,16 +409,8 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
           });
       }
 
-      // 2. Atualização em Background (Não bloqueante) - Para dados obsoletos
-      if (toUpdateBackground.length > 0) {
-          triggerScraperUpdate(toUpdateBackground, true).then(results => {
-              console.log(`[DataService] Background update finished for ${results.length} stale assets`);
-              // Nota: A UI não será atualizada automaticamente aqui, mas na próxima interação/refresh.
-              // Isso é aceitável para dados stale para não travar a UI.
-          });
-      }
-
-      const dividends: DividendReceipt[] = dividendsData.map((d: any) => ({
+      // 5. Process fetched data
+      const newDividends: DividendReceipt[] = dividendsData.map((d: any) => ({
             id: d.id || `${d.ticker}-${d.date_com}-${d.rate}`,
             ticker: normalizeTicker(d.ticker),
             type: d.type || 'DIV',
@@ -380,11 +421,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
             totalReceived: 0
       }));
 
-      const uniqueDividends = Array.from(new Map(dividends.map(item => [
-          `${item.ticker}-${item.type}-${(item.dateCom || '').split('T')[0]}-${Number(item.rate).toFixed(6)}`, item
-      ])).values());
-
-      const metadata: Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }> = {};
+      const newMetadata: Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }> = {};
       
       Object.values(metadataMap).forEach((m: any) => {
           let assetType = AssetType.STOCK;
@@ -393,10 +430,9 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
           }
 
           const normalizedTicker = normalizeTicker(m.ticker);
-          // Tenta encontrar o segmento em várias chaves possíveis
           const rawSegment = m.segment || m.setor || m.segmento || m.sector || 'Geral';
           
-          metadata[normalizedTicker] = {
+          newMetadata[normalizedTicker] = {
               segment: rawSegment,
               type: assetType,
               fundamentals: mapScraperToFundamentals(m)
@@ -405,10 +441,58 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
 
       const indicators = await fetchMarketIndicators();
 
-      return { 
-          dividends: uniqueDividends, 
-          metadata, 
+      // 6. Merge with Cache
+      // If we did a full refresh (forceRefresh or expired), we replace the cache
+      // Otherwise we merge
+      let finalMetadata = { ...cachedData.data.metadata };
+      let finalDividends = [...cachedData.data.dividends];
+      let finalTickers = [...cachedData.tickers];
+
+      if (forceRefresh || isCacheExpired) {
+          finalMetadata = newMetadata;
+          finalDividends = newDividends;
+          finalTickers = tickersToFetch;
+      } else {
+          // Merge Metadata
+          Object.keys(newMetadata).forEach(t => {
+              finalMetadata[t] = newMetadata[t];
+              if (!finalTickers.includes(t)) finalTickers.push(t);
+          });
+
+          // Merge Dividends (remove old ones for the fetched tickers to avoid duplicates)
+          finalDividends = finalDividends.filter(d => !tickersToFetch.includes(d.ticker));
+          finalDividends = [...finalDividends, ...newDividends];
+      }
+
+      const fullResult: UnifiedMarketData = { 
+          dividends: finalDividends, 
+          metadata: finalMetadata, 
           indicators: { ipca_cumulative: indicators.ipca, cdi_cumulative: indicators.cdi, start_date_used: startDate || '' }
+      };
+
+      // 7. Update Cache
+      try {
+          const cacheData: CachedUnifiedData = {
+              timestamp: Date.now(),
+              data: fullResult,
+              tickers: finalTickers
+          };
+          localStorage.setItem(UNIFIED_DATA_CACHE_KEY, JSON.stringify(cacheData));
+      } catch (e) {
+          console.warn("[DataService] Cache write error", e);
+      }
+
+      // 8. Return only requested data
+      const requestedMetadata: any = {};
+      uniqueTickers.forEach(t => {
+          if (finalMetadata[t]) requestedMetadata[t] = finalMetadata[t];
+      });
+      const requestedDividends = finalDividends.filter(d => uniqueTickers.includes(d.ticker));
+
+      return {
+          dividends: requestedDividends,
+          metadata: requestedMetadata,
+          indicators: fullResult.indicators
       };
 
   } catch (error: any) {
