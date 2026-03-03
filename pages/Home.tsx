@@ -1385,92 +1385,26 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
 
             <div className="relative z-10 p-6 flex flex-col justify-between h-full">
                 <div className="relative overflow-hidden h-[110px]">
-                    <AnimatePresence initial={false} custom={swipeDirection} mode="popLayout">
-                        <motion.div
-                            key={cardView}
-                            custom={swipeDirection}
-                            variants={cardVariants}
-                            initial="enter"
-                            animate="center"
-                            exit="exit"
-                            transition={{ x: { type: "spring", stiffness: 300, damping: 30 }, opacity: { duration: 0.2 } }}
-                            className="absolute inset-0 w-full"
-                            drag="x"
-                            dragConstraints={{ left: 0, right: 0 }}
-                            dragElastic={0.2}
-                            onDragStart={() => isDragging.current = true}
-                            onDragEnd={handlePanEnd}
-                        >
-                            {cardView === 0 && (
-                                <div>
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/10 backdrop-blur-md shadow-lg">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
-                                            <span className="text-[10px] font-black text-zinc-200 uppercase tracking-widest">Patrimônio Total</span>
-                                        </div>
-                                        <div className="w-9 h-9 rounded-full bg-white/5 group-hover:bg-white/10 flex items-center justify-center backdrop-blur-md transition-colors border border-white/5">
-                                            <TrendingUp className="w-4 h-4 text-zinc-300" />
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <h1 className="text-5xl font-black text-white leading-none tracking-tighter tabular-nums drop-shadow-lg select-none">
-                                            {formatBRL(balance, privacyMode)}
-                                        </h1>
-                                        <div className="flex items-center gap-2 mt-3 ml-1">
-                                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Custo Total</span>
-                                            <span className="text-xs font-bold text-zinc-300 tabular-nums">{formatBRL(invested, privacyMode)}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {cardView === 1 && (
-                                <div>
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/10 backdrop-blur-md shadow-lg">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse"></div>
-                                            <span className="text-[10px] font-black text-zinc-200 uppercase tracking-widest">Proventos (12M)</span>
-                                        </div>
-                                        <div className="w-9 h-9 rounded-full bg-white/5 group-hover:bg-white/10 flex items-center justify-center backdrop-blur-md transition-colors border border-white/5">
-                                            <Coins className="w-4 h-4 text-zinc-300" />
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <h1 className="text-5xl font-black text-white leading-none tracking-tighter tabular-nums drop-shadow-lg select-none">
-                                            {formatBRL(incomeData.last12mTotal, privacyMode)}
-                                        </h1>
-                                        <div className="flex items-center gap-2 mt-3 ml-1">
-                                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Média Mensal</span>
-                                            <span className="text-xs font-bold text-zinc-300 tabular-nums">{formatBRL(incomeData.average, privacyMode)}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {cardView === 2 && (
-                                <div>
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/10 backdrop-blur-md shadow-lg">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></div>
-                                            <span className="text-[10px] font-black text-zinc-200 uppercase tracking-widest">Rentabilidade</span>
-                                        </div>
-                                        <div className="w-9 h-9 rounded-full bg-white/5 group-hover:bg-white/10 flex items-center justify-center backdrop-blur-md transition-colors border border-white/5">
-                                            <Activity className="w-4 h-4 text-zinc-300" />
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <h1 className={`text-5xl font-black leading-none tracking-tighter tabular-nums drop-shadow-lg select-none ${totalReturnPercent >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                            {totalReturnPercent >= 0 ? '+' : ''}{totalReturnPercent.toFixed(2)}%
-                                        </h1>
-                                        <div className="flex items-center gap-2 mt-3 ml-1">
-                                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Retorno Absoluto</span>
-                                            <span className="text-xs font-bold text-zinc-300 tabular-nums">{totalReturn >= 0 ? '+' : ''}{formatBRL(totalReturn, privacyMode)}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </motion.div>
-                    </AnimatePresence>
+                    <div>
+                        <div className="flex justify-between items-start mb-4">
+                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/10 backdrop-blur-md shadow-lg">
+                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
+                                <span className="text-[10px] font-black text-zinc-200 uppercase tracking-widest">Patrimônio Total</span>
+                            </div>
+                            <div className="w-9 h-9 rounded-full bg-white/5 group-hover:bg-white/10 flex items-center justify-center backdrop-blur-md transition-colors border border-white/5">
+                                <TrendingUp className="w-4 h-4 text-zinc-300" />
+                            </div>
+                        </div>
+                        <div className="flex flex-col">
+                            <h1 className="text-5xl font-black text-white leading-none tracking-tighter tabular-nums drop-shadow-lg select-none">
+                                {formatBRL(balance, privacyMode)}
+                            </h1>
+                            <div className="flex items-center gap-2 mt-3 ml-1">
+                                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Custo Total</span>
+                                <span className="text-xs font-bold text-zinc-300 tabular-nums">{formatBRL(invested, privacyMode)}</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-4 pt-6 mt-5 border-t border-white/10">
@@ -1500,13 +1434,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                             </span>
                         </div>
                     </div>
-                </div>
-
-                {/* Pagination Dots */}
-                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
-                    {[0, 1, 2].map(i => (
-                        <div key={i} className={`h-1.5 rounded-full transition-all duration-300 ${cardView === i ? 'w-5 bg-white' : 'w-1.5 bg-white/30'}`} />
-                    ))}
                 </div>
             </div>
         </motion.div>

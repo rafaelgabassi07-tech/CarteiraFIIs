@@ -1506,41 +1506,54 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
     }, [selectedAsset, marketDividends]);
 
     if (selectedAsset) {
+        const isPositiveChange = (selectedAsset.dailyChange || 0) >= 0;
+
         return (
             <div className="pb-24 animate-in slide-in-from-right duration-300">
-                <div className="sticky top-[calc(3.2rem+env(safe-area-inset-top))] z-30 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800 -mx-4 px-4 py-2 mb-4">
-                    <div className="flex items-center justify-between mb-3">
-                        <button onClick={handleBack} className="flex items-center gap-1 text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors">
-                            <ArrowLeft className="w-5 h-5" />
-                            <span className="font-bold text-sm">Voltar</span>
+                {/* Simplified Header */}
+                <div className="sticky top-[calc(3.2rem+env(safe-area-inset-top))] z-30 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800 -mx-4 px-4 py-3 mb-4 shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                        <button onClick={handleBack} className="flex items-center gap-1.5 text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors group">
+                            <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center group-hover:bg-zinc-200 dark:group-hover:bg-zinc-700 transition-colors">
+                                <ArrowLeft className="w-4 h-4" />
+                            </div>
                         </button>
-                        <div className="flex items-center gap-2">
-                            {selectedAsset.logoUrl && <img src={selectedAsset.logoUrl} className="w-6 h-6 rounded-full" />}
-                            <span className="font-black text-lg">{selectedAsset.ticker}</span>
+                        
+                        <div className="flex flex-col items-end">
+                            <div className="flex items-center gap-2">
+                                <span className="font-black text-xl text-zinc-900 dark:text-white tracking-tight">{selectedAsset.ticker}</span>
+                                {selectedAsset.logoUrl && <img src={selectedAsset.logoUrl} className="w-6 h-6 rounded-lg object-cover shadow-sm border border-zinc-100 dark:border-zinc-800" />}
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-sm font-bold text-zinc-500 dark:text-zinc-400 tabular-nums">{formatBRL(selectedAsset.currentPrice, privacyMode)}</span>
+                                {selectedAsset.dailyChange !== undefined && (
+                                    <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${isPositiveChange ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-rose-100 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400'}`}>
+                                        {isPositiveChange ? '+' : ''}{selectedAsset.dailyChange.toFixed(2)}%
+                                    </span>
+                                )}
+                            </div>
                         </div>
-                        <button onClick={() => onAssetRefresh(selectedAsset.ticker)} className="p-2 bg-zinc-100 dark:bg-zinc-800 rounded-full active:scale-95 transition-transform">
-                            <RefreshCcw className="w-4 h-4 text-zinc-500" />
-                        </button>
                     </div>
 
-                    <div className="flex p-1 bg-zinc-100 dark:bg-zinc-800 rounded-xl">
+                    {/* Modern Tabs */}
+                    <div className="flex p-1 bg-zinc-100 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800">
                         <button 
                             onClick={() => setActiveTab('OVERVIEW')} 
-                            className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'OVERVIEW' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+                            className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${activeTab === 'OVERVIEW' ? 'bg-white dark:bg-zinc-800 shadow-sm text-indigo-600 dark:text-indigo-400 ring-1 ring-black/5 dark:ring-white/5' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                         >
-                            <LayoutGrid className="w-3.5 h-3.5" /> Resumo
+                            Resumo
                         </button>
                         <button 
                             onClick={() => setActiveTab('ANALYSIS')} 
-                            className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'ANALYSIS' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+                            className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${activeTab === 'ANALYSIS' ? 'bg-white dark:bg-zinc-800 shadow-sm text-indigo-600 dark:text-indigo-400 ring-1 ring-black/5 dark:ring-white/5' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                         >
-                            <FileText className="w-3.5 h-3.5" /> Análises
+                            Análises
                         </button>
                         <button 
                             onClick={() => setActiveTab('INCOME')} 
-                            className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'INCOME' ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+                            className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${activeTab === 'INCOME' ? 'bg-white dark:bg-zinc-800 shadow-sm text-indigo-600 dark:text-indigo-400 ring-1 ring-black/5 dark:ring-white/5' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                         >
-                            <Coins className="w-3.5 h-3.5" /> Renda
+                            Renda
                         </button>
                     </div>
                 </div>
@@ -1548,84 +1561,97 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
                 <div className="space-y-6">
                     {activeTab === 'OVERVIEW' && (
                         <div className="anim-fade-in space-y-6">
-                            <div className="flex items-center gap-3 mb-2">
-                                <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Sua Posição</h3>
-                                <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
-                            </div>
                             <PositionSummaryCard asset={selectedAsset} privacyMode={privacyMode} />
                             
-                            <div className="flex items-center gap-3 mt-8 mb-2">
-                                <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Rentabilidade vs Benchmarks</h3>
-                                <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
-                            </div>
-                            <ComparativeChart 
-                                ticker={selectedAsset.ticker} 
-                                type={selectedAsset.assetType} 
-                            />
-
-                            <div className="flex items-center gap-3 mt-8 mb-2">
-                                <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Métricas Rápidas</h3>
-                                <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
-                            </div>
+                            {/* Quick Metrics moved to Overview for better context */}
                             <div className="grid grid-cols-2 gap-3">
-                                <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                                <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm relative overflow-hidden group">
+                                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                                        <TrendingUp className="w-8 h-8 text-indigo-500" />
+                                    </div>
                                     <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">P/VP</p>
-                                    <p className="text-lg font-black text-zinc-900 dark:text-white">{selectedAsset.p_vp?.toFixed(2) || 'N/A'}</p>
-                                    <p className="text-[9px] text-zinc-500 font-medium">{selectedAsset.p_vp && selectedAsset.p_vp < 1 ? 'Abaixo do VP' : 'Acima do VP'}</p>
+                                    <p className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">{selectedAsset.p_vp?.toFixed(2) || 'N/A'}</p>
+                                    <p className="text-[9px] text-zinc-500 font-bold mt-1">{selectedAsset.p_vp && selectedAsset.p_vp < 1 ? 'Descontado' : 'Ágio'}</p>
                                 </div>
-                                <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                                <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm relative overflow-hidden group">
+                                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                                        <Coins className="w-8 h-8 text-emerald-500" />
+                                    </div>
                                     <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">DY (12M)</p>
-                                    <p className="text-lg font-black text-zinc-900 dark:text-white">{selectedAsset.dy_12m?.toFixed(2) || '0.00'}%</p>
-                                    <p className="text-[9px] text-zinc-500 font-medium">Retorno em proventos</p>
+                                    <p className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">{selectedAsset.dy_12m?.toFixed(2) || '0.00'}%</p>
+                                    <p className="text-[9px] text-zinc-500 font-bold mt-1">Anualizado</p>
                                 </div>
+                            </div>
+
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2 px-1">
+                                    <Activity className="w-4 h-4 text-indigo-500" />
+                                    <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest">Performance Relativa</h3>
+                                </div>
+                                <ComparativeChart 
+                                    ticker={selectedAsset.ticker} 
+                                    type={selectedAsset.assetType} 
+                                />
                             </div>
                         </div>
                     )}
 
                     {activeTab === 'ANALYSIS' && (
-                        <div className="anim-fade-in space-y-6">
-                            <div className="flex items-center gap-3 mb-2">
-                                <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Histórico de Preço</h3>
-                                <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
+                        <div className="anim-fade-in space-y-8">
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between px-1">
+                                    <div className="flex items-center gap-2">
+                                        <TrendingUp className="w-4 h-4 text-indigo-500" />
+                                        <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest">Histórico de Preço</h3>
+                                    </div>
+                                    <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5">
+                                        {['1M', '6M', '1A', 'MAX'].map((r) => (
+                                            <button
+                                                key={r}
+                                                onClick={() => setHistoryRange(r as any)}
+                                                className={`px-2 py-0.5 text-[9px] font-black rounded-md transition-all ${historyRange === r ? 'bg-white dark:bg-zinc-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}
+                                            >
+                                                {r}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <PriceHistoryChart 
+                                    fullData={historyData} 
+                                    loading={loadingHistory} 
+                                    error={errorHistory} 
+                                    ticker={selectedAsset.ticker} 
+                                    range={historyRange}
+                                    onRangeChange={setHistoryRange}
+                                />
                             </div>
-                            <PriceHistoryChart 
-                                fullData={historyData} 
-                                loading={loadingHistory} 
-                                error={errorHistory} 
-                                ticker={selectedAsset.ticker} 
-                                range={historyRange}
-                                onRangeChange={setHistoryRange}
-                            />
 
-                            <div className="flex items-center gap-3 mt-8 mb-2">
-                                <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Valuation</h3>
-                                <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2 px-1">
+                                    <BarChart3 className="w-4 h-4 text-indigo-500" />
+                                    <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest">Valuation & Fundamentos</h3>
+                                </div>
+                                <ValuationCard asset={selectedAsset} />
+                                <DetailedInfoBlock asset={selectedAsset} />
                             </div>
-                            <ValuationCard asset={selectedAsset} />
-                            
-                            <div className="flex items-center gap-3 mt-8 mb-2">
-                                <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Indicadores Detalhados</h3>
-                                <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
-                            </div>
-                            <DetailedInfoBlock asset={selectedAsset} />
                             
                             {selectedAsset.properties && selectedAsset.properties.length > 0 && (
-                                <>
-                                    <div className="flex items-center gap-3 mt-8 mb-2">
-                                        <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Portfólio Físico</h3>
-                                        <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-2 px-1">
+                                        <Building2 className="w-4 h-4 text-indigo-500" />
+                                        <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest">Portfólio Físico</h3>
                                     </div>
                                     <PropertiesAnalysis properties={selectedAsset.properties} />
-                                </>
+                                </div>
                             )}
                         </div>
                     )}
 
                     {activeTab === 'INCOME' && (
                         <div className="anim-fade-in space-y-6">
-                            <div className="flex items-center gap-3 mb-2">
-                                <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Geração de Renda</h3>
-                                <div className="h-px bg-zinc-200 dark:bg-zinc-800 flex-1"></div>
+                            <div className="flex items-center gap-2 px-1 mb-2">
+                                <Coins className="w-4 h-4 text-emerald-500" />
+                                <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest">Histórico de Proventos</h3>
                             </div>
                             <IncomeAnalysisSection 
                                 asset={selectedAsset} 
