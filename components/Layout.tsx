@@ -42,7 +42,7 @@ export const InfoTooltip = ({ title, text }: { title: string, text: React.ReactN
             
             {isOpen && createPortal(
                 <div className="fixed inset-0 z-[10000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm anim-fade-in" onClick={() => setIsOpen(false)}>
-                    <div className="bg-white dark:bg-zinc-900 w-full max-w-sm p-6 rounded-[2rem] shadow-2xl anim-scale-in border border-zinc-100 dark:border-zinc-800" onClick={e => e.stopPropagation()}>
+            <div className="bg-white dark:bg-zinc-900 w-full max-w-sm p-6 rounded-3xl shadow-2xl anim-scale-in border border-zinc-100 dark:border-zinc-800" onClick={e => e.stopPropagation()}>
                         <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mb-4 text-indigo-600 mx-auto border-4 border-white dark:border-zinc-900 shadow-sm">
                             <CircleHelp className="w-6 h-6" />
                         </div>
@@ -253,7 +253,7 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
             transform: isVisible ? `translateY(${dragY}px)` : 'translateY(100%)',
             transition: dragY === 0 ? 'transform 500ms cubic-bezier(0.32, 0.72, 0, 1)' : 'none',
         }}
-        className={`relative bg-white dark:bg-zinc-900 w-full ${className} rounded-t-[2.5rem] shadow-2xl shadow-black/50 overflow-hidden flex flex-col ring-1 ring-black/5 dark:ring-white/5`}
+        className={`relative bg-white dark:bg-zinc-900 w-full ${className} rounded-t-3xl shadow-2xl shadow-black/50 overflow-hidden flex flex-col ring-1 ring-black/5 dark:ring-white/5`}
       >
         <div className="w-full flex justify-center pt-3 pb-3 bg-white dark:bg-zinc-900 shrink-0 cursor-grab active:cursor-grabbing touch-none z-10"
              onTouchMove={(e) => {
@@ -281,7 +281,7 @@ export const ConfirmationModal: React.FC<any> = ({ isOpen, title, message, onCon
     if (!isOpen) return null;
     return (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm anim-fade-in">
-             <div className="bg-white dark:bg-zinc-900 w-full max-w-xs p-6 rounded-[2rem] text-center shadow-2xl anim-scale-in">
+             <div className="bg-white dark:bg-zinc-900 w-full max-w-xs p-6 rounded-3xl text-center shadow-2xl anim-scale-in">
                  <div className="w-14 h-14 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mx-auto mb-4 text-amber-600">
                      <AlertTriangle className="w-7 h-7" />
                  </div>
@@ -300,7 +300,7 @@ export const InstallPromptModal: React.FC<any> = ({ isOpen, onInstall, onDismiss
     if(!isOpen) return null;
     return (
         <div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm anim-fade-in">
-            <div className="bg-white dark:bg-zinc-900 w-full max-w-sm p-6 rounded-[2rem] shadow-2xl anim-slide-up">
+            <div className="bg-white dark:bg-zinc-900 w-full max-w-sm p-6 rounded-3xl shadow-2xl anim-slide-up">
                  <div className="flex items-start gap-4 mb-6">
                      <div className="w-14 h-14 bg-gradient-to-br from-emerald-400 to-sky-500 rounded-2xl shadow-lg flex items-center justify-center text-white shrink-0">
                          <Smartphone className="w-7 h-7" />
@@ -332,17 +332,17 @@ export const UpdateReportModal: React.FC<any> = (props) => (
 
             <div className="space-y-3 flex-1 overflow-y-auto pb-20">
                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800">
+                    <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800">
                         <p className="text-[9px] font-bold text-zinc-400 uppercase mb-1">Ativos</p>
                         <p className="text-xl font-black text-zinc-900 dark:text-white">{props.results?.results?.length || 0}</p>
                     </div>
-                    <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800">
+                    <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800">
                         <p className="text-[9px] font-bold text-zinc-400 uppercase mb-1">Proventos</p>
                         <p className="text-xl font-black text-emerald-500">+{props.results?.totalDividendsFound || 0}</p>
                     </div>
                  </div>
 
-                 <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-[1.5rem] border border-zinc-100 dark:border-zinc-800">
+                 <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800">
                      <div className="flex justify-between items-center mb-3 pb-3 border-b border-zinc-100 dark:border-zinc-800/50">
                          <div className="flex items-center gap-2">
                              <TrendingUp className="w-3.5 h-3.5 text-indigo-500" />
@@ -441,7 +441,7 @@ export const NotificationsModal: React.FC<any> = ({ isOpen, onClose, notificatio
                 ) : notifications.map((n: any) => (
                     <div 
                         key={n.id} 
-                        className={`group p-4 rounded-[2rem] flex gap-4 transition-all border ${n.read ? 'bg-zinc-50/50 dark:bg-zinc-800/30 border-transparent opacity-60' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 shadow-sm hover:shadow-md'}`}
+                        className={`group p-4 rounded-3xl flex gap-4 transition-all border ${n.read ? 'bg-zinc-50/50 dark:bg-zinc-800/30 border-transparent opacity-60' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 shadow-sm hover:shadow-md'}`}
                     >
                         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm ${
                             n.category === 'payment' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : 
