@@ -31,6 +31,10 @@ export const isTokenValid = () => !!BRAPI_TOKEN && BRAPI_TOKEN.length > 5;
  * Alterado para buscar UM POR VEZ (individualmente) conforme solicitado,
  * mas em paralelo para performance.
  */
+const LOGO_OVERRIDES: Record<string, string> = {
+    'BTCI11': 'https://logodownload.org/wp-content/uploads/2018/09/btg-pactual-logo-1.png',
+};
+
 export const getQuotes = async (tickers: string[]): Promise<{ quotes: BrapiQuote[], error?: string }> => {
   if (!tickers || tickers.length === 0) {
     return { quotes: [] };
@@ -58,7 +62,12 @@ export const getQuotes = async (tickers: string[]): Promise<{ quotes: BrapiQuote
 
             const data = await response.json();
             if (data.results && Array.isArray(data.results) && data.results.length > 0) {
-                return data.results[0] as BrapiQuote;
+                const quote = data.results[0] as BrapiQuote;
+                // Apply Logo Override
+                if (LOGO_OVERRIDES[ticker]) {
+                    quote.logourl = LOGO_OVERRIDES[ticker];
+                }
+                return quote;
             }
             return null;
         } catch (err) {

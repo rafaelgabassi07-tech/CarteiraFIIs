@@ -584,13 +584,22 @@ export default function Watchlist({ showToast }: WatchlistProps) {
                                     <div className={`absolute top-0 right-0 w-32 h-32 -mr-16 -mt-16 rounded-full blur-3xl opacity-[0.04] dark:opacity-[0.06] transition-colors ${isPositive ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
 
                                     <div className="flex items-center justify-between relative z-10 mb-3">
-                                        <div className="flex items-center gap-3.5">
-                                            <div className="w-11 h-11 rounded-2xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center overflow-hidden border border-zinc-100 dark:border-zinc-700/50 shadow-sm relative">
+                                    <div className="flex items-center gap-3.5">
+                                            <div className="w-12 h-12 rounded-2xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center overflow-hidden border border-zinc-100 dark:border-zinc-700/50 shadow-sm relative group-hover:scale-105 transition-transform duration-500">
                                                 {quote?.logo ? (
-                                                    <img src={quote.logo} alt={ticker} className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <span className="text-xs font-black text-zinc-300 dark:text-zinc-600">{ticker.substring(0, 2)}</span>
-                                                )}
+                                                    <img 
+                                                        src={quote.logo} 
+                                                        alt={ticker} 
+                                                        className="w-full h-full object-cover"
+                                                        onError={(e) => {
+                                                            e.currentTarget.style.display = 'none';
+                                                            e.currentTarget.parentElement?.classList.add('fallback-initials');
+                                                        }} 
+                                                    />
+                                                ) : null}
+                                                <span className={`text-xs font-black text-zinc-300 dark:text-zinc-600 absolute inset-0 flex items-center justify-center ${quote?.logo ? 'hidden fallback-initials:flex' : 'flex'}`}>
+                                                    {ticker.substring(0, 2)}
+                                                </span>
                                                 {isUpdating && (
                                                     <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px] flex items-center justify-center">
                                                         <RefreshCcw className="w-4 h-4 text-white animate-spin" />
@@ -600,24 +609,24 @@ export default function Watchlist({ showToast }: WatchlistProps) {
                                             <div>
                                                 <div className="flex items-center gap-2">
                                                     <h3 className="font-black text-zinc-900 dark:text-white text-lg tracking-tight leading-none">{ticker}</h3>
-                                                    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider ${quote?.type === 'FII' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400'}`}>
+                                                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider ${quote?.type === 'FII' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400'}`}>
                                                         {quote?.type || (ticker.endsWith('11') ? 'FII' : 'Ação')}
                                                     </span>
                                                 </div>
-                                                <p className="text-[10px] font-bold text-zinc-400 mt-1 uppercase tracking-widest truncate max-w-[120px]">
+                                                <p className="text-[10px] font-bold text-zinc-400 mt-1 uppercase tracking-widest truncate max-w-[140px]">
                                                     {quote?.name || (isLoadingInitial ? 'Atualizando...' : 'Ativo')}
                                                 </p>
                                             </div>
                                         </div>
 
-                                        <div className="flex flex-col items-end gap-1">
-                                            <p className="font-black text-zinc-900 dark:text-white tabular-nums text-lg tracking-tight">
+                                        <div className="flex flex-col items-end gap-0.5">
+                                            <p className="font-black text-zinc-900 dark:text-white tabular-nums text-xl tracking-tight">
                                                 {hasData ? formatBRL(price) : (isLoadingInitial ? <span className="animate-pulse text-zinc-200">---</span> : <span className="text-zinc-300 text-[10px] font-bold">Indisp.</span>)}
                                             </p>
                                             
                                             {hasData && (
-                                                <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-black ${isPositive ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'}`}>
-                                                    {isPositive ? <ArrowUpRight className="w-2.5 h-2.5" /> : <ArrowDownRight className="w-2.5 h-2.5" />}
+                                                <div className={`flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-black ${isPositive ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400'}`}>
+                                                    {isPositive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
                                                     {Math.abs(change).toFixed(2)}%
                                                 </div>
                                             )}

@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { PortfolioInsight } from "../types";
+import { PortfolioInsight, InsightType } from "../types";
 
 const getApiKey = () => {
     try {
@@ -33,12 +33,48 @@ export interface AIEducationalContent {
     type: 'motivation' | 'education';
 }
 
+const CACHE_KEY = 'investfiis_daily_stories_cache';
+
+const TOPICS = [
+    "Juros Compostos", "Diversificação", "Longo Prazo", "Reserva de Emergência", 
+    "FIIs vs Ações", "Mindset Milionário", "Volatilidade", "Dividendos", 
+    "Rebalanceamento", "Inflação", "Selic", "Renda Passiva", "Value Investing",
+    "Growth Investing", "Small Caps", "Blue Chips", "Criptomoedas", "ETFs",
+    "BDRs", "Mercado Americano", "Psicologia do Investidor", "Viés da Confirmação",
+    "Efeito Manada", "Custo de Oportunidade", "Alocação de Ativos", "Risco vs Retorno"
+];
+
+const getRandomTopics = (count: number) => {
+    const shuffled = [...TOPICS].sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, count).join(", ");
+};
+
 export const generateAIInsights = async (): Promise<PortfolioInsight[]> => {
-    if (!ai) return [];
+    const todayStr = new Date().toISOString().split('T')[0];
+    
+    // 1. Try to load from cache
     try {
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+            const parsed = JSON.parse(cached);
+            if (parsed.date === todayStr && parsed.stories && parsed.stories.length > 0) {
+                console.log("[AI Service] Returning cached stories for today");
+                return parsed.stories;
+            }
+        }
+    } catch (e) {
+        console.warn("Failed to load stories cache", e);
+    }
+
+    if (!ai) return [];
+
+    try {
+        const topics = getRandomTopics(3);
+        const prompt = `Gere 3 mensagens curtas e variadas para investidores: 1 motivacional, 1 curiosidade histórica sobre finanças e 1 dica prática sobre: ${topics}. Baseie-se em fatos. Retorne em JSON.`;
+
         const response = await ai.models.generateContent({
             model: "gemini-3-flash-preview",
-            contents: "Gere 3 mensagens motivacionais curtas para investidores e 3 dicas de educação financeira baseadas em fatos reais e comprovados (ex: juros compostos, diversificação, foco no longo prazo). Retorne em JSON.",
+            contents: prompt,
             config: {
                 responseMimeType: "application/json",
                 responseSchema: {
@@ -48,7 +84,7 @@ export const generateAIInsights = async (): Promise<PortfolioInsight[]> => {
                         properties: {
                             title: { type: Type.STRING },
                             message: { type: Type.STRING },
-                            type: { type: Type.STRING, enum: ['motivation', 'education'] }
+                            type: { type: Type.STRING, enum: ['motivation', 'education', 'curiosity'] }
                         },
                         required: ['title', 'message', 'type']
                     }
@@ -60,8 +96,8 @@ export const generateAIInsights = async (): Promise<PortfolioInsight[]> => {
         if (!text) return [];
         const data = JSON.parse(text) as AIEducationalContent[];
         
-        return await Promise.all(data.map(async (item, index) => {
-            let imageUrl = `https://picsum.photos/seed/ai-${item.type}-${index}/1080/1920?blur=2`;
+        const stories = await Promise.all(data.map(async (item, index) => {
+            let imageUrl = `https://picsum.photos/seed/ai-${item.type}-${index}-${todayStr}/1080/1920?blur=2`;
             
             try {
                 // Tenta gerar/buscar uma imagem temática usando o modelo com busca
@@ -97,10 +133,9 @@ export const generateAIInsights = async (): Promise<PortfolioInsight[]> => {
                 console.warn("Failed to generate AI image for story:", e);
             }
 
-            const todayStr = new Date().toISOString().split('T')[0];
             return {
-                id: `ai-insight-${item.type}-${index}-${todayStr}`,
-                type: item.type === 'motivation' ? 'success' : 'news',
+                id: `ai-insight-${index}-${todayStr}`, // Stable ID for the day
+                type: (item.type === 'motivation' ? 'success' : 'news') as InsightType,
                 title: item.title,
                 message: item.message,
                 score: 80 - index,
@@ -108,6 +143,19 @@ export const generateAIInsights = async (): Promise<PortfolioInsight[]> => {
                 imageUrl
             };
         }));
+
+        // Cache the new stories
+        try {
+            localStorage.setItem(CACHE_KEY, JSON.stringify({
+                date: todayStr,
+                stories: stories
+            }));
+        } catch (e) {
+            console.warn("Failed to save stories cache", e);
+        }
+
+        return stories;
+
     } catch (error) {
         console.error("Error generating AI insights:", error);
         return [];
