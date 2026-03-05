@@ -1675,332 +1675,308 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
 
         <SwipeableModal isOpen={showProventos} onClose={() => setShowProventos(false)}>
             <div className="p-4 h-full flex flex-col anim-slide-up">
-                <div className="flex items-center gap-3 mb-4 shrink-0">
-                    <div className="w-10 h-10 rounded-2xl bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                        <CircleDollarSign className="w-5 h-5" />
-                    </div>
+                {/* Header */}
+                <div className="flex items-center justify-between mb-6 shrink-0">
                     <div>
-                        <h2 className="text-xl font-bold text-zinc-900 dark:text-white leading-none">Renda</h2>
-                        <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-xs text-zinc-500 font-medium">12 Meses: {formatBRL(incomeData.last12mTotal, privacyMode)}</span>
-                            {incomeData.provisionedTotal > 0 && (
-                                <span className="text-xs font-bold text-sky-500 bg-sky-50 dark:bg-sky-900/20 px-1.5 rounded">
-                                    +{formatBRL(incomeData.provisionedTotal, privacyMode)} Futuro
-                                </span>
-                            )}
-                        </div>
+                        <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter">Proventos</h2>
+                        <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mt-1">
+                            Últimos 12 Meses
+                        </p>
+                    </div>
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-sm border border-emerald-200/50 dark:border-emerald-800/30">
+                        <CircleDollarSign className="w-6 h-6" strokeWidth={2} />
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar">
-                    <div className="mb-6 shrink-0 relative group">
-                        <div className="flex overflow-x-auto snap-x snap-mandatory pb-6 gap-4 no-scrollbar" id="income-charts-scroll">
-                            {/* Slide 1: Evolution */}
-                            <div className="min-w-full snap-center">
-                                <div className="h-72 w-full rounded-2xl border border-zinc-100 dark:border-zinc-800 p-4 relative overflow-hidden bg-white dark:bg-zinc-900 shadow-sm flex flex-col">
-                                    <div className="flex items-center justify-between mb-4 z-10 relative">
-                                        <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Evolução Mensal</h3>
-                                        <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5">
-                                            {(['3M', '6M', '12M', 'ALL'] as const).map((range) => (
-                                                <button
-                                                    key={range}
-                                                    onClick={() => setEvolutionRange(range)}
-                                                    className={`px-2 py-1 rounded-md text-[9px] font-black transition-all ${evolutionRange === range ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
-                                                >
-                                                    {range === 'ALL' ? 'Tudo' : range}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    <div className="flex-1 w-full min-h-0">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <ComposedChart data={filteredChartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-                                                <defs>
-                                                    <linearGradient id="colorIncomeBar" x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
-                                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0.3}/>
-                                                    </linearGradient>
-                                                    <linearGradient id="colorIncomeBarFuture" x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                                                    </linearGradient>
-                                                </defs>
-                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
-                                                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a', fontWeight: 700 }} dy={10} />
-                                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#71717a' }} tickFormatter={(val) => `R$${val}`} />
-                                                <RechartsTooltip 
-                                                    cursor={{fill: 'rgba(16, 185, 129, 0.05)'}}
-                                                    contentStyle={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '10px', padding: '8px 12px', backdropFilter: 'blur(8px)' }}
-                                                    formatter={(value: number, name: string, props: any) => [
-                                                        formatBRL(value), 
-                                                        props.payload.isFuture ? 'Projetado' : 'Recebido'
-                                                    ]}
-                                                />
-                                                <Bar 
-                                                    dataKey="value" 
-                                                    radius={[4, 4, 0, 0]}
-                                                    maxBarSize={32}
-                                                    animationDuration={1500}
-                                                >
-                                                    {filteredChartData.map((entry, index) => (
-                                                        <Cell key={`cell-${index}`} fill={entry.isFuture ? "url(#colorIncomeBarFuture)" : "url(#colorIncomeBar)"} />
-                                                    ))}
-                                                </Bar>
-                                                <Line 
-                                                    type="monotone" 
-                                                    dataKey="value" 
-                                                    stroke="#059669" 
-                                                    strokeWidth={2} 
-                                                    dot={{r: 3, fill: "#059669", strokeWidth: 2, stroke: "#fff"}} 
-                                                    activeDot={{ r: 5, strokeWidth: 0, fill: '#059669' }}
-                                                    animationDuration={2000}
-                                                />
-                                                {incomeData.average > 0 && (
-                                                    <ReferenceLine y={incomeData.average} stroke="#f59e0b" strokeDasharray="3 3" strokeOpacity={0.8}>
-                                                        <Label value="Média" position="insideBottomRight" fill="#f59e0b" fontSize={9} fontWeight="bold" />
-                                                    </ReferenceLine>
-                                                )}
-                                            </ComposedChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                </div>
-                            </div>
+                {/* Summary Cards */}
+                <div className="grid grid-cols-2 gap-3 mb-6 shrink-0">
+                    <div className="bg-zinc-50 dark:bg-zinc-800/30 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                        <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Total Recebido (12M)</p>
+                        <p className="text-lg font-black text-zinc-900 dark:text-white tracking-tight">
+                            {formatBRL(incomeData.last12mTotal, privacyMode)}
+                        </p>
+                    </div>
+                    <div className="bg-zinc-50 dark:bg-zinc-800/30 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                        <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Média Mensal</p>
+                        <p className="text-lg font-black text-zinc-900 dark:text-white tracking-tight">
+                            {formatBRL(incomeData.average, privacyMode)}
+                        </p>
+                    </div>
+                </div>
 
-                            {/* Slide 2: Breakdown */}
-                            <div className="min-w-full snap-center">
-                                <div className="h-64 w-full rounded-2xl border border-zinc-100 dark:border-zinc-800 p-2 relative overflow-hidden bg-white dark:bg-zinc-900 shadow-sm flex flex-col">
-                                    <h3 className="absolute top-3 left-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest z-10">Por Ativo</h3>
-                                    {dividendsByAsset.length > 0 ? (
-                                        <div className="flex items-center h-full pt-4">
-                                            <div className="w-[60%] h-full relative">
-                                                <ResponsiveContainer width="100%" height="100%">
-                                                    <PieChart>
-                                                        <Pie
-                                                            activeIndex={activeIndex}
-                                                            activeShape={renderActiveShape}
-                                                            data={dividendsByAsset}
-                                                            cx="50%"
-                                                            cy="50%"
-                                                            innerRadius={55}
-                                                            outerRadius={75}
-                                                            paddingAngle={2}
-                                                            dataKey="value"
-                                                            onMouseEnter={onPieEnter}
-                                                            onClick={onPieEnter}
-                                                        >
-                                                            {dividendsByAsset.map((entry, index) => (
-                                                                <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
-                                                            ))}
-                                                        </Pie>
-                                                    </PieChart>
-                                                </ResponsiveContainer>
-                                            </div>
-                                            <div className="w-[40%] h-full overflow-y-auto pr-2 custom-scrollbar flex flex-col justify-center gap-2">
-                                                {dividendsByAsset.map((entry, index) => {
-                                                    const totalVal = dividendsByAsset.reduce((acc, curr) => acc + curr.value, 0);
-                                                    const percent = ((entry.value / (totalVal || 1)) * 100).toFixed(0);
-                                                    
+                {/* Chart Controls */}
+                <div className="flex bg-zinc-100 dark:bg-zinc-800/50 p-1 rounded-xl mb-4 shrink-0">
+                    {(['3M', '6M', '12M', 'ALL'] as const).map((range) => (
+                        <button
+                            key={range}
+                            onClick={() => setEvolutionRange(range)}
+                            className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${evolutionRange === range ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                        >
+                            {range === 'ALL' ? 'Tudo' : range}
+                        </button>
+                    ))}
+                </div>
+
+                <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar space-y-6">
+                    {/* Main Chart */}
+                    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] p-6 border border-zinc-100 dark:border-zinc-800 shadow-sm relative overflow-hidden">
+                        <div className="h-64 w-full relative z-10">
+                            {filteredChartData.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <ComposedChart data={filteredChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                        <defs>
+                                            <linearGradient id="colorIncomeBar" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor="#10b981" stopOpacity={0.8}/>
+                                                <stop offset="100%" stopColor="#10b981" stopOpacity={0.2}/>
+                                            </linearGradient>
+                                            <linearGradient id="colorIncomeBarFuture" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                                                <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.2}/>
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
+                                        <XAxis 
+                                            dataKey="label" 
+                                            axisLine={false} 
+                                            tickLine={false} 
+                                            tick={{ fontSize: 10, fill: '#71717a', fontWeight: 600 }} 
+                                            dy={10} 
+                                        />
+                                        <YAxis 
+                                            axisLine={false} 
+                                            tickLine={false} 
+                                            tick={{ fontSize: 10, fill: '#71717a', fontWeight: 500 }} 
+                                            tickFormatter={(val) => `R$${val}`} 
+                                        />
+                                        <RechartsTooltip 
+                                            cursor={{fill: 'rgba(16, 185, 129, 0.05)'}}
+                                            content={({ active, payload, label }) => {
+                                                if (active && payload && payload.length) {
+                                                    const data = payload[0].payload;
                                                     return (
-                                                        <div 
-                                                            key={entry.name} 
-                                                            className={`flex items-center justify-between p-1.5 rounded-lg transition-all cursor-pointer ${index === activeIndex ? 'bg-zinc-50 dark:bg-zinc-800 scale-105 shadow-sm' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50'}`}
-                                                            onMouseEnter={() => setActiveIndex(index)}
-                                                            onClick={() => setActiveIndex(index)}
-                                                            onTouchStart={() => setActiveIndex(index)}
-                                                        >
-                                                            <div className="flex items-center gap-1.5">
-                                                                <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: entry.color }}></div>
-                                                                <span className={`text-[9px] font-black ${index === activeIndex ? 'text-zinc-900 dark:text-white' : 'text-zinc-500'}`}>{entry.name}</span>
-                                                            </div>
-                                                            <span className="text-[9px] font-bold text-zinc-400">
-                                                                {percent}%
+                                                        <div className="bg-zinc-900/95 border border-white/10 p-3 rounded-xl shadow-2xl backdrop-blur-md min-w-[120px]">
+                                                            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-wider mb-1">{data.date}</p>
+                                                            <p className="text-lg font-black text-white tabular-nums leading-none mb-1">
+                                                                {formatBRL(data.value, privacyMode)}
+                                                            </p>
+                                                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${data.isFuture ? 'bg-blue-500/20 text-blue-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                                                                {data.isFuture ? 'PROJETADO' : 'RECEBIDO'}
                                                             </span>
                                                         </div>
                                                     );
-                                                })}
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="flex items-center justify-center h-full text-zinc-400 text-xs font-bold">
-                                            Sem dados de proventos por ativo
-                                        </div>
-                                    )}
+                                                }
+                                                return null;
+                                            }}
+                                        />
+                                        <Bar 
+                                            dataKey="value" 
+                                            radius={[6, 6, 0, 0]}
+                                            maxBarSize={40}
+                                            animationDuration={1500}
+                                        >
+                                            {filteredChartData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.isFuture ? "url(#colorIncomeBarFuture)" : "url(#colorIncomeBar)"} />
+                                            ))}
+                                        </Bar>
+                                        {incomeData.average > 0 && (
+                                            <ReferenceLine y={incomeData.average} stroke="#f59e0b" strokeDasharray="3 3" strokeOpacity={0.6}>
+                                                <Label value="Média" position="insideRight" fill="#f59e0b" fontSize={9} fontWeight="bold" dy={-10} />
+                                            </ReferenceLine>
+                                        )}
+                                    </ComposedChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center h-full text-zinc-400">
+                                    <CircleDollarSign className="w-8 h-8 mb-2 opacity-20" />
+                                    <p className="text-xs font-medium">Nenhum provento registrado</p>
                                 </div>
-                            </div>
-                        </div>
-                        
-                        {/* Scroll Indicators */}
-                        <div className="flex flex-col items-center gap-2 mt-2">
-                            <div className="flex justify-center gap-1.5 pointer-events-none">
-                                <div className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600"></div>
-                                <div className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600"></div>
-                            </div>
-                            <p className="text-[9px] text-zinc-400 text-center font-medium flex items-center justify-center gap-1">
-                                <ArrowRightLeft className="w-3 h-3" /> Deslize para ver mais
-                            </p>
+                            )}
                         </div>
                     </div>
 
+                    {/* Breakdown Section */}
                     <div className="space-y-4">
-                        <div className="flex flex-col gap-3 mb-4">
-                            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
-                                HISTÓRICO DE PROVENTOS
-                            </h3>
-                            <div className="bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl flex gap-1 w-full">
+                        <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-2">Maiores Pagadores</h3>
+                        
+                        {dividendsByAsset.length > 0 ? (
+                            dividendsByAsset.slice(0, 5).map((item, idx) => (
+                                <div key={idx} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-xs shadow-sm" style={{ backgroundColor: item.color }}>
+                                            {item.name.substring(0, 2)}
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-black text-zinc-900 dark:text-white leading-none mb-1">{item.name}</p>
+                                            <div className="w-24 h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                                                <div 
+                                                    className="h-full rounded-full" 
+                                                    style={{ 
+                                                        width: `${(item.value / (dividendsByAsset[0]?.value || 1)) * 100}%`, 
+                                                        backgroundColor: item.color 
+                                                    }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <p className="text-sm font-bold text-zinc-600 dark:text-zinc-400 tabular-nums">{formatBRL(item.value, privacyMode)}</p>
+                                </div>
+                            ))
+                        ) : (
+                            <p className="text-xs text-zinc-400 px-4">Nenhum dado disponível.</p>
+                        )}
+                    </div>
+
+                    {/* History Section */}
+                    <div className="pt-2">
+                        <div className="flex items-center justify-between mb-4 px-2">
+                            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Histórico</h3>
+                            <div className="flex bg-zinc-100 dark:bg-zinc-800/50 p-0.5 rounded-lg">
                                 <button 
                                     onClick={() => setIncomeHistoryTab('PROVENTOS')}
-                                    className={`flex-1 px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${incomeHistoryTab === 'PROVENTOS' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                                    className={`px-3 py-1.5 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${incomeHistoryTab === 'PROVENTOS' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                                 >
-                                    Proventos
+                                    Lista
                                 </button>
                                 <button 
                                     onClick={() => setIncomeHistoryTab('MONTHLY')}
-                                    className={`flex-1 px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${incomeHistoryTab === 'MONTHLY' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                                    className={`px-3 py-1.5 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${incomeHistoryTab === 'MONTHLY' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                                 >
                                     Mensal
                                 </button>
                                 <button 
                                     onClick={() => setIncomeHistoryTab('ANNUAL')}
-                                    className={`flex-1 px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${incomeHistoryTab === 'ANNUAL' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                                    className={`px-3 py-1.5 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${incomeHistoryTab === 'ANNUAL' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                                 >
                                     Anual
                                 </button>
                             </div>
                         </div>
 
-                        {incomeHistoryTab === 'ANNUAL' && (
-                            <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-                                <div className="flex justify-between items-center py-2 border-b border-zinc-100 dark:border-zinc-800">
-                                    <span className="text-sm font-bold text-zinc-900 dark:text-white">Total de Proventos:</span>
-                                    <span className="text-sm font-black text-emerald-500">{formatBRL(totalDividendsReceived, privacyMode)}</span>
+                        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 overflow-hidden">
+                            {incomeHistoryTab === 'PROVENTOS' && (
+                                <div className="max-h-96 overflow-y-auto custom-scrollbar">
+                                    {Object.keys(incomeData.groupedHistory).length > 0 ? (
+                                        Object.keys(incomeData.groupedHistory).sort((a,b) => b.localeCompare(a)).map(monthKey => (
+                                            <div key={monthKey}>
+                                                <div className="sticky top-0 bg-zinc-50/90 dark:bg-zinc-800/90 backdrop-blur-sm z-10 py-2 px-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
+                                                    <span className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                                                        {getMonthName(monthKey + '-01')}
+                                                    </span>
+                                                    <span className="text-[10px] font-bold text-zinc-400">
+                                                        {formatBRL(incomeData.groupedHistory[monthKey].reduce((acc, item) => acc + item.amount, 0), privacyMode)}
+                                                    </span>
+                                                </div>
+                                                <div className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
+                                                    {incomeData.groupedHistory[monthKey].map((item, idx) => (
+                                                        <div key={`${item.ticker}-${idx}`} className="flex items-center justify-between p-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black border ${item.status === 'provisioned' ? 'bg-blue-50 dark:bg-blue-900/10 text-blue-600 border-blue-100 dark:border-blue-800/30' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border-zinc-200 dark:border-zinc-700'}`}>
+                                                                    {item.ticker.substring(0, 2)}
+                                                                </div>
+                                                                <div>
+                                                                    <div className="flex items-center gap-1.5">
+                                                                        <span className="text-xs font-bold text-zinc-900 dark:text-white">{item.ticker}</span>
+                                                                        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded uppercase ${item.type === 'JCP' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'}`}>
+                                                                            {item.type}
+                                                                        </span>
+                                                                    </div>
+                                                                    <span className="text-[10px] text-zinc-400">
+                                                                        {formatDateShort(item.paymentDate)}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                            <span className={`text-sm font-bold tabular-nums ${item.status === 'provisioned' ? 'text-blue-500' : 'text-zinc-900 dark:text-white'}`}>
+                                                                +{formatBRL(item.amount, privacyMode)}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="p-8 text-center text-zinc-400 text-xs font-medium">
+                                            Nenhum histórico disponível
+                                        </div>
+                                    )}
                                 </div>
-                                
-                                <div className="grid grid-cols-3 gap-4 py-2 border-b border-zinc-100 dark:border-zinc-800 text-[10px] font-black text-zinc-400 uppercase tracking-widest">
-                                    <span>Ano</span>
-                                    <span className="text-right">Média mensal</span>
-                                    <span className="text-right">Total</span>
+                            )}
+
+                            {incomeHistoryTab === 'MONTHLY' && (
+                                <div className="p-4 space-y-6">
+                                    {(() => {
+                                        const years = Object.keys(incomeData.groupedHistory).reduce((acc, key) => {
+                                            const y = key.substring(0, 4);
+                                            if (!acc.includes(y)) acc.push(y);
+                                            return acc;
+                                        }, [] as string[]).sort().reverse();
+
+                                        const maxVal = Math.max(...Object.values(incomeData.groupedHistory).map(l => l.reduce((s, i) => s + i.amount, 0)));
+
+                                        if (years.length === 0) {
+                                            return (
+                                                <div className="text-center text-zinc-400 text-xs font-medium">
+                                                    Nenhum dado mensal disponível
+                                                </div>
+                                            );
+                                        }
+
+                                        return years.map(year => (
+                                            <div key={year} className="space-y-3">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-black text-zinc-300 dark:text-zinc-700 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded">{year}</span>
+                                                    <div className="h-px flex-1 bg-zinc-100 dark:bg-zinc-800"></div>
+                                                </div>
+                                                {Object.keys(incomeData.groupedHistory)
+                                                    .filter(k => k.startsWith(year))
+                                                    .sort().reverse()
+                                                    .map(monthKey => {
+                                                        const total = incomeData.groupedHistory[monthKey].reduce((s, i) => s + i.amount, 0);
+                                                        const percent = (total / (maxVal || 1)) * 100;
+                                                        return (
+                                                            <div key={monthKey} className="flex items-center gap-3">
+                                                                <span className="text-[10px] font-bold text-zinc-400 w-8 uppercase">{getMonthName(monthKey + '-01').substring(0, 3)}</span>
+                                                                <div className="flex-1 h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                                                                    <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${percent}%` }}></div>
+                                                                </div>
+                                                                <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 w-20 text-right">{formatBRL(total, privacyMode)}</span>
+                                                            </div>
+                                                        )
+                                                    })
+                                                }
+                                            </div>
+                                        ));
+                                    })()}
                                 </div>
-                                
-                                {annualIncomeData.map(yearData => (
-                                    <div key={yearData.year} className="grid grid-cols-3 gap-4 py-3 border-b border-zinc-50 dark:border-zinc-800/50 items-center hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
-                                        <span className="text-xs font-bold text-zinc-900 dark:text-white">{yearData.year}</span>
-                                        <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400 text-right">{formatBRL(yearData.average, privacyMode)}</span>
-                                        <span className="text-xs font-bold text-zinc-900 dark:text-white text-right">{formatBRL(yearData.total, privacyMode)}</span>
+                            )}
+
+                            {incomeHistoryTab === 'ANNUAL' && (
+                                <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                                    <div className="grid grid-cols-3 gap-4 p-3 bg-zinc-50 dark:bg-zinc-800/50 text-[10px] font-black text-zinc-400 uppercase tracking-widest border-b border-zinc-100 dark:border-zinc-800">
+                                        <span>Ano</span>
+                                        <span className="text-right">Média</span>
+                                        <span className="text-right">Total</span>
                                     </div>
-                                ))}
-                            </div>
-                        )}
-
-                        {incomeHistoryTab === 'MONTHLY' && (
-                            <div className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-300">
-                                {(() => {
-                                    const monthsByYear = Object.keys(incomeData.groupedHistory).reduce((acc, monthKey) => {
-                                        const year = monthKey.substring(0, 4);
-                                        if (!acc[year]) acc[year] = [];
-                                        acc[year].push(monthKey);
-                                        return acc;
-                                    }, {} as Record<string, string[]>);
-                                    
-                                    const maxMonthValue = Math.max(...Object.values(incomeData.groupedHistory).map(items => items.reduce((acc, i) => acc + i.amount, 0)));
-
-                                    return Object.keys(monthsByYear).sort((a, b) => b.localeCompare(a)).map(year => (
-                                        <div key={year}>
-                                            <div className="flex items-center gap-2 mb-2 px-1">
-                                                <span className="text-xs font-black text-zinc-300 dark:text-zinc-700 bg-zinc-100 dark:bg-zinc-800/50 px-2 py-0.5 rounded-md">
-                                                    {year}
-                                                </span>
-                                                <div className="h-px flex-1 bg-zinc-100 dark:bg-zinc-800"></div>
+                                    {annualIncomeData.length > 0 ? (
+                                        annualIncomeData.map(yearData => (
+                                            <div key={yearData.year} className="grid grid-cols-3 gap-4 p-3 items-center hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
+                                                <span className="text-xs font-black text-zinc-900 dark:text-white">{yearData.year}</span>
+                                                <span className="text-xs font-medium text-zinc-500 text-right">{formatBRL(yearData.average, privacyMode)}</span>
+                                                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 text-right">{formatBRL(yearData.total, privacyMode)}</span>
                                             </div>
-                                            <div className="space-y-2">
-                                                {monthsByYear[year].sort((a, b) => b.localeCompare(a)).map(monthKey => {
-                                                    const monthItems = incomeData.groupedHistory[monthKey];
-                                                    const monthTotal = monthItems.reduce((acc, item) => acc + item.amount, 0);
-                                                    const isFuture = monthKey > new Date().toISOString().substring(0, 7);
-                                                    const percentage = (monthTotal / (maxMonthValue || 1)) * 100;
-                                                    
-                                                    // Get month name without year
-                                                    const date = new Date(monthKey + '-02T12:00:00'); // Safe day to avoid timezone issues
-                                                    const monthName = date.toLocaleDateString('pt-BR', { month: 'long' });
-                                                    const capitalizedMonth = monthName.charAt(0).toUpperCase() + monthName.slice(1);
-
-                                                    return (
-                                                        <div key={monthKey} className="relative py-2 px-2 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 rounded-lg transition-colors group">
-                                                            <div className="flex items-center justify-between relative z-10 mb-1.5">
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 w-20">
-                                                                        {capitalizedMonth}
-                                                                    </span>
-                                                                    {isFuture && <span className="text-[8px] font-black text-sky-500 bg-sky-50 dark:bg-sky-900/20 px-1.5 py-0.5 rounded uppercase tracking-wider">Futuro</span>}
-                                                                </div>
-                                                                <span className="text-xs font-bold text-zinc-900 dark:text-white">{formatBRL(monthTotal, privacyMode)}</span>
-                                                            </div>
-                                                            
-                                                            {/* Background Bar */}
-                                                            <div className="w-full h-1.5 bg-zinc-100 dark:bg-zinc-800/50 rounded-full overflow-hidden">
-                                                                <div 
-                                                                    className="h-full bg-emerald-500 rounded-full opacity-60 group-hover:opacity-100 transition-all duration-500" 
-                                                                    style={{ width: `${percentage}%` }}
-                                                                ></div>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="p-4 text-center text-zinc-400 text-xs font-medium">
+                                            Nenhum dado anual disponível
                                         </div>
-                                    ));
-                                })()}
-                            </div>
-                        )}
-
-                        {incomeHistoryTab === 'PROVENTOS' && (
-                            <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-                                {Object.keys(incomeData.groupedHistory).sort((a,b) => b.localeCompare(a)).map(monthKey => {
-                                    const monthItems = incomeData.groupedHistory[monthKey];
-                                    const isFuture = monthKey > new Date().toISOString().substring(0, 7);
-                                    
-                                    return (
-                                        <div key={monthKey}>
-                                            <div className="sticky top-0 bg-white dark:bg-zinc-900 z-10 py-1.5 border-b border-zinc-100 dark:border-zinc-800 mb-1 flex justify-between items-center">
-                                                <h4 className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wider">
-                                                    {getMonthName(monthKey + '-01')}
-                                                </h4>
-                                                {isFuture && (
-                                                    <span className="text-[9px] font-bold text-sky-500 bg-sky-50 dark:bg-sky-900/20 px-1.5 py-0.5 rounded uppercase">Futuro</span>
-                                                )}
-                                            </div>
-                                            <div className="space-y-1">
-                                                {monthItems.map((item, idx) => (
-                                                    <div key={`${item.ticker}-${idx}`} className={`flex items-center justify-between py-2 px-2 rounded-xl transition-colors ${item.status === 'provisioned' ? 'bg-sky-50/50 dark:bg-sky-900/10 border border-sky-100 dark:border-sky-900/30' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50'}`}>
-                                                        <div className="flex items-center gap-3">
-                                                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black border ${item.status === 'provisioned' ? 'bg-sky-100 dark:bg-sky-900/30 text-sky-600 border-sky-200 dark:border-sky-800' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border-zinc-200 dark:border-zinc-700'}`}>
-                                                                {item.ticker.substring(0, 2)}
-                                                            </div>
-                                                            <div>
-                                                                <div className="flex items-center gap-1.5">
-                                                                    <span className="text-xs font-bold text-zinc-900 dark:text-white">{item.ticker}</span>
-                                                                    <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded uppercase ${item.type === 'JCP' ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'}`}>
-                                                                        {item.type}
-                                                                    </span>
-                                                                </div>
-                                                                <span className="text-[10px] text-zinc-400">
-                                                                    {item.status === 'provisioned' ? 'Agendado: ' : 'Pago: '}
-                                                                    {formatDateShort(item.paymentDate)}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                        <span className={`text-sm font-bold tabular-nums ${item.status === 'provisioned' ? 'text-sky-500 opacity-80' : 'text-zinc-900 dark:text-white'}`}>
-                                                            +{formatBRL(item.amount, privacyMode)}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
+
+
+
             </div>
         </SwipeableModal>
 
