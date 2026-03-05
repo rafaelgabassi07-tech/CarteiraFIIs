@@ -136,7 +136,16 @@ export const processPortfolio = (
         const normalizedTicker = normalizeTicker(d.ticker);
         
         // Calcula quantidade EXATA na data COM
-        const qty = getQuantityOnDate(normalizedTicker, d.dateCom, safeTxs);
+        let qty = 0;
+        if (d.dateCom && d.dateCom !== 'Já ocorreu') {
+            qty = getQuantityOnDate(normalizedTicker, d.dateCom, safeTxs);
+        } else if (d.paymentDate && d.paymentDate !== 'A Definir') {
+            qty = getQuantityOnDate(normalizedTicker, d.paymentDate, safeTxs);
+        } else {
+            // Fallback to current quantity if both dates are missing, matching agenda robot logic
+            const currentAsset = safeTxs.filter(t => normalizeTicker(t.ticker) === normalizedTicker).reduce((acc, t) => t.type === 'BUY' ? acc + t.quantity : acc - t.quantity, 0);
+            qty = currentAsset;
+        }
         
         if (qty <= 0) return null;
 

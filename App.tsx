@@ -65,7 +65,7 @@ const mergeDividends = (current: DividendReceipt[], incoming: DividendReceipt[])
         const ticker = normalizeTicker(d.ticker);
         const type = d.type || 'DIV';
         // Normaliza a data para YYYY-MM-DD para evitar duplicatas por causa de fuso horário/timestamp
-        const date = (d.dateCom || '').split('T')[0];
+        const date = (d.dateCom || d.paymentDate || '').split('T')[0];
         const rate = Number(d.rate).toFixed(6); // Normaliza precisão do rate
         return `${ticker}-${type}-${date}-${rate}`;
     };

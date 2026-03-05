@@ -215,7 +215,6 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], trans
             .from('market_dividends')
             .select('*')
             .in('ticker', tickers)
-            .or(`payment_date.gte.${startOfYear},date_com.gte.${startOfYear},payment_date.is.null`)
             .order('payment_date', { ascending: true });
 
         if (error) {
@@ -309,7 +308,7 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], trans
     }
 };
 
-const UNIFIED_DATA_CACHE_KEY = 'investfiis_unified_data_cache_v2';
+const UNIFIED_DATA_CACHE_KEY = 'investfiis_unified_data_cache_v3';
 const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
 
 interface CachedUnifiedData {
@@ -370,24 +369,20 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
 
   try {
       // 3. Fetch missing/stale data
-      // Batch Supabase queries to avoid URL length limits AND row count limits (default 1000)
-      const BATCH_SIZE = 5;
       let dividendsData: any[] = [];
       let metaData: any[] = [];
 
-      for (let i = 0; i < tickersToFetch.length; i += BATCH_SIZE) {
-          const batch = tickersToFetch.slice(i, i + BATCH_SIZE);
-          
+      if (tickersToFetch.length > 0) {
           const [divRes, metaRes] = await Promise.all([
-              supabase.from('market_dividends').select('*').in('ticker', batch).limit(2000),
-              supabase.from('ativos_metadata').select('*').in('ticker', batch)
+              supabase.from('market_dividends').select('*').in('ticker', tickersToFetch).order('payment_date', { ascending: false }).limit(10000),
+              supabase.from('ativos_metadata').select('*').in('ticker', tickersToFetch)
           ]);
 
-          if (divRes.data) dividendsData = [...dividendsData, ...divRes.data];
-          if (metaRes.data) metaData = [...metaData, ...metaRes.data];
+          if (divRes.data) dividendsData = divRes.data;
+          if (metaRes.data) metaData = metaRes.data;
           
-          if (divRes.error) console.error('[DataService] Error fetching dividends batch:', divRes.error);
-          if (metaRes.error) console.error('[DataService] Error fetching metadata batch:', metaRes.error);
+          if (divRes.error) console.error('[DataService] Error fetching dividends:', divRes.error);
+          if (metaRes.error) console.error('[DataService] Error fetching metadata:', metaRes.error);
       }
 
       const metadataMap: Record<string, any> = {};
