@@ -370,8 +370,8 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
 
   try {
       // 3. Fetch missing/stale data
-      // Batch Supabase queries to avoid URL length limits
-      const BATCH_SIZE = 20;
+      // Batch Supabase queries to avoid URL length limits AND row count limits (default 1000)
+      const BATCH_SIZE = 5;
       let dividendsData: any[] = [];
       let metaData: any[] = [];
 
@@ -379,7 +379,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
           const batch = tickersToFetch.slice(i, i + BATCH_SIZE);
           
           const [divRes, metaRes] = await Promise.all([
-              supabase.from('market_dividends').select('*').in('ticker', batch),
+              supabase.from('market_dividends').select('*').in('ticker', batch).limit(2000),
               supabase.from('ativos_metadata').select('*').in('ticker', batch)
           ]);
 
