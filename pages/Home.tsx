@@ -354,9 +354,28 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                                                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 8, fill: '#71717a' }} tickFormatter={(val) => `R$${val/1000}k`} />
                                                 <RechartsTooltip 
                                                     cursor={{ fill: 'rgba(99, 102, 241, 0.05)' }}
-                                                    contentStyle={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(24, 24, 27, 0.95)', color: '#fff', fontSize: '10px', padding: '8px', backdropFilter: 'blur(16px)', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}
-                                                    formatter={(value: number, name: string) => [formatBRL(value), name === 'marketValue' ? 'Patrimônio' : 'Investido']}
-                                                    labelStyle={{ color: '#a1a1aa', marginBottom: '4px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                                                    content={({ active, payload, label }) => {
+                                                        if (active && payload && payload.length) {
+                                                            return (
+                                                                <div className="bg-zinc-900/95 border border-zinc-800 p-3 rounded-xl shadow-xl backdrop-blur-md min-w-[120px]">
+                                                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">{label}</p>
+                                                                    <div className="space-y-2">
+                                                                        {payload.map((entry: any) => (
+                                                                            <div key={entry.name} className="flex flex-col">
+                                                                                <span className="text-[9px] font-bold text-zinc-500 uppercase">
+                                                                                    {entry.name === 'marketValue' ? 'Patrimônio' : 'Investido'}
+                                                                                </span>
+                                                                                <span className={`text-xs font-black ${entry.name === 'marketValue' ? 'text-indigo-400' : 'text-zinc-300'}`}>
+                                                                                    {formatBRL(entry.value)}
+                                                                                </span>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        }
+                                                        return null;
+                                                    }}
                                                 />
                                                 <Area type="monotone" dataKey="marketValue" stroke="none" fill="url(#colorWealthArea)" tooltipType="none" />
                                                 <Bar dataKey="marketValue" fill="url(#colorWealthBar)" radius={[4, 4, 0, 0]} maxBarSize={16} animationDuration={1000} tooltipType="none" />
@@ -376,9 +395,28 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                                                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 8, fill: '#71717a' }} tickFormatter={(val) => `R$${val/1000}k`} />
                                                 <RechartsTooltip 
                                                     cursor={{ fill: 'rgba(99, 102, 241, 0.05)' }}
-                                                    contentStyle={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(24, 24, 27, 0.95)', color: '#fff', fontSize: '10px', padding: '8px', backdropFilter: 'blur(16px)' }}
-                                                    formatter={(value: number, name: string) => [formatBRL(value), name === 'contribution' ? 'Aporte Líquido' : 'Dividendos']}
-                                                    labelStyle={{ color: '#a1a1aa', marginBottom: '4px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                                                    content={({ active, payload, label }) => {
+                                                        if (active && payload && payload.length) {
+                                                            return (
+                                                                <div className="bg-zinc-900/95 border border-zinc-800 p-3 rounded-xl shadow-xl backdrop-blur-md min-w-[120px]">
+                                                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">{label}</p>
+                                                                    <div className="space-y-2">
+                                                                        {payload.map((entry: any) => (
+                                                                            <div key={entry.name} className="flex flex-col">
+                                                                                <span className="text-[9px] font-bold text-zinc-500 uppercase">
+                                                                                    {entry.name === 'contribution' ? 'Aporte Líquido' : 'Dividendos'}
+                                                                                </span>
+                                                                                <span className={`text-xs font-black ${entry.name === 'dividend' ? 'text-emerald-400' : 'text-indigo-400'}`}>
+                                                                                    {formatBRL(entry.value)}
+                                                                                </span>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        }
+                                                        return null;
+                                                    }}
                                                 />
                                                 <Bar dataKey="contribution" fill="url(#colorCashBar)" radius={[4, 4, 0, 0]} maxBarSize={16} animationDuration={1000} />
                                                 <Line type="monotone" dataKey="contribution" stroke="#6366f1" strokeWidth={1.5} strokeDasharray="3 3" dot={false} opacity={0.4} tooltipType="none" />
@@ -401,9 +439,25 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                                                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 8, fill: '#71717a' }} tickFormatter={(val) => `${val}%`} />
                                                 <RechartsTooltip 
                                                     cursor={{ fill: 'rgba(245, 158, 11, 0.05)' }}
-                                                    contentStyle={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(24, 24, 27, 0.95)', color: '#fff', fontSize: '10px', padding: '8px', backdropFilter: 'blur(16px)' }}
-                                                    formatter={(value: number) => [`${value.toFixed(2)}%`, 'Rentabilidade Acumulada']}
-                                                    labelStyle={{ color: '#a1a1aa', marginBottom: '4px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                                                    content={({ active, payload, label }) => {
+                                                        if (active && payload && payload.length) {
+                                                            const value = payload[0].value as number;
+                                                            return (
+                                                                <div className="bg-zinc-900/95 border border-zinc-800 p-3 rounded-xl shadow-xl backdrop-blur-md min-w-[120px]">
+                                                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">{label}</p>
+                                                                    <div className="space-y-2">
+                                                                        <div className="flex flex-col">
+                                                                            <span className="text-[9px] font-bold text-zinc-500 uppercase">Rentabilidade</span>
+                                                                            <span className={`text-xs font-black ${value >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                                                                {value.toFixed(2)}%
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        }
+                                                        return null;
+                                                    }}
                                                 />
                                                 <Area type="monotone" dataKey="returnPercent" stroke="none" fill="url(#colorReturnArea)" tooltipType="none" />
                                                 <Bar dataKey="returnPercent" fill="url(#colorReturnBar)" radius={[4, 4, 0, 0]} maxBarSize={16} animationDuration={1000} tooltipType="none" />

@@ -1221,15 +1221,37 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: { asset: Ass
                     {chartData.data.some(d => d.total > 0) ? (
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={chartData.data} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="colorIncomeBar" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.8}/>
+                                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0.3}/>
+                                    </linearGradient>
+                                </defs>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
                                 <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fontSize: 9, fill: '#71717a', fontWeight: 'bold'}} />
-                                <YAxis axisLine={false} tickLine={false} tick={{fontSize: 9, fill: '#71717a'}} />
+                                <YAxis axisLine={false} tickLine={false} tick={{fontSize: 9, fill: '#71717a'}} tickFormatter={(val) => `R$${val}`} />
                                 <Tooltip 
-                                    cursor={{fill: 'rgba(0,0,0,0.05)'}}
-                                    contentStyle={{ borderRadius: '16px', border: 'none', backgroundColor: 'rgba(24, 24, 27, 0.95)', color: '#fff', fontSize: '11px', padding: '12px', backdropFilter: 'blur(8px)', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
-                                    formatter={(val: number) => [formatBRL(val), 'Recebido']}
+                                    cursor={{fill: 'rgba(99, 102, 241, 0.05)'}}
+                                    content={({ active, payload, label }) => {
+                                        if (active && payload && payload.length) {
+                                            return (
+                                                <div className="bg-zinc-900/95 border border-zinc-800 p-3 rounded-xl shadow-xl backdrop-blur-md">
+                                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">{label}</p>
+                                                    <p className="text-sm font-black text-white">
+                                                        {formatBRL(payload[0].value as number)}
+                                                    </p>
+                                                </div>
+                                            );
+                                        }
+                                        return null;
+                                    }}
                                 />
-                                <Bar dataKey="total" fill="#6366f1" radius={[6, 6, 0, 0]} barSize={20} />
+                                <Bar dataKey="total" fill="url(#colorIncomeBar)" radius={[4, 4, 0, 0]} barSize={24} animationDuration={1500} />
+                                {chartData.average > 0 && (
+                                    <ReferenceLine y={chartData.average} stroke="#10b981" strokeDasharray="3 3" strokeOpacity={0.7} strokeWidth={1}>
+                                        <Label value="Média" position="insideTopRight" fill="#10b981" fontSize={9} fontWeight="bold" dy={-5} />
+                                    </ReferenceLine>
+                                )}
                             </BarChart>
                         </ResponsiveContainer>
                     ) : (

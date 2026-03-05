@@ -30,10 +30,12 @@ try {
 export interface AIEducationalContent {
     title: string;
     message: string;
-    type: 'motivation' | 'education';
+    type: 'motivation' | 'education' | 'curiosity';
+    topic?: string;
 }
 
-const CACHE_KEY = 'investfiis_daily_stories_cache';
+const CACHE_KEY = 'investfiis_daily_stories_cache_v2';
+const HISTORY_KEY = 'investfiis_ai_history_v1';
 
 const TOPICS = [
     "Juros Compostos", "Diversificação", "Longo Prazo", "Reserva de Emergência", 
@@ -41,12 +43,52 @@ const TOPICS = [
     "Rebalanceamento", "Inflação", "Selic", "Renda Passiva", "Value Investing",
     "Growth Investing", "Small Caps", "Blue Chips", "Criptomoedas", "ETFs",
     "BDRs", "Mercado Americano", "Psicologia do Investidor", "Viés da Confirmação",
-    "Efeito Manada", "Custo de Oportunidade", "Alocação de Ativos", "Risco vs Retorno"
+    "Efeito Manada", "Custo de Oportunidade", "Alocação de Ativos", "Risco vs Retorno",
+    "Fundos de Papel", "Fundos de Tijolo", "Vacância", "Cap Rate", "P/VP",
+    "Dividend Yield", "Bonificação", "Desdobramento", "Grupamento", "IPO",
+    "Follow-on", "Subscrição", "Day Trade vs Buy & Hold", "Análise Fundamentalista",
+    "Análise Técnica", "Governança Corporativa", "Tag Along", "Free Float",
+    "Commodities", "Dólar", "Ouro", "Tesouro Direto", "LCI/LCA", "CDB",
+    "Previdência Privada", "Planejamento Sucessório", "Independência Financeira",
+    "FIRE Movement", "Minimalismo Financeiro", "Gastos Essenciais", "Orçamento 50/30/20",
+    "Dívida Boa vs Dívida Ruim", "Cartão de Crédito", "Score de Crédito",
+    "Financiamento Imobiliário", "Aluguel vs Compra", "Carro Próprio vs Uber",
+    "Seguro de Vida", "Viés de Ancoragem", "Falácia do Custo Irrecuperável",
+    "FOMO (Fear Of Missing Out)", "FUD (Fear, Uncertainty, Doubt)", "Bear Market",
+    "Bull Market", "Circuit Breaker", "Insider Trading", "Manipulação de Mercado",
+    "Bolhas Financeiras", "Crise de 1929", "Bolha das Pontocom", "Crise de 2008",
+    "Tulipomania", "História do Dinheiro", "Padrão Ouro", "Bretton Woods",
+    "Bitcoin Halving", "Blockchain", "DeFi", "NFTs", "Metaverso", "Web3",
+    "ESG", "Investimento de Impacto", "Crowdfunding", "Peer-to-Peer Lending",
+    "Open Finance", "Pix", "Real Digital (Drex)", "Economia Comportamental",
+    "Livros de Finanças", "Filmes sobre Mercado Financeiro", "Frases de Warren Buffett",
+    "Filosofia Estoica e Investimentos", "Meditação e Trading", "Saúde Mental e Dinheiro"
 ];
 
-const getRandomTopics = (count: number) => {
-    const shuffled = [...TOPICS].sort(() => 0.5 - Math.random());
-    return shuffled.slice(0, count).join(", ");
+const getRecentTopics = (): string[] => {
+    try {
+        const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+        // Filter history for the last 10 days to ensure variety
+        const tenDaysAgo = Date.now() - 10 * 24 * 60 * 60 * 1000;
+        return history.filter((h: any) => h.timestamp > tenDaysAgo).map((h: any) => h.topic);
+    } catch {
+        return [];
+    }
+};
+
+const saveTopicsToHistory = (topics: string[]) => {
+    try {
+        const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+        const newEntries = topics.map(t => ({ topic: t, timestamp: Date.now() }));
+        // Keep only the last 100 entries to prevent storage bloat
+        const updatedHistory = [...history, ...newEntries].slice(-100); 
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(updatedHistory));
+    } catch {}
+};
+
+const getRandomTopicsFromPool = (pool: string[], count: number) => {
+    const shuffled = [...pool].sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, count);
 };
 
 export const generateAIInsights = async (): Promise<PortfolioInsight[]> => {
@@ -69,8 +111,37 @@ export const generateAIInsights = async (): Promise<PortfolioInsight[]> => {
     if (!ai) return [];
 
     try {
-        const topics = getRandomTopics(3);
-        const prompt = `Gere 3 mensagens curtas e variadas para investidores: 1 motivacional, 1 curiosidade histórica sobre finanças e 1 dica prática sobre: ${topics}. Baseie-se em fatos. Retorne em JSON.`;
+        // 2. Select Topics avoiding repetition
+        const recentTopics = getRecentTopics();
+        const availableTopics = TOPICS.filter(t => !recentTopics.includes(t));
+        
+        // If we run out of fresh topics (unlikely given the list size), fallback to full list
+        const pool = availableTopics.length >= 3 ? availableTopics : TOPICS;
+        const selectedTopics = getRandomTopicsFromPool(pool, 3);
+        
+        console.log(`[AI Service] Selected topics: ${selectedTopics.join(', ')} (Avoided: ${recentTopics.length} recent topics)`);
+
+        // 3. Generate Content
+        const prompt = `
+            Atue como um mentor financeiro experiente e criativo.
+            Gere 3 "Stories" curtos e engajadores para um app de investimentos.
+            
+            Tópicos selecionados para hoje: ${selectedTopics.join(', ')}.
+            
+            Requisitos:
+            1. Crie 1 story do tipo 'motivation' (inspiracional, foco no longo prazo).
+            2. Crie 1 story do tipo 'education' (dica prática ou conceito explicado de forma simples).
+            3. Crie 1 story do tipo 'curiosity' (fato histórico ou dado interessante sobre mercado).
+            
+            Diretrizes de Estilo:
+            - Texto curto, direto e impactante (máximo 140 caracteres por mensagem).
+            - Use emojis com moderação para dar vida.
+            - Evite clichês genéricos como "compre na baixa e venda na alta".
+            - Traga uma perspectiva nova ou um dado concreto.
+            - NÃO repita informações óbvias.
+            
+            Retorne APENAS um JSON array.
+        `;
 
         const response = await ai.models.generateContent({
             model: "gemini-3-flash-preview",
@@ -84,7 +155,8 @@ export const generateAIInsights = async (): Promise<PortfolioInsight[]> => {
                         properties: {
                             title: { type: Type.STRING },
                             message: { type: Type.STRING },
-                            type: { type: Type.STRING, enum: ['motivation', 'education', 'curiosity'] }
+                            type: { type: Type.STRING, enum: ['motivation', 'education', 'curiosity'] },
+                            topic: { type: Type.STRING } // Optional, helps with debugging/tracking
                         },
                         required: ['title', 'message', 'type']
                     }
@@ -96,6 +168,7 @@ export const generateAIInsights = async (): Promise<PortfolioInsight[]> => {
         if (!text) return [];
         const data = JSON.parse(text) as AIEducationalContent[];
         
+        // 4. Generate Images
         const stories = await Promise.all(data.map(async (item, index) => {
             let imageUrl = `https://picsum.photos/seed/ai-${item.type}-${index}-${todayStr}/1080/1920?blur=2`;
             
@@ -105,7 +178,7 @@ export const generateAIInsights = async (): Promise<PortfolioInsight[]> => {
                     model: 'gemini-3.1-flash-image-preview',
                     contents: {
                         parts: [
-                            { text: `Uma imagem vertical (9:16) artística, moderna e minimalista para um app de investimentos sobre o tema: "${item.title}". Estilo fintech premium, cores sóbrias (azul, verde esmeralda, dourado), iluminação cinematográfica.` }
+                            { text: `Uma imagem vertical (9:16) artística, moderna e minimalista para um app de investimentos sobre o tema: "${item.title}". Estilo fintech premium, cores sóbrias (azul, verde esmeralda, dourado), iluminação cinematográfica. Sem texto na imagem.` }
                         ]
                     },
                     config: {
@@ -144,12 +217,16 @@ export const generateAIInsights = async (): Promise<PortfolioInsight[]> => {
             };
         }));
 
-        // Cache the new stories
+        // 5. Save to Cache & History
         try {
             localStorage.setItem(CACHE_KEY, JSON.stringify({
                 date: todayStr,
                 stories: stories
             }));
+            
+            // Save used topics to history to avoid repetition
+            saveTopicsToHistory(selectedTopics);
+            
         } catch (e) {
             console.warn("Failed to save stories cache", e);
         }
