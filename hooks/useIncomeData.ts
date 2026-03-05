@@ -30,28 +30,31 @@ export const useIncomeData = (dividendReceipts: DividendReceipt[]) => {
         });
 
         sortedReceipts.forEach(d => {
-            if (!d.paymentDate || d.paymentDate === 'A Definir') return;
+            let effectiveDate = (d.paymentDate && d.paymentDate !== 'A Definir') ? d.paymentDate : d.dateCom;
+            if (!effectiveDate || effectiveDate === 'Já ocorreu' || effectiveDate === 'A Definir') {
+                effectiveDate = todayStr; // Fallback to current month if dates are completely missing
+            }
             
-            const isFuture = d.paymentDate > todayStr;
+            const isFuture = effectiveDate > todayStr || d.paymentDate === 'A Definir';
             const status = isFuture ? 'provisioned' : 'paid';
 
             if (isFuture) {
                 provisionedTotal += d.totalReceived;
             } else {
-                if (d.paymentDate >= oneYearAgoStr) last12mTotal += d.totalReceived;
+                if (effectiveDate >= oneYearAgoStr) last12mTotal += d.totalReceived;
             }
 
-            const monthKey = d.paymentDate.substring(0, 7);
+            const monthKey = effectiveDate.substring(0, 7);
             // Add to group (create if not exists, as it can be future or older than 12m)
             if (groups[monthKey] === undefined) groups[monthKey] = 0;
             groups[monthKey] += d.totalReceived;
 
             historyList.push({
-                date: d.paymentDate,
+                date: effectiveDate,
                 ticker: d.ticker,
                 type: d.type,
                 amount: d.totalReceived,
-                paymentDate: d.paymentDate,
+                paymentDate: d.paymentDate && d.paymentDate !== 'A Definir' ? d.paymentDate : effectiveDate,
                 status
             });
         });

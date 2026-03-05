@@ -308,7 +308,7 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], trans
     }
 };
 
-const UNIFIED_DATA_CACHE_KEY = 'investfiis_unified_data_cache_v3';
+const UNIFIED_DATA_CACHE_KEY = 'investfiis_unified_data_cache_v4';
 const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
 
 interface CachedUnifiedData {
@@ -374,7 +374,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
 
       if (tickersToFetch.length > 0) {
           const [divRes, metaRes] = await Promise.all([
-              supabase.from('market_dividends').select('*').in('ticker', tickersToFetch).order('payment_date', { ascending: false }).limit(10000),
+              supabase.from('market_dividends').select('*').in('ticker', tickersToFetch).order('payment_date', { ascending: false, nullsFirst: false }).limit(10000),
               supabase.from('ativos_metadata').select('*').in('ticker', tickersToFetch)
           ]);
 

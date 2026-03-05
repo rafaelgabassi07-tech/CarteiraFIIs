@@ -369,10 +369,9 @@ const App: React.FC = () => {
               id: `pred-${p.ticker}-${p.paymentDate}-${p.rate}`,
               ticker: p.ticker,
               type: p.type,
-              // Estabiliza a data: Se não tem data com, usa a data de pagamento ou uma data fixa
-              // Evita usar new Date().toISOString() que gera duplicatas a cada refresh
-              dateCom: p.dateCom !== 'Já ocorreu' ? p.dateCom : (p.paymentDate !== 'A Definir' ? p.paymentDate : '0000-00-00'),
-              paymentDate: p.paymentDate !== 'A Definir' ? p.paymentDate : '',
+              // Preserve original values so useIncomeData can determine status correctly
+              dateCom: p.dateCom,
+              paymentDate: p.paymentDate,
               rate: p.rate,
               quantityOwned: p.quantity,
               totalReceived: p.projectedTotal,
