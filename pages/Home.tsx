@@ -1528,16 +1528,64 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                 info="Seu nível na jornada de investidor, baseado no patrimônio acumulado e metas atingidas."
             />
 
-            <BentoCard 
-                title="Alocação" 
-                value="Carteira" 
-                subtext="Ver Distribuição"
-                icon={PieIcon} 
-                colorClass="bg-sky-100 text-sky-600 dark:bg-sky-900/40 dark:text-sky-400"
+            {/* Redesigned Allocation Card */}
+            <motion.div 
+                className="col-span-2 bg-white dark:bg-zinc-900 rounded-[2.5rem] p-6 border border-zinc-100 dark:border-zinc-800 shadow-sm relative overflow-hidden cursor-pointer group"
                 onClick={() => setShowAllocation(true)}
-                info="Visualize a distribuição do seu patrimônio por classe de ativos, setores e ativos individuais."
-                className="col-span-2"
-            />
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
+            >
+                <div className="absolute top-0 right-0 w-32 h-32 bg-sky-500/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+                
+                <div className="flex justify-between items-start relative z-10">
+                    <div>
+                        <div className="flex items-center gap-2 mb-3">
+                            <div className="w-10 h-10 rounded-2xl bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 flex items-center justify-center">
+                                <PieIcon className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-zinc-900 dark:text-white leading-none">Alocação</h3>
+                                <p className="text-[10px] font-medium text-zinc-500 mt-1">
+                                    {allocationData.bySector.length} Setores &bull; {portfolio.length} Ativos
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {/* Mini Donut Chart */}
+                    <div className="h-16 w-16 relative">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={allocationData.byClass}
+                                    innerRadius={20}
+                                    outerRadius={32}
+                                    paddingAngle={5}
+                                    dataKey="value"
+                                    stroke="none"
+                                >
+                                    {allocationData.byClass.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.color} />
+                                    ))}
+                                </Pie>
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+                
+                {/* Class Distribution Legend */}
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                    {allocationData.byClass.map(item => (
+                        <div key={item.name} className="flex items-center justify-between bg-zinc-50 dark:bg-zinc-800/50 px-3 py-2 rounded-xl border border-zinc-100 dark:border-zinc-800/50">
+                            <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                                <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">{item.name}</span>
+                            </div>
+                            <span className="text-xs font-black text-zinc-900 dark:text-white">{item.percent.toFixed(0)}%</span>
+                        </div>
+                    ))}
+                </div>
+            </motion.div>
         </div>
 
         <StoryViewer 
@@ -2145,22 +2193,26 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
 
         <SwipeableModal isOpen={showAllocation} onClose={() => setShowAllocation(false)}>
             <div className="p-4 h-full flex flex-col anim-slide-up">
-                <div className="flex items-center justify-between mb-8 shrink-0">
+                {/* Header */}
+                <div className="flex items-center justify-between mb-6 shrink-0">
                     <div>
                         <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter">Alocação</h2>
-                        <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mt-1">Diversificação & Risco</p>
+                        <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mt-1">
+                            {formatBRL(balance, privacyMode)} &bull; {portfolio.length} Ativos
+                        </p>
                     </div>
-                    <div className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center text-zinc-900 dark:text-white shadow-sm border border-zinc-200 dark:border-zinc-800">
+                    <div className="w-12 h-12 rounded-2xl bg-sky-100 dark:bg-sky-900/20 flex items-center justify-center text-sky-600 dark:text-sky-400 shadow-sm border border-sky-200/50 dark:border-sky-800/30">
                         <PieIcon className="w-6 h-6" strokeWidth={2} />
                     </div>
                 </div>
 
-                <div className="flex bg-zinc-200/50 dark:bg-zinc-900 p-1.5 rounded-2xl mb-8 shrink-0">
+                {/* View Switcher */}
+                <div className="flex bg-zinc-100 dark:bg-zinc-800/50 p-1 rounded-xl mb-6 shrink-0">
                     {(['CLASS', 'SECTOR', 'ASSET'] as const).map((view) => (
                         <button 
                             key={view}
                             onClick={() => setAllocationView(view)} 
-                            className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${allocationView === view ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-lg shadow-zinc-200/50 dark:shadow-none' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                            className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${allocationView === view ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                         >
                             {view === 'CLASS' ? 'Classe' : view === 'SECTOR' ? 'Setor' : 'Ativo'}
                         </button>
@@ -2168,18 +2220,18 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                 </div>
 
                 <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar space-y-6">
-                    {/* Chart Section */}
-                    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] p-8 border border-zinc-100 dark:border-zinc-800 shadow-xl shadow-zinc-200/50 dark:shadow-none relative overflow-hidden">
+                    {/* Main Chart */}
+                    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] p-6 border border-zinc-100 dark:border-zinc-800 shadow-sm relative overflow-hidden">
                         <div className="h-64 w-full relative z-10">
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
                                     <Pie
                                         data={allocationView === 'CLASS' ? allocationData.byClass : allocationView === 'SECTOR' ? allocationData.bySector : allocationData.byAsset}
-                                        innerRadius={60}
-                                        outerRadius={80}
-                                        paddingAngle={5}
+                                        innerRadius={70}
+                                        outerRadius={90}
+                                        paddingAngle={4}
                                         dataKey="value"
-                                        cornerRadius={8}
+                                        cornerRadius={6}
                                         stroke="none"
                                     >
                                         {(allocationView === 'CLASS' ? allocationData.byClass : allocationView === 'SECTOR' ? allocationData.bySector : allocationData.byAsset).map((entry, index) => (
@@ -2197,13 +2249,13 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                                             if (active && payload && payload.length) {
                                                 const data = payload[0].payload;
                                                 return (
-                                                    <div className="bg-zinc-900/95 border border-white/10 p-4 rounded-2xl shadow-2xl backdrop-blur-md">
-                                                        <div className="flex items-center gap-2 mb-1">
+                                                    <div className="bg-zinc-900/95 border border-white/10 p-3 rounded-xl shadow-2xl backdrop-blur-md min-w-[140px]">
+                                                        <div className="flex items-center gap-2 mb-2">
                                                             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: data.color }}></div>
-                                                            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">{data.name}</span>
+                                                            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-wider line-clamp-1">{data.name}</span>
                                                         </div>
-                                                        <p className="text-lg font-black text-white tabular-nums">{formatBRL(data.value, privacyMode)}</p>
-                                                        <p className="text-xs font-bold text-zinc-400">{(data.percent || 0).toFixed(1)}%</p>
+                                                        <p className="text-lg font-black text-white tabular-nums leading-none mb-1">{formatBRL(data.value, privacyMode)}</p>
+                                                        <p className="text-xs font-bold text-zinc-400">{(data.percent || 0).toFixed(1)}% da Carteira</p>
                                                     </div>
                                                 );
                                             }
@@ -2221,23 +2273,61 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                         </div>
                     </div>
 
-                    {/* List Section */}
-                    <div className="space-y-4">
-                        <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-2">Detalhamento</h3>
+                    {/* Highlights / Stats */}
+                    <div className="grid grid-cols-2 gap-3">
+                         <div className="bg-zinc-50 dark:bg-zinc-800/30 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                            <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Maior Posição</p>
+                            <p className="text-sm font-black text-zinc-900 dark:text-white truncate">
+                                {allocationData.byAsset[0]?.name || '--'}
+                            </p>
+                            <p className="text-xs font-bold text-emerald-500 mt-0.5">
+                                {allocationData.byAsset[0]?.percent.toFixed(1)}%
+                            </p>
+                         </div>
+                         <div className="bg-zinc-50 dark:bg-zinc-800/30 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                            <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Setor Dominante</p>
+                            <p className="text-sm font-black text-zinc-900 dark:text-white truncate">
+                                {allocationData.bySector[0]?.name || '--'}
+                            </p>
+                            <p className="text-xs font-bold text-sky-500 mt-0.5">
+                                {allocationData.bySector[0]?.percent.toFixed(1)}%
+                            </p>
+                         </div>
+                    </div>
+
+                    {/* Detailed List */}
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between px-2">
+                            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                                Detalhamento por {allocationView === 'CLASS' ? 'Classe' : allocationView === 'SECTOR' ? 'Setor' : 'Ativo'}
+                            </h3>
+                            <span className="text-[10px] font-bold text-zinc-400">{formatBRL(balance, privacyMode)}</span>
+                        </div>
+                        
                         {(allocationView === 'CLASS' ? allocationData.byClass : allocationView === 'SECTOR' ? allocationData.bySector : allocationData.byAsset).map((item, idx) => (
-                            <div key={idx} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-xs shadow-sm" style={{ backgroundColor: item.color }}>
-                                        {item.percent.toFixed(0)}%
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-black text-zinc-900 dark:text-white leading-none mb-1">{item.name}</p>
-                                        <div className="w-24 h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                                            <div className="h-full rounded-full" style={{ width: `${item.percent}%`, backgroundColor: item.color }}></div>
+                            <div key={idx} className="relative bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 overflow-hidden">
+                                {/* Progress Bar Background */}
+                                <div 
+                                    className="absolute bottom-0 left-0 h-1 bg-current opacity-20" 
+                                    style={{ width: `${item.percent}%`, color: item.color }}
+                                ></div>
+
+                                <div className="flex items-center justify-between relative z-10">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-xs shadow-sm shrink-0" style={{ backgroundColor: item.color }}>
+                                            {item.percent.toFixed(0)}%
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-black text-zinc-900 dark:text-white leading-none mb-1">{item.name}</p>
+                                            <p className="text-[10px] font-medium text-zinc-500 uppercase tracking-wide">
+                                                {allocationView === 'ASSET' ? (item as any).sector : (allocationView === 'SECTOR' ? `${item.percent.toFixed(1)}% do Total` : 'Classe de Ativo')}
+                                            </p>
                                         </div>
                                     </div>
+                                    <div className="text-right">
+                                        <p className="text-sm font-bold text-zinc-900 dark:text-white tabular-nums">{formatBRL(item.value, privacyMode)}</p>
+                                    </div>
                                 </div>
-                                <p className="text-sm font-bold text-zinc-600 dark:text-zinc-400 tabular-nums">{formatBRL(item.value, privacyMode)}</p>
                             </div>
                         ))}
                     </div>
