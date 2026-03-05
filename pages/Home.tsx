@@ -960,6 +960,15 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
       });
   };
 
+  const projectedDividends12m = useMemo(() => {
+      return portfolio.reduce((acc, asset) => {
+          if (!asset.currentPrice || !asset.quantity) return acc;
+          const assetValue = asset.quantity * asset.currentPrice;
+          const dy = asset.dy_12m || 0;
+          return acc + (assetValue * (dy / 100));
+      }, 0);
+  }, [portfolio]);
+
   const capitalGain = totalAppreciation + salesGain;
   const totalReturn = capitalGain + totalDividendsReceived;
   const totalReturnPercent = invested > 0 ? (totalReturn / invested) * 100 : 0;
@@ -1384,7 +1393,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                     </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4 pt-6 mt-5 border-t border-white/10">
+                <div className="grid grid-cols-2 gap-4 pt-6 mt-5 border-t border-white/10">
                     <div className="relative">
                         <span className="text-[9px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Valorização</span>
                         <div className={`flex items-center gap-1.5 ${capitalGain >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
@@ -1403,11 +1412,20 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                             </span>
                         </div>
                     </div>
-                    <div className="relative pl-4 border-l border-white/10">
+                    <div className="relative pt-4 border-t border-white/10">
                         <span className="text-[9px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Retorno</span>
                         <div className={`flex items-center gap-1.5 ${totalReturn >= 0 ? 'text-indigo-400' : 'text-rose-400'}`}>
                             <span className="text-sm font-black tabular-nums tracking-tight">
                                 {totalReturnPercent.toFixed(2)}%
+                            </span>
+                        </div>
+                    </div>
+                    <div className="relative pt-4 pl-4 border-t border-l border-white/10">
+                        <span className="text-[9px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Projeção 12M</span>
+                        <div className="flex items-center gap-1.5 text-emerald-400">
+                            <Sparkles className="w-3.5 h-3.5" />
+                            <span className="text-sm font-black tabular-nums tracking-tight">
+                                {formatBRL(projectedDividends12m, privacyMode)}
                             </span>
                         </div>
                     </div>
