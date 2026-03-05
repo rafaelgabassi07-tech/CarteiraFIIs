@@ -370,13 +370,25 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
 
   try {
       // 3. Fetch missing/stale data
-      let [divResponse, metaResponse] = await Promise.all([
-          supabase.from('market_dividends').select('*').in('ticker', tickersToFetch),
-          supabase.from('ativos_metadata').select('*').in('ticker', tickersToFetch)
-      ]);
+      // Batch Supabase queries to avoid URL length limits
+      const BATCH_SIZE = 20;
+      let dividendsData: any[] = [];
+      let metaData: any[] = [];
 
-      let dividendsData = divResponse.data || [];
-      let metaData = metaResponse.data || [];
+      for (let i = 0; i < tickersToFetch.length; i += BATCH_SIZE) {
+          const batch = tickersToFetch.slice(i, i + BATCH_SIZE);
+          
+          const [divRes, metaRes] = await Promise.all([
+              supabase.from('market_dividends').select('*').in('ticker', batch),
+              supabase.from('ativos_metadata').select('*').in('ticker', batch)
+          ]);
+
+          if (divRes.data) dividendsData = [...dividendsData, ...divRes.data];
+          if (metaRes.data) metaData = [...metaData, ...metaRes.data];
+          
+          if (divRes.error) console.error('[DataService] Error fetching dividends batch:', divRes.error);
+          if (metaRes.error) console.error('[DataService] Error fetching metadata batch:', metaRes.error);
+      }
 
       const metadataMap: Record<string, any> = {};
       metaData.forEach((m: any) => { metadataMap[normalizeTicker(m.ticker)] = m; });
