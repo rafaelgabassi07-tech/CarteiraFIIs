@@ -1119,23 +1119,23 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
   const incomeData = useMemo(() => {
       const groups: Record<string, number> = {};
       const historyList: { date: string, ticker: string, type: string, amount: number, paymentDate: string, status: 'paid' | 'provisioned' }[] = [];
-      const todayStr = new Date().toISOString().split('T')[0];
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
       
-      // Inicializa últimos 12 meses + meses futuros encontrados
-      const allDates = dividendReceipts.map(d => d.paymentDate).filter(d => d && d !== 'A Definir').sort();
-      const minDate = new Date(); 
-      minDate.setMonth(minDate.getMonth() - 11);
-      
-      // Garante chaves para o gráfico
+      // Inicializa últimos 12 meses com chaves locais (YYYY-MM)
+      // Usa data local para evitar problemas de fuso horário que toISOString() causa
       for (let i = 0; i < 12; i++) {
           const d = new Date();
           d.setMonth(d.getMonth() - i);
-          groups[d.toISOString().substring(0, 7)] = 0;
+          const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+          groups[monthKey] = 0;
       }
 
       let last12mTotal = 0;
       let provisionedTotal = 0;
-      const oneYearAgoStr = new Date(new Date().setFullYear(new Date().getFullYear() - 1)).toISOString().split('T')[0];
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+      const oneYearAgoStr = `${oneYearAgo.getFullYear()}-${String(oneYearAgo.getMonth() + 1).padStart(2, '0')}-${String(oneYearAgo.getDate()).padStart(2, '0')}`;
 
       const sortedReceipts = [...dividendReceipts].sort((a, b) => {
           const dateA = a.paymentDate || a.dateCom;
