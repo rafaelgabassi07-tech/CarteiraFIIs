@@ -369,13 +369,13 @@ const App: React.FC = () => {
               id: `pred-${p.ticker}-${p.paymentDate}-${p.rate}`,
               ticker: p.ticker,
               type: p.type,
-              // Preserve original values so useIncomeData can determine status correctly
               dateCom: p.dateCom,
               paymentDate: p.paymentDate,
               rate: p.rate,
               quantityOwned: p.quantity,
               totalReceived: p.projectedTotal,
-              assetType: AssetType.FII // Default, ajustado se possível
+              assetType: AssetType.FII,
+              status: p.status
           }));
           setDividends(prev => mergeDividends(prev, predictionReceipts));
       }

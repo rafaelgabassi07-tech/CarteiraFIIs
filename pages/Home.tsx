@@ -1094,7 +1094,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
               ...d,
               quantityOwned: qty,
               totalReceived: qty * d.rate, // Valor projetado com a carteira de hoje
-              isSimulated: true
+              isSimulated: true,
+              status: d.status || 'CONFIRMED'
           };
       }).filter(d => d.quantityOwned > 0) // Mostra apenas se tiver quantidade
       .sort((a, b) => {
@@ -1558,6 +1559,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                                                                 <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 uppercase">
                                                                     {item.type}
                                                                 </span>
+                                                                {item.status === 'PREDICTED' && (
+                                                                    <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 uppercase tracking-tighter">
+                                                                        PREVISTO
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                             <p className="text-[10px] text-zinc-500 font-medium mt-0.5">
                                                                 {item.quantityOwned} cotas x {formatBRL(item.rate, false)}

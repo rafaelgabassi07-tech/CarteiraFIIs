@@ -5,9 +5,9 @@ import * as cheerio from 'cheerio';
 import https from 'https';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_KEY || process.env.SUPABASE_KEY;
-const supabase = createClient(supabaseUrl || '', supabaseKey || '');
+const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || 'https://mock.supabase.co';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_KEY || process.env.SUPABASE_KEY || 'mock-key';
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 const httpsAgent = new https.Agent({ 
     keepAlive: true,
@@ -21,7 +21,10 @@ const USER_AGENTS = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36 Edg/123.0.0.0',
-    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Mobile/15E148 Safari/604.1',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:125.0) Gecko/20100101 Firefox/125.0'
 ];
 
 const getRandomAgent = () => USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
@@ -202,7 +205,7 @@ async function scrapeStatusInvestDividends(ticker: string) {
             headers: { 
                 'X-Requested-With': 'XMLHttpRequest',
                 'Referer': 'https://statusinvest.com.br/',
-                'User-Agent': 'Mozilla/5.0'
+                'User-Agent': getRandomAgent()
             },
             timeout: 8000
         });
@@ -310,7 +313,7 @@ async function scrapeInvestidor10Index(ticker: string) {
     }
 }
 
-async function scrapeInvestidor10(ticker: string) {
+export async function scrapeInvestidor10(ticker: string) {
     if (ticker.toUpperCase() === 'IFIX') {
         return scrapeInvestidor10Index('ifix');
     }

@@ -132,6 +132,7 @@ export interface DividendReceipt {
   quantityOwned: number;
   totalReceived: number;
   assetType?: AssetType;
+  status?: 'CONFIRMED' | 'PREDICTED';
 }
 
 export interface BrapiQuote {

@@ -20,7 +20,7 @@ export interface FutureDividendPrediction {
     quantity: number;
     type: string;
     daysToDateCom: number;
-    status: 'CONFIRMED'; // Agora sempre confirmado
+    status: 'CONFIRMED' | 'PREDICTED';
     reasoning?: string;
 }
 
@@ -225,6 +225,8 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], trans
         const now = new Date();
         now.setHours(0,0,0,0);
 
+        const confirmedTickers = new Set<string>();
+
         if (data && data.length > 0) {
             data.forEach((div: any) => {
                 const normalizedTicker = normalizeTicker(div.ticker);
@@ -278,6 +280,12 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], trans
                 const diffTime = refDate.getTime() - now.getTime();
                 const daysToDateCom = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
 
+                // Marca que este ticker já tem um provento confirmado para este mês/período
+                const monthKey = (div.payment_date || div.date_com || '').substring(0, 7);
+                if (monthKey === now.toISOString().substring(0, 7)) {
+                    confirmedTickers.add(normalizedTicker);
+                }
+
                 predictions.push({
                     ticker: normalizedTicker,
                     dateCom: div.date_com || 'Já ocorreu',
@@ -292,6 +300,50 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], trans
                 });
             });
         }
+
+        // 2. Lógica Preditiva para FIIs (Heurística de Recorrência)
+        // Se um FII pagou nos últimos meses mas ainda não anunciou este mês, prevemos baseado no histórico.
+        portfolio.forEach(asset => {
+            const ticker = normalizeTicker(asset.ticker);
+            if (asset.assetType !== AssetType.FII || confirmedTickers.has(ticker)) return;
+
+            // Busca histórico recente deste ticker no Supabase
+            const history = data?.filter(d => normalizeTicker(d.ticker) === ticker) || [];
+            if (history.length === 0) return;
+
+            // Pega o último pagamento confirmado
+            const last = history[history.length - 1];
+            const lastDate = parseDateToLocal(last.payment_date || last.date_com);
+            if (!lastDate) return;
+
+            // Se o último pagamento foi há mais de 45 dias, talvez não seja recorrente mensal
+            const daysSinceLast = (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24);
+            if (daysSinceLast > 45) return;
+
+            // Projeta para o mês atual
+            const predictedDateCom = new Date(lastDate);
+            predictedDateCom.setMonth(now.getMonth());
+            predictedDateCom.setFullYear(now.getFullYear());
+            
+            // Geralmente FIIs pagam no mesmo dia do mês anterior ou próximo
+            const predictedPaymentDate = new Date(predictedDateCom);
+            
+            const rate = Number(last.rate);
+            const total = preciseMul(asset.quantity, rate);
+
+            predictions.push({
+                ticker,
+                dateCom: predictedDateCom.toISOString().split('T')[0],
+                paymentDate: predictedPaymentDate.toISOString().split('T')[0],
+                rate,
+                quantity: asset.quantity,
+                projectedTotal: total,
+                type: last.type || 'REND',
+                daysToDateCom: Math.ceil((predictedDateCom.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
+                status: 'PREDICTED',
+                reasoning: `Projeção baseada no histórico de recorrência mensal (${last.type}).`
+            });
+        });
 
         return predictions.sort((a,b) => {
             const getSortDate = (p: FutureDividendPrediction) => {
@@ -388,16 +440,14 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
       const metadataMap: Record<string, any> = {};
       metaData.forEach((m: any) => { metadataMap[normalizeTicker(m.ticker)] = m; });
 
-      // Identify which are STILL missing (not in Supabase)
+      // Identify which are STILL missing (not in Supabase) or if we are forcing refresh
       const missingInSupabase = tickersToFetch.filter(t => !metadataMap[t]);
-      
-      // Also check for stale data in what we just fetched (if it was a fetch)
-      // or if we are forcing refresh, we might want to trigger scraper anyway
+      const tickersToScrape = forceRefresh ? tickersToFetch : missingInSupabase;
       
       // 4. Trigger Scraper for missing or stale items
-      if (missingInSupabase.length > 0) {
-          console.log(`[DataService] Triggering scraper for ${missingInSupabase.length} missing assets`);
-          const results = await triggerScraperUpdate(missingInSupabase, true);
+      if (tickersToScrape.length > 0) {
+          console.log(`[DataService] Triggering scraper for ${tickersToScrape.length} assets (force: ${forceRefresh})`);
+          const results = await triggerScraperUpdate(tickersToScrape, true);
           
           results.forEach(r => {
               if (r.status === 'success' && r.rawFundamentals) {
@@ -410,6 +460,8 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
                           payment_date: d.payment_date || '',
                           rate: d.rate
                       }));
+                      // Remove old dividends for this ticker to avoid duplicates if we just scraped them
+                      dividendsData = dividendsData.filter(d => normalizeTicker(d.ticker) !== normalizeTicker(r.ticker));
                       dividendsData = [...dividendsData, ...newDivs];
                   }
               }
