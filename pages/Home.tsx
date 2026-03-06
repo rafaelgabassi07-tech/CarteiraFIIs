@@ -1645,112 +1645,128 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                 </div>
 
                 <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar space-y-6">
-                    {/* Main Chart */}
+                    {/* Charts Section */}
                     <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] p-6 border border-zinc-100 dark:border-zinc-800 shadow-sm relative overflow-hidden">
-                        <div className="h-64 w-full relative z-10">
-                            {filteredChartData.length > 0 ? (
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <ComposedChart data={filteredChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                        <defs>
-                                            <linearGradient id="colorIncomeBar" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="0%" stopColor="#10b981" stopOpacity={0.8}/>
-                                                <stop offset="100%" stopColor="#10b981" stopOpacity={0.2}/>
-                                            </linearGradient>
-                                            <linearGradient id="colorIncomeBarFuture" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                                                <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.2}/>
-                                            </linearGradient>
-                                        </defs>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
-                                        <XAxis 
-                                            dataKey="label" 
-                                            axisLine={false} 
-                                            tickLine={false} 
-                                            tick={{ fontSize: 10, fill: '#71717a', fontWeight: 600 }} 
-                                            dy={10} 
-                                        />
-                                        <YAxis 
-                                            axisLine={false} 
-                                            tickLine={false} 
-                                            tick={{ fontSize: 10, fill: '#71717a', fontWeight: 500 }} 
-                                            tickFormatter={(val) => `R$${val}`} 
-                                        />
-                                        <RechartsTooltip 
-                                            cursor={{fill: 'rgba(16, 185, 129, 0.05)'}}
-                                            content={({ active, payload, label }) => {
-                                                if (active && payload && payload.length) {
-                                                    const data = payload[0].payload;
-                                                    return (
-                                                        <div className="bg-zinc-900/95 border border-white/10 p-3 rounded-xl shadow-2xl backdrop-blur-md min-w-[120px]">
-                                                            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-wider mb-1">{data.date}</p>
-                                                            <p className="text-lg font-black text-white tabular-nums leading-none mb-1">
-                                                                {formatBRL(data.value, privacyMode)}
-                                                            </p>
-                                                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${data.isFuture ? 'bg-blue-500/20 text-blue-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
-                                                                {data.isFuture ? 'PROJETADO' : 'RECEBIDO'}
-                                                            </span>
-                                                        </div>
-                                                    );
-                                                }
-                                                return null;
-                                            }}
-                                        />
-                                        <Bar 
-                                            dataKey="value" 
-                                            radius={[6, 6, 0, 0]}
-                                            maxBarSize={40}
-                                            animationDuration={1500}
-                                        >
-                                            {filteredChartData.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={entry.isFuture ? "url(#colorIncomeBarFuture)" : "url(#colorIncomeBar)"} />
-                                            ))}
-                                        </Bar>
-                                        {incomeData.average > 0 && (
-                                            <ReferenceLine y={incomeData.average} stroke="#f59e0b" strokeDasharray="3 3" strokeOpacity={0.6}>
-                                                <Label value="Média" position="insideRight" fill="#f59e0b" fontSize={9} fontWeight="bold" dy={-10} />
-                                            </ReferenceLine>
-                                        )}
-                                    </ComposedChart>
-                                </ResponsiveContainer>
-                            ) : (
-                                <div className="flex flex-col items-center justify-center h-full text-zinc-400">
-                                    <CircleDollarSign className="w-8 h-8 mb-2 opacity-20" />
-                                    <p className="text-xs font-medium">Nenhum provento registrado</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Breakdown Section */}
-                    <div className="space-y-4">
-                        <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-2">Maiores Pagadores</h3>
-                        
-                        {dividendsByAsset.length > 0 ? (
-                            dividendsByAsset.slice(0, 5).map((item, idx) => (
-                                <div key={idx} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-xs shadow-sm" style={{ backgroundColor: item.color }}>
-                                            {item.name.substring(0, 2)}
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-black text-zinc-900 dark:text-white leading-none mb-1">{item.name}</p>
-                                            <div className="w-24 h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                                                <div 
-                                                    className="h-full rounded-full" 
-                                                    style={{ 
-                                                        width: `${(item.value / (dividendsByAsset[0]?.value || 1)) * 100}%`, 
-                                                        backgroundColor: item.color 
-                                                    }}
-                                                ></div>
-                                            </div>
-                                        </div>
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center">
+                            {/* Monthly Bar Chart */}
+                            <div className="lg:col-span-2 h-64 w-full relative z-10">
+                                <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4">Evolução Mensal</h3>
+                                {filteredChartData.length > 0 ? (
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <ComposedChart data={filteredChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                            <defs>
+                                                <linearGradient id="colorIncomeBar" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="0%" stopColor="#10b981" stopOpacity={0.8}/>
+                                                    <stop offset="100%" stopColor="#10b981" stopOpacity={0.2}/>
+                                                </linearGradient>
+                                                <linearGradient id="colorIncomeBarFuture" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                                                    <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.2}/>
+                                                </linearGradient>
+                                            </defs>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
+                                            <XAxis 
+                                                dataKey="label" 
+                                                axisLine={false} 
+                                                tickLine={false} 
+                                                tick={{ fontSize: 10, fill: '#71717a', fontWeight: 600 }} 
+                                                dy={10} 
+                                            />
+                                            <YAxis 
+                                                axisLine={false} 
+                                                tickLine={false} 
+                                                tick={{ fontSize: 10, fill: '#71717a', fontWeight: 500 }} 
+                                                tickFormatter={(val) => `R$${val}`} 
+                                            />
+                                            <RechartsTooltip 
+                                                cursor={{fill: 'rgba(16, 185, 129, 0.05)'}}
+                                                content={({ active, payload, label }) => {
+                                                    if (active && payload && payload.length) {
+                                                        const data = payload[0].payload;
+                                                        return (
+                                                            <div className="bg-zinc-900/95 border border-white/10 p-3 rounded-xl shadow-2xl backdrop-blur-md min-w-[120px]">
+                                                                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-wider mb-1">{data.date}</p>
+                                                                <p className="text-lg font-black text-white tabular-nums leading-none mb-1">
+                                                                    {formatBRL(data.value, privacyMode)}
+                                                                </p>
+                                                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${data.isFuture ? 'bg-blue-500/20 text-blue-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                                                                    {data.isFuture ? 'PROJETADO' : 'RECEBIDO'}
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return null;
+                                                }}
+                                            />
+                                            <Bar 
+                                                dataKey="value" 
+                                                radius={[6, 6, 0, 0]}
+                                                maxBarSize={40}
+                                                animationDuration={1500}
+                                            >
+                                                {filteredChartData.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={entry.isFuture ? "url(#colorIncomeBarFuture)" : "url(#colorIncomeBar)"} />
+                                                ))}
+                                            </Bar>
+                                            {incomeData.average > 0 && (
+                                                <ReferenceLine y={incomeData.average} stroke="#f59e0b" strokeDasharray="3 3" strokeOpacity={0.6}>
+                                                    <Label value="Média" position="insideRight" fill="#f59e0b" fontSize={9} fontWeight="bold" dy={-10} />
+                                                </ReferenceLine>
+                                            )}
+                                        </ComposedChart>
+                                    </ResponsiveContainer>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center h-full text-zinc-400">
+                                        <CircleDollarSign className="w-8 h-8 mb-2 opacity-20" />
+                                        <p className="text-xs font-medium">Nenhum provento registrado</p>
                                     </div>
-                                    <p className="text-sm font-bold text-zinc-600 dark:text-zinc-400 tabular-nums">{formatBRL(item.value, privacyMode)}</p>
-                                </div>
-                            ))
-                        ) : (
-                            <p className="text-xs text-zinc-400 px-4">Nenhum dado disponível.</p>
-                        )}
+                                )}
+                            </div>
+
+                            {/* Pie Chart - Dividends by Asset */}
+                            <div className="h-64 w-full relative z-10 flex flex-col">
+                                <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4">Por Ativo</h3>
+                                {dividendsByAsset.length > 0 ? (
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie
+                                                data={dividendsByAsset}
+                                                cx="50%"
+                                                cy="50%"
+                                                innerRadius={60}
+                                                outerRadius={80}
+                                                paddingAngle={5}
+                                                dataKey="value"
+                                                animationDuration={1500}
+                                            >
+                                                {dividendsByAsset.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
+                                                ))}
+                                            </Pie>
+                                            <RechartsTooltip 
+                                                content={({ active, payload }) => {
+                                                    if (active && payload && payload.length) {
+                                                        const data = payload[0].payload;
+                                                        return (
+                                                            <div className="bg-zinc-900/95 border border-white/10 p-2 rounded-lg shadow-xl backdrop-blur-md">
+                                                                <p className="text-[10px] font-black text-white uppercase">{data.name}</p>
+                                                                <p className="text-xs font-bold text-emerald-400">{formatBRL(data.value, privacyMode)}</p>
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return null;
+                                                }}
+                                            />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center h-full text-zinc-400">
+                                        <PieIcon className="w-8 h-8 mb-2 opacity-20" />
+                                        <p className="text-xs font-medium">Sem dados</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
 
                     {/* History Section */}
