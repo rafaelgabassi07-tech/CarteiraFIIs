@@ -107,7 +107,7 @@ export const DailyVariationModal: React.FC<DailyVariationModalProps> = ({
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className={`p-4 rounded-2xl border flex flex-col gap-1 ${stats.totalReturn >= 0 ? 'bg-emerald-500/5 border-emerald-500/10' : 'bg-rose-500/5 border-rose-500/10'}`}>
-                            <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Lucro/Prejuízo</span>
+                            <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Lucro Total</span>
                             <span className={`text-lg font-black tracking-tight ${stats.totalReturn >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                                 {stats.totalReturn >= 0 ? '+' : ''}{formatBRL(stats.totalReturn)}
                             </span>
@@ -121,86 +121,137 @@ export const DailyVariationModal: React.FC<DailyVariationModalProps> = ({
                     </div>
                 </div>
 
-                {/* Tabs */}
-                <div className="flex px-6 border-b border-zinc-100 dark:border-zinc-900 shrink-0 overflow-x-auto no-scrollbar">
-                    <button 
-                        onClick={() => setActiveTab('daily')}
-                        className={`py-4 px-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all relative whitespace-nowrap flex items-center gap-2 ${activeTab === 'daily' ? 'text-indigo-500' : 'text-zinc-400'}`}
-                    >
-                        <History className="w-3.5 h-3.5" />
-                        Diário
-                        {activeTab === 'daily' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-indigo-500 rounded-t-full"></div>}
-                    </button>
-                    <button 
-                        onClick={() => setActiveTab('chart')}
-                        className={`py-4 px-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all relative whitespace-nowrap flex items-center gap-2 ${activeTab === 'chart' ? 'text-indigo-500' : 'text-zinc-400'}`}
-                    >
-                        <BarChart3 className="w-3.5 h-3.5" />
-                        Gráfico
-                        {activeTab === 'chart' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-indigo-500 rounded-t-full"></div>}
-                    </button>
-                    <button 
-                        onClick={() => setActiveTab('stats')}
-                        className={`py-4 px-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all relative whitespace-nowrap flex items-center gap-2 ${activeTab === 'stats' ? 'text-indigo-500' : 'text-zinc-400'}`}
-                    >
-                        <PieChart className="w-3.5 h-3.5" />
-                        Estatísticas
-                        {activeTab === 'stats' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-indigo-500 rounded-t-full"></div>}
-                    </button>
-                </div>
-
                 {/* Content Section */}
                 <div className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar bg-zinc-50/50 dark:bg-zinc-900/30">
-                    <div className="px-6 py-8">
-                        {activeTab === 'daily' && (
+                    <div className="px-6 py-8 space-y-8">
+                        
+                        {/* Summary Chart */}
+                        {chartData.length > 0 && (
                             <div className="space-y-4">
-                                {history.length === 0 ? (
-                                    <div className="flex flex-col items-center justify-center py-20 opacity-50">
-                                        <div className="w-20 h-20 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mb-6">
-                                            <History className="w-10 h-10 text-zinc-300 dark:text-zinc-600" strokeWidth={1.5} />
+                                <div className="flex items-center justify-between px-1">
+                                    <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                                        <BarChart3 className="w-3.5 h-3.5" /> Desempenho Recente
+                                    </h4>
+                                    <div className="flex gap-3">
+                                        <div className="flex items-center gap-1">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                                            <span className="text-[8px] font-bold text-zinc-400 uppercase">Alta</span>
                                         </div>
-                                        <p className="text-base font-black text-zinc-900 dark:text-white tracking-tight">Sem histórico</p>
-                                        <p className="text-xs text-zinc-400 mt-2 text-center max-w-[220px]">
-                                            Sua variação diária será registrada automaticamente aqui.
-                                        </p>
+                                        <div className="flex items-center gap-1">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-rose-500"></div>
+                                            <span className="text-[8px] font-bold text-zinc-400 uppercase">Baixa</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="h-[180px] w-full bg-white dark:bg-zinc-900 rounded-[2rem] p-4 border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={chartData} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
+                                            <XAxis 
+                                                dataKey="dayLabel" 
+                                                axisLine={false} 
+                                                tickLine={false} 
+                                                tick={{ fontSize: 9, fill: '#a1a1aa', fontWeight: 700 }} 
+                                                dy={10}
+                                            />
+                                            <YAxis 
+                                                axisLine={false} 
+                                                tickLine={false} 
+                                                tick={{ fontSize: 9, fill: '#a1a1aa', fontWeight: 700 }} 
+                                                tickFormatter={(val) => `R$${Math.abs(val) >= 1000 ? (val/1000).toFixed(0)+'k' : val}`}
+                                            />
+                                            <Tooltip 
+                                                cursor={{ fill: 'rgba(0,0,0,0.02)' }}
+                                                content={({ active, payload }) => {
+                                                    if (active && payload && payload.length) {
+                                                        const data = payload[0].payload;
+                                                        return (
+                                                            <div className="bg-zinc-900 text-white p-2.5 rounded-xl shadow-xl border border-zinc-800 text-[10px]">
+                                                                <p className="font-bold mb-0.5 text-zinc-400">{data.formattedDate}</p>
+                                                                <p className={`font-black ${data.variationValue >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                                                    {data.variationValue >= 0 ? '+' : ''}{formatBRL(data.variationValue)}
+                                                                </p>
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return null;
+                                                }}
+                                            />
+                                            <ReferenceLine y={0} stroke="#e4e4e7" strokeDasharray="3 3" />
+                                            <Bar dataKey="variationValue" radius={[4, 4, 4, 4]} barSize={12}>
+                                                {chartData.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                                ))}
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Quick Stats Chips */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                                    <TrendingUp className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Dias Positivos</p>
+                                    <p className="text-lg font-black text-zinc-900 dark:text-white leading-none mt-0.5">{stats.positiveDays}</p>
+                                </div>
+                            </div>
+                            <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-500">
+                                    <TrendingDown className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Dias Negativos</p>
+                                    <p className="text-lg font-black text-zinc-900 dark:text-white leading-none mt-0.5">{stats.negativeDays}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* History List */}
+                        <div className="space-y-4">
+                            <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1 flex items-center gap-2">
+                                <History className="w-3.5 h-3.5" /> Histórico Diário
+                            </h4>
+                            <div className="space-y-3">
+                                {history.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center py-12 opacity-50 bg-white dark:bg-zinc-900 rounded-[2rem] border border-dashed border-zinc-200 dark:border-zinc-800">
+                                        <History className="w-8 h-8 text-zinc-300 mb-3" strokeWidth={1.5} />
+                                        <p className="text-xs font-bold text-zinc-400">Sem registros ainda</p>
                                     </div>
                                 ) : (
                                     history.map((record, idx) => {
                                         const isPositive = record.variationValue >= 0;
                                         return (
-                                            <div key={idx} className="bg-white dark:bg-zinc-900 p-5 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center justify-between group hover:border-indigo-500/30 transition-all">
-                                                <div className="flex items-center gap-5">
-                                                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all group-hover:scale-110 ${isPositive ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
-                                                        {isPositive ? <TrendingUp className="w-7 h-7" /> : <TrendingDown className="w-7 h-7" />}
+                                            <div key={idx} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center justify-between group hover:border-indigo-500/30 transition-all">
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all group-hover:scale-110 ${isPositive ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
+                                                        {isPositive ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
                                                     </div>
                                                     <div>
-                                                        <div className="flex items-center gap-2 mb-1">
-                                                            <p className="text-base font-black text-zinc-900 dark:text-white tracking-tighter">
+                                                        <div className="flex items-center gap-2 mb-0.5">
+                                                            <p className="text-sm font-black text-zinc-900 dark:text-white tracking-tighter">
                                                                 {formatDateShort(record.date)}
                                                             </p>
                                                             {isToday(record.date) && (
-                                                                <span className="px-2 py-0.5 rounded-lg bg-indigo-500 text-white text-[9px] font-black uppercase tracking-widest">
+                                                                <span className="px-1.5 py-0.5 rounded-md bg-indigo-500 text-white text-[7px] font-black uppercase tracking-widest">
                                                                     Hoje
                                                                 </span>
                                                             )}
                                                         </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <CalendarDays className="w-3.5 h-3.5 text-zinc-400" />
-                                                            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
-                                                                {getWeekday(record.date)}
-                                                            </p>
-                                                        </div>
+                                                        <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">
+                                                            {getWeekday(record.date)}
+                                                        </p>
                                                     </div>
                                                 </div>
                                                 <div className="text-right">
-                                                    <p className={`text-xl font-black tracking-tighter mb-1 ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                    <p className={`text-base font-black tracking-tighter mb-0.5 ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
                                                         {isPositive ? '+' : ''}{formatBRL(record.variationValue)}
                                                     </p>
                                                     <div className="flex items-center justify-end gap-2">
-                                                        <span className="text-[10px] font-bold text-zinc-400">
-                                                            {formatBRL(record.totalValue)}
-                                                        </span>
-                                                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg ${isPositive ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'}`}>
+                                                        <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md ${isPositive ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'}`}>
                                                             {isPositive ? '+' : ''}{record.variationPercent.toFixed(2)}%
                                                         </span>
                                                     </div>
@@ -210,136 +261,7 @@ export const DailyVariationModal: React.FC<DailyVariationModalProps> = ({
                                     })
                                 )}
                             </div>
-                        )}
-
-                        {activeTab === 'chart' && (
-                            <div className="h-[400px] w-full bg-white dark:bg-zinc-900 rounded-[2.5rem] p-6 border border-zinc-100 dark:border-zinc-800 shadow-sm flex flex-col">
-                                <div className="flex items-center justify-between mb-6">
-                                    <h4 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Variação (14 Dias)</h4>
-                                    <div className="flex gap-2">
-                                        <div className="flex items-center gap-1">
-                                            <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                                            <span className="text-[9px] font-bold text-zinc-400">Positivo</span>
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                            <div className="w-2 h-2 rounded-full bg-rose-500"></div>
-                                            <span className="text-[9px] font-bold text-zinc-400">Negativo</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                {chartData.length > 0 ? (
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-                                            <XAxis 
-                                                dataKey="dayLabel" 
-                                                axisLine={false} 
-                                                tickLine={false} 
-                                                tick={{ fontSize: 10, fill: '#a1a1aa', fontWeight: 600 }} 
-                                                dy={10}
-                                            />
-                                            <YAxis 
-                                                axisLine={false} 
-                                                tickLine={false} 
-                                                tick={{ fontSize: 10, fill: '#a1a1aa', fontWeight: 600 }} 
-                                                tickFormatter={(val) => `R$${val}`}
-                                            />
-                                            <Tooltip 
-                                                cursor={{ fill: 'transparent' }}
-                                                content={({ active, payload }) => {
-                                                    if (active && payload && payload.length) {
-                                                        const data = payload[0].payload;
-                                                        return (
-                                                            <div className="bg-zinc-900 text-white p-3 rounded-xl shadow-xl border border-zinc-800 text-xs">
-                                                                <p className="font-bold mb-1 text-zinc-400">{data.formattedDate}</p>
-                                                                <p className={`font-black text-lg ${data.variationValue >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                                                    {data.variationValue >= 0 ? '+' : ''}{formatBRL(data.variationValue)}
-                                                                </p>
-                                                                <p className="font-medium text-zinc-500 mt-1">
-                                                                    {data.variationPercent.toFixed(2)}%
-                                                                </p>
-                                                            </div>
-                                                        );
-                                                    }
-                                                    return null;
-                                                }}
-                                            />
-                                            <ReferenceLine y={0} stroke="#52525b" strokeDasharray="3 3" />
-                                            <Bar dataKey="variationValue" radius={[4, 4, 4, 4]}>
-                                                {chartData.map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={entry.color} />
-                                                ))}
-                                            </Bar>
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                ) : (
-                                    <div className="flex-1 flex items-center justify-center text-zinc-400 text-xs font-medium">
-                                        Dados insuficientes para o gráfico
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {activeTab === 'stats' && (
-                            <div className="space-y-6">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                                        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3">Dias Positivos</p>
-                                        <p className="text-3xl font-black text-emerald-500 tracking-tighter">{stats.positiveDays}</p>
-                                        <p className="text-[10px] font-bold text-zinc-400 mt-1">de {stats.totalDays} dias</p>
-                                    </div>
-                                    <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                                        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3">Dias Negativos</p>
-                                        <p className="text-3xl font-black text-rose-500 tracking-tighter">{stats.negativeDays}</p>
-                                        <p className="text-[10px] font-bold text-zinc-400 mt-1">de {stats.totalDays} dias</p>
-                                    </div>
-                                </div>
-
-                                {stats.bestDay && (
-                                    <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                                        <div className="flex items-center gap-2 mb-6">
-                                            <TrendingUp className="w-4 h-4 text-emerald-500" />
-                                            <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Melhor Dia</h4>
-                                        </div>
-                                        <div className="flex justify-between items-end">
-                                            <div>
-                                                <p className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter leading-none mb-2">
-                                                    +{formatBRL(stats.bestDay.variationValue)}
-                                                </p>
-                                                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
-                                                    {formatDateShort(stats.bestDay.date)} ({getWeekday(stats.bestDay.date)})
-                                                </p>
-                                            </div>
-                                            <div className="px-3 py-1 rounded-xl bg-emerald-500/10 text-emerald-500 text-xs font-black">
-                                                +{stats.bestDay.variationPercent.toFixed(2)}%
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {stats.worstDay && (
-                                    <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                                        <div className="flex items-center gap-2 mb-6">
-                                            <TrendingDown className="w-4 h-4 text-rose-500" />
-                                            <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Pior Dia</h4>
-                                        </div>
-                                        <div className="flex justify-between items-end">
-                                            <div>
-                                                <p className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter leading-none mb-2">
-                                                    {formatBRL(stats.worstDay.variationValue)}
-                                                </p>
-                                                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
-                                                    {formatDateShort(stats.worstDay.date)} ({getWeekday(stats.worstDay.date)})
-                                                </p>
-                                            </div>
-                                            <div className="px-3 py-1 rounded-xl bg-rose-500/10 text-rose-500 text-xs font-black">
-                                                {stats.worstDay.variationPercent.toFixed(2)}%
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                        </div>
                     </div>
                 </div>
             </div>

@@ -2316,7 +2316,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
+                        className="fixed inset-0 z-[20000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
                         onClick={() => setSelectedAchievement(null)}
                     >
                         <motion.div

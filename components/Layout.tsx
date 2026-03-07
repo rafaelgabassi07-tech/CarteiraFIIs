@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, Bell, Download, Trash2, Cloud, CloudOff, Loader2, AlertTriangle, Gift, Star, Inbox, RefreshCw, Smartphone, X, Check, Mail, Server, WifiOff, FileText, CheckCircle, Percent, TrendingUp, DollarSign, Activity, Newspaper, CloudLightning, Wifi, CircleHelp, Calendar, Award } from 'lucide-react';
+import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, Bell, Download, Trash2, Cloud, CloudOff, Loader2, AlertTriangle, Gift, Star, Inbox, RefreshCw, Smartphone, X, Check, Mail, Server, WifiOff, FileText, CheckCircle, Percent, TrendingUp, DollarSign, Activity, Newspaper, CloudLightning, Wifi, CircleHelp, Calendar, Award, Clock } from 'lucide-react';
 import { UpdateReportData } from '../types';
 
 const useAnimatedVisibility = (isOpen: boolean, duration: number) => {
@@ -443,15 +443,15 @@ export const NotificationsModal: React.FC<any> = ({ isOpen, onClose, notificatio
     return (
         <SwipeableModal isOpen={isOpen} onClose={onClose}>
             <div className="h-full flex flex-col bg-zinc-50 dark:bg-zinc-950">
-                <div className="px-6 pt-8 pb-6 flex justify-between items-end shrink-0 border-b border-zinc-100 dark:border-zinc-900 bg-white dark:bg-zinc-900">
+                <div className="px-6 pt-10 pb-8 flex justify-between items-end shrink-0 border-b border-zinc-100 dark:border-zinc-900 bg-white dark:bg-zinc-950">
                     <div>
-                        <h2 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter leading-none mb-1">Notificações</h2>
-                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Atualizações da sua carteira</p>
+                        <h2 className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter leading-none mb-2">Notificações</h2>
+                        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Atualizações da sua carteira</p>
                     </div>
                     {hasNotifications && (
                         <button 
                             onClick={onClear} 
-                            className="w-10 h-10 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all active:scale-90"
+                            className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-all active:scale-90"
                             title="Limpar todas"
                         >
                             <Trash2 className="w-5 h-5" />
@@ -459,67 +459,72 @@ export const NotificationsModal: React.FC<any> = ({ isOpen, onClose, notificatio
                     )}
                 </div>
                 
-                <div className="flex-1 overflow-y-auto pb-24 px-6 py-6 space-y-8">
+                <div className="flex-1 overflow-y-auto pb-32 px-6 py-8 space-y-10 no-scrollbar">
                     {!hasNotifications ? (
-                        <div className="flex flex-col items-center justify-center py-20 text-center opacity-60">
-                            <div className="w-24 h-24 bg-zinc-100 dark:bg-zinc-800/50 rounded-full flex items-center justify-center text-zinc-300 dark:text-zinc-700 mb-6 animate-pulse">
-                                <Bell className="w-10 h-10" strokeWidth={1.5} />
+                        <div className="flex flex-col items-center justify-center py-32 text-center">
+                            <div className="w-32 h-32 bg-zinc-50 dark:bg-zinc-900 rounded-[3rem] flex items-center justify-center text-zinc-200 dark:text-zinc-800 mb-8 relative">
+                                <Bell className="w-12 h-12" strokeWidth={1} />
+                                <div className="absolute inset-0 rounded-[3rem] border-2 border-dashed border-zinc-100 dark:border-zinc-800 animate-[spin_20s_linear_infinite]"></div>
                             </div>
-                            <h3 className="text-lg font-black text-zinc-900 dark:text-white tracking-tight mb-1">Tudo limpo!</h3>
-                            <p className="text-xs font-medium text-zinc-400 max-w-[200px]">Você não tem novas notificações no momento.</p>
+                            <h3 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight mb-2">Tudo em ordem!</h3>
+                            <p className="text-sm font-medium text-zinc-400 max-w-[240px] leading-relaxed">
+                                Você está em dia com suas notificações. Novas atualizações aparecerão aqui.
+                            </p>
                         </div>
                     ) : (
                         Object.entries(groupedNotifications).map(([label, group]) => (
                             group.length > 0 && (
                                 <div key={label} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                    <div className="flex items-center gap-2 mb-4">
-                                        <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800"></div>
-                                        <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest bg-zinc-50 dark:bg-zinc-950 px-2">{label}</span>
-                                        <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800"></div>
+                                    <div className="flex items-center gap-4 mb-6">
+                                        <span className="text-[11px] font-black text-zinc-400 uppercase tracking-[0.3em] whitespace-nowrap">{label}</span>
+                                        <div className="h-px flex-1 bg-zinc-100 dark:bg-zinc-900"></div>
                                     </div>
-                                    <div className="space-y-3">
+                                    <div className="space-y-4">
                                         {group.map((n: any) => (
                                             <div 
                                                 key={n.id} 
-                                                className={`relative p-4 rounded-3xl border transition-all duration-300 group ${
+                                                className={`relative p-5 rounded-[2rem] border transition-all duration-500 group ${
                                                     n.read 
-                                                        ? 'bg-white/50 dark:bg-zinc-900/50 border-zinc-100 dark:border-zinc-800/50 opacity-70' 
-                                                        : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 shadow-lg shadow-zinc-200/50 dark:shadow-black/20 scale-[1.02]'
+                                                        ? 'bg-white/50 dark:bg-zinc-900/30 border-zinc-100 dark:border-zinc-800/50 opacity-60 grayscale-[0.5]' 
+                                                        : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 shadow-xl shadow-zinc-200/40 dark:shadow-black/40 hover:border-indigo-500/30'
                                                 }`}
                                             >
                                                 {!n.read && (
-                                                    <span className="absolute top-4 right-4 flex h-2.5 w-2.5">
+                                                    <div className="absolute top-6 right-6 flex h-3 w-3">
                                                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                                                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-indigo-500"></span>
-                                                    </span>
+                                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-indigo-500 shadow-sm shadow-indigo-500/50"></span>
+                                                    </div>
                                                 )}
                                                 
-                                                <div className="flex gap-4">
-                                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm transition-transform group-hover:scale-110 ${
+                                                <div className="flex gap-5">
+                                                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-sm transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 ${
                                                         n.category === 'payment' ? 'bg-emerald-500/10 text-emerald-500' : 
                                                         n.category === 'datacom' ? 'bg-indigo-500/10 text-indigo-500' :
-                                                        n.category === 'alert' ? 'bg-amber-500/10 text-amber-500' :
+                                                        n.category === 'alert' ? 'bg-rose-500/10 text-rose-500' :
                                                         n.category === 'event' ? 'bg-purple-500/10 text-purple-500' :
                                                         'bg-sky-500/10 text-sky-500'
                                                     }`}>
-                                                        {n.category === 'payment' ? <DollarSign className="w-6 h-6" strokeWidth={2.5} /> : 
-                                                         n.category === 'datacom' ? <Calendar className="w-6 h-6" strokeWidth={2.5} /> :
-                                                         n.category === 'alert' ? <AlertTriangle className="w-6 h-6" strokeWidth={2.5} /> :
-                                                         n.category === 'event' ? <Award className="w-6 h-6" strokeWidth={2.5} /> :
-                                                         <Inbox className="w-6 h-6" strokeWidth={2.5} />}
+                                                        {n.category === 'payment' ? <DollarSign className="w-7 h-7" strokeWidth={2} /> : 
+                                                         n.category === 'datacom' ? <Calendar className="w-7 h-7" strokeWidth={2} /> :
+                                                         n.category === 'alert' ? <AlertTriangle className="w-7 h-7" strokeWidth={2} /> :
+                                                         n.category === 'event' ? <Award className="w-7 h-7" strokeWidth={2} /> :
+                                                         <Inbox className="w-7 h-7" strokeWidth={2} />}
                                                     </div>
-                                                    <div className="flex-1 min-w-0 pt-0.5">
-                                                        <div className="flex justify-between items-start mb-1 pr-4">
-                                                            <h4 className={`text-sm font-black tracking-tight leading-tight ${n.read ? 'text-zinc-600 dark:text-zinc-400' : 'text-zinc-900 dark:text-white'}`}>
+                                                    <div className="flex-1 min-w-0 pt-1">
+                                                        <div className="flex justify-between items-start mb-1.5 pr-6">
+                                                            <h4 className={`text-base font-black tracking-tight leading-tight ${n.read ? 'text-zinc-600 dark:text-zinc-400' : 'text-zinc-900 dark:text-white'}`}>
                                                                 {n.title}
                                                             </h4>
                                                         </div>
-                                                        <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium line-clamp-2 mb-2">
+                                                        <p className={`text-sm leading-relaxed font-medium mb-3 ${n.read ? 'text-zinc-400 dark:text-zinc-500' : 'text-zinc-500 dark:text-zinc-400'}`}>
                                                             {n.message}
                                                         </p>
-                                                        <p className="text-[9px] font-bold text-zinc-300 dark:text-zinc-600 uppercase tracking-wider">
-                                                            {new Date(n.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                                                        </p>
+                                                        <div className="flex items-center gap-2">
+                                                            <Clock className="w-3 h-3 text-zinc-300 dark:text-zinc-700" />
+                                                            <p className="text-[10px] font-black text-zinc-300 dark:text-zinc-700 uppercase tracking-widest">
+                                                                {new Date(n.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                                            </p>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>

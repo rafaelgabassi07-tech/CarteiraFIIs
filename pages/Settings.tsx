@@ -243,39 +243,39 @@ export const Settings: React.FC<SettingsProps> = ({
         <div className="pb-32 anim-fade-in px-3 max-w-3xl mx-auto space-y-3">
             
             {/* Profile Header */}
-            <div className="relative overflow-hidden rounded-[1.5rem] bg-zinc-900 dark:bg-zinc-100 p-5 shadow-xl group mb-5">
+            <div className="relative overflow-hidden rounded-[2rem] bg-zinc-900 dark:bg-white p-6 shadow-2xl group mb-6">
                 {/* Background Effects */}
-                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 blur-[100px] rounded-full -mr-20 -mt-20 pointer-events-none"></div>
-                <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-500/10 blur-[80px] rounded-full -ml-10 -mb-10 pointer-events-none"></div>
+                <div className="absolute top-0 right-0 w-72 h-72 bg-indigo-500/30 dark:bg-indigo-500/10 blur-[100px] rounded-full -mr-24 -mt-24 pointer-events-none"></div>
+                <div className="absolute bottom-0 left-0 w-56 h-56 bg-emerald-500/20 dark:bg-emerald-500/5 blur-[80px] rounded-full -ml-16 -mb-16 pointer-events-none"></div>
                 
-                <div className="relative z-10 flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-left">
+                <div className="relative z-10 flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left">
                     <div className="relative">
-                        <div className="w-14 h-14 rounded-xl bg-white/10 dark:bg-black/5 backdrop-blur-md flex items-center justify-center text-white dark:text-zinc-900 border border-white/20 dark:border-black/10 shadow-inner">
-                            <User className="w-6 h-6" strokeWidth={1.5} />
+                        <div className="w-20 h-20 rounded-3xl bg-white/10 dark:bg-black/5 backdrop-blur-xl flex items-center justify-center text-white dark:text-zinc-900 border border-white/20 dark:border-black/10 shadow-inner">
+                            <User className="w-10 h-10" strokeWidth={1.5} />
                         </div>
-                        <div className="absolute -bottom-1.5 -right-1.5 bg-emerald-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full border-2 border-zinc-900 dark:border-zinc-100">
+                        <div className="absolute -bottom-2 -right-2 bg-indigo-500 text-white text-[10px] font-black px-2.5 py-1 rounded-full border-4 border-zinc-900 dark:border-white shadow-lg">
                             PRO
                         </div>
                     </div>
                     
-                    <div className="flex-1 min-w-0">
-                        <h2 className="text-lg font-black text-white dark:text-zinc-900 tracking-tight mb-0.5">
+                    <div className="flex-1 min-w-0 pt-1">
+                        <h2 className="text-2xl font-black text-white dark:text-zinc-900 tracking-tighter mb-1">
                             {user?.email?.split('@')[0] || 'Investidor'}
                         </h2>
-                        <p className="text-[10px] text-white/60 dark:text-zinc-500 font-medium mb-2.5">
-                            {user?.email}
+                        <p className="text-xs text-white/50 dark:text-zinc-500 font-bold mb-4 flex items-center justify-center sm:justify-start gap-2">
+                            <Mail className="w-3 h-3" /> {user?.email}
                         </p>
                         
-                        <div className="flex flex-wrap justify-center sm:justify-start gap-2">
-                            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-white/5 dark:bg-black/5 border border-white/10 dark:border-black/5">
-                                <Activity className="w-2.5 h-2.5 text-indigo-400 dark:text-indigo-600" />
-                                <span className="text-[9px] font-bold text-white/80 dark:text-zinc-600">
+                        <div className="flex flex-wrap justify-center sm:justify-start gap-3">
+                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 dark:bg-zinc-100 border border-white/10 dark:border-zinc-200 shadow-sm">
+                                <Activity className="w-3.5 h-3.5 text-indigo-400 dark:text-indigo-600" />
+                                <span className="text-[10px] font-black text-white/80 dark:text-zinc-600 uppercase tracking-wider">
                                     {transactions.length} Transações
                                 </span>
                             </div>
-                            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-white/5 dark:bg-black/5 border border-white/10 dark:border-black/5">
-                                <Zap className="w-2.5 h-2.5 text-amber-400 dark:text-amber-600" />
-                                <span className="text-[9px] font-bold text-white/80 dark:text-zinc-600">
+                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 dark:bg-zinc-100 border border-white/10 dark:border-zinc-200 shadow-sm">
+                                <Zap className="w-3.5 h-3.5 text-amber-400 dark:text-amber-600" />
+                                <span className="text-[10px] font-black text-white/80 dark:text-zinc-600 uppercase tracking-wider">
                                     Nível {Math.floor(transactions.length / 10) + 1}
                                 </span>
                             </div>
@@ -284,10 +284,10 @@ export const Settings: React.FC<SettingsProps> = ({
 
                     <button 
                         onClick={onLogout}
-                        className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/10 dark:bg-black/5 hover:bg-rose-500/20 dark:hover:bg-rose-500/10 text-white/80 dark:text-zinc-600 hover:text-rose-300 dark:hover:text-rose-600 transition-all"
+                        className="group flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white transition-all duration-300 shadow-lg shadow-rose-500/5"
                     >
-                        <LogOut className="w-3 h-3" />
-                        <span className="text-[9px] font-bold">Sair</span>
+                        <LogOut className="w-4 h-4" />
+                        <span className="text-[11px] font-black uppercase tracking-widest">Sair</span>
                     </button>
                 </div>
             </div>
