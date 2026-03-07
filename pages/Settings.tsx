@@ -1,11 +1,9 @@
 import React, { useState, useRef, useMemo, memo } from 'react';
 import { 
-    User, Settings as SettingsIcon, Bell, Shield, Database, 
-    Cloud, RefreshCw, LogOut, ChevronRight, Moon, Sun, 
+    User, Bell, Shield, Database, 
+    RefreshCw, LogOut, ChevronRight, Moon, Sun, 
     Monitor, Palette, Eye, EyeOff, Download, Upload, 
-    Trash2, Info, CheckCircle2, AlertTriangle, Zap,
-    Smartphone, FileText, Globe, Clock, Calculator,
-    Search, X, ExternalLink
+    Trash2, Zap, Smartphone, FileText, Globe
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Transaction, DividendReceipt, ServiceMetric, AssetType } from '../types';
@@ -130,83 +128,7 @@ const SettingsItem = ({
     </button>
 );
 
-const CeilingPriceTool = ({ showToast }: { showToast: any }) => {
-    const [ticker, setTicker] = useState('');
-    const [yieldTarget, setYieldTarget] = useState(6);
-    const [result, setResult] = useState<{ price: number; dy: number; ceiling: number } | null>(null);
-    const [loading, setLoading] = useState(false);
 
-    const calculate = async () => {
-        if (!ticker) return;
-        setLoading(true);
-        try {
-            const results = await triggerScraperUpdate([ticker], false);
-            const data = results[0];
-            if (data.status === 'success' && data.details) {
-                const price = data.details.price || 0;
-                const dy = data.details.dy || 0;
-                const dividendPerShare = (price * dy) / 100;
-                const ceiling = dividendPerShare / (yieldTarget / 100);
-                setResult({ price, dy, ceiling });
-            } else {
-                showToast('error', 'Ativo não encontrado ou erro na busca.');
-            }
-        } catch (e) {
-            showToast('error', 'Erro ao calcular.');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    return (
-        <div className="p-5 bg-zinc-50 dark:bg-zinc-800/30 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
-            <div className="flex items-center gap-2 mb-4">
-                <Calculator className="w-4 h-4 text-indigo-500" />
-                <h4 className="text-xs font-black text-zinc-900 dark:text-white uppercase tracking-widest">Preço Teto (Graham/Bazin)</h4>
-            </div>
-            <div className="flex gap-2 mb-4">
-                <input 
-                    type="text" 
-                    placeholder="TICKER" 
-                    value={ticker}
-                    onChange={e => setTicker(e.target.value.toUpperCase())}
-                    className="flex-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2 text-sm font-bold uppercase focus:ring-2 focus:ring-indigo-500 outline-none"
-                />
-                <div className="relative w-24">
-                    <input 
-                        type="number" 
-                        value={yieldTarget}
-                        onChange={e => setYieldTarget(Number(e.target.value))}
-                        className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none pr-8"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-zinc-400">%</span>
-                </div>
-                <button 
-                    onClick={calculate}
-                    disabled={loading || !ticker}
-                    className="bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white rounded-xl px-4 py-2 transition-colors"
-                >
-                    {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-                </button>
-            </div>
-
-            {result && (
-                <div className="grid grid-cols-2 gap-3 anim-fade-in">
-                    <div className="p-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-100 dark:border-zinc-800">
-                        <p className="text-[10px] font-black text-zinc-400 uppercase mb-1">Cotação Atual</p>
-                        <p className="text-sm font-black text-zinc-900 dark:text-white">R$ {result.price.toFixed(2)}</p>
-                    </div>
-                    <div className="p-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-100 dark:border-zinc-800">
-                        <p className="text-[10px] font-black text-zinc-400 uppercase mb-1">Preço Teto ({yieldTarget}%)</p>
-                        <p className={`text-sm font-black ${result.price > result.ceiling ? 'text-rose-500' : 'text-emerald-500'}`}>
-                            R$ {result.ceiling.toFixed(2)}
-                        </p>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-};
 
 export const Settings: React.FC<SettingsProps> = ({ 
     onLogout, user, transactions, onImportTransactions, 
@@ -351,8 +273,19 @@ export const Settings: React.FC<SettingsProps> = ({
             </div>
 
             <div className="space-y-8">
-                {/* Aparência */}
-                <SettingsGroup title="Aparência" icon={Palette}>
+                {/* Conta */}
+                <SettingsGroup title="Conta" icon={User}>
+                    <SettingsItem 
+                        label="Sair da Conta" 
+                        description="Encerrar sessão atual"
+                        icon={LogOut}
+                        danger
+                        onClick={onLogout}
+                    />
+                </SettingsGroup>
+
+                {/* Aparência & Preferências */}
+                <SettingsGroup title="Aparência & Preferências" icon={Palette}>
                     <div className="p-5 flex items-center justify-between border-b border-zinc-50 dark:border-zinc-800/50">
                         <div className="flex items-center gap-4">
                             <div className="w-10 h-10 rounded-xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-400">
@@ -385,19 +318,12 @@ export const Settings: React.FC<SettingsProps> = ({
                         icon={privacyMode ? EyeOff : Eye}
                         value={<ToggleSwitch enabled={privacyMode} onToggle={() => onSetPrivacyMode(!privacyMode)} />}
                     />
-                </SettingsGroup>
-
-                {/* Preferências */}
-                <SettingsGroup title="Preferências" icon={SettingsIcon}>
                     <SettingsItem 
                         label="Notificações Push" 
                         description="Alertas de proventos e mercado"
                         icon={Bell}
                         value={<ToggleSwitch enabled={pushEnabled} onToggle={handleTogglePush} />}
                     />
-                    <div className="p-5">
-                        <CeilingPriceTool showToast={showToast} />
-                    </div>
                 </SettingsGroup>
 
                 {/* Dados e Backup */}
@@ -472,21 +398,14 @@ export const Settings: React.FC<SettingsProps> = ({
                     />
                 </SettingsGroup>
 
-                {/* Danger Zone */}
-                <SettingsGroup title="Zona de Perigo" icon={Shield}>
+                {/* Avançado */}
+                <SettingsGroup title="Avançado" icon={Shield}>
                     <SettingsItem 
                         label="Resetar Aplicativo" 
                         description="Limpar cache e dados locais"
                         icon={Trash2}
                         danger
                         onClick={() => setShowResetConfirm(true)}
-                    />
-                    <SettingsItem 
-                        label="Sair da Conta" 
-                        description="Encerrar sessão atual"
-                        icon={LogOut}
-                        danger
-                        onClick={onLogout}
                     />
                 </SettingsGroup>
 
