@@ -65,40 +65,64 @@ const HeroNews = ({ item, onShare }: { item: NewsItem, onShare: (item: NewsItem,
         href={item.url} 
         target="_blank" 
         rel="noopener noreferrer"
-        className="block relative w-full h-64 rounded-[2.5rem] overflow-hidden mb-6 group active:scale-[0.98] transition-all shadow-xl shadow-indigo-500/10"
+        className="block relative w-full aspect-[4/5] sm:aspect-[2/1] rounded-[2.5rem] overflow-hidden mb-8 group active:scale-[0.98] transition-all shadow-2xl shadow-black/20"
     >
         {item.imageUrl ? (
             <img 
                 src={item.imageUrl} 
                 alt={item.title} 
-                className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" 
                 onError={(e) => (e.target as HTMLImageElement).src = 'https://picsum.photos/seed/news/800/600'}
             />
         ) : (
-            <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 to-violet-700 flex items-center justify-center">
-                <Newspaper className="w-16 h-16 text-white/20" />
+            <div className="absolute inset-0 bg-gradient-to-br from-zinc-800 to-zinc-900 flex items-center justify-center">
+                <Newspaper className="w-20 h-20 text-white/10" />
             </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
         
-        <div className="absolute bottom-0 left-0 right-0 p-6">
-            <div className="flex items-center gap-2 mb-3">
-                <span className="px-2 py-0.5 rounded-md bg-indigo-500 text-white text-[8px] font-black uppercase tracking-widest">Destaque</span>
-                <span className="text-[10px] font-bold text-white/70 uppercase tracking-widest">{item.source} • {item.date}</span>
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent opacity-90"></div>
+        
+        <div className="absolute bottom-0 left-0 right-0 p-8 flex flex-col justify-end h-full">
+            <div className="flex items-center gap-3 mb-4">
+                <span className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-widest border border-white/10">
+                    Destaque
+                </span>
+                <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-widest flex items-center gap-2">
+                    <span className="w-1 h-1 rounded-full bg-white/50"></span>
+                    {item.source}
+                </span>
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-auto">
+                    {item.date}
+                </span>
             </div>
-            <h2 className="text-xl font-black text-white leading-tight tracking-tight mb-2 line-clamp-2">
+            
+            <h2 className="text-3xl sm:text-4xl font-black text-white leading-[0.95] tracking-tighter mb-4 line-clamp-3">
                 {item.title}
             </h2>
-            <div className="flex items-center justify-between">
+            
+            <p className="text-sm text-zinc-300 line-clamp-2 font-medium leading-relaxed mb-6 max-w-2xl">
+                {item.summary.replace(/<[^>]*>?/gm, '')}
+            </p>
+
+            <div className="flex items-center justify-between pt-6 border-t border-white/10">
                 <div className="flex gap-2">
-                    {item.sentiment === 'positive' && <TrendingUp className="w-4 h-4 text-emerald-400" />}
-                    {item.sentiment === 'negative' && <TrendingDown className="w-4 h-4 text-rose-400" />}
+                    {item.sentiment === 'positive' && (
+                        <span className="flex items-center gap-1.5 text-emerald-400 text-[10px] font-black uppercase tracking-widest">
+                            <TrendingUp className="w-4 h-4" /> Otimista
+                        </span>
+                    )}
+                    {item.sentiment === 'negative' && (
+                        <span className="flex items-center gap-1.5 text-rose-400 text-[10px] font-black uppercase tracking-widest">
+                            <TrendingDown className="w-4 h-4" /> Pessimista
+                        </span>
+                    )}
                 </div>
+                
                 <button 
                     onClick={(e) => onShare(item, e)}
-                    className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 backdrop-blur-md text-white hover:bg-white/20 transition-all"
+                    className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 backdrop-blur-md text-white hover:bg-white/20 transition-all border border-white/10 active:scale-90"
                 >
-                    <Share2 className="w-3.5 h-3.5" />
+                    <Share2 className="w-4 h-4" />
                 </button>
             </div>
         </div>

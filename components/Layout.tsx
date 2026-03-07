@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, Bell, Download, Trash2, Cloud, CloudOff, Loader2, AlertTriangle, Gift, Star, Inbox, RefreshCw, Smartphone, X, Check, Mail, Server, WifiOff, FileText, CheckCircle, Percent, TrendingUp, DollarSign, Activity, Newspaper, CloudLightning, Wifi, CircleHelp, Calendar } from 'lucide-react';
+import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, Bell, Download, Trash2, Cloud, CloudOff, Loader2, AlertTriangle, Gift, Star, Inbox, RefreshCw, Smartphone, X, Check, Mail, Server, WifiOff, FileText, CheckCircle, Percent, TrendingUp, DollarSign, Activity, Newspaper, CloudLightning, Wifi, CircleHelp, Calendar, Award } from 'lucide-react';
 import { UpdateReportData } from '../types';
 
 const useAnimatedVisibility = (isOpen: boolean, duration: number) => {
@@ -442,61 +442,85 @@ export const NotificationsModal: React.FC<any> = ({ isOpen, onClose, notificatio
 
     return (
         <SwipeableModal isOpen={isOpen} onClose={onClose}>
-            <div className="p-4 h-full flex flex-col">
-                <div className="flex justify-between items-center mb-6 shrink-0 px-2">
+            <div className="h-full flex flex-col bg-zinc-50 dark:bg-zinc-950">
+                <div className="px-6 pt-8 pb-6 flex justify-between items-end shrink-0 border-b border-zinc-100 dark:border-zinc-900 bg-white dark:bg-zinc-900">
                     <div>
-                        <h2 className="text-2xl font-black text-zinc-900 dark:text-white leading-tight">Notificações</h2>
-                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Fique por dentro da sua carteira</p>
+                        <h2 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter leading-none mb-1">Notificações</h2>
+                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Atualizações da sua carteira</p>
                     </div>
                     {hasNotifications && (
                         <button 
                             onClick={onClear} 
-                            className="px-4 py-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-[10px] font-black text-zinc-500 uppercase tracking-widest hover:text-zinc-900 dark:hover:text-white transition-colors"
+                            className="w-10 h-10 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all active:scale-90"
+                            title="Limpar todas"
                         >
-                            Limpar
+                            <Trash2 className="w-5 h-5" />
                         </button>
                     )}
                 </div>
                 
-                <div className="space-y-6 flex-1 overflow-y-auto pb-24 px-2">
+                <div className="flex-1 overflow-y-auto pb-24 px-6 py-6 space-y-8">
                     {!hasNotifications ? (
-                        <div className="flex flex-col items-center justify-center py-20 text-center">
-                            <div className="w-16 h-16 bg-zinc-50 dark:bg-zinc-800/50 rounded-full flex items-center justify-center text-zinc-300 dark:text-zinc-700 mb-4">
-                                <Bell className="w-8 h-8" />
+                        <div className="flex flex-col items-center justify-center py-20 text-center opacity-60">
+                            <div className="w-24 h-24 bg-zinc-100 dark:bg-zinc-800/50 rounded-full flex items-center justify-center text-zinc-300 dark:text-zinc-700 mb-6 animate-pulse">
+                                <Bell className="w-10 h-10" strokeWidth={1.5} />
                             </div>
-                            <p className="text-sm font-bold text-zinc-400">Nenhuma notificação recente.</p>
-                            <p className="text-[10px] text-zinc-400/60 mt-1">Tudo certo por aqui!</p>
+                            <h3 className="text-lg font-black text-zinc-900 dark:text-white tracking-tight mb-1">Tudo limpo!</h3>
+                            <p className="text-xs font-medium text-zinc-400 max-w-[200px]">Você não tem novas notificações no momento.</p>
                         </div>
                     ) : (
                         Object.entries(groupedNotifications).map(([label, group]) => (
                             group.length > 0 && (
-                                <div key={label}>
-                                    <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3 pl-1">{label}</h3>
+                                <div key={label} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800"></div>
+                                        <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest bg-zinc-50 dark:bg-zinc-950 px-2">{label}</span>
+                                        <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800"></div>
+                                    </div>
                                     <div className="space-y-3">
                                         {group.map((n: any) => (
                                             <div 
                                                 key={n.id} 
-                                                className={`group p-4 rounded-3xl flex gap-4 transition-all border relative overflow-hidden ${n.read ? 'bg-zinc-50/50 dark:bg-zinc-800/30 border-transparent opacity-60' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 shadow-sm hover:shadow-md'}`}
+                                                className={`relative p-4 rounded-3xl border transition-all duration-300 group ${
+                                                    n.read 
+                                                        ? 'bg-white/50 dark:bg-zinc-900/50 border-zinc-100 dark:border-zinc-800/50 opacity-70' 
+                                                        : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 shadow-lg shadow-zinc-200/50 dark:shadow-black/20 scale-[1.02]'
+                                                }`}
                                             >
-                                                {!n.read && <div className="absolute top-4 right-4 w-2 h-2 bg-indigo-500 rounded-full animate-pulse"></div>}
+                                                {!n.read && (
+                                                    <span className="absolute top-4 right-4 flex h-2.5 w-2.5">
+                                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                                                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-indigo-500"></span>
+                                                    </span>
+                                                )}
                                                 
-                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${
-                                                    n.category === 'payment' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : 
-                                                    n.category === 'datacom' ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600' :
-                                                    n.category === 'alert' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600' :
-                                                    'bg-sky-100 dark:bg-sky-900/30 text-sky-600'
-                                                }`}>
-                                                    {n.category === 'payment' ? <DollarSign className="w-5 h-5" /> : 
-                                                     n.category === 'datacom' ? <Calendar className="w-5 h-5" /> :
-                                                     n.category === 'alert' ? <AlertTriangle className="w-5 h-5" /> :
-                                                     <Inbox className="w-5 h-5" />}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex justify-between items-start mb-1">
-                                                        <h4 className="font-black text-sm text-zinc-900 dark:text-white truncate pr-4">{n.title}</h4>
-                                                        <span className="text-[9px] font-bold text-zinc-400 uppercase whitespace-nowrap">{new Date(n.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                                                <div className="flex gap-4">
+                                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm transition-transform group-hover:scale-110 ${
+                                                        n.category === 'payment' ? 'bg-emerald-500/10 text-emerald-500' : 
+                                                        n.category === 'datacom' ? 'bg-indigo-500/10 text-indigo-500' :
+                                                        n.category === 'alert' ? 'bg-amber-500/10 text-amber-500' :
+                                                        n.category === 'event' ? 'bg-purple-500/10 text-purple-500' :
+                                                        'bg-sky-500/10 text-sky-500'
+                                                    }`}>
+                                                        {n.category === 'payment' ? <DollarSign className="w-6 h-6" strokeWidth={2.5} /> : 
+                                                         n.category === 'datacom' ? <Calendar className="w-6 h-6" strokeWidth={2.5} /> :
+                                                         n.category === 'alert' ? <AlertTriangle className="w-6 h-6" strokeWidth={2.5} /> :
+                                                         n.category === 'event' ? <Award className="w-6 h-6" strokeWidth={2.5} /> :
+                                                         <Inbox className="w-6 h-6" strokeWidth={2.5} />}
                                                     </div>
-                                                    <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium line-clamp-2">{n.message}</p>
+                                                    <div className="flex-1 min-w-0 pt-0.5">
+                                                        <div className="flex justify-between items-start mb-1 pr-4">
+                                                            <h4 className={`text-sm font-black tracking-tight leading-tight ${n.read ? 'text-zinc-600 dark:text-zinc-400' : 'text-zinc-900 dark:text-white'}`}>
+                                                                {n.title}
+                                                            </h4>
+                                                        </div>
+                                                        <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium line-clamp-2 mb-2">
+                                                            {n.message}
+                                                        </p>
+                                                        <p className="text-[9px] font-bold text-zinc-300 dark:text-zinc-600 uppercase tracking-wider">
+                                                            {new Date(n.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                                        </p>
+                                                    </div>
                                                 </div>
                                             </div>
                                         ))}

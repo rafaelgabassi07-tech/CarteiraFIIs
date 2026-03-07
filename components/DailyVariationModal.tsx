@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Transaction, DividendReceipt } from '../types';
 import { formatBRL, formatDateShort } from '../utils/formatters';
 import { SwipeableModal } from './Layout';
-import { X, TrendingUp, TrendingDown, History, CalendarDays } from 'lucide-react';
+import { X, TrendingUp, TrendingDown, History, CalendarDays, BarChart3, PieChart } from 'lucide-react';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, ReferenceLine } from 'recharts';
 
 interface DailyVariationRecord {
     date: string;
@@ -27,7 +28,7 @@ export const DailyVariationModal: React.FC<DailyVariationModalProps> = ({
     currentBalance,
     history = []
 }) => {
-    const [activeTab, setActiveTab] = React.useState<'daily' | 'stats'>('daily');
+    const [activeTab, setActiveTab] = useState<'daily' | 'chart' | 'stats'>('daily');
 
     // Calculate Current Stats
     const stats = useMemo(() => {
@@ -64,7 +65,7 @@ export const DailyVariationModal: React.FC<DailyVariationModalProps> = ({
     const getWeekday = (dateStr: string) => {
         try {
             const date = new Date(dateStr + 'T12:00:00');
-            return date.toLocaleDateString('pt-BR', { weekday: 'long' });
+            return date.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
         } catch {
             return '';
         }
@@ -74,6 +75,16 @@ export const DailyVariationModal: React.FC<DailyVariationModalProps> = ({
         const today = new Date().toISOString().split('T')[0];
         return dateStr === today;
     };
+
+    // Prepare chart data (last 7 days reversed for chronological order)
+    const chartData = useMemo(() => {
+        return [...history].slice(0, 14).reverse().map(h => ({
+            ...h,
+            dayLabel: getWeekday(h.date),
+            formattedDate: formatDateShort(h.date),
+            color: h.variationValue >= 0 ? '#10b981' : '#f43f5e'
+        }));
+    }, [history]);
 
     if (!stats) return null;
 
@@ -111,18 +122,28 @@ export const DailyVariationModal: React.FC<DailyVariationModalProps> = ({
                 </div>
 
                 {/* Tabs */}
-                <div className="flex px-6 border-b border-zinc-100 dark:border-zinc-900 shrink-0">
+                <div className="flex px-6 border-b border-zinc-100 dark:border-zinc-900 shrink-0 overflow-x-auto no-scrollbar">
                     <button 
                         onClick={() => setActiveTab('daily')}
-                        className={`py-4 px-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all relative ${activeTab === 'daily' ? 'text-indigo-500' : 'text-zinc-400'}`}
+                        className={`py-4 px-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all relative whitespace-nowrap flex items-center gap-2 ${activeTab === 'daily' ? 'text-indigo-500' : 'text-zinc-400'}`}
                     >
+                        <History className="w-3.5 h-3.5" />
                         Diário
                         {activeTab === 'daily' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-indigo-500 rounded-t-full"></div>}
                     </button>
                     <button 
-                        onClick={() => setActiveTab('stats')}
-                        className={`py-4 px-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all relative ${activeTab === 'stats' ? 'text-indigo-500' : 'text-zinc-400'}`}
+                        onClick={() => setActiveTab('chart')}
+                        className={`py-4 px-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all relative whitespace-nowrap flex items-center gap-2 ${activeTab === 'chart' ? 'text-indigo-500' : 'text-zinc-400'}`}
                     >
+                        <BarChart3 className="w-3.5 h-3.5" />
+                        Gráfico
+                        {activeTab === 'chart' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-indigo-500 rounded-t-full"></div>}
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('stats')}
+                        className={`py-4 px-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all relative whitespace-nowrap flex items-center gap-2 ${activeTab === 'stats' ? 'text-indigo-500' : 'text-zinc-400'}`}
+                    >
+                        <PieChart className="w-3.5 h-3.5" />
                         Estatísticas
                         {activeTab === 'stats' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-indigo-500 rounded-t-full"></div>}
                     </button>
@@ -131,7 +152,7 @@ export const DailyVariationModal: React.FC<DailyVariationModalProps> = ({
                 {/* Content Section */}
                 <div className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar bg-zinc-50/50 dark:bg-zinc-900/30">
                     <div className="px-6 py-8">
-                        {activeTab === 'daily' ? (
+                        {activeTab === 'daily' && (
                             <div className="space-y-4">
                                 {history.length === 0 ? (
                                     <div className="flex flex-col items-center justify-center py-20 opacity-50">
@@ -189,7 +210,77 @@ export const DailyVariationModal: React.FC<DailyVariationModalProps> = ({
                                     })
                                 )}
                             </div>
-                        ) : (
+                        )}
+
+                        {activeTab === 'chart' && (
+                            <div className="h-[400px] w-full bg-white dark:bg-zinc-900 rounded-[2.5rem] p-6 border border-zinc-100 dark:border-zinc-800 shadow-sm flex flex-col">
+                                <div className="flex items-center justify-between mb-6">
+                                    <h4 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Variação (14 Dias)</h4>
+                                    <div className="flex gap-2">
+                                        <div className="flex items-center gap-1">
+                                            <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                                            <span className="text-[9px] font-bold text-zinc-400">Positivo</span>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            <div className="w-2 h-2 rounded-full bg-rose-500"></div>
+                                            <span className="text-[9px] font-bold text-zinc-400">Negativo</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {chartData.length > 0 ? (
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                                            <XAxis 
+                                                dataKey="dayLabel" 
+                                                axisLine={false} 
+                                                tickLine={false} 
+                                                tick={{ fontSize: 10, fill: '#a1a1aa', fontWeight: 600 }} 
+                                                dy={10}
+                                            />
+                                            <YAxis 
+                                                axisLine={false} 
+                                                tickLine={false} 
+                                                tick={{ fontSize: 10, fill: '#a1a1aa', fontWeight: 600 }} 
+                                                tickFormatter={(val) => `R$${val}`}
+                                            />
+                                            <Tooltip 
+                                                cursor={{ fill: 'transparent' }}
+                                                content={({ active, payload }) => {
+                                                    if (active && payload && payload.length) {
+                                                        const data = payload[0].payload;
+                                                        return (
+                                                            <div className="bg-zinc-900 text-white p-3 rounded-xl shadow-xl border border-zinc-800 text-xs">
+                                                                <p className="font-bold mb-1 text-zinc-400">{data.formattedDate}</p>
+                                                                <p className={`font-black text-lg ${data.variationValue >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                                                    {data.variationValue >= 0 ? '+' : ''}{formatBRL(data.variationValue)}
+                                                                </p>
+                                                                <p className="font-medium text-zinc-500 mt-1">
+                                                                    {data.variationPercent.toFixed(2)}%
+                                                                </p>
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return null;
+                                                }}
+                                            />
+                                            <ReferenceLine y={0} stroke="#52525b" strokeDasharray="3 3" />
+                                            <Bar dataKey="variationValue" radius={[4, 4, 4, 4]}>
+                                                {chartData.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                                ))}
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                ) : (
+                                    <div className="flex-1 flex items-center justify-center text-zinc-400 text-xs font-medium">
+                                        Dados insuficientes para o gráfico
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {activeTab === 'stats' && (
                             <div className="space-y-6">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">

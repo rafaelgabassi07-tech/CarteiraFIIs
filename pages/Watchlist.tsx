@@ -10,6 +10,8 @@ interface WatchlistItem {
     ticker: string;
     price?: number;
     change?: number;
+    dayHigh?: number;
+    dayLow?: number;
     name?: string;
     logo?: string;
     fundamentals?: any;
@@ -162,6 +164,8 @@ export default function Watchlist({ showToast }: WatchlistProps) {
                         ticker: ticker,
                         price: q.regularMarketPrice,
                         change: q.regularMarketChangePercent,
+                        dayHigh: q.regularMarketDayHigh,
+                        dayLow: q.regularMarketDayLow,
                         name: q.longName || q.shortName || newQuotes[ticker]?.name,
                         logo: q.logourl || newQuotes[ticker]?.logo,
                         updatedAt: Date.now()
@@ -582,21 +586,45 @@ export default function Watchlist({ showToast }: WatchlistProps) {
 
                                     {/* Additional Info Grid - More Spacious */}
                                     {hasData && (
-                                        <div className="grid grid-cols-3 gap-2 pt-2 border-t border-dashed border-zinc-100 dark:border-zinc-800/60 relative z-10">
-                                            <div className="flex flex-col">
-                                                <span className="text-[7px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-0.5">DY (12M)</span>
-                                                <span className="text-[9px] font-bold text-zinc-700 dark:text-zinc-200">{fundamentals.dy_12m ? `${fundamentals.dy_12m.toFixed(2)}%` : '--'}</span>
+                                        <div className="pt-3 border-t border-dashed border-zinc-100 dark:border-zinc-800/60 relative z-10">
+                                            <div className="grid grid-cols-3 gap-2 mb-3">
+                                                <div className="flex flex-col">
+                                                    <span className="text-[7px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-0.5">DY (12M)</span>
+                                                    <span className="text-[9px] font-bold text-zinc-700 dark:text-zinc-200">{fundamentals.dy_12m ? `${fundamentals.dy_12m.toFixed(2)}%` : '--'}</span>
+                                                </div>
+                                                <div className="flex flex-col text-center border-l border-zinc-50 dark:border-zinc-800/50">
+                                                    <span className="text-[7px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-0.5">P/VP</span>
+                                                    <span className={`text-[9px] font-bold ${fundamentals.p_vp > 1.1 ? 'text-rose-500' : fundamentals.p_vp < 0.9 ? 'text-emerald-500' : 'text-zinc-700 dark:text-zinc-200'}`}>
+                                                        {fundamentals.p_vp ? fundamentals.p_vp.toFixed(2) : '--'}
+                                                    </span>
+                                                </div>
+                                                <div className="flex flex-col items-end border-l border-zinc-50 dark:border-zinc-800/50">
+                                                    <span className="text-[7px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-0.5">Segmento</span>
+                                                    <span className="text-[9px] font-bold text-zinc-700 dark:text-zinc-200 truncate max-w-[70px]">{quote?.segment || 'Geral'}</span>
+                                                </div>
                                             </div>
-                                            <div className="flex flex-col text-center border-l border-zinc-50 dark:border-zinc-800/50">
-                                                <span className="text-[7px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-0.5">P/VP</span>
-                                                <span className={`text-[9px] font-bold ${fundamentals.p_vp > 1.1 ? 'text-rose-500' : fundamentals.p_vp < 0.9 ? 'text-emerald-500' : 'text-zinc-700 dark:text-zinc-200'}`}>
-                                                    {fundamentals.p_vp ? fundamentals.p_vp.toFixed(2) : '--'}
-                                                </span>
-                                            </div>
-                                            <div className="flex flex-col items-end border-l border-zinc-50 dark:border-zinc-800/50">
-                                                <span className="text-[7px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-0.5">Segmento</span>
-                                                <span className="text-[9px] font-bold text-zinc-700 dark:text-zinc-200 truncate max-w-[70px]">{quote?.segment || 'Geral'}</span>
-                                            </div>
+
+                                            {/* Day Range Visualization */}
+                                            {quote.dayLow !== undefined && quote.dayHigh !== undefined && quote.dayLow !== 0 && quote.dayHigh !== 0 && (
+                                                <div className="relative pt-1">
+                                                    <div className="flex justify-between text-[7px] font-bold text-zinc-400 mb-1">
+                                                        <span>Min: {formatBRL(quote.dayLow)}</span>
+                                                        <span>Max: {formatBRL(quote.dayHigh)}</span>
+                                                    </div>
+                                                    <div className="h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden relative">
+                                                        {/* Range Bar */}
+                                                        <div className="absolute inset-0 bg-zinc-200 dark:bg-zinc-700/30"></div>
+                                                        
+                                                        {/* Current Price Marker */}
+                                                        <div 
+                                                            className="absolute top-0 bottom-0 w-1 bg-indigo-500 rounded-full shadow-[0_0_8px_rgba(99,102,241,0.6)] transform -translate-x-1/2 transition-all duration-1000 ease-out"
+                                                            style={{
+                                                                left: `${Math.min(100, Math.max(0, ((price - quote.dayLow) / (quote.dayHigh - quote.dayLow)) * 100))}%`
+                                                            }}
+                                                        ></div>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
 
