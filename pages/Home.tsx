@@ -251,32 +251,33 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
     return (
         <SwipeableModal isOpen={isOpen} onClose={onClose}>
             <div className="h-full flex flex-col bg-white dark:bg-zinc-950">
-                {/* Clean Header - Compact */}
-                <div className="px-5 pt-6 pb-2 shrink-0">
-                    <div className="flex justify-between items-start mb-4">
+                {/* Massive Header */}
+                <div className="px-8 pt-12 pb-10 shrink-0 border-b border-zinc-100 dark:border-zinc-900 bg-white dark:bg-zinc-950 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/5 blur-[120px] rounded-full -mr-24 -mt-24 pointer-events-none"></div>
+                    <div className="flex justify-between items-start relative z-10">
                         <div>
-                            <p className="text-[9px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-1">Patrimônio Total</p>
-                            <h3 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter leading-none">
+                            <p className="text-xs font-black text-zinc-400 uppercase tracking-[0.4em] mb-3">Patrimônio Total</p>
+                            <h3 className="text-6xl font-black text-zinc-900 dark:text-white tracking-tighter leading-none mb-6">
                                 {formatBRL(stats.marketValue)}
                             </h3>
+                            
+                            <div className="flex items-center gap-6">
+                                <div className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-black shadow-xl ${stats.roi >= 0 ? 'bg-emerald-500 text-white shadow-emerald-500/20' : 'bg-rose-500 text-white shadow-rose-500/20'}`}>
+                                    {stats.roi >= 0 ? <TrendingUp className="w-4 h-4" strokeWidth={3} /> : <TrendingDown className="w-4 h-4" strokeWidth={3} />}
+                                    {stats.roi >= 0 ? '+' : ''}{stats.roi.toFixed(2)}%
+                                </div>
+                                <div className="h-8 w-px bg-zinc-200 dark:bg-zinc-800"></div>
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-0.5">Retorno Total</span>
+                                    <span className={`text-xl font-black tracking-tight ${stats.totalReturn >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                        {stats.totalReturn >= 0 ? '+' : ''}{formatBRL(stats.totalReturn)}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
-                        <button onClick={onClose} className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-all active:scale-90">
-                            <X className="w-4 h-4" />
+                        <button onClick={onClose} className="w-14 h-14 rounded-[2rem] bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-all active:scale-90 shadow-sm">
+                            <X className="w-6 h-6" />
                         </button>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                        <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-black shadow-sm ${stats.roi >= 0 ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
-                            {stats.roi >= 0 ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
-                            {stats.roi >= 0 ? '+' : ''}{stats.roi.toFixed(2)}%
-                        </div>
-                        <div className="h-3 w-px bg-zinc-200 dark:bg-zinc-800"></div>
-                        <div className="flex flex-col">
-                            <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wider">Retorno Total</span>
-                            <span className={`text-[10px] font-black ${stats.totalReturn >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                                {stats.totalReturn >= 0 ? '+' : ''}{formatBRL(stats.totalReturn)}
-                            </span>
-                        </div>
                     </div>
                 </div>
 

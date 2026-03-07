@@ -443,87 +443,95 @@ export const NotificationsModal: React.FC<any> = ({ isOpen, onClose, notificatio
     return (
         <SwipeableModal isOpen={isOpen} onClose={onClose}>
             <div className="h-full flex flex-col bg-zinc-50 dark:bg-zinc-950">
-                <div className="px-6 pt-10 pb-8 flex justify-between items-end shrink-0 border-b border-zinc-100 dark:border-zinc-900 bg-white dark:bg-zinc-950">
-                    <div>
-                        <h2 className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter leading-none mb-2">Notificações</h2>
-                        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Atualizações da sua carteira</p>
+                <div className="px-8 pt-12 pb-10 flex justify-between items-end shrink-0 border-b border-zinc-100 dark:border-zinc-900 bg-white dark:bg-zinc-950 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 blur-[100px] rounded-full -mr-20 -mt-20 pointer-events-none"></div>
+                    <div className="relative z-10">
+                        <h2 className="text-5xl font-black text-zinc-900 dark:text-white tracking-tighter leading-none mb-3">Notificações</h2>
+                        <p className="text-xs font-black text-zinc-400 uppercase tracking-[0.3em]">O que está acontecendo na sua carteira</p>
                     </div>
                     {hasNotifications && (
                         <button 
                             onClick={onClear} 
-                            className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-all active:scale-90"
+                            className="relative z-10 w-16 h-16 rounded-[2rem] bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-all active:scale-90 shadow-sm"
                             title="Limpar todas"
                         >
-                            <Trash2 className="w-5 h-5" />
+                            <Trash2 className="w-6 h-6" />
                         </button>
                     )}
                 </div>
                 
-                <div className="flex-1 overflow-y-auto pb-32 px-6 py-8 space-y-10 no-scrollbar">
+                <div className="flex-1 overflow-y-auto pb-40 px-8 py-10 space-y-12 no-scrollbar">
                     {!hasNotifications ? (
-                        <div className="flex flex-col items-center justify-center py-32 text-center">
-                            <div className="w-32 h-32 bg-zinc-50 dark:bg-zinc-900 rounded-[3rem] flex items-center justify-center text-zinc-200 dark:text-zinc-800 mb-8 relative">
-                                <Bell className="w-12 h-12" strokeWidth={1} />
-                                <div className="absolute inset-0 rounded-[3rem] border-2 border-dashed border-zinc-100 dark:border-zinc-800 animate-[spin_20s_linear_infinite]"></div>
+                        <div className="flex flex-col items-center justify-center py-40 text-center">
+                            <div className="w-48 h-48 bg-zinc-50 dark:bg-zinc-900 rounded-[4rem] flex items-center justify-center text-zinc-200 dark:text-zinc-800 mb-10 relative">
+                                <Bell className="w-20 h-20" strokeWidth={0.5} />
+                                <div className="absolute inset-0 rounded-[4rem] border-4 border-dashed border-zinc-100 dark:border-zinc-800 animate-[spin_30s_linear_infinite]"></div>
                             </div>
-                            <h3 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight mb-2">Tudo em ordem!</h3>
-                            <p className="text-sm font-medium text-zinc-400 max-w-[240px] leading-relaxed">
-                                Você está em dia com suas notificações. Novas atualizações aparecerão aqui.
+                            <h3 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tight mb-4">Silêncio absoluto</h3>
+                            <p className="text-lg font-medium text-zinc-400 max-w-[320px] leading-relaxed">
+                                Nenhuma notificação por aqui. Aproveite a tranquilidade da sua carteira.
                             </p>
                         </div>
                     ) : (
                         Object.entries(groupedNotifications).map(([label, group]) => (
                             group.length > 0 && (
-                                <div key={label} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                    <div className="flex items-center gap-4 mb-6">
-                                        <span className="text-[11px] font-black text-zinc-400 uppercase tracking-[0.3em] whitespace-nowrap">{label}</span>
+                                <div key={label} className="animate-in fade-in slide-in-from-bottom-8 duration-700">
+                                    <div className="flex items-center gap-6 mb-8">
+                                        <span className="text-xs font-black text-zinc-400 uppercase tracking-[0.4em] whitespace-nowrap">{label}</span>
                                         <div className="h-px flex-1 bg-zinc-100 dark:bg-zinc-900"></div>
                                     </div>
-                                    <div className="space-y-4">
+                                    <div className="space-y-6">
                                         {group.map((n: any) => (
                                             <div 
                                                 key={n.id} 
-                                                className={`relative p-5 rounded-[2rem] border transition-all duration-500 group ${
+                                                className={`relative p-8 rounded-[2.5rem] border transition-all duration-500 group ${
                                                     n.read 
-                                                        ? 'bg-white/50 dark:bg-zinc-900/30 border-zinc-100 dark:border-zinc-800/50 opacity-60 grayscale-[0.5]' 
-                                                        : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 shadow-xl shadow-zinc-200/40 dark:shadow-black/40 hover:border-indigo-500/30'
+                                                        ? 'bg-white/40 dark:bg-zinc-900/20 border-zinc-100 dark:border-zinc-800/30 opacity-50 grayscale-[0.8]' 
+                                                        : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 shadow-2xl shadow-zinc-200/60 dark:shadow-black/60 hover:border-indigo-500/40 hover:-translate-y-1'
                                                 }`}
                                             >
                                                 {!n.read && (
-                                                    <div className="absolute top-6 right-6 flex h-3 w-3">
+                                                    <div className="absolute top-8 right-8 flex h-4 w-4">
                                                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-indigo-500 shadow-sm shadow-indigo-500/50"></span>
+                                                        <span className="relative inline-flex rounded-full h-4 w-4 bg-indigo-500 shadow-lg shadow-indigo-500/50"></span>
                                                     </div>
                                                 )}
                                                 
-                                                <div className="flex gap-5">
-                                                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-sm transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 ${
-                                                        n.category === 'payment' ? 'bg-emerald-500/10 text-emerald-500' : 
-                                                        n.category === 'datacom' ? 'bg-indigo-500/10 text-indigo-500' :
-                                                        n.category === 'alert' ? 'bg-rose-500/10 text-rose-500' :
-                                                        n.category === 'event' ? 'bg-purple-500/10 text-purple-500' :
-                                                        'bg-sky-500/10 text-sky-500'
+                                                <div className="flex gap-8">
+                                                    <div className={`w-20 h-20 rounded-[1.75rem] flex items-center justify-center shrink-0 shadow-xl transition-all duration-700 group-hover:scale-110 group-hover:rotate-6 ${
+                                                        n.category === 'payment' ? 'bg-emerald-500 text-white shadow-emerald-500/20' : 
+                                                        n.category === 'datacom' ? 'bg-indigo-500 text-white shadow-indigo-500/20' :
+                                                        n.category === 'alert' ? 'bg-rose-500 text-white shadow-rose-500/20' :
+                                                        n.category === 'event' ? 'bg-purple-500 text-white shadow-purple-500/20' :
+                                                        'bg-sky-500 text-white shadow-sky-500/20'
                                                     }`}>
-                                                        {n.category === 'payment' ? <DollarSign className="w-7 h-7" strokeWidth={2} /> : 
-                                                         n.category === 'datacom' ? <Calendar className="w-7 h-7" strokeWidth={2} /> :
-                                                         n.category === 'alert' ? <AlertTriangle className="w-7 h-7" strokeWidth={2} /> :
-                                                         n.category === 'event' ? <Award className="w-7 h-7" strokeWidth={2} /> :
-                                                         <Inbox className="w-7 h-7" strokeWidth={2} />}
+                                                        {n.category === 'payment' ? <DollarSign className="w-10 h-10" strokeWidth={2.5} /> : 
+                                                         n.category === 'datacom' ? <Calendar className="w-10 h-10" strokeWidth={2.5} /> :
+                                                         n.category === 'alert' ? <AlertTriangle className="w-10 h-10" strokeWidth={2.5} /> :
+                                                         n.category === 'event' ? <Award className="w-10 h-10" strokeWidth={2.5} /> :
+                                                         <Inbox className="w-10 h-10" strokeWidth={2.5} />}
                                                     </div>
-                                                    <div className="flex-1 min-w-0 pt-1">
-                                                        <div className="flex justify-between items-start mb-1.5 pr-6">
-                                                            <h4 className={`text-base font-black tracking-tight leading-tight ${n.read ? 'text-zinc-600 dark:text-zinc-400' : 'text-zinc-900 dark:text-white'}`}>
+                                                    <div className="flex-1 min-w-0 pt-2">
+                                                        <div className="flex justify-between items-start mb-2 pr-10">
+                                                            <h4 className={`text-2xl font-black tracking-tighter leading-none ${n.read ? 'text-zinc-600 dark:text-zinc-400' : 'text-zinc-900 dark:text-white'}`}>
                                                                 {n.title}
                                                             </h4>
                                                         </div>
-                                                        <p className={`text-sm leading-relaxed font-medium mb-3 ${n.read ? 'text-zinc-400 dark:text-zinc-500' : 'text-zinc-500 dark:text-zinc-400'}`}>
+                                                        <p className={`text-lg leading-relaxed font-medium mb-5 ${n.read ? 'text-zinc-400 dark:text-zinc-500' : 'text-zinc-500 dark:text-zinc-400'}`}>
                                                             {n.message}
                                                         </p>
-                                                        <div className="flex items-center gap-2">
-                                                            <Clock className="w-3 h-3 text-zinc-300 dark:text-zinc-700" />
-                                                            <p className="text-[10px] font-black text-zinc-300 dark:text-zinc-700 uppercase tracking-widest">
-                                                                {new Date(n.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                                                            </p>
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800">
+                                                                <Clock className="w-4 h-4 text-zinc-400" />
+                                                                <p className="text-xs font-black text-zinc-400 uppercase tracking-widest">
+                                                                    {new Date(n.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                                                </p>
+                                                            </div>
+                                                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800">
+                                                                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                                                                    {n.category}
+                                                                </p>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
