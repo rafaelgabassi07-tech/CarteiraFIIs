@@ -944,6 +944,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
   const [allocationView, setAllocationView] = useState<'CLASS' | 'ASSET' | 'SECTOR'>('CLASS');
   const [showMagicNumber, setShowMagicNumber] = useState(false);
   const [showGoals, setShowGoals] = useState(false);
+  const [selectedAchievement, setSelectedAchievement] = useState<any>(null);
   const [goalTab, setGoalTab] = useState<'WEALTH' | 'INCOME' | 'STRATEGY'>('WEALTH');
   
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
@@ -1246,45 +1247,45 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
           // Conquistas organizadas por categoria (Total 25+)
           const achievements = [
               // PATRIMÔNIO (Wealth)
-              { id: 'start', cat: 'WEALTH', label: 'Primeiro Passo', sub: 'Patrimônio > R$ 0', icon: Wallet, unlocked: safeBalance > 0, color: 'from-emerald-400 to-emerald-600' },
-              { id: '100r', cat: 'WEALTH', label: 'Cem Reais', sub: 'Patrimônio > R$ 100', icon: Coins, unlocked: safeBalance >= 100, color: 'from-emerald-300 to-teal-500' },
-              { id: '500r', cat: 'WEALTH', label: 'Quinhentos', sub: 'Patrimônio > R$ 500', icon: Coins, unlocked: safeBalance >= 500, color: 'from-teal-400 to-emerald-600' },
-              { id: '1k', cat: 'WEALTH', label: 'Semente', sub: 'Patrimônio > 1k', icon: Star, unlocked: safeBalance >= 1000, color: 'from-lime-400 to-emerald-500' },
-              { id: '5k', cat: 'WEALTH', label: 'Jardineiro', sub: 'Patrimônio > 5k', icon: Star, unlocked: safeBalance >= 5000, color: 'from-green-400 to-emerald-600' },
-              { id: '10k', cat: 'WEALTH', label: 'Clube 10k', sub: 'Patrimônio > 10k', icon: Coins, unlocked: safeBalance >= 10000, color: 'from-amber-400 to-orange-500' },
-              { id: '25k', cat: 'WEALTH', label: 'Construtor', sub: 'Patrimônio > 25k', icon: Building2, unlocked: safeBalance >= 25000, color: 'from-cyan-400 to-blue-500' },
-              { id: '50k', cat: 'WEALTH', label: 'Barão', sub: 'Patrimônio > 50k', icon: Gem, unlocked: safeBalance >= 50000, color: 'from-violet-400 to-purple-600' },
-              { id: '100k', cat: 'WEALTH', label: 'Elite 100k', sub: 'Patrimônio > 100k', icon: Trophy, unlocked: safeBalance >= 100000, color: 'from-yellow-300 to-amber-500' },
-              { id: '500k', cat: 'WEALTH', label: 'Meio Milhão', sub: 'Patrimônio > 500k', icon: Crown, unlocked: safeBalance >= 500000, color: 'from-rose-400 to-red-600' },
-              { id: '1m', cat: 'WEALTH', label: 'Milionário', sub: 'Patrimônio > 1M', icon: Rocket, unlocked: safeBalance >= 1000000, color: 'from-fuchsia-500 to-pink-600' },
+              { id: 'start', cat: 'WEALTH', label: 'Primeiro Passo', sub: 'Patrimônio > R$ 0', icon: Wallet, unlocked: safeBalance > 0, color: 'from-emerald-400 to-emerald-600', description: 'O início de uma grande jornada! Você deu o primeiro passo para construir seu patrimônio.' },
+              { id: '100r', cat: 'WEALTH', label: 'Cem Reais', sub: 'Patrimônio > R$ 100', icon: Coins, unlocked: safeBalance >= 100, color: 'from-emerald-300 to-teal-500', description: 'A primeira barreira psicológica foi quebrada. R$ 100 investidos!' },
+              { id: '500r', cat: 'WEALTH', label: 'Quinhentos', sub: 'Patrimônio > R$ 500', icon: Coins, unlocked: safeBalance >= 500, color: 'from-teal-400 to-emerald-600', description: 'Meio caminho andado para o primeiro milhar. Continue assim!' },
+              { id: '1k', cat: 'WEALTH', label: 'Semente', sub: 'Patrimônio > 1k', icon: Star, unlocked: safeBalance >= 1000, color: 'from-lime-400 to-emerald-500', description: 'Parabéns! Você plantou sua primeira semente de R$ 1.000.' },
+              { id: '5k', cat: 'WEALTH', label: 'Jardineiro', sub: 'Patrimônio > 5k', icon: Star, unlocked: safeBalance >= 5000, color: 'from-green-400 to-emerald-600', description: 'Seu jardim financeiro está crescendo. R$ 5.000 acumulados!' },
+              { id: '10k', cat: 'WEALTH', label: 'Clube 10k', sub: 'Patrimônio > 10k', icon: Coins, unlocked: safeBalance >= 10000, color: 'from-amber-400 to-orange-500', description: 'Bem-vindo ao clube dos 5 dígitos! R$ 10.000 é um marco importante.' },
+              { id: '25k', cat: 'WEALTH', label: 'Construtor', sub: 'Patrimônio > 25k', icon: Building2, unlocked: safeBalance >= 25000, color: 'from-cyan-400 to-blue-500', description: 'Você está construindo bases sólidas. R$ 25.000 em patrimônio.' },
+              { id: '50k', cat: 'WEALTH', label: 'Barão', sub: 'Patrimônio > 50k', icon: Gem, unlocked: safeBalance >= 50000, color: 'from-violet-400 to-purple-600', description: 'Meio caminho para os 100k! Seu patrimônio já impõe respeito.' },
+              { id: '100k', cat: 'WEALTH', label: 'Elite 100k', sub: 'Patrimônio > 100k', icon: Trophy, unlocked: safeBalance >= 100000, color: 'from-yellow-300 to-amber-500', description: 'Um marco lendário! R$ 100.000 acumulados. O efeito bola de neve começa a acelerar.' },
+              { id: '500k', cat: 'WEALTH', label: 'Meio Milhão', sub: 'Patrimônio > 500k', icon: Crown, unlocked: safeBalance >= 500000, color: 'from-rose-400 to-red-600', description: 'Você está na metade do caminho para o milhão! Uma conquista extraordinária.' },
+              { id: '1m', cat: 'WEALTH', label: 'Milionário', sub: 'Patrimônio > 1M', icon: Rocket, unlocked: safeBalance >= 1000000, color: 'from-fuchsia-500 to-pink-600', description: 'O topo da montanha! Você alcançou a liberdade financeira com R$ 1 Milhão.' },
 
               // RENDA (Income)
-              { id: 'income_start', cat: 'INCOME', label: 'Renda Viva', sub: 'Recebeu proventos', icon: CircleDollarSign, unlocked: safeIncome > 0, color: 'from-emerald-400 to-green-600' },
-              { id: 'cafe', cat: 'INCOME', label: 'Cafezinho', sub: 'Renda > R$ 5', icon: Coffee, unlocked: safeIncome >= 5, color: 'from-amber-300 to-orange-500' },
-              { id: 'passagem', cat: 'INCOME', label: 'Passagem', sub: 'Renda > R$ 10', icon: Plane, unlocked: safeIncome >= 10, color: 'from-orange-400 to-red-500' },
-              { id: 'lunch', cat: 'INCOME', label: 'Almoço Grátis', sub: 'Renda > R$ 20', icon: Coffee, unlocked: safeIncome >= 20, color: 'from-orange-400 to-amber-600' },
-              { id: 'streaming', cat: 'INCOME', label: 'Streaming', sub: 'Renda > R$ 50', icon: Play, unlocked: safeIncome >= 50, color: 'from-indigo-400 to-blue-600' },
-              { id: 'dinner', cat: 'INCOME', label: 'Jantar Fora', sub: 'Renda > R$ 100', icon: Award, unlocked: safeIncome >= 100, color: 'from-pink-400 to-rose-500' },
-              { id: 'market', cat: 'INCOME', label: 'Mercado Pago', sub: 'Renda > R$ 500', icon: ShoppingCart, unlocked: safeIncome >= 500, color: 'from-blue-400 to-indigo-600' },
-              { id: 'half_wage', cat: 'INCOME', label: 'Meio Salário', sub: 'Renda > R$ 700', icon: Anchor, unlocked: safeIncome >= (MIN_WAGE/2), color: 'from-sky-400 to-cyan-600' },
-              { id: 'wage', cat: 'INCOME', label: 'Aluguel Free', sub: 'Renda > 1 Salário', icon: Umbrella, unlocked: safeIncome >= MIN_WAGE, color: 'from-violet-400 to-purple-600' },
-              { id: 'freedom', cat: 'INCOME', label: 'Liberdade', sub: 'Renda > R$ 3k', icon: Plane, unlocked: safeIncome >= 3000, color: 'from-teal-400 to-emerald-600' },
-              { id: 'retire', cat: 'INCOME', label: 'Aposentado', sub: 'Renda > R$ 5k', icon: CheckCircle2, unlocked: safeIncome >= 5000, color: 'from-indigo-500 to-violet-700' },
+              { id: 'income_start', cat: 'INCOME', label: 'Renda Viva', sub: 'Recebeu proventos', icon: CircleDollarSign, unlocked: safeIncome > 0, color: 'from-emerald-400 to-green-600', description: 'A mágica aconteceu! Você recebeu seu primeiro provento.' },
+              { id: 'cafe', cat: 'INCOME', label: 'Cafezinho', sub: 'Renda > R$ 5', icon: Coffee, unlocked: safeIncome >= 5, color: 'from-amber-300 to-orange-500', description: 'Seus investimentos já pagam um cafezinho todo mês.' },
+              { id: 'passagem', cat: 'INCOME', label: 'Passagem', sub: 'Renda > R$ 10', icon: Plane, unlocked: safeIncome >= 10, color: 'from-orange-400 to-red-500', description: 'Uma passagem de ônibus ou metrô garantida pelos seus ativos.' },
+              { id: 'lunch', cat: 'INCOME', label: 'Almoço Grátis', sub: 'Renda > R$ 20', icon: Coffee, unlocked: safeIncome >= 20, color: 'from-orange-400 to-amber-600', description: 'Não existe almoço grátis? Para você existe! Seus dividendos pagam.' },
+              { id: 'streaming', cat: 'INCOME', label: 'Streaming', sub: 'Renda > R$ 50', icon: Play, unlocked: safeIncome >= 50, color: 'from-indigo-400 to-blue-600', description: 'Netflix, Spotify ou Prime? Seus investimentos bancam sua diversão.' },
+              { id: 'dinner', cat: 'INCOME', label: 'Jantar Fora', sub: 'Renda > R$ 100', icon: Award, unlocked: safeIncome >= 100, color: 'from-pink-400 to-rose-500', description: 'Um jantar especial por conta da sua carteira de investimentos.' },
+              { id: 'market', cat: 'INCOME', label: 'Mercado Pago', sub: 'Renda > R$ 500', icon: ShoppingCart, unlocked: safeIncome >= 500, color: 'from-blue-400 to-indigo-600', description: 'Uma compra de mercado garantida mensalmente pelos seus rendimentos.' },
+              { id: 'half_wage', cat: 'INCOME', label: 'Meio Salário', sub: 'Renda > R$ 700', icon: Anchor, unlocked: safeIncome >= (MIN_WAGE/2), color: 'from-sky-400 to-cyan-600', description: 'Metade de um salário mínimo caindo na conta sem trabalhar.' },
+              { id: 'wage', cat: 'INCOME', label: 'Aluguel Free', sub: 'Renda > 1 Salário', icon: Umbrella, unlocked: safeIncome >= MIN_WAGE, color: 'from-violet-400 to-purple-600', description: 'Liberdade geográfica! Seus rendimentos cobrem um aluguel básico.' },
+              { id: 'freedom', cat: 'INCOME', label: 'Liberdade', sub: 'Renda > R$ 3k', icon: Plane, unlocked: safeIncome >= 3000, color: 'from-teal-400 to-emerald-600', description: 'R$ 3.000 mensais! Você atingiu um nível invejável de renda passiva.' },
+              { id: 'retire', cat: 'INCOME', label: 'Aposentado', sub: 'Renda > R$ 5k', icon: CheckCircle2, unlocked: safeIncome >= 5000, color: 'from-indigo-500 to-violet-700', description: 'Independência Financeira! R$ 5.000 mensais cobrem o custo de vida de muitos brasileiros.' },
 
               // ESTRATÉGIA (Strategy)
-              { id: 'first_asset', cat: 'STRATEGY', label: 'Pé na Porta', sub: '1+ Ativo', icon: Target, unlocked: safePortfolio.length >= 1, color: 'from-emerald-400 to-teal-500' },
-              { id: 'duo', cat: 'STRATEGY', label: 'Dupla Dinâmica', sub: '2+ Ativos', icon: Layers, unlocked: safePortfolio.length >= 2, color: 'from-teal-400 to-cyan-500' },
-              { id: 'trio', cat: 'STRATEGY', label: 'Trio Parada Dura', sub: '3+ Ativos', icon: Layers, unlocked: safePortfolio.length >= 3, color: 'from-cyan-400 to-blue-500' },
-              { id: 'diversified', cat: 'STRATEGY', label: 'Iniciante', sub: '5+ Ativos', icon: Layers, unlocked: safePortfolio.length >= 5, color: 'from-blue-400 to-indigo-500' },
-              { id: 'manager', cat: 'STRATEGY', label: 'Gestor', sub: '15+ Ativos', icon: Briefcase, unlocked: safePortfolio.length >= 15, color: 'from-slate-500 to-zinc-700' },
-              { id: 'sector_2', cat: 'STRATEGY', label: 'Setorista', sub: '2+ Setores', icon: PieIcon, unlocked: sectors.size >= 2, color: 'from-orange-400 to-amber-500' },
-              { id: 'sectors', cat: 'STRATEGY', label: 'Rei dos Setores', sub: '5+ Setores', icon: PieIcon, unlocked: sectors.size >= 5, color: 'from-pink-400 to-rose-500' },
-              { id: 'snowball', cat: 'STRATEGY', label: 'Bola de Neve', sub: '1 Ativo Infinito', icon: Snowflake, unlocked: safeMagicCount >= 1, color: 'from-cyan-400 to-blue-500' },
-              { id: 'avalanche', cat: 'STRATEGY', label: 'Avalanche', sub: '5 Ativos Infinitos', icon: Zap, unlocked: safeMagicCount >= 5, color: 'from-yellow-400 to-orange-500' },
-              { id: 'lover', cat: 'STRATEGY', label: 'FII Lover', sub: 'Mais FIIs', icon: Building2, unlocked: safeAlloc.totals.fiis > safeAlloc.totals.stocks, color: 'from-indigo-400 to-purple-500' },
-              { id: 'stock_fan', cat: 'STRATEGY', label: 'Ações Fan', sub: 'Mais Ações', icon: TrendingUp, unlocked: safeAlloc.totals.stocks > safeAlloc.totals.fiis, color: 'from-sky-400 to-blue-600' },
-              { id: 'fii_fan', cat: 'STRATEGY', label: 'Imobiliário', sub: 'Possui FIIs', icon: Building2, unlocked: safeAlloc.totals.fiis > 0, color: 'from-emerald-400 to-teal-600' },
-              { id: 'balanced', cat: 'STRATEGY', label: 'Híbrido', sub: 'FIIs + Ações', icon: Target, unlocked: safeAlloc.totals.fiis > 0 && safeAlloc.totals.stocks > 0, color: 'from-amber-400 to-orange-500' }
+              { id: 'first_asset', cat: 'STRATEGY', label: 'Pé na Porta', sub: '1+ Ativo', icon: Target, unlocked: safePortfolio.length >= 1, color: 'from-emerald-400 to-teal-500', description: 'Você comprou seu primeiro ativo. O jogo começou!' },
+              { id: 'duo', cat: 'STRATEGY', label: 'Dupla Dinâmica', sub: '2+ Ativos', icon: Layers, unlocked: safePortfolio.length >= 2, color: 'from-teal-400 to-cyan-500', description: 'Dois ativos na carteira. A diversificação começou.' },
+              { id: 'trio', cat: 'STRATEGY', label: 'Trio Parada Dura', sub: '3+ Ativos', icon: Layers, unlocked: safePortfolio.length >= 3, color: 'from-cyan-400 to-blue-500', description: 'Três ativos trabalhando para você.' },
+              { id: 'diversified', cat: 'STRATEGY', label: 'Iniciante', sub: '5+ Ativos', icon: Layers, unlocked: safePortfolio.length >= 5, color: 'from-blue-400 to-indigo-500', description: 'Cinco ativos! Sua carteira está ganhando forma.' },
+              { id: 'manager', cat: 'STRATEGY', label: 'Gestor', sub: '15+ Ativos', icon: Briefcase, unlocked: safePortfolio.length >= 15, color: 'from-slate-500 to-zinc-700', description: 'Uma carteira robusta com 15+ ativos. Você gerencia seu próprio fundo!' },
+              { id: 'sector_2', cat: 'STRATEGY', label: 'Setorista', sub: '2+ Setores', icon: PieIcon, unlocked: sectors.size >= 2, color: 'from-orange-400 to-amber-500', description: 'Explorando novos horizontes com ativos em 2 setores diferentes.' },
+              { id: 'sectors', cat: 'STRATEGY', label: 'Rei dos Setores', sub: '5+ Setores', icon: PieIcon, unlocked: sectors.size >= 5, color: 'from-pink-400 to-rose-500', description: 'Diversificação setorial avançada! 5 setores diferentes na carteira.' },
+              { id: 'snowball', cat: 'STRATEGY', label: 'Bola de Neve', sub: '1 Ativo Infinito', icon: Snowflake, unlocked: safeMagicCount >= 1, color: 'from-cyan-400 to-blue-500', description: 'O efeito mágico! Um ativo já compra suas próprias cotas com dividendos.' },
+              { id: 'avalanche', cat: 'STRATEGY', label: 'Avalanche', sub: '5 Ativos Infinitos', icon: Zap, unlocked: safeMagicCount >= 5, color: 'from-yellow-400 to-orange-500', description: 'Cinco ativos autossustentáveis! Sua bola de neve virou uma avalanche.' },
+              { id: 'lover', cat: 'STRATEGY', label: 'FII Lover', sub: 'Mais FIIs', icon: Building2, unlocked: safeAlloc.totals.fiis > safeAlloc.totals.stocks, color: 'from-indigo-400 to-purple-500', description: 'Você ama tijolos e papel! Sua carteira tem mais FIIs que Ações.' },
+              { id: 'stock_fan', cat: 'STRATEGY', label: 'Ações Fan', sub: 'Mais Ações', icon: TrendingUp, unlocked: safeAlloc.totals.stocks > safeAlloc.totals.fiis, color: 'from-sky-400 to-blue-600', description: 'Sócio de grandes empresas! Você prefere o potencial das Ações.' },
+              { id: 'fii_fan', cat: 'STRATEGY', label: 'Imobiliário', sub: 'Possui FIIs', icon: Building2, unlocked: safeAlloc.totals.fiis > 0, color: 'from-emerald-400 to-teal-600', description: 'O dono da rua! Você tem investimentos no setor imobiliário.' },
+              { id: 'balanced', cat: 'STRATEGY', label: 'Híbrido', sub: 'FIIs + Ações', icon: Target, unlocked: safeAlloc.totals.fiis > 0 && safeAlloc.totals.stocks > 0, color: 'from-amber-400 to-orange-500', description: 'O equilíbrio perfeito entre FIIs e Ações.' }
           ];
 
           return { 
@@ -1645,127 +1646,125 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                 </div>
 
                 <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar space-y-6">
-                    {/* Charts Section */}
-                    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] p-6 border border-zinc-100 dark:border-zinc-800 shadow-sm relative overflow-hidden">
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center">
-                            {/* Monthly Bar Chart */}
-                            <div className="lg:col-span-2 h-64 w-full relative z-10">
-                                <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4">Evolução Mensal</h3>
-                                {filteredChartData.length > 0 ? (
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <ComposedChart data={filteredChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                            <defs>
-                                                <linearGradient id="colorIncomeBar" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="0%" stopColor="#10b981" stopOpacity={0.8}/>
-                                                    <stop offset="100%" stopColor="#10b981" stopOpacity={0.2}/>
-                                                </linearGradient>
-                                                <linearGradient id="colorIncomeBarFuture" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                                                    <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.2}/>
-                                                </linearGradient>
-                                            </defs>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
-                                            <XAxis 
-                                                dataKey="label" 
-                                                axisLine={false} 
-                                                tickLine={false} 
-                                                tick={{ fontSize: 10, fill: '#71717a', fontWeight: 600 }} 
-                                                dy={10} 
-                                            />
-                                            <YAxis 
-                                                axisLine={false} 
-                                                tickLine={false} 
-                                                tick={{ fontSize: 10, fill: '#71717a', fontWeight: 500 }} 
-                                                tickFormatter={(val) => `R$${val}`} 
-                                            />
-                                            <RechartsTooltip 
-                                                cursor={{fill: 'rgba(16, 185, 129, 0.05)'}}
-                                                content={({ active, payload, label }) => {
-                                                    if (active && payload && payload.length) {
-                                                        const data = payload[0].payload;
-                                                        return (
-                                                            <div className="bg-zinc-900/95 border border-white/10 p-3 rounded-xl shadow-2xl backdrop-blur-md min-w-[120px]">
-                                                                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-wider mb-1">{data.date}</p>
-                                                                <p className="text-lg font-black text-white tabular-nums leading-none mb-1">
-                                                                    {formatBRL(data.value, privacyMode)}
-                                                                </p>
-                                                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${data.isFuture ? 'bg-blue-500/20 text-blue-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
-                                                                    {data.isFuture ? 'PROJETADO' : 'RECEBIDO'}
-                                                                </span>
-                                                            </div>
-                                                        );
-                                                    }
-                                                    return null;
-                                                }}
-                                            />
-                                            <Bar 
-                                                dataKey="value" 
-                                                radius={[6, 6, 0, 0]}
-                                                maxBarSize={40}
-                                                animationDuration={1500}
-                                            >
-                                                {filteredChartData.map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={entry.isFuture ? "url(#colorIncomeBarFuture)" : "url(#colorIncomeBar)"} />
-                                                ))}
-                                            </Bar>
-                                            {incomeData.average > 0 && (
-                                                <ReferenceLine y={incomeData.average} stroke="#f59e0b" strokeDasharray="3 3" strokeOpacity={0.6}>
-                                                    <Label value="Média" position="insideRight" fill="#f59e0b" fontSize={9} fontWeight="bold" dy={-10} />
-                                                </ReferenceLine>
-                                            )}
-                                        </ComposedChart>
-                                    </ResponsiveContainer>
-                                ) : (
-                                    <div className="flex flex-col items-center justify-center h-full text-zinc-400">
-                                        <CircleDollarSign className="w-8 h-8 mb-2 opacity-20" />
-                                        <p className="text-xs font-medium">Nenhum provento registrado</p>
-                                    </div>
-                                )}
-                            </div>
+                    {/* Charts Section - Horizontal Scroll */}
+                    <div className="flex overflow-x-auto snap-x snap-mandatory gap-3 pb-2 -mx-4 px-4 no-scrollbar shrink-0">
+                        {/* Monthly Bar Chart */}
+                        <div className="min-w-[85%] sm:min-w-[320px] h-64 bg-white dark:bg-zinc-900 rounded-[2rem] p-5 border border-zinc-100 dark:border-zinc-800 shadow-sm relative overflow-hidden snap-center">
+                            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4">Evolução Mensal</h3>
+                            {filteredChartData.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <ComposedChart data={filteredChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                        <defs>
+                                            <linearGradient id="colorIncomeBar" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor="#10b981" stopOpacity={0.8}/>
+                                                <stop offset="100%" stopColor="#10b981" stopOpacity={0.2}/>
+                                            </linearGradient>
+                                            <linearGradient id="colorIncomeBarFuture" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                                                <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.2}/>
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
+                                        <XAxis 
+                                            dataKey="label" 
+                                            axisLine={false} 
+                                            tickLine={false} 
+                                            tick={{ fontSize: 10, fill: '#71717a', fontWeight: 600 }} 
+                                            dy={10} 
+                                        />
+                                        <YAxis 
+                                            axisLine={false} 
+                                            tickLine={false} 
+                                            tick={{ fontSize: 10, fill: '#71717a', fontWeight: 500 }} 
+                                            tickFormatter={(val) => `R$${val}`} 
+                                        />
+                                        <RechartsTooltip 
+                                            cursor={{fill: 'rgba(16, 185, 129, 0.05)'}}
+                                            content={({ active, payload, label }) => {
+                                                if (active && payload && payload.length) {
+                                                    const data = payload[0].payload;
+                                                    return (
+                                                        <div className="bg-zinc-900/95 border border-white/10 p-3 rounded-xl shadow-2xl backdrop-blur-md min-w-[120px]">
+                                                            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-wider mb-1">{data.date}</p>
+                                                            <p className="text-lg font-black text-white tabular-nums leading-none mb-1">
+                                                                {formatBRL(data.value, privacyMode)}
+                                                            </p>
+                                                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${data.isFuture ? 'bg-blue-500/20 text-blue-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                                                                {data.isFuture ? 'PROJETADO' : 'RECEBIDO'}
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                }
+                                                return null;
+                                            }}
+                                        />
+                                        <Bar 
+                                            dataKey="value" 
+                                            radius={[6, 6, 0, 0]}
+                                            maxBarSize={40}
+                                            animationDuration={1500}
+                                        >
+                                            {filteredChartData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.isFuture ? "url(#colorIncomeBarFuture)" : "url(#colorIncomeBar)"} />
+                                            ))}
+                                        </Bar>
+                                        {incomeData.average > 0 && (
+                                            <ReferenceLine y={incomeData.average} stroke="#f59e0b" strokeDasharray="3 3" strokeOpacity={0.6}>
+                                                <Label value="Média" position="insideRight" fill="#f59e0b" fontSize={9} fontWeight="bold" dy={-10} />
+                                            </ReferenceLine>
+                                        )}
+                                    </ComposedChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center h-full text-zinc-400">
+                                    <CircleDollarSign className="w-8 h-8 mb-2 opacity-20" />
+                                    <p className="text-xs font-medium">Nenhum provento registrado</p>
+                                </div>
+                            )}
+                        </div>
 
-                            {/* Pie Chart - Dividends by Asset */}
-                            <div className="h-64 w-full relative z-10 flex flex-col">
-                                <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4">Por Ativo</h3>
-                                {dividendsByAsset.length > 0 ? (
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <PieChart>
-                                            <Pie
-                                                data={dividendsByAsset}
-                                                cx="50%"
-                                                cy="50%"
-                                                innerRadius={60}
-                                                outerRadius={80}
-                                                paddingAngle={5}
-                                                dataKey="value"
-                                                animationDuration={1500}
-                                            >
-                                                {dividendsByAsset.map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
-                                                ))}
-                                            </Pie>
-                                            <RechartsTooltip 
-                                                content={({ active, payload }) => {
-                                                    if (active && payload && payload.length) {
-                                                        const data = payload[0].payload;
-                                                        return (
-                                                            <div className="bg-zinc-900/95 border border-white/10 p-2 rounded-lg shadow-xl backdrop-blur-md">
-                                                                <p className="text-[10px] font-black text-white uppercase">{data.name}</p>
-                                                                <p className="text-xs font-bold text-emerald-400">{formatBRL(data.value, privacyMode)}</p>
-                                                            </div>
-                                                        );
-                                                    }
-                                                    return null;
-                                                }}
-                                            />
-                                        </PieChart>
-                                    </ResponsiveContainer>
-                                ) : (
-                                    <div className="flex flex-col items-center justify-center h-full text-zinc-400">
-                                        <PieIcon className="w-8 h-8 mb-2 opacity-20" />
-                                        <p className="text-xs font-medium">Sem dados</p>
-                                    </div>
-                                )}
-                            </div>
+                        {/* Pie Chart - Dividends by Asset */}
+                        <div className="min-w-[85%] sm:min-w-[320px] h-64 bg-white dark:bg-zinc-900 rounded-[2rem] p-5 border border-zinc-100 dark:border-zinc-800 shadow-sm relative overflow-hidden snap-center flex flex-col">
+                            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4">Por Ativo</h3>
+                            {dividendsByAsset.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={dividendsByAsset}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={60}
+                                            outerRadius={80}
+                                            paddingAngle={5}
+                                            dataKey="value"
+                                            animationDuration={1500}
+                                        >
+                                            {dividendsByAsset.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
+                                            ))}
+                                        </Pie>
+                                        <RechartsTooltip 
+                                            content={({ active, payload }) => {
+                                                if (active && payload && payload.length) {
+                                                    const data = payload[0].payload;
+                                                    return (
+                                                        <div className="bg-zinc-900/95 border border-white/10 p-2 rounded-lg shadow-xl backdrop-blur-md">
+                                                            <p className="text-[10px] font-black text-white uppercase">{data.name}</p>
+                                                            <p className="text-xs font-bold text-emerald-400">{formatBRL(data.value, privacyMode)}</p>
+                                                        </div>
+                                                    );
+                                                }
+                                                return null;
+                                            }}
+                                        />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center h-full text-zinc-400">
+                                    <PieIcon className="w-8 h-8 mb-2 opacity-20" />
+                                    <p className="text-xs font-medium">Sem dados</p>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -1801,34 +1800,34 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                                     {Object.keys(incomeData.groupedHistory).length > 0 ? (
                                         Object.keys(incomeData.groupedHistory).sort((a,b) => b.localeCompare(a)).map(monthKey => (
                                             <div key={monthKey}>
-                                                <div className="sticky top-0 bg-zinc-50/90 dark:bg-zinc-800/90 backdrop-blur-sm z-10 py-2 px-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
-                                                    <span className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                                                <div className="sticky top-0 bg-zinc-50/95 dark:bg-zinc-800/95 backdrop-blur-sm z-10 py-1.5 px-3 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
+                                                    <span className="text-[9px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
                                                         {getMonthName(monthKey + '-01')}
                                                     </span>
-                                                    <span className="text-[10px] font-bold text-zinc-400">
+                                                    <span className="text-[9px] font-bold text-zinc-400">
                                                         {formatBRL(incomeData.groupedHistory[monthKey].reduce((acc, item) => acc + item.amount, 0), privacyMode)}
                                                     </span>
                                                 </div>
                                                 <div className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
                                                     {incomeData.groupedHistory[monthKey].map((item, idx) => (
-                                                        <div key={`${item.ticker}-${idx}`} className="flex items-center justify-between p-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
-                                                            <div className="flex items-center gap-3">
-                                                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black border ${item.status === 'provisioned' ? 'bg-blue-50 dark:bg-blue-900/10 text-blue-600 border-blue-100 dark:border-blue-800/30' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border-zinc-200 dark:border-zinc-700'}`}>
+                                                        <div key={`${item.ticker}-${idx}`} className="flex items-center justify-between p-2 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
+                                                            <div className="flex items-center gap-2.5">
+                                                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[9px] font-black border ${item.status === 'provisioned' ? 'bg-blue-50 dark:bg-blue-900/10 text-blue-600 border-blue-100 dark:border-blue-800/30' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border-zinc-200 dark:border-zinc-700'}`}>
                                                                     {item.ticker.substring(0, 2)}
                                                                 </div>
                                                                 <div>
                                                                     <div className="flex items-center gap-1.5">
                                                                         <span className="text-xs font-bold text-zinc-900 dark:text-white">{item.ticker}</span>
-                                                                        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded uppercase ${item.type === 'JCP' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'}`}>
+                                                                        <span className={`text-[7px] font-bold px-1 py-0.5 rounded uppercase ${item.type === 'JCP' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'}`}>
                                                                             {item.type}
                                                                         </span>
                                                                     </div>
-                                                                    <span className="text-[10px] text-zinc-400">
+                                                                    <span className="text-[9px] text-zinc-400">
                                                                         {formatDateShort(item.paymentDate)}
                                                                     </span>
                                                                 </div>
                                                             </div>
-                                                            <span className={`text-sm font-bold tabular-nums ${item.status === 'provisioned' ? 'text-blue-500' : 'text-zinc-900 dark:text-white'}`}>
+                                                            <span className={`text-xs font-bold tabular-nums ${item.status === 'provisioned' ? 'text-blue-500' : 'text-zinc-900 dark:text-white'}`}>
                                                                 +{formatBRL(item.amount, privacyMode)}
                                                             </span>
                                                         </div>
@@ -2083,10 +2082,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                                 layout
                                 initial={{ opacity: 0, scale: 0.9 }}
                                 animate={{ opacity: 1, scale: 1 }}
-                                className={`relative p-2.5 rounded-2xl flex flex-col items-center text-center transition-all duration-500 border overflow-hidden group aspect-square justify-center ${
+                                onClick={() => achievement.unlocked && setSelectedAchievement(achievement)}
+                                className={`relative p-2.5 rounded-2xl flex flex-col items-center text-center transition-all duration-500 border overflow-hidden group aspect-square justify-center cursor-pointer ${
                                     achievement.unlocked 
-                                        ? 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 shadow-sm' 
-                                        : 'bg-zinc-100 dark:bg-zinc-900/50 border-transparent opacity-50 grayscale'
+                                        ? 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 shadow-sm hover:scale-105 active:scale-95' 
+                                        : 'bg-zinc-100 dark:bg-zinc-900/50 border-transparent opacity-50 grayscale cursor-not-allowed'
                                 }`}
                             >
                                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-1.5 shadow-sm relative z-10 transition-transform duration-300 group-hover:scale-110 ${
@@ -2277,6 +2277,71 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
             nextLevel={goalsData.nextLevel}
             progress={goalsData.progress}
         />
+
+        <AnimatePresence>
+            {selectedAchievement && (
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
+                    onClick={() => setSelectedAchievement(null)}
+                >
+                    <motion.div
+                        initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                        animate={{ scale: 1, opacity: 1, y: 0 }}
+                        exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="bg-white dark:bg-zinc-900 w-full max-w-sm rounded-[2rem] p-6 relative shadow-2xl border border-white/10 overflow-hidden"
+                    >
+                        {/* Background Effects */}
+                        <div className={`absolute top-0 right-0 w-40 h-40 bg-gradient-to-br ${selectedAchievement.color} opacity-20 blur-3xl rounded-full -mr-10 -mt-10 pointer-events-none`}></div>
+                        <div className={`absolute bottom-0 left-0 w-40 h-40 bg-gradient-to-tr ${selectedAchievement.color} opacity-20 blur-3xl rounded-full -ml-10 -mb-10 pointer-events-none`}></div>
+
+                        <button 
+                            onClick={() => setSelectedAchievement(null)}
+                            className="absolute top-4 right-4 p-2 bg-zinc-100 dark:bg-zinc-800 rounded-full text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors z-20"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
+
+                        <div className="relative z-10 flex flex-col items-center text-center">
+                            <motion.div 
+                                initial={{ scale: 0, rotate: -180 }}
+                                animate={{ scale: 1, rotate: 0 }}
+                                transition={{ type: "spring", damping: 12 }}
+                                className={`w-20 h-20 rounded-3xl flex items-center justify-center mb-6 shadow-lg bg-gradient-to-br ${selectedAchievement.color} text-white`}
+                            >
+                                <selectedAchievement.icon className="w-10 h-10" strokeWidth={2} />
+                            </motion.div>
+
+                            <h3 className="text-2xl font-black text-zinc-900 dark:text-white mb-2 tracking-tight">
+                                {selectedAchievement.label}
+                            </h3>
+                            
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-100 dark:bg-zinc-800 mb-6">
+                                <span className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">
+                                    {selectedAchievement.sub}
+                                </span>
+                            </div>
+
+                            <p className="text-sm font-medium text-zinc-600 dark:text-zinc-300 leading-relaxed">
+                                {selectedAchievement.description}
+                            </p>
+
+                            <div className="mt-8 w-full">
+                                <button
+                                    onClick={() => setSelectedAchievement(null)}
+                                    className={`w-full py-3.5 rounded-xl font-bold text-white shadow-lg shadow-indigo-500/20 bg-gradient-to-r ${selectedAchievement.color} hover:opacity-90 transition-opacity`}
+                                >
+                                    Incrível!
+                                </button>
+                            </div>
+                        </div>
+                    </motion.div>
+                </motion.div>
+            )}
+        </AnimatePresence>
 
     </motion.div>
   );
