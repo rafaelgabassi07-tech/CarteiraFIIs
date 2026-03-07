@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { RefreshCw, AlertTriangle, Search, X, Wallet, TrendingUp, TrendingDown, Building2, Globe, Check, Newspaper, Share2, ExternalLink, ChevronLeft } from 'lucide-react';
+import { RefreshCw, AlertTriangle, Search, X, Wallet, TrendingUp, TrendingDown, Building2, Globe, Check, Newspaper, Share2 } from 'lucide-react';
 import { NewsItem, Transaction, NewsSentiment, NewsImpact } from '../types';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -60,150 +60,79 @@ const isSimilar = (s1: string, s2: string) => {
     return similarity > 0.7; 
 };
 
-const NewsReader = ({ article, onClose }: { article: NewsItem, onClose: () => void }) => {
-    return (
-        <div className="fixed inset-0 z-[60] bg-white dark:bg-zinc-900 flex flex-col anim-slide-up">
-            <div className="flex items-center justify-between p-4 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 sticky top-0 z-10">
-                <button 
-                    onClick={onClose}
-                    className="p-2 -ml-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 transition-colors"
-                >
-                    <ChevronLeft className="w-6 h-6" />
-                </button>
-                
-                <span className="text-sm font-bold text-zinc-900 dark:text-white">
-                    Detalhes da Notícia
+const HeroNews = ({ item, onShare }: { item: NewsItem, onShare: (item: NewsItem, e: React.MouseEvent) => void }) => (
+    <a 
+        href={item.url} 
+        target="_blank" 
+        rel="noopener noreferrer"
+        className="block relative w-full aspect-[4/5] sm:aspect-[2/1] rounded-[2.5rem] overflow-hidden mb-8 group active:scale-[0.98] transition-all shadow-2xl shadow-black/20"
+    >
+        {item.imageUrl ? (
+            <img 
+                src={item.imageUrl} 
+                alt={item.title} 
+                className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" 
+                onError={(e) => (e.target as HTMLImageElement).src = 'https://picsum.photos/seed/news/800/600'}
+            />
+        ) : (
+            <div className="absolute inset-0 bg-gradient-to-br from-zinc-800 to-zinc-900 flex items-center justify-center">
+                <Newspaper className="w-20 h-20 text-white/10" />
+            </div>
+        )}
+        
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent opacity-90"></div>
+        
+        <div className="absolute bottom-0 left-0 right-0 p-8 flex flex-col justify-end h-full">
+            <div className="flex items-center gap-3 mb-4">
+                <span className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-widest border border-white/10">
+                    Destaque
                 </span>
-
-                <div className="w-10"></div> {/* Spacer for alignment */}
+                <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-widest flex items-center gap-2">
+                    <span className="w-1 h-1 rounded-full bg-white/50"></span>
+                    {item.source}
+                </span>
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-auto">
+                    {item.date}
+                </span>
             </div>
             
-            <div className="flex-1 overflow-y-auto bg-white dark:bg-zinc-900">
-                <div className="max-w-3xl mx-auto p-6 pb-32">
-                    {article.imageUrl && (
-                        <div className="relative w-full aspect-video rounded-3xl overflow-hidden mb-8 shadow-lg">
-                            <img 
-                                src={article.imageUrl} 
-                                alt={article.title} 
-                                className="absolute inset-0 w-full h-full object-cover"
-                                onError={(e) => (e.target as HTMLImageElement).style.display = 'none'}
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                            <div className="absolute bottom-4 left-4 right-4">
-                                <span className="px-2 py-1 rounded-md bg-white/20 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-widest border border-white/10">
-                                    {article.source}
-                                </span>
-                            </div>
-                        </div>
-                    )}
+            <h2 className="text-3xl sm:text-4xl font-black text-white leading-[0.95] tracking-tighter mb-4 line-clamp-3">
+                {item.title}
+            </h2>
+            
+            <p className="text-sm text-zinc-300 line-clamp-2 font-medium leading-relaxed mb-6 max-w-2xl">
+                {item.summary.replace(/<[^>]*>?/gm, '')}
+            </p>
 
-                    <div className="flex items-center gap-3 mb-6">
-                        <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
-                            {article.date}
+            <div className="flex items-center justify-between pt-6 border-t border-white/10">
+                <div className="flex gap-2">
+                    {item.sentiment === 'positive' && (
+                        <span className="flex items-center gap-1.5 text-emerald-400 text-[10px] font-black uppercase tracking-widest">
+                            <TrendingUp className="w-4 h-4" /> Otimista
                         </span>
-                        {article.sentiment === 'positive' && (
-                            <span className="px-2 py-1 rounded-md bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
-                                <TrendingUp className="w-3 h-3" /> Otimista
-                            </span>
-                        )}
-                        {article.sentiment === 'negative' && (
-                            <span className="px-2 py-1 rounded-md bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
-                                <TrendingDown className="w-3 h-3" /> Pessimista
-                            </span>
-                        )}
-                    </div>
-
-                    <h1 className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white leading-tight mb-6 tracking-tight">
-                        {article.title}
-                    </h1>
-
-                    <div className="prose prose-zinc dark:prose-invert max-w-none mb-10">
-                        <p className="text-lg text-zinc-600 dark:text-zinc-300 leading-relaxed font-medium">
-                            {article.summary.replace(/<[^>]*>?/gm, '')}
-                        </p>
-                    </div>
-
-                    <div className="flex flex-col gap-4">
-                        <a 
-                            href={article.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="w-full py-4 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold text-center hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
-                        >
-                            Ler matéria completa <ExternalLink className="w-4 h-4" />
-                        </a>
-                        
-                        <p className="text-center text-xs text-zinc-400 px-4">
-                            Você será redirecionado para o site oficial da fonte ({article.source}) para ler o conteúdo na íntegra.
-                        </p>
-                    </div>
+                    )}
+                    {item.sentiment === 'negative' && (
+                        <span className="flex items-center gap-1.5 text-rose-400 text-[10px] font-black uppercase tracking-widest">
+                            <TrendingDown className="w-4 h-4" /> Pessimista
+                        </span>
+                    )}
                 </div>
+                
+                <button 
+                    onClick={(e) => onShare(item, e)}
+                    className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 backdrop-blur-md text-white hover:bg-white/20 transition-all border border-white/10 active:scale-90"
+                >
+                    <Share2 className="w-4 h-4" />
+                </button>
             </div>
         </div>
-    );
-};
-
-const NewsCarousel = ({ items, onShare, onClick }: { items: NewsItem[], onShare: (item: NewsItem, e: React.MouseEvent) => void, onClick: (item: NewsItem) => void }) => (
-    <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 -mx-4 px-4 pb-6 no-scrollbar">
-        {items.map((item) => (
-            <div 
-                key={item.id}
-                onClick={() => onClick(item)}
-                className="min-w-[85%] sm:min-w-[320px] h-48 relative rounded-3xl overflow-hidden snap-center group active:scale-[0.98] transition-all shadow-lg shadow-black/10 cursor-pointer shrink-0"
-            >
-                {item.imageUrl ? (
-                    <img 
-                        src={item.imageUrl} 
-                        alt={item.title} 
-                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
-                        onError={(e) => (e.target as HTMLImageElement).src = 'https://picsum.photos/seed/news/800/600'}
-                    />
-                ) : (
-                    <div className="absolute inset-0 bg-gradient-to-br from-zinc-800 to-zinc-900 flex items-center justify-center">
-                        <Newspaper className="w-12 h-12 text-white/10" />
-                    </div>
-                )}
-                
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
-                
-                <div className="absolute bottom-0 left-0 right-0 p-5 flex flex-col justify-end h-full">
-                    <div className="flex items-center gap-2 mb-2">
-                        <span className="px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-widest border border-white/10">
-                            Destaque
-                        </span>
-                        <span className="text-[9px] font-bold text-zinc-300 uppercase tracking-widest ml-auto">
-                            {item.date}
-                        </span>
-                    </div>
-                    
-                    <h2 className="text-lg font-black text-white leading-tight tracking-tight mb-1 line-clamp-2">
-                        {item.title}
-                    </h2>
-                    
-                    <div className="flex items-center justify-between mt-2">
-                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-1.5">
-                            <span className="w-1 h-1 rounded-full bg-white/50"></span>
-                            {item.source}
-                        </span>
-
-                        <button 
-                            onClick={(e) => onShare(item, e)}
-                            className="w-7 h-7 flex items-center justify-center rounded-full bg-white/10 backdrop-blur-md text-white hover:bg-white/20 transition-all border border-white/10 active:scale-90"
-                        >
-                            <Share2 className="w-3.5 h-3.5" />
-                        </button>
-                    </div>
-                </div>
-            </div>
-        ))}
-    </div>
+    </a>
 );
 
 export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
     const [news, setNews] = useState<NewsItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
-    const [selectedArticle, setSelectedArticle] = useState<NewsItem | null>(null);
     
     const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
     
@@ -354,13 +283,6 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
     return (
         <div className="pb-32 min-h-screen relative">
             
-            {selectedArticle && (
-                <NewsReader 
-                    article={selectedArticle} 
-                    onClose={() => setSelectedArticle(null)} 
-                />
-            )}
-
             {copyFeedback && (
                 <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 bg-black/80 text-white px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 anim-scale-in backdrop-blur-md">
                     <Check className="w-3 h-3 text-emerald-400" /> Link copiado!
@@ -368,7 +290,6 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
             )}
 
             <div className="sticky top-20 z-30 bg-primary-light dark:bg-primary-dark border-b border-zinc-200 dark:border-zinc-800 transition-all -mx-4 px-4 py-2 mb-3">
-                {/* ... (Search and Tabs logic remains the same) ... */}
                 <div className="flex flex-col gap-2">
                     <div className="flex gap-2">
                         <div className="relative group flex-1">
@@ -446,13 +367,15 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
                 ) : (
                     <div className="space-y-3">
                         {filteredNews.length > 0 && (
-                            <NewsCarousel items={filteredNews.slice(0, 5)} onShare={handleShare} onClick={setSelectedArticle} />
+                            <HeroNews item={filteredNews[0]} onShare={handleShare} />
                         )}
-                        {filteredNews.slice(5).map((item) => (
-                            <div 
+                        {filteredNews.slice(1).map((item) => (
+                            <a 
                                 key={item.id} 
-                                onClick={() => setSelectedArticle(item)}
-                                className="block bg-white dark:bg-zinc-900 rounded-3xl p-5 border border-zinc-200/60 dark:border-zinc-800/60 shadow-sm active:scale-[0.98] transition-all relative group overflow-hidden hover:border-indigo-200 dark:hover:border-zinc-700 cursor-pointer"
+                                href={item.url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="block bg-white dark:bg-zinc-900 rounded-3xl p-5 border border-zinc-200/60 dark:border-zinc-800/60 shadow-sm active:scale-[0.98] transition-all relative group overflow-hidden hover:border-indigo-200 dark:hover:border-zinc-700"
                             >
                                 <div className="flex justify-between items-start mb-3">
                                     <div className="flex items-center gap-2.5">
@@ -507,7 +430,7 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
                                         <Share2 className="w-4 h-4" />
                                     </button>
                                 </div>
-                            </div>
+                            </a>
                         ))}
                     </div>
                 )}
