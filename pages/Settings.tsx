@@ -1,31 +1,17 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo, memo } from 'react';
 import { 
-    User, Mail, Activity, Zap, LogOut, Palette, Moon, Sun, Check, 
-    Shield, Bell, Database, FileSpreadsheet, FileJson, RefreshCw, 
-    Smartphone, Download, History, LifeBuoy, Info, AlertTriangle, 
-    Trash2, ChevronRight, Loader2, ExternalLink, Sliders
+    User, Settings as SettingsIcon, Bell, Shield, Database, 
+    Cloud, RefreshCw, LogOut, ChevronRight, Moon, Sun, 
+    Monitor, Palette, Eye, EyeOff, Download, Upload, 
+    Trash2, Info, CheckCircle2, AlertTriangle, Zap,
+    Smartphone, FileText, Globe, Clock, Calculator,
+    Search, X, ExternalLink
 } from 'lucide-react';
-import { ConfirmationModal } from '../components/Layout';
-import { Transaction, DividendReceipt, ThemeType, ServiceMetric } from '../types';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Transaction, DividendReceipt, ServiceMetric, AssetType } from '../types';
 import { parseB3Excel } from '../services/excelService';
-
-const ACCENT_COLORS = [
-    { name: 'Indigo', hex: '#6366f1' },
-    { name: 'Emerald', hex: '#10b981' },
-    { name: 'Amber', hex: '#f59e0b' },
-    { name: 'Rose', hex: '#f43f5e' },
-    { name: 'Sky', hex: '#0ea5e9' },
-    { name: 'Violet', hex: '#8b5cf6' },
-];
-
-const ToggleSwitch = ({ checked, onChange }: { checked: boolean; onChange: () => void }) => (
-    <div 
-        onClick={(e) => { e.stopPropagation(); onChange(); }}
-        className={`w-12 h-7 rounded-full p-1 cursor-pointer transition-colors duration-300 ease-in-out ${checked ? 'bg-emerald-500' : 'bg-zinc-200 dark:bg-zinc-700'}`}
-    >
-        <div className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-300 ease-in-out ${checked ? 'translate-x-5' : 'translate-x-0'}`} />
-    </div>
-);
+import { triggerScraperUpdate } from '../services/dataService';
+import { ConfirmationModal } from '../components/Layout';
 
 interface SettingsProps {
     onLogout: () => Promise<void>;
@@ -35,36 +21,208 @@ interface SettingsProps {
     dividends: DividendReceipt[];
     onImportDividends: (divs: DividendReceipt[]) => void;
     onResetApp: () => void;
-    theme: ThemeType;
-    onSetTheme: (theme: ThemeType) => void;
+    theme: 'light' | 'dark' | 'system';
+    onSetTheme: (theme: 'light' | 'dark' | 'system') => void;
     accentColor: string;
     onSetAccentColor: (color: string) => void;
     privacyMode: boolean;
     onSetPrivacyMode: (mode: boolean) => void;
     appVersion: string;
     updateAvailable: boolean;
-    onCheckUpdates: () => void;
+    onCheckUpdates: () => Promise<boolean>;
     onShowChangelog: () => void;
     pushEnabled: boolean;
     onRequestPushPermission: () => void;
-    onSyncAll: (silent?: boolean) => Promise<void>;
+    onSyncAll: (force?: boolean) => Promise<void>;
     onForceUpdate: () => void;
     currentVersionDate: string | null;
     services: ServiceMetric[];
-    onCheckConnection: () => void;
+    onCheckConnection: () => Promise<void>;
     isCheckingConnection: boolean;
+    showToast: (type: 'success' | 'error' | 'info', text: string) => void;
 }
 
-export const Settings: React.FC<SettingsProps> = ({
-    onLogout, user, transactions, onImportTransactions, dividends, onImportDividends, onResetApp,
-    theme, onSetTheme, accentColor, onSetAccentColor, privacyMode, onSetPrivacyMode, appVersion,
-    updateAvailable, onCheckUpdates, onShowChangelog, pushEnabled, onRequestPushPermission, onSyncAll,
-    onForceUpdate, currentVersionDate, services, onCheckConnection, isCheckingConnection
+const ToggleSwitch = ({ enabled, onToggle, icon: Icon }: { enabled: boolean; onToggle: () => void; icon?: any }) => (
+    <button
+        onClick={onToggle}
+        className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+            enabled ? 'bg-indigo-500' : 'bg-zinc-200 dark:bg-zinc-800'
+        }`}
+    >
+        <span
+            className={`pointer-events-none relative inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out flex items-center justify-center ${
+                enabled ? 'translate-x-5' : 'translate-x-0'
+            }`}
+        >
+            {Icon && <Icon className={`w-3.5 h-3.5 ${enabled ? 'text-indigo-500' : 'text-zinc-400'}`} />}
+        </span>
+    </button>
+);
+
+const SettingsGroup = ({ title, children, icon: Icon }: { title: string; children: React.ReactNode; icon: any }) => (
+    <div className="mb-8 last:mb-0">
+        <div className="flex items-center gap-3 mb-4 px-2">
+            <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-500">
+                <Icon className="w-4 h-4" />
+            </div>
+            <h3 className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-widest">{title}</h3>
+        </div>
+        <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 overflow-hidden shadow-sm">
+            {children}
+        </div>
+    </div>
+);
+
+const SettingsItem = ({ 
+    label, 
+    description, 
+    icon: Icon, 
+    onClick, 
+    value, 
+    badge, 
+    danger,
+    isLoading
+}: { 
+    label: string; 
+    description?: string; 
+    icon: any; 
+    onClick?: () => void; 
+    value?: React.ReactNode;
+    badge?: string;
+    danger?: boolean;
+    isLoading?: boolean;
+}) => (
+    <button
+        onClick={onClick}
+        disabled={!onClick || isLoading}
+        className={`w-full flex items-center justify-between p-5 text-left transition-all hover:bg-zinc-50 dark:hover:bg-zinc-800/50 border-b border-zinc-50 dark:border-zinc-800/50 last:border-0 group ${
+            danger ? 'hover:bg-rose-50 dark:hover:bg-rose-500/5' : ''
+        }`}
+    >
+        <div className="flex items-center gap-4">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
+                danger 
+                    ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-500' 
+                    : 'bg-zinc-50 dark:bg-zinc-800 text-zinc-400 group-hover:text-indigo-500 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-500/10'
+            }`}>
+                {isLoading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Icon className="w-5 h-5" />}
+            </div>
+            <div>
+                <div className="flex items-center gap-2">
+                    <span className={`text-sm font-bold ${danger ? 'text-rose-500' : 'text-zinc-900 dark:text-white'}`}>
+                        {label}
+                    </span>
+                    {badge && (
+                        <span className="px-1.5 py-0.5 rounded-md bg-indigo-500 text-[10px] font-black text-white uppercase tracking-wider">
+                            {badge}
+                        </span>
+                    )}
+                </div>
+                {description && (
+                    <p className="text-xs text-zinc-400 font-medium mt-0.5">{description}</p>
+                )}
+            </div>
+        </div>
+        <div className="flex items-center gap-3">
+            {value && <div className="text-sm font-bold text-zinc-500">{value}</div>}
+            {onClick && !value && <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-indigo-500 transition-colors" />}
+        </div>
+    </button>
+);
+
+const CeilingPriceTool = ({ showToast }: { showToast: any }) => {
+    const [ticker, setTicker] = useState('');
+    const [yieldTarget, setYieldTarget] = useState(6);
+    const [result, setResult] = useState<{ price: number; dy: number; ceiling: number } | null>(null);
+    const [loading, setLoading] = useState(false);
+
+    const calculate = async () => {
+        if (!ticker) return;
+        setLoading(true);
+        try {
+            const results = await triggerScraperUpdate([ticker], false);
+            const data = results[0];
+            if (data.status === 'success' && data.details) {
+                const price = data.details.price || 0;
+                const dy = data.details.dy || 0;
+                const dividendPerShare = (price * dy) / 100;
+                const ceiling = dividendPerShare / (yieldTarget / 100);
+                setResult({ price, dy, ceiling });
+            } else {
+                showToast('error', 'Ativo não encontrado ou erro na busca.');
+            }
+        } catch (e) {
+            showToast('error', 'Erro ao calcular.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="p-5 bg-zinc-50 dark:bg-zinc-800/30 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
+            <div className="flex items-center gap-2 mb-4">
+                <Calculator className="w-4 h-4 text-indigo-500" />
+                <h4 className="text-xs font-black text-zinc-900 dark:text-white uppercase tracking-widest">Preço Teto (Graham/Bazin)</h4>
+            </div>
+            <div className="flex gap-2 mb-4">
+                <input 
+                    type="text" 
+                    placeholder="TICKER" 
+                    value={ticker}
+                    onChange={e => setTicker(e.target.value.toUpperCase())}
+                    className="flex-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2 text-sm font-bold uppercase focus:ring-2 focus:ring-indigo-500 outline-none"
+                />
+                <div className="relative w-24">
+                    <input 
+                        type="number" 
+                        value={yieldTarget}
+                        onChange={e => setYieldTarget(Number(e.target.value))}
+                        className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none pr-8"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-zinc-400">%</span>
+                </div>
+                <button 
+                    onClick={calculate}
+                    disabled={loading || !ticker}
+                    className="bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white rounded-xl px-4 py-2 transition-colors"
+                >
+                    {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                </button>
+            </div>
+
+            {result && (
+                <div className="grid grid-cols-2 gap-3 anim-fade-in">
+                    <div className="p-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                        <p className="text-[10px] font-black text-zinc-400 uppercase mb-1">Cotação Atual</p>
+                        <p className="text-sm font-black text-zinc-900 dark:text-white">R$ {result.price.toFixed(2)}</p>
+                    </div>
+                    <div className="p-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                        <p className="text-[10px] font-black text-zinc-400 uppercase mb-1">Preço Teto ({yieldTarget}%)</p>
+                        <p className={`text-sm font-black ${result.price > result.ceiling ? 'text-rose-500' : 'text-emerald-500'}`}>
+                            R$ {result.ceiling.toFixed(2)}
+                        </p>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export const Settings: React.FC<SettingsProps> = ({ 
+    onLogout, user, transactions, onImportTransactions, 
+    dividends, onImportDividends, onResetApp,
+    theme, onSetTheme, accentColor, onSetAccentColor,
+    privacyMode, onSetPrivacyMode, appVersion,
+    updateAvailable, onCheckUpdates, onShowChangelog,
+    pushEnabled, onRequestPushPermission, onSyncAll,
+    onForceUpdate, currentVersionDate,
+    services, onCheckConnection, isCheckingConnection,
+    showToast
 }) => {
+    const [isExporting, setIsExporting] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
-    const [confirmReset, setConfirmReset] = useState(false);
-    
+    const [showResetConfirm, setShowResetConfirm] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -73,14 +231,15 @@ export const Settings: React.FC<SettingsProps> = ({
 
         setIsImporting(true);
         try {
-            const { transactions: txs, dividends: divs } = await parseB3Excel(file);
-            if (txs.length > 0) onImportTransactions(txs);
-            if (divs.length > 0) onImportDividends(divs);
-            
-            alert(`Importação concluída!\n\n${txs.length} transações\n${divs.length} proventos`);
+            const { transactions: importedTxs } = await parseB3Excel(file);
+            if (importedTxs.length > 0) {
+                onImportTransactions(importedTxs);
+                showToast('success', `${importedTxs.length} ordens importadas!`);
+            } else {
+                showToast('error', 'Nenhuma ordem encontrada no arquivo.');
+            }
         } catch (err) {
-            console.error(err);
-            alert('Erro ao processar o arquivo. Verifique se é uma planilha válida da B3.');
+            showToast('error', 'Falha ao processar arquivo B3.');
         } finally {
             setIsImporting(false);
             if (fileInputRef.current) fileInputRef.current.value = '';
@@ -88,311 +247,268 @@ export const Settings: React.FC<SettingsProps> = ({
     };
 
     const handleExport = () => {
-        const data = { 
-            transactions, 
-            dividends, 
-            exportedAt: new Date().toISOString(),
-            appVersion 
-        };
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `investfiis-backup-${new Date().toISOString().split('T')[0]}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        setIsExporting(true);
+        try {
+            const data = {
+                version: appVersion,
+                exportDate: new Date().toISOString(),
+                transactions,
+                dividends
+            };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `investfiis_backup_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('success', 'Backup gerado com sucesso!');
+        } catch (err) {
+            showToast('error', 'Falha ao exportar dados.');
+        } finally {
+            setIsExporting(false);
+        }
     };
 
     const handleSync = async () => {
         setIsSyncing(true);
         try {
             await onSyncAll(true);
+            showToast('success', 'Sincronização concluída!');
+        } catch (err) {
+            showToast('error', 'Falha na sincronização.');
         } finally {
             setIsSyncing(false);
         }
     };
 
+    const handleCheckUpdates = async () => {
+        const hasUpdate = await onCheckUpdates();
+        if (!hasUpdate) {
+            showToast('info', 'Você já está na versão mais recente.');
+        } else {
+            showToast('success', 'Nova versão disponível!');
+        }
+    };
+
+    const handleTogglePush = async () => {
+        if (!pushEnabled && 'Notification' in window) {
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                onRequestPushPermission();
+                showToast('success', 'Notificações ativadas!');
+            } else {
+                showToast('error', 'Permissão de notificação negada.');
+            }
+        } else {
+            onRequestPushPermission();
+        }
+    };
+
     return (
-        <div className="pb-32 anim-fade-in px-4 max-w-5xl mx-auto">
-            
-            {/* Header Section */}
-            <div className="pt-8 pb-12">
-                <h1 className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter mb-2">Configurações</h1>
-                <p className="text-sm font-bold text-zinc-400 uppercase tracking-widest">Gerencie sua conta e preferências</p>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                
-                {/* Left Column: Profile & Quick Actions */}
-                <div className="lg:col-span-4 space-y-6">
-                    <div className="relative overflow-hidden rounded-[2.5rem] bg-zinc-900 dark:bg-white p-8 shadow-2xl group border border-zinc-800 dark:border-zinc-100">
-                        {/* Background Effects */}
-                        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 dark:bg-indigo-500/10 blur-[80px] rounded-full -mr-20 -mt-20 pointer-events-none"></div>
-                        
-                        <div className="relative z-10 flex flex-col items-center text-center">
-                            <div className="relative mb-6">
-                                <div className="w-24 h-24 rounded-[2rem] bg-white/10 dark:bg-black/5 backdrop-blur-xl flex items-center justify-center text-white dark:text-zinc-900 border border-white/20 dark:border-black/10 shadow-inner">
-                                    <User className="w-12 h-12" strokeWidth={1.5} />
-                                </div>
-                                <div className="absolute -bottom-2 -right-2 bg-emerald-500 text-white text-[10px] font-black px-3 py-1.5 rounded-full border-4 border-zinc-900 dark:border-white shadow-lg">
-                                    PRO
-                                </div>
-                            </div>
-                            
-                            <h2 className="text-2xl font-black text-white dark:text-zinc-900 tracking-tighter mb-1">
-                                {user?.email?.split('@')[0] || 'Investidor'}
+        <div className="pb-20">
+            {/* Perfil Header */}
+            <div className="relative mb-10 px-2">
+                <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 blur-3xl rounded-full -z-10"></div>
+                <div className="flex items-center gap-6">
+                    <div className="relative group">
+                        <div className="w-24 h-24 rounded-[2.5rem] bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center overflow-hidden border-4 border-white dark:border-zinc-900 shadow-xl">
+                            {user?.user_metadata?.avatar_url ? (
+                                <img src={user.user_metadata.avatar_url} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                            ) : (
+                                <User className="w-10 h-10 text-zinc-400" />
+                            )}
+                        </div>
+                        <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-xl bg-indigo-500 border-4 border-white dark:border-zinc-900 flex items-center justify-center text-white shadow-lg">
+                            <Zap className="w-4 h-4" />
+                        </div>
+                    </div>
+                    <div>
+                        <div className="flex items-center gap-2 mb-1">
+                            <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter">
+                                {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Investidor'}
                             </h2>
-                            <p className="text-xs text-white/40 dark:text-zinc-400 font-bold mb-8">
-                                {user?.email}
-                            </p>
-                            
-                            <div className="w-full space-y-3">
-                                <div className="flex items-center justify-between p-4 rounded-2xl bg-white/5 dark:bg-zinc-50 border border-white/10 dark:border-zinc-200">
-                                    <div className="flex items-center gap-3">
-                                        <Activity className="w-4 h-4 text-indigo-400 dark:text-indigo-600" />
-                                        <span className="text-[10px] font-black text-white/60 dark:text-zinc-500 uppercase tracking-wider">Atividade</span>
-                                    </div>
-                                    <span className="text-xs font-black text-white dark:text-zinc-900">{transactions.length} TXs</span>
-                                </div>
-                                <div className="flex items-center justify-between p-4 rounded-2xl bg-white/5 dark:bg-zinc-50 border border-white/10 dark:border-zinc-200">
-                                    <div className="flex items-center gap-3">
-                                        <Zap className="w-4 h-4 text-amber-400 dark:text-amber-600" />
-                                        <span className="text-[10px] font-black text-white/60 dark:text-zinc-500 uppercase tracking-wider">Nível</span>
-                                    </div>
-                                    <span className="text-xs font-black text-white dark:text-zinc-900">{Math.floor(transactions.length / 10) + 1}</span>
-                                </div>
-                            </div>
-
-                            <button 
-                                onClick={onLogout}
-                                className="w-full mt-8 flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-rose-500 text-white font-black uppercase tracking-widest text-[11px] shadow-xl shadow-rose-500/20 hover:scale-[1.02] active:scale-95 transition-all"
-                            >
-                                <LogOut className="w-4 h-4" />
-                                Sair da Conta
-                            </button>
+                            <span className="px-2 py-0.5 rounded-lg bg-indigo-500 text-[10px] font-black text-white uppercase tracking-widest">PRO</span>
                         </div>
-                    </div>
-
-                    {/* Support Card */}
-                    <div className="bg-indigo-600 rounded-[2.5rem] p-8 text-white relative overflow-hidden shadow-2xl shadow-indigo-500/20">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10"></div>
-                        <h3 className="text-xl font-black tracking-tight mb-2 relative z-10">Precisa de Ajuda?</h3>
-                        <p className="text-xs font-bold text-indigo-100/70 mb-6 relative z-10 leading-relaxed">Nosso suporte está pronto para te ajudar com qualquer dúvida ou problema.</p>
-                        <button 
-                            onClick={() => window.open('mailto:suporte@investfiis.com.br')}
-                            className="w-full py-4 rounded-2xl bg-white text-indigo-600 font-black uppercase tracking-widest text-[10px] shadow-lg hover:bg-indigo-50 transition-colors relative z-10"
-                        >
-                            Contatar Suporte
-                        </button>
+                        <p className="text-sm font-medium text-zinc-400 mb-3">{user?.email}</p>
+                        <div className="flex items-center gap-4">
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Ordens</span>
+                                <span className="text-sm font-black text-zinc-900 dark:text-white">{transactions.length}</span>
+                            </div>
+                            <div className="w-px h-6 bg-zinc-100 dark:bg-zinc-800"></div>
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Ativos</span>
+                                <span className="text-sm font-black text-zinc-900 dark:text-white">
+                                    {new Set(transactions.map(t => t.ticker)).size}
+                                </span>
+                            </div>
+                        </div>
                     </div>
                 </div>
+            </div>
 
-                {/* Right Column: Settings Grid */}
-                <div className="lg:col-span-8 space-y-8">
-                    
-                    {/* Appearance Section */}
-                    <section>
-                        <div className="flex items-center gap-3 mb-4 px-2">
-                            <Palette className="w-5 h-5 text-indigo-500" />
-                            <h3 className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-widest">Personalização</h3>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                                <div className="flex items-center justify-between mb-6">
-                                    <span className="text-xs font-black text-zinc-900 dark:text-white uppercase tracking-widest">Tema</span>
-                                    <div className="w-8 h-8 rounded-lg bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 dark:text-zinc-400">
-                                        {theme === 'dark' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
-                                    </div>
-                                </div>
-                                <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl">
-                                    {(['light', 'system', 'dark'] as ThemeType[]).map((t) => (
-                                        <button 
-                                            key={t}
-                                            onClick={() => onSetTheme(t)}
-                                            className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all 
-                                                ${theme === t 
-                                                    ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' 
-                                                    : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
-                                        >
-                                            {t === 'light' ? 'Claro' : t === 'dark' ? 'Escuro' : 'Auto'}
-                                        </button>
-                                    ))}
-                                </div>
+            <div className="space-y-8">
+                {/* Aparência */}
+                <SettingsGroup title="Aparência" icon={Palette}>
+                    <div className="p-5 flex items-center justify-between border-b border-zinc-50 dark:border-zinc-800/50">
+                        <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-400">
+                                {theme === 'dark' ? <Moon className="w-5 h-5" /> : theme === 'light' ? <Sun className="w-5 h-5" /> : <Monitor className="w-5 h-5" />}
                             </div>
-
-                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                                <span className="text-xs font-black text-zinc-900 dark:text-white uppercase tracking-widest block mb-6">Cor de Destaque</span>
-                                <div className="flex flex-wrap gap-3">
-                                    {ACCENT_COLORS.map(c => (
-                                        <button
-                                            key={c.hex}
-                                            onClick={() => onSetAccentColor(c.hex)}
-                                            className={`w-10 h-10 rounded-2xl border-4 transition-all flex items-center justify-center shadow-sm
-                                                ${accentColor === c.hex ? 'border-zinc-200 dark:border-zinc-700 scale-110' : 'border-transparent hover:scale-105'}`}
-                                            style={{ backgroundColor: c.hex }}
-                                        >
-                                            {accentColor === c.hex && <Check className="w-5 h-5 text-white" strokeWidth={4} />}
-                                        </button>
-                                    ))}
-                                </div>
+                            <div>
+                                <span className="text-sm font-bold text-zinc-900 dark:text-white">Tema do App</span>
+                                <p className="text-xs text-zinc-400 font-medium mt-0.5">Escolha o visual preferido</p>
                             </div>
                         </div>
-                    </section>
-
-                    {/* Security & Privacy */}
-                    <section>
-                        <div className="flex items-center gap-3 mb-4 px-2">
-                            <Shield className="w-5 h-5 text-emerald-500" />
-                            <h3 className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-widest">Segurança</h3>
-                        </div>
-                        <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm divide-y divide-zinc-50 dark:divide-zinc-800">
-                            <div className="p-6 flex items-center justify-between">
-                                <div>
-                                    <h4 className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">Modo Privacidade</h4>
-                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">Ocultar valores na interface</p>
-                                </div>
-                                <ToggleSwitch checked={privacyMode} onChange={() => onSetPrivacyMode(!privacyMode)} />
-                            </div>
-                            <div className="p-6 flex items-center justify-between">
-                                <div>
-                                    <h4 className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">Notificações Push</h4>
-                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">Alertas de proventos e metas</p>
-                                </div>
-                                <ToggleSwitch checked={pushEnabled} onChange={onRequestPushPermission} />
-                            </div>
-                        </div>
-                    </section>
-
-                    {/* Data Management */}
-                    <section>
-                        <div className="flex items-center gap-3 mb-4 px-2">
-                            <Database className="w-5 h-5 text-amber-500" />
-                            <h3 className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-widest">Gerenciamento de Dados</h3>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <button 
-                                onClick={() => fileInputRef.current?.click()}
-                                disabled={isImporting}
-                                className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm text-left group hover:border-indigo-500 transition-all"
-                            >
-                                <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-500 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                                    {isImporting ? <Loader2 className="w-6 h-6 animate-spin" /> : <FileSpreadsheet className="w-6 h-6" />}
-                                </div>
-                                <h4 className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">Importar B3</h4>
-                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">Planilha XLSX</p>
-                                <input type="file" ref={fileInputRef} onChange={handleImport} accept=".xlsx,.xls" className="hidden" />
-                            </button>
-
-                            <button 
-                                onClick={handleExport}
-                                className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm text-left group hover:border-emerald-500 transition-all"
-                            >
-                                <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                                    <FileJson className="w-6 h-6" />
-                                </div>
-                                <h4 className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">Exportar JSON</h4>
-                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">Backup Completo</p>
-                            </button>
-
-                            <button 
-                                onClick={handleSync}
-                                disabled={isSyncing}
-                                className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm text-left group hover:border-amber-500 transition-all md:col-span-2 flex items-center justify-between"
-                            >
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-900/20 text-amber-500 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                        {isSyncing ? <Loader2 className="w-6 h-6 animate-spin" /> : <RefreshCw className="w-6 h-6" />}
-                                    </div>
-                                    <div>
-                                        <h4 className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">Sincronizar Agora</h4>
-                                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">Forçar atualização remota</p>
-                                    </div>
-                                </div>
-                                <ChevronRight className="w-5 h-5 text-zinc-300 group-hover:translate-x-1 transition-transform" />
-                            </button>
-                        </div>
-                    </section>
-
-                    {/* System Info */}
-                    <section>
-                        <div className="flex items-center gap-3 mb-4 px-2">
-                            <Activity className="w-5 h-5 text-zinc-400" />
-                            <h3 className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-widest">Sistema</h3>
-                        </div>
-                        <div className="bg-zinc-50 dark:bg-zinc-900/50 rounded-[2rem] p-8 border border-zinc-100 dark:border-zinc-800">
-                            <div className="flex items-center justify-between mb-8">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-2xl bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm">
-                                        <Smartphone className="w-6 h-6 text-zinc-400" />
-                                    </div>
-                                    <div>
-                                        <h4 className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">InvestFIIs App</h4>
-                                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">Versão {appVersion}</p>
-                                    </div>
-                                </div>
-                                <button 
-                                    onClick={onForceUpdate}
-                                    className="px-4 py-2 rounded-xl bg-white dark:bg-zinc-800 text-[10px] font-black uppercase tracking-widest text-zinc-600 dark:text-zinc-300 shadow-sm hover:bg-zinc-100 transition-colors"
+                        <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl">
+                            {(['light', 'system', 'dark'] as const).map((t) => (
+                                <button
+                                    key={t}
+                                    onClick={() => onSetTheme(t)}
+                                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                                        theme === t 
+                                            ? 'bg-white dark:bg-zinc-700 text-indigo-500 shadow-sm' 
+                                            : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200'
+                                    }`}
                                 >
-                                    Verificar Updates
+                                    {t === 'light' ? 'Claro' : t === 'dark' ? 'Escuro' : 'Auto'}
                                 </button>
-                            </div>
-
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                {services.map(s => (
-                                    <div key={s.id} className="bg-white dark:bg-zinc-800 p-4 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-700">
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <div className={`w-2 h-2 rounded-full ${s.status === 'operational' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                                            <span className="text-[9px] font-black text-zinc-400 uppercase tracking-tighter">{s.label}</span>
-                                        </div>
-                                        <p className="text-xs font-black text-zinc-900 dark:text-white">{s.latency ? `${s.latency}ms` : '---'}</p>
-                                    </div>
-                                ))}
-                            </div>
+                            ))}
                         </div>
-                    </section>
+                    </div>
+                    <SettingsItem 
+                        label="Modo Privacidade" 
+                        description="Ocultar valores sensíveis na tela"
+                        icon={privacyMode ? EyeOff : Eye}
+                        value={<ToggleSwitch enabled={privacyMode} onToggle={() => onSetPrivacyMode(!privacyMode)} />}
+                    />
+                </SettingsGroup>
 
-                    {/* Danger Zone */}
-                    <section className="pt-8">
-                        <button 
-                            onClick={() => setConfirmReset(true)}
-                            className="w-full p-8 rounded-[2.5rem] bg-rose-500/5 border border-rose-500/20 flex items-center justify-between group hover:bg-rose-500 transition-all duration-500"
-                        >
-                            <div className="flex items-center gap-6">
-                                <div className="w-14 h-14 rounded-2xl bg-rose-500 text-white flex items-center justify-center shadow-lg shadow-rose-500/20 group-hover:bg-white group-hover:text-rose-500 transition-colors">
-                                    <Trash2 className="w-7 h-7" />
+                {/* Preferências */}
+                <SettingsGroup title="Preferências" icon={SettingsIcon}>
+                    <SettingsItem 
+                        label="Notificações Push" 
+                        description="Alertas de proventos e mercado"
+                        icon={Bell}
+                        value={<ToggleSwitch enabled={pushEnabled} onToggle={handleTogglePush} />}
+                    />
+                    <div className="p-5">
+                        <CeilingPriceTool showToast={showToast} />
+                    </div>
+                </SettingsGroup>
+
+                {/* Dados e Backup */}
+                <SettingsGroup title="Dados & Backup" icon={Database}>
+                    <SettingsItem 
+                        label="Importar Planilha B3" 
+                        description="Sincronizar ordens via Excel (.xlsx)"
+                        icon={Upload}
+                        onClick={() => fileInputRef.current?.click()}
+                        isLoading={isImporting}
+                    />
+                    <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        onChange={handleImport} 
+                        accept=".xlsx" 
+                        className="hidden" 
+                    />
+                    <SettingsItem 
+                        label="Exportar Backup" 
+                        description="Salvar dados em arquivo JSON"
+                        icon={Download}
+                        onClick={handleExport}
+                        isLoading={isExporting}
+                    />
+                    <SettingsItem 
+                        label="Sincronizar Agora" 
+                        description="Forçar atualização com a nuvem"
+                        icon={RefreshCw}
+                        onClick={handleSync}
+                        isLoading={isSyncing}
+                    />
+                </SettingsGroup>
+
+                {/* Sistema */}
+                <SettingsGroup title="Sistema" icon={Globe}>
+                    <SettingsItem 
+                        label="Status dos Serviços" 
+                        description="Verificar latência e conexão"
+                        icon={Globe}
+                        onClick={onCheckConnection}
+                        isLoading={isCheckingConnection}
+                    />
+                    {services.length > 0 && (
+                        <div className="px-5 pb-5 space-y-3">
+                            {services.map(s => (
+                                <div key={s.id} className="flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-2 h-2 rounded-full ${
+                                            s.status === 'operational' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 
+                                            s.status === 'checking' ? 'bg-amber-500 animate-pulse' : 'bg-rose-500'
+                                        }`} />
+                                        <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">{s.label}</span>
+                                    </div>
+                                    <span className="text-[10px] font-black text-zinc-400">{s.latency ? `${s.latency}ms` : '--'}</span>
                                 </div>
-                                <div className="text-left">
-                                    <h4 className="text-lg font-black text-rose-600 group-hover:text-white tracking-tight transition-colors">Resetar Aplicativo</h4>
-                                    <p className="text-xs font-bold text-rose-500/60 group-hover:text-white/60 uppercase tracking-widest mt-1 transition-colors">Apagar todos os dados locais</p>
-                                </div>
-                            </div>
-                            <ChevronRight className="w-6 h-6 text-rose-300 group-hover:text-white transition-all group-hover:translate-x-2" />
-                        </button>
-                    </section>
+                            ))}
+                        </div>
+                    )}
+                    <SettingsItem 
+                        label="Verificar Updates" 
+                        description={`Versão atual: ${appVersion}`}
+                        icon={Smartphone}
+                        onClick={handleCheckUpdates}
+                        badge={updateAvailable ? 'Novo' : undefined}
+                    />
+                    <SettingsItem 
+                        label="Notas da Versão" 
+                        description={`Atualizado em ${currentVersionDate}`}
+                        icon={FileText}
+                        onClick={onShowChangelog}
+                    />
+                </SettingsGroup>
+
+                {/* Danger Zone */}
+                <SettingsGroup title="Zona de Perigo" icon={Shield}>
+                    <SettingsItem 
+                        label="Resetar Aplicativo" 
+                        description="Limpar cache e dados locais"
+                        icon={Trash2}
+                        danger
+                        onClick={() => setShowResetConfirm(true)}
+                    />
+                    <SettingsItem 
+                        label="Sair da Conta" 
+                        description="Encerrar sessão atual"
+                        icon={LogOut}
+                        danger
+                        onClick={onLogout}
+                    />
+                </SettingsGroup>
+
+                <div className="text-center pt-4 opacity-30">
+                    <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.4em]">InvestFiis © 2024</p>
                 </div>
             </div>
 
-            {/* Footer */}
-            <div className="text-center pt-16 pb-8">
-                <p className="text-[10px] font-black text-zinc-300 dark:text-zinc-700 uppercase tracking-[0.5em]">
-                    InvestFIIs &bull; {new Date().getFullYear()}
-                </p>
-            </div>
-
-            {/* Modals */}
             <ConfirmationModal 
-                isOpen={confirmReset} 
-                title="Resetar Aplicativo?" 
-                message="Esta ação irá remover todos os dados armazenados neste dispositivo. Seus dados sincronizados na nuvem permanecerão seguros." 
-                onConfirm={() => { setConfirmReset(false); onResetApp(); }} 
-                onCancel={() => setConfirmReset(false)} 
-                confirmText="Sim, resetar tudo"
-                cancelText="Cancelar"
-                isDanger
+                isOpen={showResetConfirm}
+                onClose={() => setShowResetConfirm(false)}
+                onConfirm={() => {
+                    onResetApp();
+                    setShowResetConfirm(false);
+                }}
+                title="Resetar App?"
+                message="Isso limpará todas as configurações locais e cache. Seus dados na nuvem permanecerão salvos."
+                confirmLabel="Resetar Tudo"
+                confirmVariant="danger"
             />
         </div>
     );
 };
+
+export const MemoizedSettings = memo(Settings);

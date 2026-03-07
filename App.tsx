@@ -839,6 +839,7 @@ const App: React.FC = () => {
                       onRequestPushPermission={handleRequestPushPermission} onSyncAll={handleSyncAll} 
                       onForceUpdate={handleForceUpdate} currentVersionDate={currentVersionDate}
                       services={services} onCheckConnection={checkServiceHealth} isCheckingConnection={isCheckingServices}
+                      showToast={showToast}
                   />
                 </div>
               ) : (
