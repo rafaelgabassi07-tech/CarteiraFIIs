@@ -941,6 +941,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
   const [showProventos, setShowProventos] = useState(false);
   const [showAllocation, setShowAllocation] = useState(false);
   const [showEvolution, setShowEvolution] = useState(false);
+  const [chartTab, setChartTab] = useState<'EVOLUTION' | 'ASSET'>('EVOLUTION');
   const [allocationView, setAllocationView] = useState<'CLASS' | 'ASSET' | 'SECTOR'>('CLASS');
   const [showMagicNumber, setShowMagicNumber] = useState(false);
   const [showGoals, setShowGoals] = useState(false);
@@ -1603,169 +1604,199 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
 
         <SwipeableModal isOpen={showProventos} onClose={() => setShowProventos(false)}>
             <div className="p-4 h-full flex flex-col anim-slide-up">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-6 shrink-0">
-                    <div>
-                        <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter">Proventos</h2>
-                        <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mt-1">
-                            Últimos 12 Meses
-                        </p>
+                {/* Compact Header with Integrated Summary */}
+                <div className="flex flex-col gap-4 mb-6 shrink-0">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter">Proventos</h2>
+                            <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mt-0.5">
+                                Últimos 12 Meses
+                            </p>
+                        </div>
+                        <div className="w-10 h-10 rounded-2xl bg-emerald-100 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-sm border border-emerald-200/50 dark:border-emerald-800/30">
+                            <CircleDollarSign className="w-5 h-5" strokeWidth={2.5} />
+                        </div>
                     </div>
-                    <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-sm border border-emerald-200/50 dark:border-emerald-800/30">
-                        <CircleDollarSign className="w-6 h-6" strokeWidth={2} />
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-zinc-50 dark:bg-zinc-800/30 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex flex-col justify-center">
+                            <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Total (12M)</p>
+                            <p className="text-lg font-black text-zinc-900 dark:text-white tracking-tight leading-none">
+                                {formatBRL(incomeData.last12mTotal, privacyMode)}
+                            </p>
+                        </div>
+                        <div className="bg-zinc-50 dark:bg-zinc-800/30 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex flex-col justify-center">
+                            <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Média Mensal</p>
+                            <p className="text-lg font-black text-zinc-900 dark:text-white tracking-tight leading-none">
+                                {formatBRL(incomeData.average, privacyMode)}
+                            </p>
+                        </div>
                     </div>
                 </div>
 
-                {/* Summary Cards */}
-                <div className="grid grid-cols-2 gap-3 mb-6 shrink-0">
-                    <div className="bg-zinc-50 dark:bg-zinc-800/30 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800">
-                        <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Total Recebido (12M)</p>
-                        <p className="text-lg font-black text-zinc-900 dark:text-white tracking-tight">
-                            {formatBRL(incomeData.last12mTotal, privacyMode)}
-                        </p>
+                {/* Chart Controls & Tabs */}
+                <div className="flex flex-col gap-3 mb-4 shrink-0">
+                    <div className="flex bg-zinc-100 dark:bg-zinc-800/50 p-1 rounded-xl">
+                        {(['3M', '6M', '12M', 'ALL'] as const).map((range) => (
+                            <button
+                                key={range}
+                                onClick={() => setEvolutionRange(range)}
+                                className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${evolutionRange === range ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                            >
+                                {range === 'ALL' ? 'Tudo' : range}
+                            </button>
+                        ))}
                     </div>
-                    <div className="bg-zinc-50 dark:bg-zinc-800/30 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800">
-                        <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Média Mensal</p>
-                        <p className="text-lg font-black text-zinc-900 dark:text-white tracking-tight">
-                            {formatBRL(incomeData.average, privacyMode)}
-                        </p>
-                    </div>
-                </div>
 
-                {/* Chart Controls */}
-                <div className="flex bg-zinc-100 dark:bg-zinc-800/50 p-1 rounded-xl mb-4 shrink-0">
-                    {(['3M', '6M', '12M', 'ALL'] as const).map((range) => (
-                        <button
-                            key={range}
-                            onClick={() => setEvolutionRange(range)}
-                            className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${evolutionRange === range ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                    <div className="flex border-b border-zinc-100 dark:border-zinc-800">
+                        <button 
+                            onClick={() => setChartTab('EVOLUTION')}
+                            className={`flex-1 pb-2 text-[10px] font-black uppercase tracking-widest transition-all border-b-2 ${chartTab === 'EVOLUTION' ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'border-transparent text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                         >
-                            {range === 'ALL' ? 'Tudo' : range}
+                            Evolução
                         </button>
-                    ))}
+                        <button 
+                            onClick={() => setChartTab('ASSET')}
+                            className={`flex-1 pb-2 text-[10px] font-black uppercase tracking-widest transition-all border-b-2 ${chartTab === 'ASSET' ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'border-transparent text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                        >
+                            Por Ativo
+                        </button>
+                    </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto min-h-0 pb-24 no-scrollbar space-y-6">
-                    {/* Charts Section - Horizontal Scroll */}
-                    <div className="flex overflow-x-auto snap-x snap-mandatory gap-3 pb-2 -mx-4 px-4 no-scrollbar shrink-0">
-                        {/* Monthly Bar Chart */}
-                        <div className="min-w-[85%] sm:min-w-[320px] h-64 bg-white dark:bg-zinc-900 rounded-[2rem] p-5 border border-zinc-100 dark:border-zinc-800 shadow-sm relative overflow-hidden snap-center">
-                            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4">Evolução Mensal</h3>
-                            {filteredChartData.length > 0 ? (
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <ComposedChart data={filteredChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                        <defs>
-                                            <linearGradient id="colorIncomeBar" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="0%" stopColor="#10b981" stopOpacity={0.8}/>
-                                                <stop offset="100%" stopColor="#10b981" stopOpacity={0.2}/>
-                                            </linearGradient>
-                                            <linearGradient id="colorIncomeBarFuture" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                                                <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.2}/>
-                                            </linearGradient>
-                                        </defs>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
-                                        <XAxis 
-                                            dataKey="label" 
-                                            axisLine={false} 
-                                            tickLine={false} 
-                                            tick={{ fontSize: 10, fill: '#71717a', fontWeight: 600 }} 
-                                            dy={10} 
-                                        />
-                                        <YAxis 
-                                            axisLine={false} 
-                                            tickLine={false} 
-                                            tick={{ fontSize: 10, fill: '#71717a', fontWeight: 500 }} 
-                                            tickFormatter={(val) => `R$${val}`} 
-                                        />
-                                        <RechartsTooltip 
-                                            cursor={{fill: 'rgba(16, 185, 129, 0.05)'}}
-                                            content={({ active, payload, label }) => {
-                                                if (active && payload && payload.length) {
-                                                    const data = payload[0].payload;
-                                                    return (
-                                                        <div className="bg-zinc-900/95 border border-white/10 p-3 rounded-xl shadow-2xl backdrop-blur-md min-w-[120px]">
-                                                            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-wider mb-1">{data.date}</p>
-                                                            <p className="text-lg font-black text-white tabular-nums leading-none mb-1">
-                                                                {formatBRL(data.value, privacyMode)}
-                                                            </p>
-                                                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${data.isFuture ? 'bg-blue-500/20 text-blue-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
-                                                                {data.isFuture ? 'PROJETADO' : 'RECEBIDO'}
-                                                            </span>
-                                                        </div>
-                                                    );
-                                                }
-                                                return null;
-                                            }}
-                                        />
-                                        <Bar 
-                                            dataKey="value" 
-                                            radius={[6, 6, 0, 0]}
-                                            maxBarSize={40}
-                                            animationDuration={1500}
-                                        >
-                                            {filteredChartData.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={entry.isFuture ? "url(#colorIncomeBarFuture)" : "url(#colorIncomeBar)"} />
-                                            ))}
-                                        </Bar>
-                                        {incomeData.average > 0 && (
-                                            <ReferenceLine y={incomeData.average} stroke="#f59e0b" strokeDasharray="3 3" strokeOpacity={0.6}>
-                                                <Label value="Média" position="insideRight" fill="#f59e0b" fontSize={9} fontWeight="bold" dy={-10} />
-                                            </ReferenceLine>
-                                        )}
-                                    </ComposedChart>
-                                </ResponsiveContainer>
-                            ) : (
-                                <div className="flex flex-col items-center justify-center h-full text-zinc-400">
-                                    <CircleDollarSign className="w-8 h-8 mb-2 opacity-20" />
-                                    <p className="text-xs font-medium">Nenhum provento registrado</p>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Pie Chart - Dividends by Asset */}
-                        <div className="min-w-[85%] sm:min-w-[320px] h-64 bg-white dark:bg-zinc-900 rounded-[2rem] p-5 border border-zinc-100 dark:border-zinc-800 shadow-sm relative overflow-hidden snap-center flex flex-col">
-                            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4">Por Ativo</h3>
-                            {dividendsByAsset.length > 0 ? (
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie
-                                            data={dividendsByAsset}
-                                            cx="50%"
-                                            cy="50%"
-                                            innerRadius={60}
-                                            outerRadius={80}
-                                            paddingAngle={5}
-                                            dataKey="value"
-                                            animationDuration={1500}
-                                        >
-                                            {dividendsByAsset.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
-                                            ))}
-                                        </Pie>
-                                        <RechartsTooltip 
-                                            content={({ active, payload }) => {
-                                                if (active && payload && payload.length) {
-                                                    const data = payload[0].payload;
-                                                    return (
-                                                        <div className="bg-zinc-900/95 border border-white/10 p-2 rounded-lg shadow-xl backdrop-blur-md">
-                                                            <p className="text-[10px] font-black text-white uppercase">{data.name}</p>
-                                                            <p className="text-xs font-bold text-emerald-400">{formatBRL(data.value, privacyMode)}</p>
-                                                        </div>
-                                                    );
-                                                }
-                                                return null;
-                                            }}
-                                        />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                            ) : (
-                                <div className="flex flex-col items-center justify-center h-full text-zinc-400">
-                                    <PieIcon className="w-8 h-8 mb-2 opacity-20" />
-                                    <p className="text-xs font-medium">Sem dados</p>
-                                </div>
-                            )}
-                        </div>
+                    {/* Charts Section */}
+                    <div className="bg-white dark:bg-zinc-900 rounded-[2rem] p-4 border border-zinc-100 dark:border-zinc-800 shadow-sm relative overflow-hidden min-h-[300px]">
+                        {chartTab === 'EVOLUTION' ? (
+                            <div className="h-[280px] w-full">
+                                {filteredChartData.length > 0 ? (
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <ComposedChart data={filteredChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                            <defs>
+                                                <linearGradient id="colorIncomeBar" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="0%" stopColor="#10b981" stopOpacity={0.8}/>
+                                                    <stop offset="100%" stopColor="#10b981" stopOpacity={0.2}/>
+                                                </linearGradient>
+                                                <linearGradient id="colorIncomeBarFuture" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                                                    <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.2}/>
+                                                </linearGradient>
+                                            </defs>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
+                                            <XAxis 
+                                                dataKey="label" 
+                                                axisLine={false} 
+                                                tickLine={false} 
+                                                tick={{ fontSize: 10, fill: '#71717a', fontWeight: 600 }} 
+                                                dy={10} 
+                                            />
+                                            <YAxis 
+                                                axisLine={false} 
+                                                tickLine={false} 
+                                                tick={{ fontSize: 10, fill: '#71717a', fontWeight: 500 }} 
+                                                tickFormatter={(val) => `R$${val}`} 
+                                            />
+                                            <RechartsTooltip 
+                                                cursor={{fill: 'rgba(16, 185, 129, 0.05)'}}
+                                                content={({ active, payload, label }) => {
+                                                    if (active && payload && payload.length) {
+                                                        const data = payload[0].payload;
+                                                        return (
+                                                            <div className="bg-zinc-900/95 border border-white/10 p-3 rounded-xl shadow-2xl backdrop-blur-md min-w-[120px]">
+                                                                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-wider mb-1">{data.date}</p>
+                                                                <p className="text-lg font-black text-white tabular-nums leading-none mb-1">
+                                                                    {formatBRL(data.value, privacyMode)}
+                                                                </p>
+                                                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${data.isFuture ? 'bg-blue-500/20 text-blue-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                                                                    {data.isFuture ? 'PROJETADO' : 'RECEBIDO'}
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return null;
+                                                }}
+                                            />
+                                            <Bar 
+                                                dataKey="value" 
+                                                radius={[6, 6, 0, 0]}
+                                                maxBarSize={40}
+                                                animationDuration={1500}
+                                            >
+                                                {filteredChartData.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={entry.isFuture ? "url(#colorIncomeBarFuture)" : "url(#colorIncomeBar)"} />
+                                                ))}
+                                            </Bar>
+                                            {incomeData.average > 0 && (
+                                                <ReferenceLine y={incomeData.average} stroke="#f59e0b" strokeDasharray="3 3" strokeOpacity={0.6}>
+                                                    <Label value="Média" position="insideRight" fill="#f59e0b" fontSize={9} fontWeight="bold" dy={-10} />
+                                                </ReferenceLine>
+                                            )}
+                                        </ComposedChart>
+                                    </ResponsiveContainer>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center h-full text-zinc-400">
+                                        <CircleDollarSign className="w-8 h-8 mb-2 opacity-20" />
+                                        <p className="text-xs font-medium">Nenhum provento registrado</p>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="h-[280px] w-full flex flex-col">
+                                {dividendsByAsset.length > 0 ? (
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie
+                                                data={dividendsByAsset}
+                                                cx="50%"
+                                                cy="50%"
+                                                innerRadius={60}
+                                                outerRadius={80}
+                                                paddingAngle={5}
+                                                dataKey="value"
+                                                animationDuration={1500}
+                                            >
+                                                {dividendsByAsset.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
+                                                ))}
+                                            </Pie>
+                                            <RechartsTooltip 
+                                                content={({ active, payload }) => {
+                                                    if (active && payload && payload.length) {
+                                                        const data = payload[0].payload;
+                                                        return (
+                                                            <div className="bg-zinc-900/95 border border-white/10 p-2 rounded-lg shadow-xl backdrop-blur-md">
+                                                                <p className="text-[10px] font-black text-white uppercase">{data.name}</p>
+                                                                <p className="text-xs font-bold text-emerald-400">{formatBRL(data.value, privacyMode)}</p>
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return null;
+                                                }}
+                                            />
+                                            <Legend 
+                                                verticalAlign="bottom" 
+                                                height={36}
+                                                content={({ payload }) => (
+                                                    <div className="flex flex-wrap justify-center gap-2 mt-2">
+                                                        {payload?.slice(0, 5).map((entry: any, index: number) => (
+                                                            <div key={`item-${index}`} className="flex items-center gap-1">
+                                                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
+                                                                <span className="text-[9px] font-bold text-zinc-500 dark:text-zinc-400">{entry.payload.name}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center h-full text-zinc-400">
+                                        <PieIcon className="w-8 h-8 mb-2 opacity-20" />
+                                        <p className="text-xs font-medium">Sem dados</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     {/* History Section */}
