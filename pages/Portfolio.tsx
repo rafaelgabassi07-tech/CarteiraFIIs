@@ -1320,6 +1320,7 @@ interface PortfolioProps {
 
 // Novo Card de Ativo Aprimorado
 const AssetCard = ({ asset, maxVal, totalVal, privacyMode, onClick }: { asset: AssetPosition, maxVal: number, totalVal: number, privacyMode: boolean, onClick: () => void }) => {
+    const [isOpen, setIsOpen] = useState(false);
     const currentVal = asset.quantity * (asset.currentPrice || 0);
     const invested = asset.quantity * asset.averagePrice;
     const gainLoss = currentVal - invested;
@@ -1329,14 +1330,14 @@ const AssetCard = ({ asset, maxVal, totalVal, privacyMode, onClick }: { asset: A
     const relativePercent = maxVal > 0 ? (currentVal / maxVal) * 100 : 0;
 
     return (
-        <button 
-            onClick={onClick}
-            className="w-full bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm active:scale-[0.98] transition-all relative overflow-hidden group hover:border-indigo-500/30 dark:hover:border-zinc-700 p-3"
-        >
+        <div className="w-full bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm transition-all relative overflow-hidden group hover:border-indigo-500/30 dark:hover:border-zinc-700 mb-3">
             {/* Progress Bar Background - More subtle */}
             <div className="absolute bottom-0 left-0 h-0.5 bg-indigo-500/10 dark:bg-indigo-400/10 transition-all duration-1000" style={{ width: `${relativePercent}%` }}></div>
 
-            <div className="flex justify-between items-center">
+            <button 
+                onClick={() => setIsOpen(!isOpen)}
+                className="w-full p-3 flex justify-between items-center bg-transparent active:bg-zinc-50 dark:active:bg-zinc-800/50 transition-colors"
+            >
                 <div className="flex items-center gap-3">
                     <div className="relative">
                         {asset.logoUrl ? (
@@ -1363,10 +1364,49 @@ const AssetCard = ({ asset, maxVal, totalVal, privacyMode, onClick }: { asset: A
 
                 <div className="text-right">
                     <p className="font-black text-sm text-zinc-900 dark:text-white tracking-tight leading-none mb-1">{formatBRL(currentVal, privacyMode)}</p>
-                    <p className="text-[9px] font-medium text-zinc-400">{asset.quantity} un • {formatBRL(asset.currentPrice, privacyMode)}</p>
+                    <div className="flex items-center justify-end gap-1">
+                        <p className="text-[9px] font-medium text-zinc-400">{asset.quantity} un</p>
+                        <ChevronDown className={`w-3 h-3 text-zinc-300 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+                    </div>
+                </div>
+            </button>
+
+            <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isOpen ? 'max-h-48 opacity-100' : 'max-h-0 opacity-0'}`}>
+                <div className="px-4 pb-4 pt-0 border-t border-zinc-100 dark:border-zinc-800/50 mt-2">
+                    <div className="grid grid-cols-3 gap-4 py-3">
+                        <div>
+                            <p className="text-[8px] font-black text-zinc-400 uppercase tracking-wider mb-0.5">Preço Médio</p>
+                            <p className="text-xs font-bold text-zinc-700 dark:text-zinc-300">{formatBRL(asset.averagePrice, privacyMode)}</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-[8px] font-black text-zinc-400 uppercase tracking-wider mb-0.5">Última</p>
+                            <p className="text-xs font-bold text-zinc-700 dark:text-zinc-300">{formatBRL(asset.currentPrice, privacyMode)}</p>
+                        </div>
+                         <div className="text-right">
+                            <p className="text-[8px] font-black text-zinc-400 uppercase tracking-wider mb-0.5">DY (12M)</p>
+                            <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{asset.dy_12m ? `${asset.dy_12m.toFixed(2)}%` : '-'}</p>
+                        </div>
+                    </div>
+                     <div className="grid grid-cols-3 gap-4 pb-2">
+                        <div>
+                            <p className="text-[8px] font-black text-zinc-400 uppercase tracking-wider mb-0.5">P/VP</p>
+                            <p className="text-xs font-bold text-zinc-700 dark:text-zinc-300">{asset.p_vp ? asset.p_vp.toFixed(2) : '-'}</p>
+                        </div>
+                         <div className="text-center">
+                            <p className="text-[8px] font-black text-zinc-400 uppercase tracking-wider mb-0.5">Var. Dia</p>
+                             <p className={`text-xs font-bold ${(asset.dailyChange || 0) >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                {(asset.dailyChange || 0) > 0 ? '+' : ''}{(asset.dailyChange || 0).toFixed(2)}%
+                            </p>
+                        </div>
+                        <div className="text-right flex items-end justify-end">
+                             <button onClick={(e) => { e.stopPropagation(); onClick(); }} className="text-[9px] font-black text-indigo-500 uppercase tracking-widest hover:underline flex items-center gap-1">
+                                Detalhes <ArrowUpRight className="w-2 h-2" />
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </button>
+        </div>
     );
 }
 

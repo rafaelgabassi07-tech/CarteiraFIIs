@@ -31,36 +31,22 @@ const TransactionsSummary = ({ transactions, privacyMode }: { transactions: Tran
     return (
         <div className="mb-4 px-1">
             <div className="grid grid-cols-3 gap-2">
-                <div className="flex items-center gap-2 p-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                    <div className="w-6 h-6 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-500 shrink-0">
-                        <ArrowDownLeft className="w-3 h-3" />
-                    </div>
-                    <div className="min-w-0">
-                        <p className="text-[7px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-0.5">Compras</p>
-                        <p className="text-[10px] font-black text-zinc-900 dark:text-white tracking-tight leading-none truncate">{formatBRL(totalInvested, privacyMode)}</p>
-                    </div>
+                <div className="flex flex-col justify-center p-3 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                    <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Compras</p>
+                    <p className="text-xs font-black text-zinc-900 dark:text-white tracking-tight truncate">{formatBRL(totalInvested, privacyMode)}</p>
                 </div>
 
-                <div className="flex items-center gap-2 p-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                    <div className="w-6 h-6 rounded-lg bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center text-amber-500 shrink-0">
-                        <ArrowUpRight className="w-3 h-3" />
-                    </div>
-                    <div className="min-w-0">
-                        <p className="text-[7px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-0.5">Vendas</p>
-                        <p className="text-[10px] font-black text-zinc-900 dark:text-white tracking-tight leading-none truncate">{formatBRL(totalSold, privacyMode)}</p>
-                    </div>
+                <div className="flex flex-col justify-center p-3 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                    <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Vendas</p>
+                    <p className="text-xs font-black text-zinc-900 dark:text-white tracking-tight truncate">{formatBRL(totalSold, privacyMode)}</p>
                 </div>
 
-                <div className="flex items-center gap-2 p-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 shadow-sm relative overflow-hidden">
-                    <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${netFlow >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500' : 'bg-rose-50 dark:bg-rose-900/20 text-rose-500'}`}>
-                        <Wallet className="w-3 h-3" />
-                    </div>
-                    <div className="min-w-0">
-                        <p className="text-[7px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-0.5">Líquido</p>
-                        <p className={`text-[10px] font-black tracking-tight leading-none truncate ${netFlow >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                            {formatBRL(netFlow, privacyMode)}
-                        </p>
-                    </div>
+                <div className="flex flex-col justify-center p-3 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 shadow-sm relative overflow-hidden">
+                    <div className={`absolute right-0 top-0 bottom-0 w-1 ${netFlow >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
+                    <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Líquido</p>
+                    <p className={`text-xs font-black tracking-tight truncate ${netFlow >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        {netFlow > 0 ? '+' : ''}{formatBRL(netFlow, privacyMode)}
+                    </p>
                 </div>
             </div>
         </div>

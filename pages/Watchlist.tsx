@@ -40,7 +40,6 @@ export default function Watchlist({ showToast }: WatchlistProps) {
     const [alerts, setAlerts] = useState<Record<string, { target: number; type: 'ABOVE' | 'BELOW' }>>({});
     const [quotes, setQuotes] = useState<Record<string, WatchlistItem>>({});
     const [loading, setLoading] = useState(false);
-    const [isAdding, setIsAdding] = useState(false);
     const [selectedAsset, setSelectedAsset] = useState<AssetPosition | null>(null);
     const [marketDividends, setMarketDividends] = useState<DividendReceipt[]>([]);
     const [error, setError] = useState<string | null>(null);
@@ -244,14 +243,12 @@ export default function Watchlist({ showToast }: WatchlistProps) {
     const handleAddTicker = async (tickerToAdd: string) => {
         if (watchlist.includes(tickerToAdd)) {
             setSearchTerm('');
-            setIsAdding(false);
             return;
         }
 
         const newWatchlist = [...watchlist, tickerToAdd];
         setWatchlist(newWatchlist);
         setSearchTerm('');
-        setIsAdding(false);
         setSearchResult(null);
 
         await fetchData(true, [tickerToAdd]);
@@ -364,25 +361,89 @@ export default function Watchlist({ showToast }: WatchlistProps) {
     return (
         <div className="pb-32 px-4 max-w-md mx-auto min-h-screen bg-zinc-50 dark:bg-zinc-950 selection:bg-indigo-500/30">
             {/* Header Actions & Filters - Sticky & Glass */}
-            <div className="sticky top-0 z-40 -mx-4 px-4 py-2 bg-zinc-50/90 dark:bg-zinc-950/90 backdrop-blur-xl border-b border-zinc-200/50 dark:border-zinc-800/50 mb-3 transition-all">
-                <div className="flex items-center gap-2">
-                    <div className="flex gap-1 overflow-x-auto pb-1 no-scrollbar mask-linear-fade">
+            <div className="sticky top-0 z-40 -mx-4 px-4 py-3 bg-zinc-50/90 dark:bg-zinc-950/90 backdrop-blur-xl border-b border-zinc-200/50 dark:border-zinc-800/50 mb-4 transition-all">
+                <div className="flex flex-col gap-3">
+                    {/* Search Bar */}
+                    <div className="relative group">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <Search className="h-4 w-4 text-zinc-400 group-focus-within:text-indigo-500 transition-colors" />
+                        </div>
+                        <input
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Adicionar ativo (ex: PETR4)"
+                            className="block w-full pl-10 pr-10 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:border-indigo-500/50 rounded-xl text-sm font-bold text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm"
+                        />
+                        <div className="absolute inset-y-0 right-0 pr-2.5 flex items-center">
+                            {isSearching ? (
+                                <RefreshCcw className="h-4 w-4 text-indigo-500 animate-spin" />
+                            ) : searchTerm && (
+                                <button onClick={() => setSearchTerm('')} className="bg-zinc-100 dark:bg-zinc-800 rounded-full p-1 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">
+                                    <X className="h-3 w-3 text-zinc-500" />
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Search Results Dropdown */}
+                        {searchTerm && (
+                            <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-2xl shadow-zinc-200/50 dark:shadow-black/50 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                                {searchResult ? (
+                                    <div 
+                                        onClick={() => { handleAddTicker(searchResult.ticker); setSearchTerm(''); }}
+                                        className="p-4 flex items-center justify-between cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors group"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center overflow-hidden border border-zinc-100 dark:border-zinc-700 shadow-sm">
+                                                {searchResult.logo ? (
+                                                    <img src={searchResult.logo} alt={searchResult.ticker} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <span className="font-black text-xs text-zinc-400">{searchResult.ticker.substring(0, 2)}</span>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <h3 className="font-black text-base text-zinc-900 dark:text-white leading-none group-hover:text-indigo-600 transition-colors">{searchResult.ticker}</h3>
+                                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mt-1">{searchResult.name}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(searchResult.price || 0)}</span>
+                                            <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
+                                                <Plus className="w-4 h-4" strokeWidth={3} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : isSearching ? (
+                                    <div className="p-6 text-center">
+                                        <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                                            <RefreshCcw className="w-5 h-5 text-indigo-500 animate-spin" />
+                                        </div>
+                                        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Buscando ativo...</p>
+                                    </div>
+                                ) : searchError ? (
+                                    <div className="p-6 text-center">
+                                        <div className="w-10 h-10 bg-rose-50 dark:bg-rose-900/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                                            <AlertCircle className="w-5 h-5 text-rose-500" />
+                                        </div>
+                                        <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest">Ativo não encontrado</p>
+                                    </div>
+                                ) : null}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Filters */}
+                    <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar mask-linear-fade">
                         {(['ALL', 'STOCK', 'FII'] as const).map((f) => (
                             <button 
                                 key={f}
                                 onClick={() => setFilter(f)}
-                                className={`px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all border shrink-0 ${filter === f ? 'bg-zinc-900 dark:bg-white border-transparent text-white dark:text-zinc-900 shadow-sm' : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}
+                                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border shrink-0 ${filter === f ? 'bg-zinc-900 dark:bg-white border-transparent text-white dark:text-zinc-900 shadow-md transform scale-105' : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}
                             >
                                 {f === 'ALL' ? 'Todos' : f === 'STOCK' ? 'Ações' : 'FIIs'}
                             </button>
                         ))}
                     </div>
-                    <button 
-                        onClick={() => setIsAdding(true)}
-                        className="w-7 h-7 rounded-md bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 flex items-center justify-center shadow-md shadow-zinc-900/20 dark:shadow-white/10 active:scale-95 transition-all hover:bg-zinc-800 dark:hover:bg-zinc-100 shrink-0"
-                    >
-                        <Plus className="w-3.5 h-3.5" />
-                    </button>
                 </div>
             </div>
 
@@ -415,112 +476,6 @@ export default function Watchlist({ showToast }: WatchlistProps) {
                 </div>
             )}
 
-            {/* Add Asset Sheet/Modal - Enhanced UI */}
-            {isAdding && (
-                <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-zinc-900/60 backdrop-blur-xl p-0 sm:p-4 animate-in fade-in duration-300">
-                    <div 
-                        className="bg-zinc-50 dark:bg-zinc-950 w-full max-w-sm rounded-t-2xl sm:rounded-2xl p-4 sm:p-5 shadow-2xl animate-in slide-in-from-bottom-full duration-500 ease-out border-t border-white/50 dark:border-zinc-800 ring-1 ring-black/5"
-                    >
-                        {/* Handle for mobile */}
-                        <div className="w-8 h-1 bg-zinc-200 dark:bg-zinc-800 rounded-full mx-auto mb-3 sm:hidden"></div>
-
-                        <div className="flex justify-between items-start mb-3">
-                            <div>
-                                <h2 className="text-sm font-bold text-zinc-900 dark:text-white tracking-tight">Novo Favorito</h2>
-                                <p className="text-[8px] text-zinc-500 font-medium mt-0.5">Acompanhe em tempo real</p>
-                            </div>
-                            <button onClick={() => setIsAdding(false)} className="w-7 h-7 bg-white dark:bg-zinc-900 rounded-full flex items-center justify-center text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all active:scale-90 shadow-sm border border-zinc-100 dark:border-zinc-800">
-                                <X className="w-3.5 h-3.5" />
-                            </button>
-                        </div>
-
-                        <div className="relative mb-3 group">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <Search className="h-3.5 w-3.5 text-zinc-400 group-focus-within:text-indigo-500 transition-colors" />
-                            </div>
-                            <input
-                                type="text"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                placeholder="Buscar ativo (ex: PETR4)"
-                                className="block w-full pl-9 pr-9 py-2 bg-white dark:bg-zinc-900 border-2 border-transparent focus:border-indigo-500/20 rounded-xl text-xs font-bold text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm"
-                                autoFocus
-                            />
-                            <div className="absolute inset-y-0 right-0 pr-2.5 flex items-center">
-                                {isSearching ? (
-                                    <RefreshCcw className="h-3.5 w-3.5 text-indigo-500 animate-spin" />
-                                ) : searchTerm && (
-                                    <button onClick={() => setSearchTerm('')} className="bg-zinc-100 dark:bg-zinc-800 rounded-full p-1 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">
-                                        <X className="h-2 w-2 text-zinc-500" />
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="min-h-[180px]">
-                            {searchResult ? (
-                                <div 
-                                    onClick={() => handleAddTicker(searchResult.ticker)}
-                                    className="bg-white dark:bg-zinc-900 rounded-xl p-1 cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] shadow-lg shadow-zinc-200/50 dark:shadow-black/20 border border-zinc-100 dark:border-zinc-800 group"
-                                >
-                                    <div className="bg-zinc-50 dark:bg-zinc-950/50 rounded-lg p-3 flex items-center justify-between border border-zinc-100 dark:border-zinc-800/50">
-                                        <div className="flex items-center gap-2.5">
-                                            <div className="w-8 h-8 rounded-md bg-white dark:bg-zinc-900 flex items-center justify-center overflow-hidden shadow-sm border border-zinc-100 dark:border-zinc-800">
-                                                {searchResult.logo ? (
-                                                    <img src={searchResult.logo} alt={searchResult.ticker} className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <span className="font-bold text-xs text-zinc-300">{searchResult.ticker.substring(0, 2)}</span>
-                                                )}
-                                            </div>
-                                            <div>
-                                                <h3 className="font-bold text-sm text-zinc-900 dark:text-white tracking-tight leading-none">{searchResult.ticker}</h3>
-                                                <p className="text-[8px] font-medium text-zinc-500 mt-0.5 truncate max-w-[100px]">{searchResult.name}</p>
-                                            </div>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="font-bold text-xs text-zinc-900 dark:text-white tracking-tight">{formatBRL(searchResult.price || 0)}</p>
-                                            <div className="flex items-center justify-end gap-1 text-indigo-600 dark:text-indigo-400 mt-0.5 bg-indigo-50 dark:bg-indigo-900/20 px-1 py-0.5 rounded">
-                                                <Plus className="w-2 h-2" strokeWidth={3} />
-                                                <span className="text-[8px] font-bold uppercase tracking-wider">Adicionar</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            ) : searchTerm.length > 0 && !isSearching && searchError ? (
-                                <div className="text-center py-6 bg-white dark:bg-zinc-900 rounded-xl border-2 border-dashed border-zinc-200 dark:border-zinc-800">
-                                    <div className="w-8 h-8 bg-rose-50 dark:bg-rose-900/20 rounded-full flex items-center justify-center mx-auto mb-2 text-rose-500">
-                                        <AlertCircle className="w-4 h-4" />
-                                    </div>
-                                    <p className="text-xs font-bold text-zinc-900 dark:text-white">Ativo não encontrado</p>
-                                    <p className="text-[9px] text-zinc-400 mt-0.5">Verifique o código digitado</p>
-                                </div>
-                            ) : (
-                                <div>
-                                    <div className="flex items-center gap-1 mb-2 px-1">
-                                        <TrendingUp className="w-3 h-3 text-emerald-500" />
-                                        <h3 className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">Sugestões Populares</h3>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {POPULAR_ASSETS.slice(0, 6).map(asset => (
-                                            <button
-                                                key={asset.ticker}
-                                                onClick={() => handleAddTicker(asset.ticker)}
-                                                className="flex items-center justify-between px-2.5 py-2 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 border border-zinc-100 dark:border-zinc-800 rounded-lg transition-all group active:scale-95 shadow-sm hover:shadow-md"
-                                            >
-                                                <div className="flex flex-col items-start">
-                                                    <span className="text-[10px] font-bold text-zinc-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{asset.ticker}</span>
-                                                    <span className="text-[8px] font-medium text-zinc-400 truncate max-w-[60px]">{asset.name}</span>
-                                                </div>
-                                                <div className={`w-1 h-1 rounded-full ${asset.type === 'FII' ? 'bg-emerald-400' : 'bg-sky-400'} shadow-sm group-hover:scale-125 transition-transform`}></div>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {error && (
                 <div className="mb-4 p-3 bg-rose-50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-800/30 rounded-xl flex items-center gap-2 text-xs text-rose-600 dark:text-rose-400 font-medium animate-in fade-in slide-in-from-top-2">
@@ -539,13 +494,9 @@ export default function Watchlist({ showToast }: WatchlistProps) {
                     </div>
                     <h3 className="text-base font-bold text-zinc-900 dark:text-white mb-1 tracking-tight">Sua Lista</h3>
                     <p className="text-zinc-400 font-medium text-[9px] max-w-[180px] mb-4 leading-relaxed">Adicione ativos para acompanhar cotações e indicadores em tempo real.</p>
-                    <button 
-                        onClick={() => setIsAdding(true)} 
-                        className="px-4 py-2 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg font-bold text-[9px] uppercase tracking-wider shadow-md shadow-zinc-900/20 dark:shadow-white/10 transition-all active:scale-95 hover:bg-zinc-800 dark:hover:bg-zinc-100 hover:shadow-lg hover:-translate-y-0.5 group relative overflow-hidden"
-                    >
-                        <span className="relative z-10">Adicionar Ativo</span>
-                        <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-                    </button>
+                    <div className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 rounded-lg font-bold text-[9px] uppercase tracking-wider">
+                        Use a barra acima para adicionar
+                    </div>
                 </div>
             ) : (
                 <div className="space-y-2">

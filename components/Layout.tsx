@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, Bell, Download, Trash2, Cloud, CloudOff, Loader2, AlertTriangle, Gift, Star, Inbox, RefreshCw, Smartphone, X, Check, Mail, Server, WifiOff, FileText, CheckCircle, Percent, TrendingUp, DollarSign, Activity, Newspaper, CloudLightning, Wifi, CircleHelp, Calendar } from 'lucide-react';
 import { UpdateReportData } from '../types';
@@ -412,64 +412,101 @@ export const ChangelogModal: React.FC<any> = ({ isOpen, onClose, version, notes,
     </SwipeableModal>
 );
 
-export const NotificationsModal: React.FC<any> = ({ isOpen, onClose, notifications, onClear }) => (
-    <SwipeableModal isOpen={isOpen} onClose={onClose}>
-        <div className="p-4 h-full flex flex-col">
-            <div className="flex justify-between items-center mb-6 shrink-0 px-2">
-                <div>
-                    <h2 className="text-2xl font-black text-zinc-900 dark:text-white leading-tight">Notificações</h2>
-                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Fique por dentro da sua carteira</p>
+export const NotificationsModal: React.FC<any> = ({ isOpen, onClose, notifications, onClear }) => {
+    const groupedNotifications = useMemo(() => {
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        const groups: { [key: string]: any[] } = {
+            'Hoje': [],
+            'Ontem': [],
+            'Antigas': []
+        };
+
+        notifications.forEach((n: any) => {
+            const date = new Date(n.timestamp);
+            if (date.toDateString() === today.toDateString()) {
+                groups['Hoje'].push(n);
+            } else if (date.toDateString() === yesterday.toDateString()) {
+                groups['Ontem'].push(n);
+            } else {
+                groups['Antigas'].push(n);
+            }
+        });
+
+        return groups;
+    }, [notifications]);
+
+    const hasNotifications = notifications.length > 0;
+
+    return (
+        <SwipeableModal isOpen={isOpen} onClose={onClose}>
+            <div className="p-4 h-full flex flex-col">
+                <div className="flex justify-between items-center mb-6 shrink-0 px-2">
+                    <div>
+                        <h2 className="text-2xl font-black text-zinc-900 dark:text-white leading-tight">Notificações</h2>
+                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Fique por dentro da sua carteira</p>
+                    </div>
+                    {hasNotifications && (
+                        <button 
+                            onClick={onClear} 
+                            className="px-4 py-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-[10px] font-black text-zinc-500 uppercase tracking-widest hover:text-zinc-900 dark:hover:text-white transition-colors"
+                        >
+                            Limpar
+                        </button>
+                    )}
                 </div>
-                {notifications.length > 0 && (
-                    <button 
-                        onClick={onClear} 
-                        className="px-4 py-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-[10px] font-black text-zinc-500 uppercase tracking-widest hover:text-zinc-900 dark:hover:text-white transition-colors"
-                    >
-                        Limpar
-                    </button>
-                )}
-            </div>
-            <div className="space-y-3 flex-1 overflow-y-auto pb-24 px-2">
-                {notifications.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 text-center">
-                        <div className="w-16 h-16 bg-zinc-50 dark:bg-zinc-800/50 rounded-full flex items-center justify-center text-zinc-300 dark:text-zinc-700 mb-4">
-                            <Bell className="w-8 h-8" />
-                        </div>
-                        <p className="text-sm font-bold text-zinc-400">Nenhuma notificação recente.</p>
-                        <p className="text-[10px] text-zinc-400/60 mt-1">Tudo certo por aqui!</p>
-                    </div>
-                ) : notifications.map((n: any) => (
-                    <div 
-                        key={n.id} 
-                        className={`group p-4 rounded-3xl flex gap-4 transition-all border ${n.read ? 'bg-zinc-50/50 dark:bg-zinc-800/30 border-transparent opacity-60' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 shadow-sm hover:shadow-md'}`}
-                    >
-                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm ${
-                            n.category === 'payment' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : 
-                            n.category === 'datacom' ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600' :
-                            n.category === 'alert' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600' :
-                            'bg-sky-100 dark:bg-sky-900/30 text-sky-600'
-                        }`}>
-                            {n.category === 'payment' ? <DollarSign className="w-6 h-6" /> : 
-                             n.category === 'datacom' ? <Calendar className="w-6 h-6" /> :
-                             n.category === 'alert' ? <AlertTriangle className="w-6 h-6" /> :
-                             <Inbox className="w-6 h-6" />}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <div className="flex justify-between items-start mb-1">
-                                <h4 className="font-black text-sm text-zinc-900 dark:text-white truncate pr-2">{n.title}</h4>
-                                <span className="text-[9px] font-bold text-zinc-400 uppercase whitespace-nowrap">{new Date(n.timestamp).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</span>
+                
+                <div className="space-y-6 flex-1 overflow-y-auto pb-24 px-2">
+                    {!hasNotifications ? (
+                        <div className="flex flex-col items-center justify-center py-20 text-center">
+                            <div className="w-16 h-16 bg-zinc-50 dark:bg-zinc-800/50 rounded-full flex items-center justify-center text-zinc-300 dark:text-zinc-700 mb-4">
+                                <Bell className="w-8 h-8" />
                             </div>
-                            <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium">{n.message}</p>
-                            {!n.read && (
-                                <div className="mt-3 flex items-center gap-1.5">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
-                                    <span className="text-[9px] font-black text-indigo-500 uppercase tracking-widest">Nova</span>
-                                </div>
-                            )}
+                            <p className="text-sm font-bold text-zinc-400">Nenhuma notificação recente.</p>
+                            <p className="text-[10px] text-zinc-400/60 mt-1">Tudo certo por aqui!</p>
                         </div>
-                    </div>
-                ))}
+                    ) : (
+                        Object.entries(groupedNotifications).map(([label, group]) => (
+                            group.length > 0 && (
+                                <div key={label}>
+                                    <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3 pl-1">{label}</h3>
+                                    <div className="space-y-3">
+                                        {group.map((n: any) => (
+                                            <div 
+                                                key={n.id} 
+                                                className={`group p-4 rounded-3xl flex gap-4 transition-all border relative overflow-hidden ${n.read ? 'bg-zinc-50/50 dark:bg-zinc-800/30 border-transparent opacity-60' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 shadow-sm hover:shadow-md'}`}
+                                            >
+                                                {!n.read && <div className="absolute top-4 right-4 w-2 h-2 bg-indigo-500 rounded-full animate-pulse"></div>}
+                                                
+                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${
+                                                    n.category === 'payment' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : 
+                                                    n.category === 'datacom' ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600' :
+                                                    n.category === 'alert' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600' :
+                                                    'bg-sky-100 dark:bg-sky-900/30 text-sky-600'
+                                                }`}>
+                                                    {n.category === 'payment' ? <DollarSign className="w-5 h-5" /> : 
+                                                     n.category === 'datacom' ? <Calendar className="w-5 h-5" /> :
+                                                     n.category === 'alert' ? <AlertTriangle className="w-5 h-5" /> :
+                                                     <Inbox className="w-5 h-5" />}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex justify-between items-start mb-1">
+                                                        <h4 className="font-black text-sm text-zinc-900 dark:text-white truncate pr-4">{n.title}</h4>
+                                                        <span className="text-[9px] font-bold text-zinc-400 uppercase whitespace-nowrap">{new Date(n.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                                                    </div>
+                                                    <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium line-clamp-2">{n.message}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )
+                        ))
+                    )}
+                </div>
             </div>
-        </div>
-    </SwipeableModal>
-);
+        </SwipeableModal>
+    );
+};
