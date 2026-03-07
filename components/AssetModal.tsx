@@ -23,17 +23,19 @@ const TYPE_LABELS: { [key: string]: string } = {
     'RENDIMENTO': 'Rendimento',
 };
 
-const getMonthLabel = (dateStr: string) => {
-    return getMonthName(dateStr + '-01').substring(0, 3).toUpperCase();
+const getMonthLabel = (dateStr: string): string => {
+    if (!dateStr) return '';
+    return getMonthName(`${dateStr}-01`).substring(0, 3).toUpperCase();
 };
 
-const calculateSMA = (arr: any[], period: number, idx: number) => {
-    if (idx < period - 1) return null;
+const calculateSMA = (arr: any[], period: number, idx: number): number | null => {
+    if (idx < period - 1 || !arr || arr.length === 0) return null;
     let sum = 0;
     let count = 0;
     for (let i = 0; i < period; i++) {
-        const val = arr[idx - i].close || arr[idx - i].price;
-        if (val !== null && val !== undefined) {
+        const item = arr[idx - i];
+        const val = item?.close ?? item?.price;
+        if (typeof val === 'number' && !isNaN(val)) {
             sum += val;
             count++;
         }
@@ -42,8 +44,8 @@ const calculateSMA = (arr: any[], period: number, idx: number) => {
 };
 
 // Filter data by Range (Local processing)
-const filterDataByRange = (data: any[], range: string) => {
-    if (!data || data.length === 0) return [];
+const filterDataByRange = (data: any[], range: string): any[] => {
+    if (!Array.isArray(data) || data.length === 0) return [];
     
     const now = new Date();
     const cutoff = new Date();
@@ -57,11 +59,11 @@ const filterDataByRange = (data: any[], range: string) => {
         default: cutoff.setFullYear(now.getFullYear() - 1); // Default 1Y
     }
     
-    return data.filter(d => new Date(d.date) >= cutoff);
+    return data.filter(d => d?.date && new Date(d.date) >= cutoff);
 };
 
 const processChartData = (data: any[]) => {
-    if (!data || data.length === 0) return { processedData: [], yDomain: ['auto', 'auto'], variation: 0, lastPrice: 0 };
+    if (!Array.isArray(data) || data.length === 0) return { processedData: [], yDomain: ['auto', 'auto'], variation: 0, lastPrice: 0 };
 
     // Limita a 50 pontos para manter a legibilidade dos Candles
     const limitedData = data.length > 50 ? data.slice(-50) : data;
@@ -70,9 +72,10 @@ const processChartData = (data: any[]) => {
     let maxPrice = -Infinity;
 
     limitedData.forEach((d: any) => {
-        const price = d.close || d.price || 0;
-        const low = d.low || price;
-        const high = d.high || price;
+        if (!d) return;
+        const price = d.close ?? d.price ?? 0;
+        const low = d.low ?? price;
+        const high = d.high ?? price;
         
         if (low > 0 && low < minPrice) minPrice = low;
         if (high > maxPrice) maxPrice = high;
@@ -82,7 +85,7 @@ const processChartData = (data: any[]) => {
     if (maxPrice === -Infinity) maxPrice = 100;
 
     const processed = limitedData.map((d: any, index: number, arr: any[]) => {
-        const price = d.close || d.price || 0;
+        const price = d.close ?? d.price ?? 0;
         const open = d.open ?? price;
         const high = d.high ?? price;
         const low = d.low ?? price;
@@ -102,8 +105,8 @@ const processChartData = (data: any[]) => {
     });
 
     const padding = (maxPrice - minPrice) * 0.15;
-    const first = limitedData[0]?.close || limitedData[0]?.price || 0;
-    const last = limitedData[limitedData.length - 1]?.close || limitedData[limitedData.length - 1]?.price || 0;
+    const first = limitedData[0]?.close ?? limitedData[0]?.price ?? 0;
+    const last = limitedData[limitedData.length - 1]?.close ?? limitedData[limitedData.length - 1]?.price ?? 0;
     const variation = first > 0 ? ((last - first) / first) * 100 : 0;
 
     return { 
@@ -118,7 +121,7 @@ const processChartData = (data: any[]) => {
 const CustomCandleShape = (props: any) => {
     const { cx, cy, payload, yAxis } = props;
     
-    if (!yAxis || !yAxis.scale || cx == null || cy == null) return null;
+    if (!yAxis?.scale || cx == null || cy == null || !payload) return null;
 
     const { open, close, high, low } = payload;
     if (open == null || close == null || high == null || low == null) return null;
@@ -168,11 +171,12 @@ const CustomCandleShape = (props: any) => {
 };
 
 const CurrentPriceLabel = ({ viewBox, value }: any) => {
-    const { y } = viewBox;
+    if (!viewBox || typeof value !== 'number') return null;
+    const { y, width } = viewBox;
     // Posicionado dentro do gráfico, alinhado à direita
     // Desenha da direita para a esquerda
     return (
-        <g transform={`translate(${viewBox.width}, ${y})`}>
+        <g transform={`translate(${width}, ${y})`}>
             <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
                 <feDropShadow dx="0" dy="1" stdDeviation="1" floodColor="#000" floodOpacity="0.2" />
             </filter>
@@ -185,7 +189,16 @@ const CurrentPriceLabel = ({ viewBox, value }: any) => {
     );
 };
 
-const PriceHistoryChart = ({ fullData, loading, error, ticker, range, onRangeChange }: any) => {
+interface PriceHistoryChartProps {
+    fullData: any[];
+    loading: boolean;
+    error: boolean;
+    ticker: string;
+    range: string;
+    onRangeChange: (range: string) => void;
+}
+
+const PriceHistoryChart: React.FC<PriceHistoryChartProps> = ({ fullData, loading, error, ticker, range, onRangeChange }) => {
     const [chartType, setChartType] = useState<'AREA' | 'CANDLE'>('AREA');
     const [indicators, setIndicators] = useState({ sma20: false, sma50: false, volume: true });
     const [showFilterModal, setShowFilterModal] = useState(false);
@@ -450,7 +463,12 @@ const PriceHistoryChart = ({ fullData, loading, error, ticker, range, onRangeCha
     );
 };
 
-const ComparativeChart = ({ ticker, type }: any) => {
+interface ComparativeChartProps {
+    ticker: string;
+    type: string;
+}
+
+const ComparativeChart: React.FC<ComparativeChartProps> = ({ ticker, type }) => {
     const [range, setRange] = useState('1Y');
     const [chartData, setChartData] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -680,7 +698,12 @@ const ComparativeChart = ({ ticker, type }: any) => {
     );
 };
 
-const PositionSummaryCard = ({ asset, privacyMode }: { asset: AssetPosition, privacyMode: boolean }) => {
+interface PositionSummaryCardProps {
+    asset: AssetPosition;
+    privacyMode: boolean;
+}
+
+const PositionSummaryCard: React.FC<PositionSummaryCardProps> = ({ asset, privacyMode }) => {
     if (asset.quantity === 0) return null;
 
     const totalValue = asset.quantity * (asset.currentPrice || 0);
@@ -713,7 +736,11 @@ const PositionSummaryCard = ({ asset, privacyMode }: { asset: AssetPosition, pri
     );
 };
 
-const ValuationCard = ({ asset }: { asset: AssetPosition }) => {
+interface ValuationCardProps {
+    asset: AssetPosition;
+}
+
+const ValuationCard: React.FC<ValuationCardProps> = ({ asset }) => {
     const pvp = asset['p_vp'] || 0;
     const pl = asset['p_l'] || 0;
     const dy = asset['dy_12m'] || 0;
@@ -742,7 +769,11 @@ const ValuationCard = ({ asset }: { asset: AssetPosition }) => {
     );
 };
 
-const DetailedInfoBlock = ({ asset }: { asset: AssetPosition }) => {
+interface DetailedInfoBlockProps {
+    asset: AssetPosition;
+}
+
+const DetailedInfoBlock: React.FC<DetailedInfoBlockProps> = ({ asset }) => {
     const dataPoints = [
         { label: 'Cotação Atual', value: formatBRL(asset.currentPrice || 0), icon: DollarSign },
         { label: 'Preço Médio', value: formatBRL(asset.averagePrice), icon: Scale },
@@ -775,7 +806,11 @@ const DetailedInfoBlock = ({ asset }: { asset: AssetPosition }) => {
     );
 };
 
-const PropertiesAnalysis = ({ properties }: { properties: any[] }) => {
+interface PropertiesAnalysisProps {
+    properties: any[];
+}
+
+const PropertiesAnalysis: React.FC<PropertiesAnalysisProps> = ({ properties }) => {
     if (!properties || properties.length === 0) return null;
 
     return (
@@ -798,7 +833,14 @@ const PropertiesAnalysis = ({ properties }: { properties: any[] }) => {
     );
 };
 
-const IncomeAnalysisSection = ({ asset, chartData, marketHistory, isWatchlist = false }: any) => {
+interface IncomeAnalysisSectionProps {
+    asset: AssetPosition;
+    chartData: any;
+    marketHistory: any[];
+    isWatchlist?: boolean;
+}
+
+const IncomeAnalysisSection: React.FC<IncomeAnalysisSectionProps> = ({ asset, chartData, marketHistory, isWatchlist = false }) => {
     // Tenta pegar dos dividendos do ativo (carteira) ou do histórico de mercado (watchlist)
     const lastDividend = asset.dividends?.length > 0 
         ? asset.dividends[0] 
@@ -810,7 +852,7 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory, isWatchlist = 
     const yieldOnCost = totalInvested > 0 ? ((asset.totalDividends || 0) / totalInvested) * 100 : 0;
 
     // Se for watchlist, usamos o DY de 12m dos fundamentos
-    const displayYield = isWatchlist ? (asset.dy_12m * 100) : yieldOnCost;
+    const displayYield = isWatchlist ? ((asset.dy_12m || 0) * 100) : yieldOnCost;
     const yieldLabel = isWatchlist ? "Dividend Yield (12m)" : "Yield on Cost";
 
     const nextEvents = marketHistory
@@ -919,7 +961,13 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory, isWatchlist = 
     );
 };
 
-const Investidor10ChartsSection = ({ ticker, assetType, onlyPayout = false }: any) => {
+interface Investidor10ChartsSectionProps {
+    ticker: string;
+    assetType: string;
+    onlyPayout?: boolean;
+}
+
+const Investidor10ChartsSection: React.FC<Investidor10ChartsSectionProps> = ({ ticker, assetType, onlyPayout = false }) => {
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
