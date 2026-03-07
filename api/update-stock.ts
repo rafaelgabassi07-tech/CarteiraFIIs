@@ -208,7 +208,7 @@ async function scrapeStatusInvestDividends(ticker: string) {
 
         const earnings = data.assetEarningsModels || [];
 
-        return earnings.map((d: { et: number, v: number, ed: string, pd: string }) => {
+        return earnings.map((d: { et: number, v: number, ed: string, pd: string, etd?: string }) => {
             const parseDateJSON = (dStr: string) => {
                 if (!dStr || dStr.trim() === '' || dStr.trim() === '-') return null;
                 const parts = dStr.split('/');

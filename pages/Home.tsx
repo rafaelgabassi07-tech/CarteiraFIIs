@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { AssetPosition, DividendReceipt, AssetType, PortfolioInsight, Transaction } from '../types';
+import { AssetPosition, DividendReceipt, AssetType, PortfolioInsight, Transaction, Achievement } from '../types';
 import { CircleDollarSign, CalendarClock, PieChart as PieIcon, ArrowUpRight, ArrowDownLeft, Wallet, ArrowRight, Sparkles, Trophy, Anchor, Coins, Crown, Info, X, Zap, ShieldCheck, AlertTriangle, Play, Pause, TrendingUp, TrendingDown, Target, Snowflake, Layers, Medal, Rocket, Gem, Lock, Building2, Briefcase, ShoppingCart, Coffee, Plane, Star, Award, Umbrella, ZapOff, CheckCircle2, ListFilter, History, Activity, Calendar, Percent, BarChart3, Share2, ChevronDown, ArrowRightLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
@@ -362,7 +362,7 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                                                                 <div className="bg-zinc-900/95 border border-zinc-800 p-3 rounded-xl shadow-xl backdrop-blur-md min-w-[120px]">
                                                                     <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">{label}</p>
                                                                     <div className="space-y-2">
-                                                                        {payload.map((entry: { name: string, value: number }) => (
+                                                                        {payload.map((entry: any) => (
                                                                             <div key={entry.name} className="flex flex-col">
                                                                                 <span className="text-[9px] font-bold text-zinc-500 uppercase">
                                                                                     {entry.name === 'marketValue' ? 'Patrimônio' : 'Investido'}
@@ -403,7 +403,7 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                                                                 <div className="bg-zinc-900/95 border border-zinc-800 p-3 rounded-xl shadow-xl backdrop-blur-md min-w-[120px]">
                                                                     <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">{label}</p>
                                                                     <div className="space-y-2">
-                                                                        {payload.map((entry: { name: string, value: number }) => (
+                                                                        {payload.map((entry: any) => (
                                                                             <div key={entry.name} className="flex flex-col">
                                                                                 <span className="text-[9px] font-bold text-zinc-500 uppercase">
                                                                                     {entry.name === 'contribution' ? 'Aporte Líquido' : 'Dividendos'}

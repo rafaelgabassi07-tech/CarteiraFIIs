@@ -469,12 +469,12 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
       }
 
       // 5. Process fetched data
-      const newDividends: DividendReceipt[] = dividendsData.map((d: { assetIssued: string, paymentDate: string, dateCom: string, label: string, rate: number }) => ({
-            id: d.id || `${d.ticker}-${d.date_com}-${d.rate}`,
-            ticker: normalizeTicker(d.ticker),
-            type: d.type || 'DIV',
-            dateCom: d.date_com || '', 
-            paymentDate: d.payment_date || '',
+      const newDividends: DividendReceipt[] = dividendsData.map((d: Record<string, unknown>) => ({
+            id: (d.id as string) || `${d.ticker}-${d.date_com}-${d.rate}`,
+            ticker: normalizeTicker(d.ticker as string),
+            type: (d.type as string) || 'DIV',
+            dateCom: (d.date_com as string) || '', 
+            paymentDate: (d.payment_date as string) || '',
             rate: Number(d.rate),
             quantityOwned: 0, 
             totalReceived: 0
@@ -556,6 +556,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
 
   } catch (error: unknown) {
       console.error("DataService Fatal:", error);
-      return { dividends: [], metadata: {}, error: error.message };
+      const e = error as Error;
+      return { dividends: [], metadata: {}, error: e.message };
   }
 };

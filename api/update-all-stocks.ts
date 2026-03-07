@@ -6,10 +6,9 @@ import https from 'https';
 import { createClient } from '@supabase/supabase-js';
 
 // --- CONFIGURAÇÃO ---
-const supabase = createClient(
-  process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '',
-  process.env.VITE_SUPABASE_KEY || process.env.SUPABASE_KEY || ''
-);
+const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || 'https://mock.supabase.co';
+const supabaseKey = process.env.VITE_SUPABASE_KEY || process.env.SUPABASE_KEY || 'mock-key';
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 // --- AGENTE & HEADERS ---
 const httpsAgent = new https.Agent({ 
