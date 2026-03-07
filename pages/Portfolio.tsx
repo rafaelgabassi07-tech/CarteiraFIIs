@@ -887,7 +887,7 @@ const ValuationCard = ({ asset }: { asset: AssetPosition }) => {
             <div className="grid grid-cols-2 gap-6 items-end">
                 <div className="space-y-1">
                     <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Preço Justo</p>
-                    <p className="text-3xl font-black text-zinc-900 dark:text-white tracking-tight">{formatBRL(fairPrice)}</p>
+                    <p className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">{formatBRL(fairPrice)}</p>
                 </div>
                 <div className="text-right space-y-1">
                      <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Margem de Segurança</p>
@@ -1151,11 +1151,11 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: { asset: Ass
                 <div className="grid grid-cols-2 gap-8 mb-8">
                     <div className="space-y-1">
                         <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Total Acumulado</p>
-                        <p className="text-3xl font-black text-zinc-900 dark:text-white tracking-tight">{formatBRL(asset.totalDividends || 0)}</p>
+                        <p className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">{formatBRL(asset.totalDividends || 0)}</p>
                     </div>
                     <div className="text-right space-y-1">
                         <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Yield on Cost</p>
-                        <p className="text-3xl font-black text-emerald-500 tracking-tight">{yoc.toFixed(2)}%</p>
+                        <p className="text-2xl font-black text-emerald-500 tracking-tight">{yoc.toFixed(2)}%</p>
                     </div>
                 </div>
 

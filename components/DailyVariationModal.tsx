@@ -98,27 +98,27 @@ export const DailyVariationModal: React.FC<DailyVariationModalProps> = ({
                     </div>
                     <div className="flex justify-between items-start relative z-10">
                         <div>
-                            <p className="text-xs font-black text-zinc-400 uppercase tracking-[0.4em] mb-3">Variação Diária</p>
-                            <h3 className="text-6xl font-black text-zinc-900 dark:text-white tracking-tighter leading-none mb-8">
+                            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-2">Variação Diária</p>
+                            <h3 className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter leading-none mb-4">
                                 {formatBRL(stats.marketValue)}
                             </h3>
                             
-                            <div className="flex flex-wrap items-center gap-8">
-                                <div className={`flex items-center gap-3 px-5 py-2.5 rounded-2xl text-lg font-black shadow-2xl ${stats.totalReturn >= 0 ? 'bg-emerald-500 text-white shadow-emerald-500/30' : 'bg-rose-500 text-white shadow-rose-500/30'}`}>
-                                    {stats.totalReturn >= 0 ? <TrendingUp className="w-5 h-5" strokeWidth={3} /> : <TrendingDown className="w-5 h-5" strokeWidth={3} />}
+                            <div className="flex flex-wrap items-center gap-4">
+                                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black shadow-lg ${stats.totalReturn >= 0 ? 'bg-emerald-500 text-white shadow-emerald-500/20' : 'bg-rose-500 text-white shadow-rose-500/20'}`}>
+                                    {stats.totalReturn >= 0 ? <TrendingUp className="w-3.5 h-3.5" strokeWidth={3} /> : <TrendingDown className="w-3.5 h-3.5" strokeWidth={3} />}
                                     {stats.totalReturn >= 0 ? '+' : ''}{formatBRL(stats.totalReturn)}
                                 </div>
-                                <div className="h-10 w-px bg-zinc-200 dark:bg-zinc-800"></div>
+                                <div className="h-6 w-px bg-zinc-200 dark:bg-zinc-800"></div>
                                 <div className="flex flex-col">
-                                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Rentabilidade Total</span>
-                                    <span className={`text-2xl font-black tracking-tight ${stats.roi >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                    <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-0.5">Rentabilidade Total</span>
+                                    <span className={`text-lg font-black tracking-tight ${stats.roi >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                                         {stats.roi >= 0 ? '+' : ''}{stats.roi.toFixed(2)}%
                                     </span>
                                 </div>
                             </div>
                         </div>
-                        <button onClick={onClose} className="w-16 h-16 rounded-[2.5rem] bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-all active:scale-90 shadow-lg">
-                            <X className="w-8 h-8" />
+                        <button onClick={onClose} className="w-10 h-10 rounded-2xl bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-all active:scale-90 shadow-sm">
+                            <X className="w-5 h-5" />
                         </button>
                     </div>
                 </div>
@@ -205,7 +205,7 @@ export const DailyVariationModal: React.FC<DailyVariationModalProps> = ({
                                     </div>
                                     <div>
                                         <p className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-0.5">Dias de Alta</p>
-                                        <p className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter">{stats.positiveDays}</p>
+                                        <p className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter">{stats.positiveDays}</p>
                                     </div>
                                 </div>
                                 <div className="h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
@@ -222,7 +222,7 @@ export const DailyVariationModal: React.FC<DailyVariationModalProps> = ({
                                     </div>
                                     <div>
                                         <p className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-0.5">Dias de Baixa</p>
-                                        <p className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter">{stats.negativeDays}</p>
+                                        <p className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter">{stats.negativeDays}</p>
                                     </div>
                                 </div>
                                 <div className="h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">

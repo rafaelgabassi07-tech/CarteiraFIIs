@@ -99,7 +99,7 @@ export const CompoundInterestCalculator = () => {
                         <div className="relative z-10">
                             <div className="flex justify-between items-end mb-4 pb-4 border-b border-dashed border-zinc-200 dark:border-zinc-800">
                                 <span className="text-sm font-bold text-zinc-500 dark:text-zinc-400">Patrimônio Final</span>
-                                <span className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-indigo-400 dark:from-indigo-400 dark:to-indigo-300">
+                                <span className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-indigo-400 dark:from-indigo-400 dark:to-indigo-300">
                                     {formatCurrency(result.total)}
                                 </span>
                             </div>

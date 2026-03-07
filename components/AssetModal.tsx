@@ -1085,7 +1085,7 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends, incomeCha
                                 </div>
                                 <div>
                                     <div className="flex items-center gap-2">
-                                        <h2 className="font-black text-3xl tracking-tighter text-zinc-900 dark:text-white leading-none">{selectedAsset.ticker}</h2>
+                                        <h2 className="font-black text-2xl tracking-tighter text-zinc-900 dark:text-white leading-none">{selectedAsset.ticker}</h2>
                                     </div>
                                     <p className="text-xs font-bold text-zinc-400 mt-1 uppercase tracking-wider truncate max-w-[200px]">{selectedAsset.company_name || selectedAsset.ticker}</p>
                                     

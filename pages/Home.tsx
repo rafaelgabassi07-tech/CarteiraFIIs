@@ -256,27 +256,27 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                     <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/5 blur-[120px] rounded-full -mr-24 -mt-24 pointer-events-none"></div>
                     <div className="flex justify-between items-start relative z-10">
                         <div>
-                            <p className="text-xs font-black text-zinc-400 uppercase tracking-[0.4em] mb-3">Patrimônio Total</p>
-                            <h3 className="text-6xl font-black text-zinc-900 dark:text-white tracking-tighter leading-none mb-6">
+                            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-2">Patrimônio Total</p>
+                            <h3 className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter leading-none mb-4">
                                 {formatBRL(stats.marketValue)}
                             </h3>
                             
-                            <div className="flex items-center gap-6">
-                                <div className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-black shadow-xl ${stats.roi >= 0 ? 'bg-emerald-500 text-white shadow-emerald-500/20' : 'bg-rose-500 text-white shadow-rose-500/20'}`}>
-                                    {stats.roi >= 0 ? <TrendingUp className="w-4 h-4" strokeWidth={3} /> : <TrendingDown className="w-4 h-4" strokeWidth={3} />}
+                            <div className="flex items-center gap-4">
+                                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black shadow-lg ${stats.roi >= 0 ? 'bg-emerald-500 text-white shadow-emerald-500/20' : 'bg-rose-500 text-white shadow-rose-500/20'}`}>
+                                    {stats.roi >= 0 ? <TrendingUp className="w-3.5 h-3.5" strokeWidth={3} /> : <TrendingDown className="w-3.5 h-3.5" strokeWidth={3} />}
                                     {stats.roi >= 0 ? '+' : ''}{stats.roi.toFixed(2)}%
                                 </div>
-                                <div className="h-8 w-px bg-zinc-200 dark:bg-zinc-800"></div>
+                                <div className="h-6 w-px bg-zinc-200 dark:bg-zinc-800"></div>
                                 <div className="flex flex-col">
-                                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-0.5">Retorno Total</span>
-                                    <span className={`text-xl font-black tracking-tight ${stats.totalReturn >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                    <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-0.5">Retorno Total</span>
+                                    <span className={`text-lg font-black tracking-tight ${stats.totalReturn >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                                         {stats.totalReturn >= 0 ? '+' : ''}{formatBRL(stats.totalReturn)}
                                     </span>
                                 </div>
                             </div>
                         </div>
-                        <button onClick={onClose} className="w-14 h-14 rounded-[2rem] bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-all active:scale-90 shadow-sm">
-                            <X className="w-6 h-6" />
+                        <button onClick={onClose} className="w-10 h-10 rounded-2xl bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-all active:scale-90 shadow-sm">
+                            <X className="w-5 h-5" />
                         </button>
                     </div>
                 </div>
@@ -820,14 +820,14 @@ const StoryViewer = ({
                                     transition={{ duration: 0.4, ease: "easeOut" }}
                                     className="flex flex-col"
                                 >
-                                    <h1 className="text-3xl md:text-4xl font-black text-white leading-tight mb-8 drop-shadow-xl tracking-tight">
+                                    <h1 className="text-2xl md:text-3xl font-black text-white leading-tight mb-6 drop-shadow-xl tracking-tight">
                                         {story.title}
                                     </h1>
                                     
                                     <div className="bg-white/10 backdrop-blur-xl border border-white/10 p-6 rounded-[2rem] shadow-2xl mb-8 relative overflow-hidden group">
                                         <div className={`absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b ${gradient}`}></div>
                                         <div className="absolute -right-10 -top-10 w-32 h-32 bg-white/5 rounded-full blur-3xl group-hover:bg-white/10 transition-colors duration-700"></div>
-                                        <p className="text-lg md:text-xl font-medium text-white/95 leading-relaxed relative z-10">
+                                        <p className="text-base md:text-lg font-medium text-white/95 leading-relaxed relative z-10">
                                             {story.message}
                                         </p>
                                     </div>
@@ -1361,12 +1361,12 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                             </div>
                         </div>
                         <div className="flex flex-col">
-                            <h1 className="text-5xl font-black text-white leading-none tracking-tighter tabular-nums drop-shadow-lg select-none">
+                            <h1 className="text-4xl font-black text-white leading-none tracking-tighter tabular-nums drop-shadow-lg select-none">
                                 {formatBRL(balance, privacyMode)}
                             </h1>
-                            <div className="flex items-center gap-2 mt-3 ml-1">
-                                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Custo Total</span>
-                                <span className="text-xs font-bold text-zinc-300 tabular-nums">{formatBRL(invested, privacyMode)}</span>
+                            <div className="flex items-center gap-2 mt-2 ml-1">
+                                <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Custo Total</span>
+                                <span className="text-[10px] font-bold text-zinc-300 tabular-nums">{formatBRL(invested, privacyMode)}</span>
                             </div>
                         </div>
                     </div>

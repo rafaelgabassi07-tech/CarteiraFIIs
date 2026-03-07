@@ -446,7 +446,7 @@ export const NotificationsModal: React.FC<any> = ({ isOpen, onClose, notificatio
                 <div className="px-6 pt-10 pb-8 flex justify-between items-end shrink-0 border-b border-zinc-100 dark:border-zinc-900 bg-white dark:bg-zinc-950 relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 blur-[100px] rounded-full -mr-20 -mt-20 pointer-events-none"></div>
                     <div className="relative z-10">
-                        <h2 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter leading-none mb-2">Notificações</h2>
+                        <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter leading-none mb-2">Notificações</h2>
                         <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">O que está acontecendo na sua carteira</p>
                     </div>
                     {hasNotifications && (
@@ -463,11 +463,11 @@ export const NotificationsModal: React.FC<any> = ({ isOpen, onClose, notificatio
                 <div className="flex-1 overflow-y-auto pb-32 px-6 py-8 space-y-10 no-scrollbar">
                     {!hasNotifications ? (
                         <div className="flex flex-col items-center justify-center py-24 text-center">
-                            <div className="w-32 h-32 bg-zinc-50 dark:bg-zinc-900 rounded-[2.5rem] flex items-center justify-center text-zinc-200 dark:text-zinc-800 mb-8 relative">
-                                <Bell className="w-12 h-12" strokeWidth={0.5} />
-                                <div className="absolute inset-0 rounded-[2.5rem] border-4 border-dashed border-zinc-100 dark:border-zinc-800 animate-[spin_30s_linear_infinite]"></div>
+                            <div className="w-24 h-24 bg-zinc-50 dark:bg-zinc-900 rounded-[2rem] flex items-center justify-center text-zinc-200 dark:text-zinc-800 mb-6 relative">
+                                <Bell className="w-10 h-10" strokeWidth={0.5} />
+                                <div className="absolute inset-0 rounded-[2rem] border-4 border-dashed border-zinc-100 dark:border-zinc-800 animate-[spin_30s_linear_infinite]"></div>
                             </div>
-                            <h3 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight mb-2">Silêncio absoluto</h3>
+                            <h3 className="text-lg font-black text-zinc-900 dark:text-white tracking-tight mb-2">Silêncio absoluto</h3>
                             <p className="text-sm font-medium text-zinc-400 max-w-[280px] leading-relaxed">
                                 Nenhuma notificação por aqui. Aproveite a tranquilidade da sua carteira.
                             </p>
