@@ -37,17 +37,29 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
     >
         <div className="flex flex-col items-center relative">
             
-            <div className="relative mb-8 scale-150">
-                <div className="absolute inset-0 bg-indigo-500/20 blur-2xl rounded-full animate-pulse"></div>
-                <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-indigo-500/30 relative z-10 rotate-3 hover:rotate-6 transition-transform duration-500">
-                    <TrendingUp className="w-8 h-8 text-white" strokeWidth={3} />
+            {/* BRAND COMPOSITION */}
+            <div className="flex items-center justify-center gap-1 mb-8 relative select-none scale-110">
+                <div className="w-[58px] h-[68px] flex items-center justify-center relative z-10 animate-[float_4s_ease-in-out_infinite]">
+                   <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto drop-shadow-[0_12px_24px_rgba(14,165,233,0.3)]">
+                        <defs>
+                            <linearGradient id="logo_grad_splash" x1="128" y1="40" x2="384" y2="472" gradientUnits="userSpaceOnUse">
+                                <stop offset="0%" stopColor="#10b981"/>
+                                <stop offset="50%" stopColor="#0ea5e9"/>
+                                <stop offset="100%" stopColor="#4f46e5"/>
+                            </linearGradient>
+                        </defs>
+                        <path d="M256 64L464 272H384L256 144L128 272H48L256 64Z" fill="url(#logo_grad_splash)"/>
+                        <path d="M176 296L256 248L336 296V312H176V296Z" fill="url(#logo_grad_splash)"/>
+                        <rect x="184" y="328" width="32" height="104" rx="6" fill="url(#logo_grad_splash)"/>
+                        <rect x="240" y="328" width="32" height="104" rx="6" fill="url(#logo_grad_splash)"/>
+                        <rect x="296" y="328" width="32" height="104" rx="6" fill="url(#logo_grad_splash)"/>
+                        <path d="M160 448H352C356.418 448 360 451.582 360 456V472H152V456C152 451.582 155.582 448 160 448Z" fill="url(#logo_grad_splash)"/>
+                   </svg>
                 </div>
+                <span className="font-display text-[42px] font-extrabold tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-zinc-700 via-zinc-800 to-zinc-600 dark:from-white dark:via-zinc-200 dark:to-zinc-400 mt-1 -ml-1 drop-shadow-sm">
+                    NVEST
+                </span>
             </div>
-
-            <h1 className="text-3xl font-black tracking-tighter text-zinc-900 dark:text-white mb-8 flex items-center gap-1">
-                NVEST
-                <span className="w-2 h-2 rounded-full bg-indigo-500 mt-3 animate-bounce"></span>
-            </h1>
 
             <div className="flex flex-col items-center gap-4 w-64">
                 <div className="h-1.5 w-full bg-zinc-100 dark:bg-zinc-900 rounded-full overflow-hidden border border-zinc-200 dark:border-zinc-800/50">
