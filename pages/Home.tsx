@@ -2278,70 +2278,73 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
             progress={goalsData.progress}
         />
 
-        <AnimatePresence>
-            {selectedAchievement && (
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
-                    onClick={() => setSelectedAchievement(null)}
-                >
+        {createPortal(
+            <AnimatePresence>
+                {selectedAchievement && (
                     <motion.div
-                        initial={{ scale: 0.9, opacity: 0, y: 20 }}
-                        animate={{ scale: 1, opacity: 1, y: 0 }}
-                        exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                        onClick={(e) => e.stopPropagation()}
-                        className="bg-white dark:bg-zinc-900 w-full max-w-sm rounded-[2rem] p-6 relative shadow-2xl border border-white/10 overflow-hidden"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
+                        onClick={() => setSelectedAchievement(null)}
                     >
-                        {/* Background Effects */}
-                        <div className={`absolute top-0 right-0 w-40 h-40 bg-gradient-to-br ${selectedAchievement.color} opacity-20 blur-3xl rounded-full -mr-10 -mt-10 pointer-events-none`}></div>
-                        <div className={`absolute bottom-0 left-0 w-40 h-40 bg-gradient-to-tr ${selectedAchievement.color} opacity-20 blur-3xl rounded-full -ml-10 -mb-10 pointer-events-none`}></div>
-
-                        <button 
-                            onClick={() => setSelectedAchievement(null)}
-                            className="absolute top-4 right-4 p-2 bg-zinc-100 dark:bg-zinc-800 rounded-full text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors z-20"
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="bg-white dark:bg-zinc-900 w-full max-w-sm rounded-[2rem] p-6 relative shadow-2xl border border-white/10 overflow-hidden"
                         >
-                            <X className="w-4 h-4" />
-                        </button>
+                            {/* Background Effects */}
+                            <div className={`absolute top-0 right-0 w-40 h-40 bg-gradient-to-br ${selectedAchievement.color} opacity-20 blur-3xl rounded-full -mr-10 -mt-10 pointer-events-none`}></div>
+                            <div className={`absolute bottom-0 left-0 w-40 h-40 bg-gradient-to-tr ${selectedAchievement.color} opacity-20 blur-3xl rounded-full -ml-10 -mb-10 pointer-events-none`}></div>
 
-                        <div className="relative z-10 flex flex-col items-center text-center">
-                            <motion.div 
-                                initial={{ scale: 0, rotate: -180 }}
-                                animate={{ scale: 1, rotate: 0 }}
-                                transition={{ type: "spring", damping: 12 }}
-                                className={`w-20 h-20 rounded-3xl flex items-center justify-center mb-6 shadow-lg bg-gradient-to-br ${selectedAchievement.color} text-white`}
+                            <button 
+                                onClick={() => setSelectedAchievement(null)}
+                                className="absolute top-4 right-4 p-2 bg-zinc-100 dark:bg-zinc-800 rounded-full text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors z-20"
                             >
-                                <selectedAchievement.icon className="w-10 h-10" strokeWidth={2} />
-                            </motion.div>
+                                <X className="w-4 h-4" />
+                            </button>
 
-                            <h3 className="text-2xl font-black text-zinc-900 dark:text-white mb-2 tracking-tight">
-                                {selectedAchievement.label}
-                            </h3>
-                            
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-100 dark:bg-zinc-800 mb-6">
-                                <span className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">
-                                    {selectedAchievement.sub}
-                                </span>
-                            </div>
-
-                            <p className="text-sm font-medium text-zinc-600 dark:text-zinc-300 leading-relaxed">
-                                {selectedAchievement.description}
-                            </p>
-
-                            <div className="mt-8 w-full">
-                                <button
-                                    onClick={() => setSelectedAchievement(null)}
-                                    className={`w-full py-3.5 rounded-xl font-bold text-white shadow-lg shadow-indigo-500/20 bg-gradient-to-r ${selectedAchievement.color} hover:opacity-90 transition-opacity`}
+                            <div className="relative z-10 flex flex-col items-center text-center">
+                                <motion.div 
+                                    initial={{ scale: 0, rotate: -180 }}
+                                    animate={{ scale: 1, rotate: 0 }}
+                                    transition={{ type: "spring", damping: 12 }}
+                                    className={`w-20 h-20 rounded-3xl flex items-center justify-center mb-6 shadow-lg bg-gradient-to-br ${selectedAchievement.color} text-white`}
                                 >
-                                    Incrível!
-                                </button>
+                                    <selectedAchievement.icon className="w-10 h-10" strokeWidth={2} />
+                                </motion.div>
+
+                                <h3 className="text-2xl font-black text-zinc-900 dark:text-white mb-2 tracking-tight">
+                                    {selectedAchievement.label}
+                                </h3>
+                                
+                                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-100 dark:bg-zinc-800 mb-6">
+                                    <span className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">
+                                        {selectedAchievement.sub}
+                                    </span>
+                                </div>
+
+                                <p className="text-sm font-medium text-zinc-600 dark:text-zinc-300 leading-relaxed">
+                                    {selectedAchievement.description}
+                                </p>
+
+                                <div className="mt-8 w-full">
+                                    <button
+                                        onClick={() => setSelectedAchievement(null)}
+                                        className={`w-full py-3.5 rounded-xl font-bold text-white shadow-lg shadow-indigo-500/20 bg-gradient-to-r ${selectedAchievement.color} hover:opacity-90 transition-opacity`}
+                                    >
+                                        Incrível!
+                                    </button>
+                                </div>
                             </div>
-                        </div>
+                        </motion.div>
                     </motion.div>
-                </motion.div>
-            )}
-        </AnimatePresence>
+                )}
+            </AnimatePresence>,
+            document.body
+        )}
 
     </motion.div>
   );
