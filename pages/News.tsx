@@ -60,43 +60,84 @@ const isSimilar = (s1: string, s2: string) => {
     return similarity > 0.7; 
 };
 
-const InAppBrowser = ({ url, title, onClose }: { url: string, title: string, onClose: () => void }) => {
+const NewsReader = ({ article, onClose }: { article: NewsItem, onClose: () => void }) => {
     return (
         <div className="fixed inset-0 z-[60] bg-white dark:bg-zinc-900 flex flex-col anim-slide-up">
-            <div className="flex items-center justify-between p-3 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 sticky top-0 z-10">
+            <div className="flex items-center justify-between p-4 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 sticky top-0 z-10">
                 <button 
                     onClick={onClose}
-                    className="p-2 -ml-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
+                    className="p-2 -ml-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 transition-colors"
                 >
                     <ChevronLeft className="w-6 h-6" />
                 </button>
                 
-                <div className="flex-1 px-4 text-center">
-                    <p className="text-xs font-bold text-zinc-900 dark:text-white truncate max-w-[200px] mx-auto">
-                        {title}
-                    </p>
-                    <p className="text-[10px] text-zinc-400 truncate max-w-[200px] mx-auto">
-                        {new URL(url).hostname.replace('www.', '')}
-                    </p>
-                </div>
+                <span className="text-sm font-bold text-zinc-900 dark:text-white">
+                    Detalhes da Notícia
+                </span>
 
-                <a 
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-2 -mr-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
-                >
-                    <ExternalLink className="w-5 h-5" />
-                </a>
+                <div className="w-10"></div> {/* Spacer for alignment */}
             </div>
             
-            <div className="flex-1 bg-zinc-100 dark:bg-zinc-900 relative">
-                <iframe 
-                    src={url} 
-                    className="w-full h-full border-0"
-                    title={title}
-                    sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
-                />
+            <div className="flex-1 overflow-y-auto bg-white dark:bg-zinc-900">
+                <div className="max-w-3xl mx-auto p-6 pb-32">
+                    {article.imageUrl && (
+                        <div className="relative w-full aspect-video rounded-3xl overflow-hidden mb-8 shadow-lg">
+                            <img 
+                                src={article.imageUrl} 
+                                alt={article.title} 
+                                className="absolute inset-0 w-full h-full object-cover"
+                                onError={(e) => (e.target as HTMLImageElement).style.display = 'none'}
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                            <div className="absolute bottom-4 left-4 right-4">
+                                <span className="px-2 py-1 rounded-md bg-white/20 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-widest border border-white/10">
+                                    {article.source}
+                                </span>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex items-center gap-3 mb-6">
+                        <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                            {article.date}
+                        </span>
+                        {article.sentiment === 'positive' && (
+                            <span className="px-2 py-1 rounded-md bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
+                                <TrendingUp className="w-3 h-3" /> Otimista
+                            </span>
+                        )}
+                        {article.sentiment === 'negative' && (
+                            <span className="px-2 py-1 rounded-md bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
+                                <TrendingDown className="w-3 h-3" /> Pessimista
+                            </span>
+                        )}
+                    </div>
+
+                    <h1 className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white leading-tight mb-6 tracking-tight">
+                        {article.title}
+                    </h1>
+
+                    <div className="prose prose-zinc dark:prose-invert max-w-none mb-10">
+                        <p className="text-lg text-zinc-600 dark:text-zinc-300 leading-relaxed font-medium">
+                            {article.summary.replace(/<[^>]*>?/gm, '')}
+                        </p>
+                    </div>
+
+                    <div className="flex flex-col gap-4">
+                        <a 
+                            href={article.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full py-4 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold text-center hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+                        >
+                            Ler matéria completa <ExternalLink className="w-4 h-4" />
+                        </a>
+                        
+                        <p className="text-center text-xs text-zinc-400 px-4">
+                            Você será redirecionado para o site oficial da fonte ({article.source}) para ler o conteúdo na íntegra.
+                        </p>
+                    </div>
+                </div>
             </div>
         </div>
     );
@@ -314,9 +355,8 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
         <div className="pb-32 min-h-screen relative">
             
             {selectedArticle && (
-                <InAppBrowser 
-                    url={selectedArticle.url} 
-                    title={selectedArticle.title} 
+                <NewsReader 
+                    article={selectedArticle} 
                     onClose={() => setSelectedArticle(null)} 
                 />
             )}
