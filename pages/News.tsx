@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { RefreshCw, AlertTriangle, Search, X, Wallet, TrendingUp, TrendingDown, Building2, Globe, Check, Newspaper, Share2 } from 'lucide-react';
+import { RefreshCw, AlertTriangle, Search, X, Wallet, TrendingUp, TrendingDown, Building2, Globe, Check, Newspaper, Share2, ExternalLink, ChevronLeft } from 'lucide-react';
 import { NewsItem, Transaction, NewsSentiment, NewsImpact } from '../types';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -60,12 +60,52 @@ const isSimilar = (s1: string, s2: string) => {
     return similarity > 0.7; 
 };
 
-const HeroNews = ({ item, onShare }: { item: NewsItem, onShare: (item: NewsItem, e: React.MouseEvent) => void }) => (
-    <a 
-        href={item.url} 
-        target="_blank" 
-        rel="noopener noreferrer"
-        className="block relative w-full aspect-[4/5] sm:aspect-[2/1] rounded-[2.5rem] overflow-hidden mb-8 group active:scale-[0.98] transition-all shadow-2xl shadow-black/20"
+const InAppBrowser = ({ url, title, onClose }: { url: string, title: string, onClose: () => void }) => {
+    return (
+        <div className="fixed inset-0 z-[60] bg-white dark:bg-zinc-900 flex flex-col anim-slide-up">
+            <div className="flex items-center justify-between p-3 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 sticky top-0 z-10">
+                <button 
+                    onClick={onClose}
+                    className="p-2 -ml-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
+                >
+                    <ChevronLeft className="w-6 h-6" />
+                </button>
+                
+                <div className="flex-1 px-4 text-center">
+                    <p className="text-xs font-bold text-zinc-900 dark:text-white truncate max-w-[200px] mx-auto">
+                        {title}
+                    </p>
+                    <p className="text-[10px] text-zinc-400 truncate max-w-[200px] mx-auto">
+                        {new URL(url).hostname.replace('www.', '')}
+                    </p>
+                </div>
+
+                <a 
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2 -mr-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
+                >
+                    <ExternalLink className="w-5 h-5" />
+                </a>
+            </div>
+            
+            <div className="flex-1 bg-zinc-100 dark:bg-zinc-900 relative">
+                <iframe 
+                    src={url} 
+                    className="w-full h-full border-0"
+                    title={title}
+                    sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                />
+            </div>
+        </div>
+    );
+};
+
+const HeroNews = ({ item, onShare, onClick }: { item: NewsItem, onShare: (item: NewsItem, e: React.MouseEvent) => void, onClick: (item: NewsItem) => void }) => (
+    <div 
+        onClick={() => onClick(item)}
+        className="block relative w-full aspect-[4/5] sm:aspect-[2/1] rounded-[2.5rem] overflow-hidden mb-8 group active:scale-[0.98] transition-all shadow-2xl shadow-black/20 cursor-pointer"
     >
         {item.imageUrl ? (
             <img 
@@ -126,13 +166,14 @@ const HeroNews = ({ item, onShare }: { item: NewsItem, onShare: (item: NewsItem,
                 </button>
             </div>
         </div>
-    </a>
+    </div>
 );
 
 export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
     const [news, setNews] = useState<NewsItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
+    const [selectedArticle, setSelectedArticle] = useState<NewsItem | null>(null);
     
     const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
     
@@ -283,6 +324,14 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
     return (
         <div className="pb-32 min-h-screen relative">
             
+            {selectedArticle && (
+                <InAppBrowser 
+                    url={selectedArticle.url} 
+                    title={selectedArticle.title} 
+                    onClose={() => setSelectedArticle(null)} 
+                />
+            )}
+
             {copyFeedback && (
                 <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 bg-black/80 text-white px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 anim-scale-in backdrop-blur-md">
                     <Check className="w-3 h-3 text-emerald-400" /> Link copiado!
@@ -367,15 +416,13 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
                 ) : (
                     <div className="space-y-3">
                         {filteredNews.length > 0 && (
-                            <HeroNews item={filteredNews[0]} onShare={handleShare} />
+                            <HeroNews item={filteredNews[0]} onShare={handleShare} onClick={setSelectedArticle} />
                         )}
                         {filteredNews.slice(1).map((item) => (
-                            <a 
+                            <div 
                                 key={item.id} 
-                                href={item.url} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="block bg-white dark:bg-zinc-900 rounded-3xl p-5 border border-zinc-200/60 dark:border-zinc-800/60 shadow-sm active:scale-[0.98] transition-all relative group overflow-hidden hover:border-indigo-200 dark:hover:border-zinc-700"
+                                onClick={() => setSelectedArticle(item)}
+                                className="block bg-white dark:bg-zinc-900 rounded-3xl p-5 border border-zinc-200/60 dark:border-zinc-800/60 shadow-sm active:scale-[0.98] transition-all relative group overflow-hidden hover:border-indigo-200 dark:hover:border-zinc-700 cursor-pointer"
                             >
                                 <div className="flex justify-between items-start mb-3">
                                     <div className="flex items-center gap-2.5">
@@ -430,7 +477,7 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
                                         <Share2 className="w-4 h-4" />
                                     </button>
                                 </div>
-                            </a>
+                            </div>
                         ))}
                     </div>
                 )}
