@@ -119,7 +119,7 @@ async function fetchBrapiHistory(ticker: string, range: string) {
             const timestamps: number[] = [];
             const prices: number[] = [];
             
-            historical.forEach((h: any) => {
+            historical.forEach((h: { date: number, close: number }) => {
                 if (h.date && h.close) {
                     timestamps.push(h.date); 
                     prices.push(h.close);
@@ -135,8 +135,9 @@ async function fetchBrapiHistory(ticker: string, range: string) {
             };
         }
         return null;
-    } catch (e: any) {
-        console.warn(`Brapi fetch failed for ${ticker}:`, e.message);
+    } catch (e: unknown) {
+        const error = e as Error;
+        console.warn(`Brapi fetch failed for ${ticker}:`, error.message);
         return null;
     }
 }
@@ -196,11 +197,11 @@ async function fetchInvestidor10History(ticker: string, range: string) {
     }
 }
 
-function parseInvestidor10Data(data: any[]) {
+function parseInvestidor10Data(data: { created_at: string, price: number }[]) {
     const timestamps: number[] = [];
     const prices: number[] = [];
     
-    data.forEach((item: any) => {
+    data.forEach((item: { created_at: string, price: number }) => {
         // item.created_at format: "DD/MM/YYYY" or "DD/MM/YYYY HH:mm"
         const [datePart, timePart] = item.created_at.split(' ');
         const [day, month, year] = datePart.split('/');
@@ -273,7 +274,7 @@ async function fetchYahooData(symbol: string, range: string) {
                 highs: quote.high as (number | null)[],
                 lows: quote.low as (number | null)[]
             };
-        } catch (e: any) {
+        } catch (e: unknown) {
             console.warn(`Yahoo fetch failed for ${url}:`, e.message);
             // Continue to next endpoint
         }
@@ -292,7 +293,7 @@ async function fetchBcbSeries(seriesCode: number, startDate: Date) {
         // Retorna Map: "YYYY-MM-DD" -> valor
         const map = new Map<string, number>();
         if (Array.isArray(data)) {
-            data.forEach((item: any) => {
+            data.forEach((item: { created_at: string, price: number }) => {
                 // item.data é "DD/MM/YYYY"
                 const parts = item.data.split('/');
                 const isoDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
@@ -345,7 +346,7 @@ export async function getHistory(req: Request, res: Response) {
         if (!assetData) return res.status(404).json({ error: 'Asset not found' });
 
         // Maps for O(1) lookup
-        const createPriceMap = (data: any) => {
+        const createPriceMap = (data: { created_at: string, price: number }[]) => {
             const map = new Map<string, number>();
             if (!data) return map;
             data.timestamps.forEach((t: number, i: number) => {
@@ -422,7 +423,7 @@ export async function getHistory(req: Request, res: Response) {
             }
             accIpca = accIpca * ipcaDailyFactor;
 
-            const point: any = {
+            const point: Record<string, unknown> = {
                 date: dateObj.toISOString(),
                 timestamp: timestamps[i] * 1000,
                 price: price,
@@ -494,8 +495,9 @@ export async function getHistory(req: Request, res: Response) {
             points
         });
 
-    } catch (e: any) {
-        console.error(`History API Error:`, e.message);
+    } catch (e: unknown) {
+        const error = e as Error;
+        console.error(`History API Error:`, error.message);
         return res.status(500).json({ error: 'Erro interno' });
     }
 }

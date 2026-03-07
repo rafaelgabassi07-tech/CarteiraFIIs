@@ -196,7 +196,7 @@ export interface ServiceMetric {
   id: string;
   label: string;
   url?: string;
-  icon?: any;
+  icon?: React.ElementType;
   status: ServiceStatus;
   latency: number | null;
   message?: string;
@@ -209,7 +209,7 @@ export interface LogEntry {
   timestamp: number;
   level: LogLevel;
   message: string;
-  data?: any[];
+  data?: Record<string, unknown>[];
 }
 
 // --- TIPOS DE MERCADO ---
@@ -267,7 +267,7 @@ export interface ScrapeResult {
         vacancy?: number;
     };
     // Novo: Dados brutos retornados pelo scraper para atualização imediata
-    rawFundamentals?: any; 
+    rawFundamentals?: Record<string, unknown>; 
     dividendsFound?: {
         type: string;
         dateCom: string;

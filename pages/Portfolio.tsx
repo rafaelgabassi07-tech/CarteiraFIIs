@@ -35,7 +35,7 @@ const getMonthLabel = (dateStr: string) => {
     return getMonthName(dateStr + '-01').substring(0, 3).toUpperCase();
 };
 
-const calculateSMA = (arr: any[], period: number, idx: number) => {
+const calculateSMA = (arr: { close?: number, price?: number }[], period: number, idx: number) => {
     if (idx < period - 1) return null;
     let sum = 0;
     let count = 0;
@@ -50,7 +50,7 @@ const calculateSMA = (arr: any[], period: number, idx: number) => {
 };
 
 // Filter data by Range (Local processing)
-const filterDataByRange = (data: any[], range: string) => {
+const filterDataByRange = (data: { date: string }[], range: string) => {
     if (!data || data.length === 0) return [];
     
     const now = new Date();
@@ -68,7 +68,7 @@ const filterDataByRange = (data: any[], range: string) => {
     return data.filter(d => new Date(d.date) >= cutoff);
 };
 
-const processChartData = (data: any[]) => {
+const processChartData = (data: { date: string, close?: number, price?: number, open?: number, high?: number, low?: number, volume?: number }[]) => {
     if (!data || data.length === 0) return { processedData: [], yDomain: ['auto', 'auto'], variation: 0, lastPrice: 0 };
 
     // Limita a 50 pontos para manter a legibilidade dos Candles
@@ -77,7 +77,7 @@ const processChartData = (data: any[]) => {
     let minPrice = Infinity;
     let maxPrice = -Infinity;
 
-    limitedData.forEach((d: any) => {
+    limitedData.forEach((d: { close?: number, price?: number, low?: number, high?: number }) => {
         const price = d.close || d.price || 0;
         const low = d.low || price;
         const high = d.high || price;
@@ -89,7 +89,7 @@ const processChartData = (data: any[]) => {
     if (minPrice === Infinity) minPrice = 0;
     if (maxPrice === -Infinity) maxPrice = 100;
 
-    const processed = limitedData.map((d: any, index: number, arr: any[]) => {
+    const processed = limitedData.map((d: { date: string, close?: number, price?: number, open?: number, high?: number, low?: number, volume?: number }, index: number, arr: { close?: number, price?: number }[]) => {
         const price = d.close || d.price || 0;
         const open = d.open ?? price;
         const high = d.high ?? price;
@@ -123,7 +123,7 @@ const processChartData = (data: any[]) => {
 };
 
 // Componente Visual do Candle (USANDO SCATTER PARA MÁXIMA CONFIABILIDADE)
-const CustomCandleShape = (props: any) => {
+const CustomCandleShape = (props: { cx?: number, cy?: number, payload?: { open?: number, close?: number, high?: number, low?: number }, yAxis?: { scale: (val: number) => number } }) => {
     const { cx, cy, payload, yAxis } = props;
     
     if (!yAxis || !yAxis.scale || cx == null || cy == null) return null;
@@ -175,7 +175,7 @@ const CustomCandleShape = (props: any) => {
     );
 };
 
-const CurrentPriceLabel = ({ viewBox, value }: any) => {
+const CurrentPriceLabel = ({ viewBox, value }: { viewBox?: { y: number, width: number }, value: number }) => {
     const { y } = viewBox;
     // Posicionado dentro do gráfico, alinhado à direita
     // Desenha da direita para a esquerda
@@ -194,7 +194,7 @@ const CurrentPriceLabel = ({ viewBox, value }: any) => {
 };
 
 // --- COMPONENTE ACORDEÃO (COLLAPSIBLE) ---
-const CollapsibleCard = ({ title, icon: Icon, children, defaultOpen = false }: { title: string, icon: any, children: React.ReactNode, defaultOpen?: boolean }) => {
+const CollapsibleCard = ({ title, icon: Icon, children, defaultOpen = false }: { title: string, icon: React.ElementType, children: React.ReactNode, defaultOpen?: boolean }) => {
     const [isOpen, setIsOpen] = useState(defaultOpen);
 
     return (
@@ -221,7 +221,7 @@ const CollapsibleCard = ({ title, icon: Icon, children, defaultOpen = false }: {
 };
 
 // --- COMPONENTES DE GRÁFICO ---
-const PriceHistoryChart = ({ fullData, loading, error, ticker, range, onRangeChange }: any) => {
+const PriceHistoryChart = ({ fullData, loading, error, ticker, range, onRangeChange }: { fullData: { date: string, close?: number, price?: number, open?: number, high?: number, low?: number, volume?: number }[], loading: boolean, error: boolean, ticker: string, range: string, onRangeChange: (range: string) => void }) => {
     const [chartType, setChartType] = useState<'AREA' | 'CANDLE'>('AREA');
     const [indicators, setIndicators] = useState({ sma20: false, sma50: false, volume: true });
     const [showFilterModal, setShowFilterModal] = useState(false);
@@ -403,7 +403,7 @@ const PriceHistoryChart = ({ fullData, loading, error, ticker, range, onRangeCha
                                     }} 
                                 />
                                 <ReferenceLine y={lastPrice} yAxisId="price" stroke="#6366f1" strokeDasharray="3 3" strokeOpacity={0.8} ifOverflow="extendDomain"><Label content={<CurrentPriceLabel value={lastPrice} />} position="right" /></ReferenceLine>
-                                {indicators.volume && <Bar dataKey="volume" yAxisId="volume" barSize={range === '1Y' ? 2 : 4} fillOpacity={0.3} radius={[2, 2, 0, 0]}>{processedData.map((entry: any, index: number) => (<Cell key={`cell-${index}`} fill={entry.volColor} />))}</Bar>}
+                                {indicators.volume && <Bar dataKey="volume" yAxisId="volume" barSize={range === '1Y' ? 2 : 4} fillOpacity={0.3} radius={[2, 2, 0, 0]}>{processedData.map((entry: { volColor: string }, index: number) => (<Cell key={`cell-${index}`} fill={entry.volColor} />))}</Bar>}
                                 
                                 {chartType === 'AREA' ? (
                                     <Area 
@@ -486,9 +486,9 @@ const PriceHistoryChart = ({ fullData, loading, error, ticker, range, onRangeCha
     );
 };
 
-const ComparativeChart = ({ ticker, type }: any) => {
+const ComparativeChart = ({ ticker, type }: { ticker: string, type: AssetType }) => {
     const [range, setRange] = useState('1Y');
-    const [chartData, setChartData] = useState<any[]>([]);
+    const [chartData, setChartData] = useState<{ date: string, assetPct?: number, cdiPct?: number, ipcaPct?: number, ibovPct?: number, ifixPct?: number }[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
     const [showFilterModal, setShowFilterModal] = useState(false);
@@ -717,7 +717,7 @@ const ComparativeChart = ({ ticker, type }: any) => {
 };
 
 const ChartsContainer = ({ ticker, type, marketDividends }: { ticker: string, type: AssetType, asset?: AssetPosition, marketDividends: DividendReceipt[] }) => {
-    const [historyData, setHistoryData] = useState<any[]>([]);
+    const [historyData, setHistoryData] = useState<{ date: string, close?: number, price?: number, open?: number, high?: number, low?: number, volume?: number }[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
     const [range, setRange] = useState('1d'); // Default to 1d
@@ -987,7 +987,7 @@ const DetailedInfoBlock = ({ asset }: { asset: AssetPosition }) => {
     );
 };
 
-const PropertiesAnalysis = ({ properties }: { properties: any[] }) => {
+const PropertiesAnalysis = ({ properties }: { properties: { location?: string, name: string, abl?: string }[] }) => {
     // Agrupa imóveis por estado para o gráfico
     const locationData = useMemo(() => {
         const counts: Record<string, number> = {};
@@ -1098,7 +1098,7 @@ const PropertiesAnalysis = ({ properties }: { properties: any[] }) => {
     );
 };
 
-const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: { asset: AssetPosition, chartData: { data: any[], average: number, activeTypes: string[] }, marketHistory: DividendReceipt[] }) => {
+const IncomeAnalysisSection = ({ asset, chartData, marketHistory }: { asset: AssetPosition, chartData: { data: { month: string, total: number, [key: string]: string | number }[], average: number, activeTypes: string[] }, marketHistory: DividendReceipt[] }) => {
     const totalInvested = asset.quantity * asset.averagePrice;
     const yoc = totalInvested > 0 ? (asset.totalDividends || 0) / totalInvested * 100 : 0;
     const currentPrice = asset.currentPrice || 0;
@@ -1421,7 +1421,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
     const [showDailyVariationModal, setShowDailyVariationModal] = useState(false);
     
     // History data state for reorganized tabs
-    const [historyData, setHistoryData] = useState<any[]>([]);
+    const [historyData, setHistoryData] = useState<{ date: string, close?: number, price?: number, open?: number, high?: number, low?: number, volume?: number }[]>([]);
     const [loadingHistory, setLoadingHistory] = useState(false);
     const [errorHistory, setErrorHistory] = useState(false);
     const [historyRange, setHistoryRange] = useState('1d');
@@ -1511,7 +1511,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
         
         // Group by month
         const today = new Date();
-        const last12m: Record<string, any> = {};
+        const last12m: Record<string, { month: string, DIV: number, JCP: number, REND: number, total: number, [key: string]: string | number }> = {};
         for(let i=11; i>=0; i--) {
             const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
             const k = d.toISOString().substring(0, 7);
@@ -1649,7 +1649,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
                                         {['1M', '6M', '1A', 'MAX'].map((r) => (
                                             <button
                                                 key={r}
-                                                onClick={() => setHistoryRange(r as any)}
+                                                onClick={() => setHistoryRange(r)}
                                                 className={`px-2 py-0.5 text-[9px] font-black rounded-md transition-all ${historyRange === r ? 'bg-white dark:bg-zinc-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}
                                             >
                                                 {r}
