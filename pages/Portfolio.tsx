@@ -1331,12 +1331,12 @@ const AssetCard = ({ asset, maxVal, totalVal, privacyMode, onClick }: { asset: A
     return (
         <button 
             onClick={onClick}
-            className="w-full bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 shadow-sm active:scale-[0.98] transition-all relative overflow-hidden group hover:border-indigo-200 dark:hover:border-zinc-700 p-2.5"
+            className="w-full bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm active:scale-[0.98] transition-all relative overflow-hidden group hover:border-indigo-500/30 dark:hover:border-zinc-700 p-3"
         >
-            {/* Progress Bar Background */}
-            <div className="absolute bottom-0 left-0 h-1 bg-indigo-500/20 dark:bg-indigo-400/20 transition-all duration-1000" style={{ width: `${relativePercent}%` }}></div>
+            {/* Progress Bar Background - More subtle */}
+            <div className="absolute bottom-0 left-0 h-0.5 bg-indigo-500/10 dark:bg-indigo-400/10 transition-all duration-1000" style={{ width: `${relativePercent}%` }}></div>
 
-            <div className="flex justify-between items-center mb-3">
+            <div className="flex justify-between items-center">
                 <div className="flex items-center gap-3">
                     <div className="relative">
                         {asset.logoUrl ? (
@@ -1346,45 +1346,24 @@ const AssetCard = ({ asset, maxVal, totalVal, privacyMode, onClick }: { asset: A
                                 {asset.ticker.substring(0, 2)}
                             </div>
                         )}
-                        <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white dark:border-zinc-900 flex items-center justify-center text-[8px] font-black ${isPositive ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
-                            {isPositive ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
-                        </div>
                     </div>
                     
                     <div className="text-left">
-                        <h3 className="font-display font-black text-sm text-zinc-900 dark:text-white tracking-tight leading-none mb-0.5">{asset.ticker}</h3>
-                        <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest truncate max-w-[100px]">
+                        <div className="flex items-center gap-1.5">
+                            <h3 className="font-black text-sm text-zinc-900 dark:text-white tracking-tight leading-none">{asset.ticker}</h3>
+                            <span className={`text-[8px] font-black px-1 rounded-sm ${isPositive ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/10 text-rose-600'}`}>
+                                {isPositive ? '+' : ''}{gainLossPercent.toFixed(1)}%
+                            </span>
+                        </div>
+                        <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest truncate max-w-[100px] mt-1">
                             {asset.company_name || 'Ativo'}
                         </p>
                     </div>
                 </div>
 
                 <div className="text-right">
-                    <p className="font-black text-sm text-zinc-900 dark:text-white tracking-tight leading-none mb-0.5">{formatBRL(currentVal, privacyMode)}</p>
-                    <div className="flex items-center justify-end gap-1.5">
-                        <span className="text-[9px] font-medium text-zinc-400">{asset.quantity} un</span>
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${isPositive ? 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-rose-100 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400'}`}>
-                            {isPositive ? '+' : ''}{gainLossPercent.toFixed(1)}%
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <div className="flex items-center justify-between pt-2 border-t border-dashed border-zinc-200 dark:border-zinc-800/60">
-                <div className="flex flex-col items-start">
-                    <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Preço Médio</span>
-                    <span className="text-[10px] font-bold text-zinc-600 dark:text-zinc-400">{formatBRL(asset.averagePrice, privacyMode)}</span>
-                </div>
-                <div className="flex flex-col items-end">
-                    <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Preço Atual</span>
-                    <div className="flex items-baseline gap-1.5">
-                        <span className="text-xs font-black text-zinc-900 dark:text-white">{formatBRL(asset.currentPrice, privacyMode)}</span>
-                        {asset.dailyChange !== undefined && (
-                            <span className={`text-[9px] font-bold ${asset.dailyChange >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                {asset.dailyChange >= 0 ? '+' : ''}{asset.dailyChange.toFixed(2)}%
-                            </span>
-                        )}
-                    </div>
+                    <p className="font-black text-sm text-zinc-900 dark:text-white tracking-tight leading-none mb-1">{formatBRL(currentVal, privacyMode)}</p>
+                    <p className="text-[9px] font-medium text-zinc-400">{asset.quantity} un • {formatBRL(asset.currentPrice, privacyMode)}</p>
                 </div>
             </div>
         </button>
@@ -1689,37 +1668,37 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
 
     return (
         <div className="pb-24">
-            <div className="sticky top-[calc(3.2rem+env(safe-area-inset-top))] z-20 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-xl -mx-4 px-4 pb-4 pt-2 transition-all">
-                <div className="relative group mb-3">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 group-focus-within:text-indigo-500 transition-colors" />
-                    <input 
-                        type="text" 
-                        placeholder="Filtrar ativos..." 
-                        value={filter}
-                        onChange={e => setFilter(e.target.value)}
-                        className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 pl-10 pr-4 py-3 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
-                    />
+            <div className="sticky top-[calc(3.2rem+env(safe-area-inset-top))] z-20 bg-primary-light/95 dark:bg-primary-dark/95 backdrop-blur-xl -mx-4 px-4 pb-4 pt-2 transition-all border-b border-zinc-100 dark:border-zinc-800/50">
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="relative flex-1 group">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 group-focus-within:text-indigo-500 transition-colors" />
+                        <input 
+                            type="text" 
+                            placeholder="Buscar ativo..." 
+                            value={filter}
+                            onChange={e => setFilter(e.target.value)}
+                            className="w-full bg-zinc-100 dark:bg-zinc-800/50 border-none pl-9 pr-4 py-2.5 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                        />
+                    </div>
+                    <button 
+                        onClick={() => setShowDailyVariationModal(true)}
+                        className="bg-white dark:bg-zinc-900 p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm active:scale-95 transition-all text-zinc-500"
+                    >
+                        <Activity className="w-4 h-4" />
+                    </button>
                 </div>
 
                 {sortedPortfolio.length > 0 && (
-                    <div className="flex justify-between items-center px-1">
+                    <div className="flex justify-between items-end px-1">
                         <div>
-                            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Total Visível</p>
-                            <p className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">{formatBRL(groupedAssets.totalVal, privacyMode)}</p>
+                            <p className="text-[9px] font-black text-zinc-400 uppercase tracking-[0.15em] mb-0.5">Patrimônio Alocado</p>
+                            <p className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight leading-none">{formatBRL(groupedAssets.totalVal, privacyMode)}</p>
                         </div>
                         <div className="text-right">
-                            <button 
-                                onClick={() => setShowDailyVariationModal(true)}
-                                className="flex flex-col items-end active:scale-95 transition-transform"
-                            >
-                                <div className="flex items-center gap-1 mb-0.5">
-                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Variação Dia</p>
-                                    <ChevronRight className="w-3 h-3 text-zinc-400" />
-                                </div>
-                                <span className={`text-sm font-black ${groupedAssets.totalDailyChange >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                    {groupedAssets.totalDailyChange >= 0 ? '+' : ''}{formatBRL(groupedAssets.totalDailyChange, privacyMode)}
-                                </span>
-                            </button>
+                            <p className="text-[9px] font-black text-zinc-400 uppercase tracking-[0.15em] mb-0.5">Variação Dia</p>
+                            <span className={`text-sm font-black leading-none ${groupedAssets.totalDailyChange >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                {groupedAssets.totalDailyChange >= 0 ? '+' : ''}{formatBRL(groupedAssets.totalDailyChange, privacyMode)}
+                            </span>
                         </div>
                     </div>
                 )}

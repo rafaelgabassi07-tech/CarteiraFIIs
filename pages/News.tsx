@@ -50,6 +50,61 @@ const analyzeNewsContent = (title: string, summary: string): { sentiment: NewsSe
     return { sentiment, impact };
 };
 
+const isSimilar = (s1: string, s2: string) => {
+    const normalize = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w\s]/gi, '').split(/\s+/).filter(w => w.length > 3);
+    const words1 = normalize(s1);
+    const words2 = normalize(s2);
+    if (words1.length === 0 || words2.length === 0) return false;
+    const intersection = words1.filter(w => words2.includes(w));
+    const similarity = intersection.length / Math.max(words1.length, words2.length);
+    return similarity > 0.7; 
+};
+
+const HeroNews = ({ item, onShare }: { item: NewsItem, onShare: (item: NewsItem, e: React.MouseEvent) => void }) => (
+    <a 
+        href={item.url} 
+        target="_blank" 
+        rel="noopener noreferrer"
+        className="block relative w-full h-64 rounded-[2.5rem] overflow-hidden mb-6 group active:scale-[0.98] transition-all shadow-xl shadow-indigo-500/10"
+    >
+        {item.imageUrl ? (
+            <img 
+                src={item.imageUrl} 
+                alt={item.title} 
+                className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                onError={(e) => (e.target as HTMLImageElement).src = 'https://picsum.photos/seed/news/800/600'}
+            />
+        ) : (
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 to-violet-700 flex items-center justify-center">
+                <Newspaper className="w-16 h-16 text-white/20" />
+            </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
+        
+        <div className="absolute bottom-0 left-0 right-0 p-6">
+            <div className="flex items-center gap-2 mb-3">
+                <span className="px-2 py-0.5 rounded-md bg-indigo-500 text-white text-[8px] font-black uppercase tracking-widest">Destaque</span>
+                <span className="text-[10px] font-bold text-white/70 uppercase tracking-widest">{item.source} • {item.date}</span>
+            </div>
+            <h2 className="text-xl font-black text-white leading-tight tracking-tight mb-2 line-clamp-2">
+                {item.title}
+            </h2>
+            <div className="flex items-center justify-between">
+                <div className="flex gap-2">
+                    {item.sentiment === 'positive' && <TrendingUp className="w-4 h-4 text-emerald-400" />}
+                    {item.sentiment === 'negative' && <TrendingDown className="w-4 h-4 text-rose-400" />}
+                </div>
+                <button 
+                    onClick={(e) => onShare(item, e)}
+                    className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 backdrop-blur-md text-white hover:bg-white/20 transition-all"
+                >
+                    <Share2 className="w-3.5 h-3.5" />
+                </button>
+            </div>
+        </div>
+    </a>
+);
+
 export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
     const [news, setNews] = useState<NewsItem[]>([]);
     const [loading, setLoading] = useState(true);
@@ -59,6 +114,17 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
     
     const [searchTerm, setSearchTerm] = useState('');
     const [activeTab, setActiveTab] = useState<'Carteira' | 'FIIs' | 'Ações'>('Carteira');
+
+    const filteredNews = useMemo(() => {
+        const uniqueNews: NewsItem[] = [];
+        news.forEach(item => {
+            const isDuplicate = uniqueNews.some(existing => isSimilar(item.title, existing.title));
+            if (!isDuplicate) {
+                uniqueNews.push(item);
+            }
+        });
+        return uniqueNews;
+    }, [news]);
 
     const portfolioTickers = useMemo(() => {
         const unique = new Set(transactions.map(t => t.ticker.toUpperCase()));
@@ -269,14 +335,17 @@ export const News: React.FC<NewsProps> = ({ transactions = [] }) => {
                         <p className="text-sm font-bold text-zinc-500">Erro ao carregar notícias.</p>
                         <button onClick={() => fetchNews()} className="mt-4 text-xs font-bold text-indigo-500 hover:underline">Tentar novamente</button>
                     </div>
-                ) : news.length === 0 ? (
+                ) : filteredNews.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-20 text-center opacity-60">
                         <Newspaper className="w-12 h-12 mb-3 text-zinc-300" strokeWidth={1} />
                         <p className="text-sm font-bold text-zinc-500">Nenhuma notícia encontrada.</p>
                     </div>
                 ) : (
                     <div className="space-y-3">
-                        {news.map((item) => (
+                        {filteredNews.length > 0 && (
+                            <HeroNews item={filteredNews[0]} onShare={handleShare} />
+                        )}
+                        {filteredNews.slice(1).map((item) => (
                             <a 
                                 key={item.id} 
                                 href={item.url} 

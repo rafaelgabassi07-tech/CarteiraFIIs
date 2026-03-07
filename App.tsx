@@ -656,6 +656,7 @@ const App: React.FC = () => {
           if (qty > 0) {
               const total = qty * div.rate;
               
+              // Pagamento Hoje
               if (isSameDayLocal(div.paymentDate)) {
                   const id = `pay-${div.ticker}-${div.paymentDate}`;
                   if (!existingIds.has(id)) {
@@ -671,6 +672,26 @@ const App: React.FC = () => {
                   }
               }
 
+              // Lembrete de Pagamento Próximo (2 dias antes)
+              const payDate = new Date(div.paymentDate);
+              const twoDaysBefore = new Date();
+              twoDaysBefore.setDate(twoDaysBefore.getDate() + 2);
+              if (payDate.toDateString() === twoDaysBefore.toDateString()) {
+                  const id = `pay-remind-${div.ticker}-${div.paymentDate}`;
+                  if (!existingIds.has(id)) {
+                      newNotifs.push({
+                          id,
+                          title: 'Pagamento Próximo ⏳',
+                          message: `${div.ticker} pagará R$ ${total.toLocaleString('pt-BR', {minimumFractionDigits: 2})} em 2 dias.`,
+                          type: 'info',
+                          category: 'payment',
+                          timestamp: Date.now(),
+                          read: false
+                      });
+                  }
+              }
+
+              // Data Com Hoje
               if (isSameDayLocal(div.dateCom)) {
                   const id = `datacom-${div.ticker}-${div.dateCom}`;
                   if (!existingIds.has(id)) {
@@ -727,6 +748,26 @@ const App: React.FC = () => {
               }
           });
       }
+
+      // 4. Conquistas e Milestones (Patrimônio)
+      const balance = memoizedPortfolioData.balance;
+      const milestones = [1000, 5000, 10000, 25000, 50000, 100000, 250000, 500000, 1000000];
+      milestones.forEach(m => {
+          if (balance >= m) {
+              const id = `milestone-${m}`;
+              if (!existingIds.has(id)) {
+                  newNotifs.push({
+                      id,
+                      title: 'Novo Patamar Atingido! 🏆',
+                      message: `Parabéns! Você alcançou a marca de R$ ${m.toLocaleString('pt-BR')} em patrimônio.`,
+                      type: 'success',
+                      category: 'event',
+                      timestamp: Date.now(),
+                      read: false
+                  });
+              }
+          }
+      });
 
       if (newNotifs.length > 0) {
           setNotifications(prev => [...newNotifs, ...prev]);
