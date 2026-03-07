@@ -98,7 +98,7 @@ export const DailyVariationModal: React.FC<DailyVariationModalProps> = ({
                     </div>
                     <div className="flex justify-between items-start relative z-10">
                         <div>
-                            <p className="text-xs font-black text-zinc-400 uppercase tracking-[0.4em] mb-3">Patrimônio Atual</p>
+                            <p className="text-xs font-black text-zinc-400 uppercase tracking-[0.4em] mb-3">Variação Diária</p>
                             <h3 className="text-6xl font-black text-zinc-900 dark:text-white tracking-tighter leading-none mb-8">
                                 {formatBRL(stats.marketValue)}
                             </h3>

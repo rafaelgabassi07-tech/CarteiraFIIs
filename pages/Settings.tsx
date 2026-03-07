@@ -1,208 +1,83 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useRef } from 'react';
 import { 
-    User, LogOut, Moon, Sun, Monitor, Shield, Bell, RefreshCw, 
-    Upload, Trash2, ChevronRight, Check, Loader2, Search, 
-    Calculator, Palette, ChevronDown, ChevronUp, Download, 
-    History, Activity, FileJson, FileSpreadsheet, Database,
-    Smartphone, Mail, ExternalLink, Info, Zap, Sliders, LifeBuoy, AlertTriangle
+    User, Mail, Activity, Zap, LogOut, Palette, Moon, Sun, Check, 
+    Shield, Bell, Database, FileSpreadsheet, FileJson, RefreshCw, 
+    Smartphone, Download, History, LifeBuoy, Info, AlertTriangle, 
+    Trash2, ChevronRight, Loader2, ExternalLink, Sliders
 } from 'lucide-react';
-import { triggerScraperUpdate } from '../services/dataService';
 import { ConfirmationModal } from '../components/Layout';
-import { ThemeType, ServiceMetric, Transaction, DividendReceipt } from '../types';
+import { Transaction, DividendReceipt, ThemeType, ServiceMetric } from '../types';
 import { parseB3Excel } from '../services/excelService';
 
 const ACCENT_COLORS = [
-    { hex: '#0ea5e9', name: 'Sky' },
-    { hex: '#10b981', name: 'Emerald' },
-    { hex: '#6366f1', name: 'Indigo' },
-    { hex: '#8b5cf6', name: 'Violet' },
-    { hex: '#f43f5e', name: 'Rose' },
-    { hex: '#f59e0b', name: 'Amber' },
+    { name: 'Indigo', hex: '#6366f1' },
+    { name: 'Emerald', hex: '#10b981' },
+    { name: 'Amber', hex: '#f59e0b' },
+    { name: 'Rose', hex: '#f43f5e' },
+    { name: 'Sky', hex: '#0ea5e9' },
+    { name: 'Violet', hex: '#8b5cf6' },
 ];
-
-// --- Components ---
-
-const SettingsGroup = ({ 
-    icon: Icon, 
-    title, 
-    description, 
-    children, 
-    defaultOpen = false 
-}: { 
-    icon: React.ElementType, 
-    title: string, 
-    description?: string, 
-    children: React.ReactNode, 
-    defaultOpen?: boolean 
-}) => {
-    const [isOpen, setIsOpen] = useState(defaultOpen);
-
-    return (
-        <div className="bg-white dark:bg-zinc-900 rounded-[1.25rem] border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden transition-all duration-300">
-            <button 
-                onClick={() => setIsOpen(!isOpen)}
-                className="w-full flex items-center justify-between p-3 text-left transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
-            >
-                <div className="flex items-center gap-3">
-                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${isOpen ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'}`}>
-                        <Icon className="w-4.5 h-4.5" strokeWidth={2} />
-                    </div>
-                    <div>
-                        <h3 className="text-xs font-black text-zinc-900 dark:text-white leading-tight uppercase tracking-wide">{title}</h3>
-                        {description && <p className="text-[9px] font-medium text-zinc-500 mt-0.5">{description}</p>}
-                    </div>
-                </div>
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-300 ${isOpen ? 'bg-zinc-100 dark:bg-zinc-800 rotate-180' : ''}`}>
-                    <ChevronDown className="w-3.5 h-3.5 text-zinc-400" />
-                </div>
-            </button>
-            
-            <AnimatePresence>
-                {isOpen && (
-                    <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.3, ease: [0.04, 0.62, 0.23, 0.98] }}
-                    >
-                        <div className="border-t border-zinc-100 dark:border-zinc-800">
-                            {children}
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-        </div>
-    );
-};
-
-interface SettingsItemProps {
-    icon: React.ElementType;
-    label: string;
-    value?: string | React.ReactNode;
-    onClick?: () => void;
-    isDanger?: boolean;
-    rightElement?: React.ReactNode;
-    description?: string;
-    className?: string;
-    disabled?: boolean;
-}
-
-const SettingsItem: React.FC<SettingsItemProps> = ({ 
-    icon: Icon, label, value, onClick, isDanger, rightElement, description, className, disabled 
-}) => (
-    <motion.button 
-        whileTap={onClick && !disabled ? { scale: 0.99 } : {}}
-        onClick={onClick}
-        disabled={disabled || !onClick}
-        className={`w-full flex items-center justify-between p-2.5 transition-all group text-left 
-            ${onClick && !disabled ? 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50 cursor-pointer' : 'cursor-default'} 
-            ${isDanger ? 'hover:bg-rose-50 dark:hover:bg-rose-900/10' : ''} 
-            ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
-            ${className || ''}`}
-    >
-        <div className="flex items-center gap-3">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all shadow-sm border border-zinc-100 dark:border-zinc-800 
-                ${isDanger 
-                    ? 'bg-rose-50 text-rose-500 dark:bg-rose-900/20 dark:border-rose-900/30' 
-                    : 'bg-zinc-50 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400 group-hover:bg-white dark:group-hover:bg-zinc-700'
-                }`}>
-                <Icon className={`w-3.5 h-3.5 ${isDanger ? 'text-rose-500' : 'text-current'}`} strokeWidth={2} />
-            </div>
-            <div>
-                <span className={`text-[11px] font-bold block tracking-tight ${isDanger ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-900 dark:text-white'}`}>
-                    {label}
-                </span>
-                {description && (
-                    <span className="text-[9px] text-zinc-400 font-medium leading-tight mt-0.5 block">
-                        {description}
-                    </span>
-                )}
-            </div>
-        </div>
-        <div className="flex items-center gap-2">
-            {value && <span className="text-[9px] font-bold text-zinc-500 dark:text-zinc-400">{value}</span>}
-            {rightElement}
-            {onClick && !rightElement && !disabled && (
-                <ChevronRight className="w-3 h-3 text-zinc-300 group-hover:translate-x-0.5 transition-transform" />
-            )}
-        </div>
-    </motion.button>
-);
 
 const ToggleSwitch = ({ checked, onChange }: { checked: boolean; onChange: () => void }) => (
     <div 
         onClick={(e) => { e.stopPropagation(); onChange(); }}
-        className={`w-8 h-4.5 rounded-full p-0.5 cursor-pointer transition-colors duration-300 ease-spring 
-            ${checked ? 'bg-indigo-500' : 'bg-zinc-200 dark:bg-zinc-700'}`}
+        className={`w-12 h-7 rounded-full p-1 cursor-pointer transition-colors duration-300 ease-in-out ${checked ? 'bg-emerald-500' : 'bg-zinc-200 dark:bg-zinc-700'}`}
     >
-        <motion.div 
-            layout
-            transition={{ type: "spring", stiffness: 700, damping: 30 }}
-            className={`w-3.5 h-3.5 bg-white rounded-full shadow-sm ${checked ? 'translate-x-3.5' : 'translate-x-0'}`} 
-        />
+        <div className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-300 ease-in-out ${checked ? 'translate-x-5' : 'translate-x-0'}`} />
     </div>
 );
 
-// --- Main Component ---
-
 interface SettingsProps {
-  onLogout: () => void;
-  user: any;
-  transactions: Transaction[];
-  onImportTransactions: (t: Transaction[]) => void;
-  dividends: DividendReceipt[];
-  onImportDividends: (d: DividendReceipt[]) => void;
-  onResetApp: () => void;
-  theme: ThemeType;
-  onSetTheme: (t: ThemeType) => void;
-  accentColor: string;
-  onSetAccentColor: (c: string) => void;
-  privacyMode: boolean;
-  onSetPrivacyMode: (v: boolean) => void;
-  appVersion: string;
-  updateAvailable: boolean;
-  onCheckUpdates: () => Promise<boolean>;
-  onShowChangelog: () => void;
-  pushEnabled: boolean;
-  onRequestPushPermission: () => void;
-  onSyncAll: (force?: boolean) => Promise<void>;
-  onForceUpdate: () => void;
-  currentVersionDate: string | null;
-  services: ServiceMetric[];
-  onCheckConnection: () => void;
-  isCheckingConnection: boolean;
+    onLogout: () => Promise<void>;
+    user: any;
+    transactions: Transaction[];
+    onImportTransactions: (txs: Transaction[]) => void;
+    dividends: DividendReceipt[];
+    onImportDividends: (divs: DividendReceipt[]) => void;
+    onResetApp: () => void;
+    theme: ThemeType;
+    onSetTheme: (theme: ThemeType) => void;
+    accentColor: string;
+    onSetAccentColor: (color: string) => void;
+    privacyMode: boolean;
+    onSetPrivacyMode: (mode: boolean) => void;
+    appVersion: string;
+    updateAvailable: boolean;
+    onCheckUpdates: () => void;
+    onShowChangelog: () => void;
+    pushEnabled: boolean;
+    onRequestPushPermission: () => void;
+    onSyncAll: (silent?: boolean) => Promise<void>;
+    onForceUpdate: () => void;
+    currentVersionDate: string | null;
+    services: ServiceMetric[];
+    onCheckConnection: () => void;
+    isCheckingConnection: boolean;
 }
 
-export const Settings: React.FC<SettingsProps> = ({ 
+export const Settings: React.FC<SettingsProps> = ({
     onLogout, user, transactions, onImportTransactions, dividends, onImportDividends, onResetApp,
     theme, onSetTheme, accentColor, onSetAccentColor, privacyMode, onSetPrivacyMode, appVersion,
     updateAvailable, onCheckUpdates, onShowChangelog, pushEnabled, onRequestPushPermission, onSyncAll,
     onForceUpdate, currentVersionDate, services, onCheckConnection, isCheckingConnection
 }) => {
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const [confirmReset, setConfirmReset] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
+    const [confirmReset, setConfirmReset] = useState(false);
+    
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Optimized Handlers
     const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        
+
         setIsImporting(true);
         try {
-            // Artificial delay for UX
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
             const { transactions: txs, dividends: divs } = await parseB3Excel(file);
-            
             if (txs.length > 0) onImportTransactions(txs);
             if (divs.length > 0) onImportDividends(divs);
             
-            // Simple feedback (could be replaced with a toast system)
-            const message = `Importação concluída!\n\n${txs.length} transações\n${divs.length} proventos`;
-            alert(message);
+            alert(`Importação concluída!\n\n${txs.length} transações\n${divs.length} proventos`);
         } catch (err) {
             console.error(err);
             alert('Erro ao processar o arquivo. Verifique se é uma planilha válida da B3.');
@@ -240,275 +115,270 @@ export const Settings: React.FC<SettingsProps> = ({
     };
 
     return (
-        <div className="pb-32 anim-fade-in px-3 max-w-3xl mx-auto space-y-3">
+        <div className="pb-32 anim-fade-in px-4 max-w-5xl mx-auto">
             
-            {/* Profile Header */}
-            <div className="relative overflow-hidden rounded-[2rem] bg-zinc-900 dark:bg-white p-6 shadow-2xl group mb-6">
-                {/* Background Effects */}
-                <div className="absolute top-0 right-0 w-72 h-72 bg-indigo-500/30 dark:bg-indigo-500/10 blur-[100px] rounded-full -mr-24 -mt-24 pointer-events-none"></div>
-                <div className="absolute bottom-0 left-0 w-56 h-56 bg-emerald-500/20 dark:bg-emerald-500/5 blur-[80px] rounded-full -ml-16 -mb-16 pointer-events-none"></div>
+            {/* Header Section */}
+            <div className="pt-8 pb-12">
+                <h1 className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter mb-2">Configurações</h1>
+                <p className="text-sm font-bold text-zinc-400 uppercase tracking-widest">Gerencie sua conta e preferências</p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 
-                <div className="relative z-10 flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left">
-                    <div className="relative">
-                        <div className="w-20 h-20 rounded-3xl bg-white/10 dark:bg-black/5 backdrop-blur-xl flex items-center justify-center text-white dark:text-zinc-900 border border-white/20 dark:border-black/10 shadow-inner">
-                            <User className="w-10 h-10" strokeWidth={1.5} />
-                        </div>
-                        <div className="absolute -bottom-2 -right-2 bg-indigo-500 text-white text-[10px] font-black px-2.5 py-1 rounded-full border-4 border-zinc-900 dark:border-white shadow-lg">
-                            PRO
-                        </div>
-                    </div>
-                    
-                    <div className="flex-1 min-w-0 pt-1">
-                        <h2 className="text-2xl font-black text-white dark:text-zinc-900 tracking-tighter mb-1">
-                            {user?.email?.split('@')[0] || 'Investidor'}
-                        </h2>
-                        <p className="text-xs text-white/50 dark:text-zinc-500 font-bold mb-4 flex items-center justify-center sm:justify-start gap-2">
-                            <Mail className="w-3 h-3" /> {user?.email}
-                        </p>
+                {/* Left Column: Profile & Quick Actions */}
+                <div className="lg:col-span-4 space-y-6">
+                    <div className="relative overflow-hidden rounded-[2.5rem] bg-zinc-900 dark:bg-white p-8 shadow-2xl group border border-zinc-800 dark:border-zinc-100">
+                        {/* Background Effects */}
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 dark:bg-indigo-500/10 blur-[80px] rounded-full -mr-20 -mt-20 pointer-events-none"></div>
                         
-                        <div className="flex flex-wrap justify-center sm:justify-start gap-3">
-                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 dark:bg-zinc-100 border border-white/10 dark:border-zinc-200 shadow-sm">
-                                <Activity className="w-3.5 h-3.5 text-indigo-400 dark:text-indigo-600" />
-                                <span className="text-[10px] font-black text-white/80 dark:text-zinc-600 uppercase tracking-wider">
-                                    {transactions.length} Transações
-                                </span>
+                        <div className="relative z-10 flex flex-col items-center text-center">
+                            <div className="relative mb-6">
+                                <div className="w-24 h-24 rounded-[2rem] bg-white/10 dark:bg-black/5 backdrop-blur-xl flex items-center justify-center text-white dark:text-zinc-900 border border-white/20 dark:border-black/10 shadow-inner">
+                                    <User className="w-12 h-12" strokeWidth={1.5} />
+                                </div>
+                                <div className="absolute -bottom-2 -right-2 bg-emerald-500 text-white text-[10px] font-black px-3 py-1.5 rounded-full border-4 border-zinc-900 dark:border-white shadow-lg">
+                                    PRO
+                                </div>
                             </div>
-                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 dark:bg-zinc-100 border border-white/10 dark:border-zinc-200 shadow-sm">
-                                <Zap className="w-3.5 h-3.5 text-amber-400 dark:text-amber-600" />
-                                <span className="text-[10px] font-black text-white/80 dark:text-zinc-600 uppercase tracking-wider">
-                                    Nível {Math.floor(transactions.length / 10) + 1}
-                                </span>
+                            
+                            <h2 className="text-2xl font-black text-white dark:text-zinc-900 tracking-tighter mb-1">
+                                {user?.email?.split('@')[0] || 'Investidor'}
+                            </h2>
+                            <p className="text-xs text-white/40 dark:text-zinc-400 font-bold mb-8">
+                                {user?.email}
+                            </p>
+                            
+                            <div className="w-full space-y-3">
+                                <div className="flex items-center justify-between p-4 rounded-2xl bg-white/5 dark:bg-zinc-50 border border-white/10 dark:border-zinc-200">
+                                    <div className="flex items-center gap-3">
+                                        <Activity className="w-4 h-4 text-indigo-400 dark:text-indigo-600" />
+                                        <span className="text-[10px] font-black text-white/60 dark:text-zinc-500 uppercase tracking-wider">Atividade</span>
+                                    </div>
+                                    <span className="text-xs font-black text-white dark:text-zinc-900">{transactions.length} TXs</span>
+                                </div>
+                                <div className="flex items-center justify-between p-4 rounded-2xl bg-white/5 dark:bg-zinc-50 border border-white/10 dark:border-zinc-200">
+                                    <div className="flex items-center gap-3">
+                                        <Zap className="w-4 h-4 text-amber-400 dark:text-amber-600" />
+                                        <span className="text-[10px] font-black text-white/60 dark:text-zinc-500 uppercase tracking-wider">Nível</span>
+                                    </div>
+                                    <span className="text-xs font-black text-white dark:text-zinc-900">{Math.floor(transactions.length / 10) + 1}</span>
+                                </div>
                             </div>
+
+                            <button 
+                                onClick={onLogout}
+                                className="w-full mt-8 flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-rose-500 text-white font-black uppercase tracking-widest text-[11px] shadow-xl shadow-rose-500/20 hover:scale-[1.02] active:scale-95 transition-all"
+                            >
+                                <LogOut className="w-4 h-4" />
+                                Sair da Conta
+                            </button>
                         </div>
                     </div>
 
-                    <button 
-                        onClick={onLogout}
-                        className="group flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white transition-all duration-300 shadow-lg shadow-rose-500/5"
-                    >
-                        <LogOut className="w-4 h-4" />
-                        <span className="text-[11px] font-black uppercase tracking-widest">Sair</span>
-                    </button>
+                    {/* Support Card */}
+                    <div className="bg-indigo-600 rounded-[2.5rem] p-8 text-white relative overflow-hidden shadow-2xl shadow-indigo-500/20">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10"></div>
+                        <h3 className="text-xl font-black tracking-tight mb-2 relative z-10">Precisa de Ajuda?</h3>
+                        <p className="text-xs font-bold text-indigo-100/70 mb-6 relative z-10 leading-relaxed">Nosso suporte está pronto para te ajudar com qualquer dúvida ou problema.</p>
+                        <button 
+                            onClick={() => window.open('mailto:suporte@investfiis.com.br')}
+                            className="w-full py-4 rounded-2xl bg-white text-indigo-600 font-black uppercase tracking-widest text-[10px] shadow-lg hover:bg-indigo-50 transition-colors relative z-10"
+                        >
+                            Contatar Suporte
+                        </button>
+                    </div>
+                </div>
+
+                {/* Right Column: Settings Grid */}
+                <div className="lg:col-span-8 space-y-8">
+                    
+                    {/* Appearance Section */}
+                    <section>
+                        <div className="flex items-center gap-3 mb-4 px-2">
+                            <Palette className="w-5 h-5 text-indigo-500" />
+                            <h3 className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-widest">Personalização</h3>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                                <div className="flex items-center justify-between mb-6">
+                                    <span className="text-xs font-black text-zinc-900 dark:text-white uppercase tracking-widest">Tema</span>
+                                    <div className="w-8 h-8 rounded-lg bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 dark:text-zinc-400">
+                                        {theme === 'dark' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+                                    </div>
+                                </div>
+                                <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl">
+                                    {(['light', 'system', 'dark'] as ThemeType[]).map((t) => (
+                                        <button 
+                                            key={t}
+                                            onClick={() => onSetTheme(t)}
+                                            className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all 
+                                                ${theme === t 
+                                                    ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' 
+                                                    : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                                        >
+                                            {t === 'light' ? 'Claro' : t === 'dark' ? 'Escuro' : 'Auto'}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                                <span className="text-xs font-black text-zinc-900 dark:text-white uppercase tracking-widest block mb-6">Cor de Destaque</span>
+                                <div className="flex flex-wrap gap-3">
+                                    {ACCENT_COLORS.map(c => (
+                                        <button
+                                            key={c.hex}
+                                            onClick={() => onSetAccentColor(c.hex)}
+                                            className={`w-10 h-10 rounded-2xl border-4 transition-all flex items-center justify-center shadow-sm
+                                                ${accentColor === c.hex ? 'border-zinc-200 dark:border-zinc-700 scale-110' : 'border-transparent hover:scale-105'}`}
+                                            style={{ backgroundColor: c.hex }}
+                                        >
+                                            {accentColor === c.hex && <Check className="w-5 h-5 text-white" strokeWidth={4} />}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Security & Privacy */}
+                    <section>
+                        <div className="flex items-center gap-3 mb-4 px-2">
+                            <Shield className="w-5 h-5 text-emerald-500" />
+                            <h3 className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-widest">Segurança</h3>
+                        </div>
+                        <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm divide-y divide-zinc-50 dark:divide-zinc-800">
+                            <div className="p-6 flex items-center justify-between">
+                                <div>
+                                    <h4 className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">Modo Privacidade</h4>
+                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">Ocultar valores na interface</p>
+                                </div>
+                                <ToggleSwitch checked={privacyMode} onChange={() => onSetPrivacyMode(!privacyMode)} />
+                            </div>
+                            <div className="p-6 flex items-center justify-between">
+                                <div>
+                                    <h4 className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">Notificações Push</h4>
+                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">Alertas de proventos e metas</p>
+                                </div>
+                                <ToggleSwitch checked={pushEnabled} onChange={onRequestPushPermission} />
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Data Management */}
+                    <section>
+                        <div className="flex items-center gap-3 mb-4 px-2">
+                            <Database className="w-5 h-5 text-amber-500" />
+                            <h3 className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-widest">Gerenciamento de Dados</h3>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <button 
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={isImporting}
+                                className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm text-left group hover:border-indigo-500 transition-all"
+                            >
+                                <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-500 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                    {isImporting ? <Loader2 className="w-6 h-6 animate-spin" /> : <FileSpreadsheet className="w-6 h-6" />}
+                                </div>
+                                <h4 className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">Importar B3</h4>
+                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">Planilha XLSX</p>
+                                <input type="file" ref={fileInputRef} onChange={handleImport} accept=".xlsx,.xls" className="hidden" />
+                            </button>
+
+                            <button 
+                                onClick={handleExport}
+                                className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm text-left group hover:border-emerald-500 transition-all"
+                            >
+                                <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                    <FileJson className="w-6 h-6" />
+                                </div>
+                                <h4 className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">Exportar JSON</h4>
+                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">Backup Completo</p>
+                            </button>
+
+                            <button 
+                                onClick={handleSync}
+                                disabled={isSyncing}
+                                className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm text-left group hover:border-amber-500 transition-all md:col-span-2 flex items-center justify-between"
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-900/20 text-amber-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                        {isSyncing ? <Loader2 className="w-6 h-6 animate-spin" /> : <RefreshCw className="w-6 h-6" />}
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">Sincronizar Agora</h4>
+                                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">Forçar atualização remota</p>
+                                    </div>
+                                </div>
+                                <ChevronRight className="w-5 h-5 text-zinc-300 group-hover:translate-x-1 transition-transform" />
+                            </button>
+                        </div>
+                    </section>
+
+                    {/* System Info */}
+                    <section>
+                        <div className="flex items-center gap-3 mb-4 px-2">
+                            <Activity className="w-5 h-5 text-zinc-400" />
+                            <h3 className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-widest">Sistema</h3>
+                        </div>
+                        <div className="bg-zinc-50 dark:bg-zinc-900/50 rounded-[2rem] p-8 border border-zinc-100 dark:border-zinc-800">
+                            <div className="flex items-center justify-between mb-8">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-2xl bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm">
+                                        <Smartphone className="w-6 h-6 text-zinc-400" />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">InvestFIIs App</h4>
+                                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">Versão {appVersion}</p>
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={onForceUpdate}
+                                    className="px-4 py-2 rounded-xl bg-white dark:bg-zinc-800 text-[10px] font-black uppercase tracking-widest text-zinc-600 dark:text-zinc-300 shadow-sm hover:bg-zinc-100 transition-colors"
+                                >
+                                    Verificar Updates
+                                </button>
+                            </div>
+
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                {services.map(s => (
+                                    <div key={s.id} className="bg-white dark:bg-zinc-800 p-4 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-700">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <div className={`w-2 h-2 rounded-full ${s.status === 'operational' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                                            <span className="text-[9px] font-black text-zinc-400 uppercase tracking-tighter">{s.label}</span>
+                                        </div>
+                                        <p className="text-xs font-black text-zinc-900 dark:text-white">{s.latency ? `${s.latency}ms` : '---'}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Danger Zone */}
+                    <section className="pt-8">
+                        <button 
+                            onClick={() => setConfirmReset(true)}
+                            className="w-full p-8 rounded-[2.5rem] bg-rose-500/5 border border-rose-500/20 flex items-center justify-between group hover:bg-rose-500 transition-all duration-500"
+                        >
+                            <div className="flex items-center gap-6">
+                                <div className="w-14 h-14 rounded-2xl bg-rose-500 text-white flex items-center justify-center shadow-lg shadow-rose-500/20 group-hover:bg-white group-hover:text-rose-500 transition-colors">
+                                    <Trash2 className="w-7 h-7" />
+                                </div>
+                                <div className="text-left">
+                                    <h4 className="text-lg font-black text-rose-600 group-hover:text-white tracking-tight transition-colors">Resetar Aplicativo</h4>
+                                    <p className="text-xs font-bold text-rose-500/60 group-hover:text-white/60 uppercase tracking-widest mt-1 transition-colors">Apagar todos os dados locais</p>
+                                </div>
+                            </div>
+                            <ChevronRight className="w-6 h-6 text-rose-300 group-hover:text-white transition-all group-hover:translate-x-2" />
+                        </button>
+                    </section>
                 </div>
             </div>
 
-            {/* Accordion Groups */}
-            <div className="space-y-3">
-                
-                {/* Appearance */}
-                <SettingsGroup icon={Palette} title="Aparência" description="Tema e cores do aplicativo">
-                    <div className="p-2.5 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 dark:text-zinc-400">
-                                {theme === 'dark' ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5" />}
-                            </div>
-                            <div>
-                                <span className="text-[11px] font-bold text-zinc-900 dark:text-white block tracking-tight">Tema</span>
-                                <span className="text-[9px] text-zinc-400 font-medium leading-tight mt-0.5 block">Escolha o visual do app</span>
-                            </div>
-                        </div>
-                        <div className="flex bg-zinc-100 dark:bg-zinc-800 p-0.5 rounded-lg">
-                            {(['light', 'system', 'dark'] as ThemeType[]).map((t) => (
-                                <button 
-                                    key={t}
-                                    onClick={() => onSetTheme(t)}
-                                    className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase transition-all 
-                                        ${theme === t 
-                                            ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' 
-                                            : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
-                                >
-                                    {t === 'light' ? 'Claro' : t === 'dark' ? 'Escuro' : 'Auto'}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                    
-                    <div className="border-t border-zinc-100 dark:border-zinc-800 p-2.5 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 dark:text-zinc-400">
-                                <Palette className="w-3.5 h-3.5" />
-                            </div>
-                            <div>
-                                <span className="text-[11px] font-bold text-zinc-900 dark:text-white block tracking-tight">Cor de Destaque</span>
-                                <span className="text-[9px] text-zinc-400 font-medium leading-tight mt-0.5 block">Personalize a identidade</span>
-                            </div>
-                        </div>
-                        <div className="flex gap-1.5">
-                            {ACCENT_COLORS.map(c => (
-                                <button
-                                    key={c.hex}
-                                    onClick={() => onSetAccentColor(c.hex)}
-                                    className={`w-4.5 h-4.5 rounded-full border-2 transition-all flex items-center justify-center
-                                        ${accentColor === c.hex ? 'border-zinc-400 scale-110 shadow-sm' : 'border-transparent hover:scale-105'}`}
-                                    style={{ backgroundColor: c.hex }}
-                                >
-                                    {accentColor === c.hex && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </SettingsGroup>
-
-                {/* Preferences */}
-                <SettingsGroup icon={Sliders} title="Preferências" description="Privacidade e notificações">
-                    <SettingsItem 
-                        icon={Shield} 
-                        label="Modo Privacidade" 
-                        description="Ocultar valores monetários na interface"
-                        rightElement={<ToggleSwitch checked={privacyMode} onChange={() => onSetPrivacyMode(!privacyMode)} />}
-                    />
-                    <div className="border-t border-zinc-100 dark:border-zinc-800">
-                        <SettingsItem 
-                            icon={Bell} 
-                            label="Notificações Push" 
-                            description="Alertas de proventos e datas importantes"
-                            rightElement={<ToggleSwitch checked={pushEnabled} onChange={onRequestPushPermission} />}
-                        />
-                    </div>
-                </SettingsGroup>
-
-                {/* Data & Backup */}
-                <SettingsGroup icon={Database} title="Dados e Backup" description="Importação, exportação e sincronização">
-                    <SettingsItem 
-                        icon={isImporting ? Loader2 : FileSpreadsheet}
-                        label={isImporting ? "Processando..." : "Importar Planilha B3"}
-                        description="Carregar transações do portal do investidor (XLSX)"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={isImporting}
-                        className={isImporting ? "animate-pulse" : ""}
-                        rightElement={isImporting && <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-500" />}
-                    />
-                    <input 
-                        type="file" 
-                        ref={fileInputRef} 
-                        onChange={handleImport} 
-                        accept=".xlsx,.xls" 
-                        className="hidden" 
-                    />
-                    
-                    <div className="border-t border-zinc-100 dark:border-zinc-800">
-                        <SettingsItem 
-                            icon={FileJson} 
-                            label="Exportar Backup" 
-                            description="Baixar cópia local dos seus dados (JSON)"
-                            onClick={handleExport}
-                        />
-                    </div>
-
-                    <div className="border-t border-zinc-100 dark:border-zinc-800">
-                        <SettingsItem 
-                            icon={RefreshCw} 
-                            label="Sincronizar Dados" 
-                            description="Forçar atualização com o servidor"
-                            onClick={handleSync}
-                            disabled={isSyncing}
-                            rightElement={isSyncing && <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-500" />}
-                        />
-                    </div>
-                </SettingsGroup>
-
-                {/* System */}
-                <SettingsGroup icon={Activity} title="Sistema" description="Status, versão e novidades">
-                    <div className="p-2.5 border-b border-zinc-100 dark:border-zinc-800">
-                        <div className="flex items-center justify-between mb-2.5">
-                            <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-lg bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 dark:text-zinc-400">
-                                    <Activity className="w-3.5 h-3.5" />
-                                </div>
-                                <div>
-                                    <span className="text-[11px] font-bold text-zinc-900 dark:text-white block tracking-tight">Status dos Serviços</span>
-                                    <span className="text-[9px] text-zinc-400 font-medium leading-tight mt-0.5 block">Monitoramento em tempo real</span>
-                                </div>
-                            </div>
-                            <button 
-                                onClick={onCheckConnection} 
-                                disabled={isCheckingConnection} 
-                                className="p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-indigo-500 transition-colors"
-                            >
-                                <RefreshCw className={`w-3 h-3 ${isCheckingConnection ? 'animate-spin' : ''}`} />
-                            </button>
-                        </div>
-                        
-                        <div className="space-y-1.5 pl-[2.75rem]">
-                            {services.map(s => (
-                                <div key={s.id} className="flex items-center justify-between group">
-                                    <div className="flex items-center gap-2">
-                                        <div className="relative flex h-1.5 w-1.5">
-                                            {s.status === 'operational' && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>}
-                                            <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${
-                                                s.status === 'operational' ? 'bg-emerald-500' : 
-                                                s.status === 'checking' ? 'bg-zinc-400' : 'bg-rose-500'
-                                            }`}></span>
-                                        </div>
-                                        <span className="text-[9px] font-medium text-zinc-600 dark:text-zinc-300">{s.label}</span>
-                                    </div>
-                                    <span className={`text-[9px] font-mono font-bold ${
-                                        !s.latency ? 'text-zinc-300' :
-                                        s.latency < 200 ? 'text-emerald-500' : 
-                                        s.latency < 500 ? 'text-amber-500' : 'text-rose-500'
-                                    }`}>
-                                        {s.latency ? `${s.latency}ms` : '---'}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    <SettingsItem 
-                        icon={Download} 
-                        label="Versão do App" 
-                        value={`v${appVersion}`}
-                        description={updateAvailable ? "Nova versão disponível!" : `Build: ${currentVersionDate || 'Desconhecido'}`}
-                        onClick={onForceUpdate}
-                        rightElement={updateAvailable && <span className="flex h-2 w-2 rounded-full bg-indigo-500 animate-pulse" />}
-                    />
-                    
-                    <div className="border-t border-zinc-100 dark:border-zinc-800">
-                        <SettingsItem 
-                            icon={History} 
-                            label="Novidades" 
-                            description="Histórico de atualizações (Changelog)"
-                            onClick={onShowChangelog}
-                        />
-                    </div>
-                </SettingsGroup>
-
-                {/* Support */}
-                <SettingsGroup icon={LifeBuoy} title="Suporte" description="Ajuda e feedback">
-                    <SettingsItem 
-                        icon={Mail} 
-                        label="Fale Conosco" 
-                        description="Envie sugestões ou reporte bugs"
-                        onClick={() => window.open('mailto:suporte@investfiis.com.br')} 
-                        rightElement={<ExternalLink className="w-3 h-3 text-zinc-300" />}
-                    />
-                    <div className="border-t border-zinc-100 dark:border-zinc-800">
-                        <SettingsItem 
-                            icon={Info} 
-                            label="Termos e Privacidade" 
-                            description="Como tratamos seus dados"
-                            onClick={() => {}} 
-                        />
-                    </div>
-                </SettingsGroup>
-
-                {/* Danger Zone */}
-                <SettingsGroup icon={AlertTriangle} title="Zona de Perigo" description="Ações destrutivas">
-                    <SettingsItem 
-                        icon={Trash2} 
-                        label="Resetar Aplicativo" 
-                        description="Apagar todos os dados locais e sair"
-                        onClick={() => setConfirmReset(true)}
-                        isDanger
-                    />
-                </SettingsGroup>
-
-            </div>
-
             {/* Footer */}
-            <div className="text-center pt-4 pb-8">
-                <p className="text-[10px] font-bold text-zinc-300 dark:text-zinc-700 uppercase tracking-widest">
-                    InvestFIIs © {new Date().getFullYear()}
+            <div className="text-center pt-16 pb-8">
+                <p className="text-[10px] font-black text-zinc-300 dark:text-zinc-700 uppercase tracking-[0.5em]">
+                    InvestFIIs &bull; {new Date().getFullYear()}
                 </p>
             </div>
 
