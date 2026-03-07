@@ -842,54 +842,64 @@ const IncomeAnalysisSection = ({ asset, chartData, marketHistory, isWatchlist = 
     }, [chartData, marketHistory, isWatchlist]);
 
     return (
-        <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-3">
-                <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                    <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Último Provento</p>
-                    <p className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">{formatBRL(lastDividend?.value || lastDividend?.rate || 0)}</p>
-                    <p className="text-[10px] font-bold text-zinc-500 mt-1">Pago em {formatDateShort(lastDividend?.paymentDate)}</p>
+        <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {/* Summary Cards */}
+                <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                        <p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mb-1">Último Provento</p>
+                        <p className="text-lg font-black text-zinc-900 dark:text-white tracking-tight">{formatBRL(lastDividend?.value || lastDividend?.rate || 0)}</p>
+                        <p className="text-[9px] font-bold text-zinc-500 mt-0.5">Pago em {formatDateShort(lastDividend?.paymentDate)}</p>
+                    </div>
+                    <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                        <p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mb-1">{yieldLabel}</p>
+                        <p className="text-lg font-black text-emerald-500 tracking-tight">{displayYield.toFixed(2)}%</p>
+                        <p className="text-[9px] font-bold text-zinc-500 mt-0.5">{isWatchlist ? 'Anualizado' : 'Yield on Cost'}</p>
+                    </div>
                 </div>
-                <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                    <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">{yieldLabel}</p>
-                    <p className="text-xl font-black text-emerald-500 tracking-tight">{displayYield.toFixed(2)}%</p>
-                    <p className="text-[10px] font-bold text-zinc-500 mt-1">{isWatchlist ? 'Anualizado' : 'Yield on Cost'}</p>
-                </div>
+
+                {/* Next Payments */}
+                {nextEvents.length > 0 ? (
+                    <div className="bg-zinc-50 dark:bg-zinc-900/50 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
+                        <div className="flex items-center gap-1.5 mb-2">
+                            <Calendar className="w-3.5 h-3.5 text-indigo-500" />
+                            <h4 className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Próximos Pagamentos</h4>
+                        </div>
+                        <div className="space-y-2">
+                            {nextEvents.slice(0, 2).map((event: any, i: number) => (
+                                <div key={i} className="flex justify-between items-center">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-6 h-6 rounded-lg bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm border border-zinc-100 dark:border-zinc-700">
+                                            <Coins className="w-3 h-3 text-emerald-500" />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black text-zinc-900 dark:text-white">{formatBRL(event.rate || event.value)}</p>
+                                            <p className="text-[8px] font-bold text-zinc-500 uppercase tracking-tighter">Com: {formatDateShort(event.dateCom)}</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-[10px] font-black text-emerald-500">{formatDateShort(event.paymentDate)}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="bg-zinc-50 dark:bg-zinc-900/50 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 flex items-center justify-center text-center">
+                        <div>
+                            <Calendar className="w-6 h-6 text-zinc-300 mx-auto mb-1" />
+                            <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Sem previsões futuras</p>
+                        </div>
+                    </div>
+                )}
             </div>
 
-            {nextEvents.length > 0 && (
-                <div className="bg-zinc-50 dark:bg-zinc-900/50 p-5 rounded-3xl border border-zinc-100 dark:border-zinc-800/50">
-                    <div className="flex items-center gap-2 mb-4">
-                        <Calendar className="w-4 h-4 text-indigo-500" />
-                        <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Próximos Pagamentos</h4>
-                    </div>
-                    <div className="space-y-3">
-                        {nextEvents.map((event: any, i: number) => (
-                            <div key={i} className="flex justify-between items-center group">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-xl bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm border border-zinc-100 dark:border-zinc-700">
-                                        <Coins className="w-4 h-4 text-emerald-500" />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-black text-zinc-900 dark:text-white">{formatBRL(event.rate || event.value)}</p>
-                                        <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-tighter">Data Com: {formatDateShort(event.dateCom)}</p>
-                                    </div>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-xs font-black text-emerald-500">{formatDateShort(event.paymentDate)}</p>
-                                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-tighter">Pagamento</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            <div className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                <div className="flex items-center justify-between mb-6">
+            <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
                     <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Histórico de Proventos</h4>
                     <span className="text-[9px] font-bold text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-md uppercase tracking-tighter">Por Cota</span>
                 </div>
-                <div className="h-56 w-full">
+                <div className="h-48 w-full">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={historyChartData} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
                             <XAxis dataKey="month" tick={{ fontSize: 9, fontWeight: 600, fill: '#71717a' }} tickLine={false} axisLine={false} dy={10} />
