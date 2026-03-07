@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { AssetPosition, DividendReceipt, AssetType, PortfolioInsight, Transaction, Achievement } from '../types';
+import { AssetPosition, DividendReceipt, AssetType, PortfolioInsight, Transaction } from '../types';
 import { CircleDollarSign, CalendarClock, PieChart as PieIcon, ArrowUpRight, ArrowDownLeft, Wallet, ArrowRight, Sparkles, Trophy, Anchor, Coins, Crown, Info, X, Zap, ShieldCheck, AlertTriangle, Play, Pause, TrendingUp, TrendingDown, Target, Snowflake, Layers, Medal, Rocket, Gem, Lock, Building2, Briefcase, ShoppingCart, Coffee, Plane, Star, Award, Umbrella, ZapOff, CheckCircle2, ListFilter, History, Activity, Calendar, Percent, BarChart3, Share2, ChevronDown, ArrowRightLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
@@ -872,7 +872,7 @@ const StoryViewer = ({
     );
 };
 
-const BentoCard = ({ title, value, subtext, icon: Icon, colorClass, onClick, className, info }: { title: string, value: React.ReactNode, subtext?: React.ReactNode, icon: React.ElementType, colorClass: string, onClick?: () => void, className?: string, info?: string }) => (
+const BentoCard = ({ title, value, subtext, icon: Icon, colorClass, onClick, className, info }: any) => (
     <motion.button 
         whileHover={{ y: -4, scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
@@ -900,7 +900,7 @@ const BentoCard = ({ title, value, subtext, icon: Icon, colorClass, onClick, cla
     </motion.button>
 );
 
-const ProgressBar = ({ current, target, label, colorClass, privacyMode }: { current: number, target: number, label: string, colorClass: string, privacyMode: boolean }) => {
+const ProgressBar = ({ current, target, label, colorClass, privacyMode }: any) => {
     const progress = Math.min(100, Math.max(0, (current / (target || 1)) * 100));
     return (
         <div className="mb-3 last:mb-0">
@@ -946,7 +946,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
   const [allocationView, setAllocationView] = useState<'CLASS' | 'ASSET' | 'SECTOR'>('CLASS');
   const [showMagicNumber, setShowMagicNumber] = useState(false);
   const [showGoals, setShowGoals] = useState(false);
-  const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
+  const [selectedAchievement, setSelectedAchievement] = useState<any>(null);
   const [goalTab, setGoalTab] = useState<'WEALTH' | 'INCOME' | 'STRATEGY'>('WEALTH');
   
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
@@ -964,11 +964,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
 
   const [activeIndex, setActiveIndex] = useState(0);
 
-  const onPieEnter = (_: unknown, index: number) => {
+  const onPieEnter = (_: any, index: number) => {
     setActiveIndex(index);
   };
 
-  const renderActiveShape = (props: { cx: number, cy: number, midAngle: number, innerRadius: number, outerRadius: number, startAngle: number, endAngle: number, fill: string, payload: { name: string, value: number, percent: number } }) => {
+  const renderActiveShape = (props: any) => {
     const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, value } = props;
     return (
       <g>
@@ -1207,11 +1207,11 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
               };
           })
           .filter(Boolean)
-          .sort((a: { progress: number }, b: { progress: number }) => b.progress - a.progress);
+          .sort((a: any, b: any) => b.progress - a.progress);
       
       return {
-          achieved: all.filter((a: { buyingPower: number }) => a.buyingPower >= 1),
-          inProgress: all.filter((a: { buyingPower: number }) => a.buyingPower < 1)
+          achieved: all.filter((a: any) => a.buyingPower >= 1),
+          inProgress: all.filter((a: any) => a.buyingPower < 1)
       };
   }, [portfolio]);
 
@@ -1546,7 +1546,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                                         </h3>
                                     </div>
                                     <div className="space-y-2">
-                                        {items.map((item, idx) => (
+                                        {(items as any[]).map((item, idx) => (
                                             <div key={idx} className="relative overflow-hidden p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800">
                                                 <div className="flex justify-between items-start">
                                                     <div className="flex items-center gap-3">
@@ -1779,7 +1779,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                                                 height={36}
                                                 content={({ payload }) => (
                                                     <div className="flex flex-wrap justify-center gap-2 mt-2">
-                                                        {payload?.slice(0, 5).map((entry: { color: string, name: string, value: number }, index: number) => (
+                                                        {payload?.slice(0, 5).map((entry: any, index: number) => (
                                                             <div key={`item-${index}`} className="flex items-center gap-1">
                                                                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
                                                                 <span className="text-[9px] font-bold text-zinc-500 dark:text-zinc-400">{entry.payload.name}</span>
@@ -1979,7 +1979,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                                 <Crown className="w-3 h-3" /> Conquistados (Efeito Bola de Neve Ativo)
                             </h3>
                             <div className="grid grid-cols-2 gap-2">
-                                {magicNumberData.achieved.map((item: { ticker: string, current: number, target: number, missing: number, progress: number, estimatedDiv: number, price: number, currentIncome: number, buyingPower: number, assetType: AssetType }) => (
+                                {magicNumberData.achieved.map((item: any) => (
                                     <div key={item.ticker} className="relative overflow-hidden p-3 rounded-2xl bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-900/20 dark:to-zinc-900 border border-emerald-200 dark:border-emerald-800 shadow-sm">
                                         <div className="flex justify-between items-start mb-2">
                                             <span className="text-sm font-black text-zinc-900 dark:text-white">{item.ticker}</span>
@@ -2014,7 +2014,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                                 <Target className="w-3 h-3" /> Em Progresso
                             </h3>
                             <div className="space-y-2">
-                                {magicNumberData.inProgress.map((item: { ticker: string, current: number, target: number, missing: number, progress: number, estimatedDiv: number, price: number, currentIncome: number, buyingPower: number, assetType: AssetType }) => (
+                                {magicNumberData.inProgress.map((item: any) => (
                                     <div key={item.ticker} className="p-3 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 shadow-sm">
                                         <div className="flex justify-between items-start mb-2">
                                             <div className="flex items-center gap-3">
@@ -2108,7 +2108,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
 
                 <div className="flex-1 overflow-y-auto min-h-0 pb-20 no-scrollbar">
                     <div className="grid grid-cols-3 gap-1.5">
-                        {filteredAchievements.map((achievement: Achievement) => (
+                        {filteredAchievements.map((achievement: any) => (
                             <motion.div 
                                 key={achievement.id} 
                                 layout
@@ -2271,7 +2271,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                                         <div>
                                             <p className="text-sm font-black text-zinc-900 dark:text-white leading-none mb-1">{item.name}</p>
                                             <p className="text-[10px] font-medium text-zinc-500 uppercase tracking-wide">
-                                                {allocationView === 'ASSET' ? item.sector : (allocationView === 'SECTOR' ? `${item.percent.toFixed(1)}% do Total` : 'Classe de Ativo')}
+                                                {allocationView === 'ASSET' ? (item as any).sector : (allocationView === 'SECTOR' ? `${item.percent.toFixed(1)}% do Total` : 'Classe de Ativo')}
                                             </p>
                                         </div>
                                     </div>

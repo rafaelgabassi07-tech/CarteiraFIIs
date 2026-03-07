@@ -51,7 +51,7 @@ function normalize(str: string) {
     return str.normalize("NFD").replace(REGEX_NORMALIZE, "").toLowerCase().trim();
 }
 
-function parseValue(valueStr: string | number | null | undefined): number | null {
+function parseValue(valueStr: any): number | null {
     if (valueStr === undefined || valueStr === null) return null;
     if (typeof valueStr === 'number') return valueStr;
     
@@ -166,7 +166,7 @@ const FIELD_MATCHERS = [
     { key: 'avg_daily_volume',     indicator: [],                       text: (t: string) => t.includes('volume medio') || t.includes('liquidez media') },
 ];
 
-function buildProcessPair(dados: Record<string, unknown>) {
+function buildProcessPair(dados: any) {
     return function processPair(tituloRaw: string, valorRaw: string, origem = 'table', indicatorAttr: string | null = null) {
         const titulo = normalize(tituloRaw);
         let valor = (valorRaw || '').trim();
@@ -212,7 +212,7 @@ async function scrapeStatusInvestDividends(ticker: string) {
 
         const earnings = data.assetEarningsModels || [];
 
-        return earnings.map((d: { type: string, dateCom: string, paymentDate: string, rate: number }) => {
+        return earnings.map((d: any) => {
             const parseDateJSON = (dStr: string) => {
                 if (!dStr || dStr.trim() === '' || dStr.trim() === '-') return null;
                 const parts = dStr.split('/');
@@ -240,9 +240,9 @@ async function scrapeStatusInvestDividends(ticker: string) {
                 payment_date: paymentDate,
                 rate: d.v
             };
-        }).filter((d: { type: string, dateCom: string, paymentDate: string, rate: number } | null) => d !== null);
+        }).filter((d: any) => d !== null);
 
-    } catch (error: unknown) {
+    } catch (error: any) {
         console.warn(`[StatusInvest] Failed for ${ticker}: ${error.message}`);
         return null;
     }
@@ -255,7 +255,7 @@ async function scrapeInvestidor10Index(ticker: string) {
         const res = await client.get(url, { headers: { 'User-Agent': getRandomAgent() } });
         const $ = cheerio.load(res.data);
         
-        const dados: Record<string, unknown> = {
+        const dados: any = {
             ticker: ticker.toUpperCase(),
             type: 'FII', // Mantém compatibilidade de tipo
             segment: 'Índice',
@@ -328,9 +328,9 @@ export async function scrapeInvestidor10(ticker: string) {
 
     const urls = isLikelyFii ? [urlFii, urlFiagro, urlAcao, urlBdr] : [urlAcao, urlFii, urlFiagro, urlBdr];
 
-    let finalData: Record<string, unknown> | null = null;
-    let finalDividends: { type: string, dateCom: string, paymentDate: string, rate: number }[] = [];
-    let realEstateProperties: { name: string, value: number }[] = [];
+    let finalData: any = null;
+    let finalDividends: any[] = [];
+    let realEstateProperties: any[] = [];
 
     // Tenta obter dividendos via StatusInvest primeiro (Melhor qualidade de dados)
     const statusInvestDivs = await scrapeStatusInvestDividends(ticker);
@@ -353,7 +353,7 @@ export async function scrapeInvestidor10(ticker: string) {
             else if (url.includes('/fiagros/')) type = 'FII';
             else if (url.includes('/bdrs/')) type = 'BDR';
 
-            const dados: Record<string, unknown> = {
+            const dados: any = {
                 ticker: ticker.toUpperCase(),
                 type: type,
                 updated_at: new Date().toISOString(),
@@ -489,7 +489,7 @@ export async function scrapeInvestidor10(ticker: string) {
             }
 
             // --- 5. IMÓVEIS (Mais robusto) ---
-            const extractedProps: { name: string, value: number }[] = [];
+            const extractedProps: any[] = [];
             
             // Tenta seletor específico primeiro
             $('#properties-section .card-propertie').each((i, el) => {
@@ -561,7 +561,7 @@ export async function scrapeInvestidor10(ticker: string) {
                 fund_type: dados.tipo_fundo,
                 duration: dados.prazo_duracao,
                 num_quotas: dados.cotas_emitidas,
-                company_name: (dados.razao_social || dados.name) as string,
+                company_name: dados.razao_social || dados.name,
 
                 // Campos Estendidos (Stocks)
                 net_margin: parseValue(dados.margem_liquida),
@@ -655,7 +655,7 @@ export async function updateStock(req: Request, res: Response) {
 
         return res.status(200).json({ success: true, data: metadata, dividends });
 
-    } catch (e: unknown) {
+    } catch (e: any) {
         return res.status(500).json({ success: false, error: e.message });
     }
 }

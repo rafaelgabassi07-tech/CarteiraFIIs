@@ -8,9 +8,10 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // --- CONFIGURAÇÃO ---
-const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || 'https://mock.supabase.co';
-const supabaseKey = process.env.VITE_SUPABASE_KEY || process.env.SUPABASE_KEY || 'mock-key';
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = createClient(
+  process.env.SUPABASE_URL || '',
+  process.env.SUPABASE_KEY || ''
+);
 
 // --- AGENTE & HEADERS ---
 const httpsAgent = new https.Agent({ 
