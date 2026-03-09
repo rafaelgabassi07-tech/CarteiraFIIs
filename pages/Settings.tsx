@@ -13,7 +13,7 @@ import { ConfirmationModal } from '../components/Layout';
 
 interface SettingsProps {
     onLogout: () => Promise<void>;
-    user: any;
+    user: { email?: string, id?: string };
     transactions: Transaction[];
     onImportTransactions: (txs: Transaction[]) => void;
     dividends: DividendReceipt[];
@@ -40,7 +40,7 @@ interface SettingsProps {
     showToast: (type: 'success' | 'error' | 'info', text: string) => void;
 }
 
-const ToggleSwitch = ({ enabled, onToggle, icon: Icon }: { enabled: boolean; onToggle: () => void; icon?: any }) => (
+const ToggleSwitch = ({ enabled, onToggle, icon: Icon }: { enabled: boolean; onToggle: () => void; icon?: React.ElementType }) => (
     <button
         onClick={onToggle}
         className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
@@ -57,7 +57,7 @@ const ToggleSwitch = ({ enabled, onToggle, icon: Icon }: { enabled: boolean; onT
     </button>
 );
 
-const SettingsGroup = ({ title, children, icon: Icon }: { title: string; children: React.ReactNode; icon: any }) => (
+const SettingsGroup = ({ title, children, icon: Icon }: { title: string; children: React.ReactNode; icon: React.ElementType }) => (
     <div className="mb-8 last:mb-0">
         <div className="flex items-center gap-3 mb-4 px-2">
             <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-500">
@@ -83,7 +83,7 @@ const SettingsItem = ({
 }: { 
     label: string; 
     description?: string; 
-    icon: any; 
+    icon: React.ElementType;
     onClick?: () => void; 
     value?: React.ReactNode;
     badge?: string;

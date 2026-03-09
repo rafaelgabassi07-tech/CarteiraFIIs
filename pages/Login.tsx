@@ -51,7 +51,7 @@ export const Login: React.FC = () => {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       let msg = err.message;
       if (msg === 'Invalid login credentials') msg = 'E-mail ou senha incorretos.';
       if (msg.includes('rate limit')) msg = 'Muitas tentativas. Aguarde um pouco.';

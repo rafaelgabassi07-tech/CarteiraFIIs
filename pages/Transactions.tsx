@@ -110,7 +110,7 @@ const YearFilterChip = ({ years, selectedYear, onChange }: { years: string[], se
     );
 };
 
-const FilterChip = ({ label, active, onClick, icon: Icon }: any) => (
+const FilterChip = ({ label, active, onClick, icon: Icon }: { label: string, active: boolean, onClick: () => void, icon?: React.ElementType }) => (
     <button 
         onClick={onClick} 
         className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all ${active ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-transparent shadow-md' : 'bg-white dark:bg-zinc-900 text-zinc-500 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'}`}
@@ -120,7 +120,7 @@ const FilterChip = ({ label, active, onClick, icon: Icon }: any) => (
     </button>
 );
 
-const TransactionRow = React.memo(({ index, data }: any) => {
+const TransactionRow = React.memo(({ index, data }: { index: number, data: { transactions: (Transaction | { isMonthHeader: boolean, month: string, netFlow: number })[], selectedIds: Set<string>, toggleSelection: (id: string) => void, onEdit: (t: Transaction) => void, privacyMode: boolean, selectionMode: boolean, onLongPress: (id: string) => void } }) => {
   const item = data.items[index];
   const privacyMode = data.privacyMode;
   const isSelectionMode = data.isSelectionMode;
@@ -285,7 +285,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
             else groups[k].totalNet -= val; 
         });
 
-        const list: any[] = [];
+        const list: (Transaction | { isMonthHeader: boolean, month: string, netFlow: number })[] = [];
         Object.keys(groups).sort((a, b) => String(b).localeCompare(String(a))).forEach(k => {
             list.push({ type: 'header', monthKey: k, monthlyNet: groups[k].totalNet });
             groups[k].items.forEach((t) => list.push({ type: 'item', data: t }));
@@ -404,7 +404,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                 
                 {flatTransactions.length > 0 ? (
                     <div className="pb-10">
-                        {flatTransactions.map((item: any, index: number) => (
+                        {flatTransactions.map((item: Transaction | { isMonthHeader: boolean, month: string, netFlow: number }, index: number) => (
                             <TransactionRow 
                                 key={item.data?.id || `header-${item.monthKey}`} 
                                 index={index} 
