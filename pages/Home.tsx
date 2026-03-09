@@ -358,11 +358,12 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                                                     cursor={{ fill: 'rgba(99, 102, 241, 0.05)' }}
                                                     content={({ active, payload, label }) => {
                                                         if (active && payload && payload.length) {
+                                                            const uniquePayload = payload.filter((v: any, i: number, a: any[]) => a.findIndex(t => (t.name === v.name)) === i);
                                                             return (
                                                                 <div className="bg-zinc-900/95 border border-zinc-800 p-3 rounded-xl shadow-xl backdrop-blur-md min-w-[120px]">
                                                                     <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">{label}</p>
                                                                     <div className="space-y-2">
-                                                                        {payload.map((entry: any) => (
+                                                                        {uniquePayload.map((entry: any) => (
                                                                             <div key={entry.name} className="flex flex-col">
                                                                                 <span className="text-[9px] font-bold text-zinc-500 uppercase">
                                                                                     {entry.name === 'marketValue' ? 'Patrimônio' : 'Investido'}
@@ -399,11 +400,12 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                                                     cursor={{ fill: 'rgba(99, 102, 241, 0.05)' }}
                                                     content={({ active, payload, label }) => {
                                                         if (active && payload && payload.length) {
+                                                            const uniquePayload = payload.filter((v: any, i: number, a: any[]) => a.findIndex(t => (t.name === v.name)) === i);
                                                             return (
                                                                 <div className="bg-zinc-900/95 border border-zinc-800 p-3 rounded-xl shadow-xl backdrop-blur-md min-w-[120px]">
                                                                     <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">{label}</p>
                                                                     <div className="space-y-2">
-                                                                        {payload.map((entry: any) => (
+                                                                        {uniquePayload.map((entry: any) => (
                                                                             <div key={entry.name} className="flex flex-col">
                                                                                 <span className="text-[9px] font-bold text-zinc-500 uppercase">
                                                                                     {entry.name === 'contribution' ? 'Aporte Líquido' : 'Dividendos'}
@@ -443,7 +445,8 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                                                     cursor={{ fill: 'rgba(245, 158, 11, 0.05)' }}
                                                     content={({ active, payload, label }) => {
                                                         if (active && payload && payload.length) {
-                                                            const value = payload[0].value as number;
+                                                            const uniquePayload = payload.filter((v: any, i: number, a: any[]) => a.findIndex(t => (t.name === v.name)) === i);
+                                                            const value = uniquePayload[0].value as number;
                                                             return (
                                                                 <div className="bg-zinc-900/95 border border-zinc-800 p-3 rounded-xl shadow-xl backdrop-blur-md min-w-[120px]">
                                                                     <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">{label}</p>

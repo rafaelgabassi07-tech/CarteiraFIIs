@@ -235,8 +235,8 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], trans
                 // Se temos a data com, verificamos a quantidade que o usuário tinha naquela data.
                 // Se não temos a data com (raro para confirmados), usamos a quantidade atual.
                 let quantityAtDateCom = 0;
-                if (div.dateCom) {
-                    quantityAtDateCom = getQuantityOnDate(normalizedTicker, div.dateCom, transactions);
+                if (div.date_com) {
+                    quantityAtDateCom = getQuantityOnDate(normalizedTicker, div.date_com, transactions);
                 } else {
                     const asset = portfolio.find(p => normalizeTicker(p.ticker) === normalizedTicker);
                     quantityAtDateCom = asset?.quantity || 0;
@@ -247,8 +247,8 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], trans
                 // --- LÓGICA DE RELEVÂNCIA ---
                 let isRelevant = false;
                 
-                if (div.paymentDate) {
-                    const payDate = parseDateToLocal(div.paymentDate);
+                if (div.payment_date) {
+                    const payDate = parseDateToLocal(div.payment_date);
                     // Mostra se for futuro ou se foi nos últimos 7 dias (janela maior para conferência)
                     const recentCutoff = new Date(now);
                     recentCutoff.setDate(recentCutoff.getDate() - 7);
@@ -256,8 +256,8 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], trans
                     if (payDate && payDate >= recentCutoff) isRelevant = true;
                 } else {
                     // Sem data de pagamento = A Definir
-                    if (div.dateCom) {
-                        const dCom = parseDateToLocal(div.dateCom);
+                    if (div.date_com) {
+                        const dCom = parseDateToLocal(div.date_com);
                         // Se data com foi nos últimos 90 dias e ainda não pagou, é relevante
                         const comCutoff = new Date(now);
                         comCutoff.setDate(comCutoff.getDate() - 90);
@@ -275,28 +275,28 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], trans
 
                 const total = preciseMul(quantityAtDateCom, rate);
                 
-                const dateCom = div.dateCom ? parseDateToLocal(div.dateCom) : null;
+                const dateCom = div.date_com ? parseDateToLocal(div.date_com) : null;
                 const refDate = dateCom || now;
                 const diffTime = refDate.getTime() - now.getTime();
                 const daysToDateCom = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
 
                 // Marca que este ticker já tem um provento confirmado para este mês/período
-                const monthKey = (div.paymentDate || div.dateCom || '').substring(0, 7);
+                const monthKey = (div.payment_date || div.date_com || '').substring(0, 7);
                 if (monthKey === now.toISOString().substring(0, 7)) {
                     confirmedTickers.add(normalizedTicker);
                 }
 
                 predictions.push({
                     ticker: normalizedTicker,
-                    dateCom: div.dateCom || 'Já ocorreu',
-                    paymentDate: div.paymentDate || 'A Definir',
+                    dateCom: div.date_com || 'Já ocorreu',
+                    paymentDate: div.payment_date || 'A Definir',
                     rate: rate,
                     quantity: quantityAtDateCom,
                     projectedTotal: total,
                     type: div.type || 'DIV', 
                     daysToDateCom,
                     status: 'CONFIRMED', 
-                    reasoning: `Confirmado: ${div.type} para quem possuía em ${div.dateCom || 'data com'}`
+                    reasoning: `Confirmado: ${div.type} para quem possuía em ${div.date_com || 'data com'}`
                 });
             });
         }
@@ -456,8 +456,8 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
                       const newDivs = r.dividendsFound.map((d: any) => ({
                           ticker: r.ticker,
                           type: d.type || 'DIV',
-                          dateCom: d.dateCom || '',
-                          paymentDate: d.paymentDate || '',
+                          date_com: d.date_com || d.dateCom || '',
+                          payment_date: d.payment_date || d.paymentDate || '',
                           rate: d.rate
                       }));
                       // Remove old dividends for this ticker to avoid duplicates if we just scraped them
@@ -470,11 +470,11 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
 
       // 5. Process fetched data
       const newDividends: DividendReceipt[] = dividendsData.map((d: any) => ({
-            id: (d.id as string) || `${d.ticker}-${d.dateCom}-${d.rate}`,
+            id: (d.id as string) || `${d.ticker}-${d.date_com}-${d.rate}`,
             ticker: normalizeTicker(d.ticker as string),
             type: (d.type as string) || 'DIV',
-            dateCom: (d.dateCom as string) || '', 
-            paymentDate: (d.paymentDate as string) || '',
+            dateCom: (d.date_com as string) || (d.dateCom as string) || '', 
+            paymentDate: (d.payment_date as string) || (d.paymentDate as string) || '',
             rate: Number(d.rate),
             quantityOwned: 0, 
             totalReceived: 0

@@ -152,7 +152,7 @@ export const processPortfolio = (
         const totalVal = preciseMul(qty, d.rate);
 
         // Soma ao total global se já passou da data de pagamento
-        if (d.paymentDate <= todayStr) {
+        if (d.paymentDate && d.paymentDate !== 'A Definir' && d.paymentDate <= todayStr) {
             divPaidMap[normalizedTicker] = preciseAdd(divPaidMap[normalizedTicker] || 0, totalVal);
             totalDividendsReceived = preciseAdd(totalDividendsReceived, totalVal);
         }
