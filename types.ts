@@ -141,7 +141,18 @@ export interface BrapiQuote {
   longName: string;
   regularMarketPrice: number;
   regularMarketChangePercent?: number; // Variação diária vinda da API
-  logourl: string;
+  logourl?: string;
+  regularMarketDayHigh?: number;
+  regularMarketDayLow?: number;
+  regularMarketVolume?: number;
+  fiftyTwoWeekHigh?: number;
+  fiftyTwoWeekLow?: number;
+  priceEarnings?: number;
+  earningsPerShare?: number;
+  regularMarketTime?: string;
+  regularMarketPreviousClose?: number;
+  regularMarketOpen?: number;
+  averageDailyVolume10Day?: number;
 }
 
 export interface BrapiResponse {

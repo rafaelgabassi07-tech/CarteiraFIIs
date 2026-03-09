@@ -120,10 +120,10 @@ const FilterChip = ({ label, active, onClick, icon: Icon }: { label: string, act
     </button>
 );
 
-const TransactionRow = React.memo(({ index, data }: { index: number, data: { transactions: (Transaction | { isMonthHeader: boolean, month: string, netFlow: number })[], selectedIds: Set<string>, toggleSelection: (id: string) => void, onEdit: (t: Transaction) => void, privacyMode: boolean, selectionMode: boolean, onLongPress: (id: string) => void } }) => {
+const TransactionRow = React.memo(({ index, data }: { index: number, data: { items: any[], selectedIds: Set<string>, toggleSelection: (id: string) => void, onEdit: (t: Transaction) => void, privacyMode: boolean, selectionMode: boolean, onLongPress: (id: string) => void } }) => {
   const item = data.items[index];
   const privacyMode = data.privacyMode;
-  const isSelectionMode = data.isSelectionMode;
+  const isSelectionMode = data.selectionMode;
   const isSelected = data.selectedIds.has(item.data?.id);
   
   // ... (handlers remain same)
@@ -149,8 +149,8 @@ const TransactionRow = React.memo(({ index, data }: { index: number, data: { tra
 
   const handleClick = (e: React.MouseEvent) => {
       if (isLongPressTriggered.current) { isLongPressTriggered.current = false; return; }
-      if (isSelectionMode) data.onToggleSelect(item.data?.id);
-      else data.onRowClick(item.data);
+      if (isSelectionMode) data.toggleSelection(item.data?.id);
+      else data.onEdit(item.data);
   };
   
   if (item.type === 'header') {
@@ -285,7 +285,7 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
             else groups[k].totalNet -= val; 
         });
 
-        const list: (Transaction | { isMonthHeader: boolean, month: string, netFlow: number })[] = [];
+        const list: any[] = [];
         Object.keys(groups).sort((a, b) => String(b).localeCompare(String(a))).forEach(k => {
             list.push({ type: 'header', monthKey: k, monthlyNet: groups[k].totalNet });
             groups[k].items.forEach((t) => list.push({ type: 'item', data: t }));
@@ -404,17 +404,17 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                 
                 {flatTransactions.length > 0 ? (
                     <div className="pb-10">
-                        {flatTransactions.map((item: Transaction | { isMonthHeader: boolean, month: string, netFlow: number }, index: number) => (
+                        {flatTransactions.map((item: any, index: number) => (
                             <TransactionRow 
                                 key={item.data?.id || `header-${item.monthKey}`} 
                                 index={index} 
                                 data={{ 
                                     items: flatTransactions, 
-                                    onRowClick: handleOpenEdit, 
+                                    onEdit: handleOpenEdit, 
                                     privacyMode, 
-                                    isSelectionMode, 
+                                    selectionMode: isSelectionMode, 
                                     selectedIds, 
-                                    onToggleSelect: (id: string) => { const n = new Set(selectedIds); if (n.has(id)) n.delete(id); else n.add(id); setSelectedIds(n); },
+                                    toggleSelection: (id: string) => { const n = new Set(selectedIds); if (n.has(id)) n.delete(id); else n.add(id); setSelectedIds(n); },
                                     onLongPress: handleLongPress
                                 }}
                             />

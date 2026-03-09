@@ -192,7 +192,7 @@ export const generateAIInsights = async (): Promise<PortfolioInsight[]> => {
                                     searchTypes: {
                                         imageSearch: {}
                                     }
-                                } as { id: string, title: string, content: string, type: 'ALERT' | 'INSIGHT' | 'OPPORTUNITY', impact: 'HIGH' | 'MEDIUM' | 'LOW', read: boolean, timestamp: number, relatedTickers: string[], actionLabel?: string, actionUrl?: string }
+                                } as any
                             }
                         ]
                     }

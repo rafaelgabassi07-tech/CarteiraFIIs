@@ -13,7 +13,7 @@ import { ConfirmationModal } from '../components/Layout';
 
 interface SettingsProps {
     onLogout: () => Promise<void>;
-    user: { email?: string, id?: string };
+    user: any;
     transactions: Transaction[];
     onImportTransactions: (txs: Transaction[]) => void;
     dividends: DividendReceipt[];

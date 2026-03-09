@@ -112,7 +112,7 @@ class LogManager {
             timestamp: Date.now(),
             level,
             message: message, // Resumo
-            data: formattedArgs // Dados completos processados
+            data: formattedArgs as any // Dados completos processados
         };
 
         this.logs = [entry, ...this.logs].slice(0, this.maxLogs);

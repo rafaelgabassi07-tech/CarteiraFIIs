@@ -946,7 +946,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
   const [allocationView, setAllocationView] = useState<'CLASS' | 'ASSET' | 'SECTOR'>('CLASS');
   const [showMagicNumber, setShowMagicNumber] = useState(false);
   const [showGoals, setShowGoals] = useState(false);
-  const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
+  const [selectedAchievement, setSelectedAchievement] = useState<any | null>(null);
   const [goalTab, setGoalTab] = useState<'WEALTH' | 'INCOME' | 'STRATEGY'>('WEALTH');
   
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
@@ -968,8 +968,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
     setActiveIndex(index);
   };
 
-  const renderActiveShape = (props: { cx: number, cy: number, midAngle: number, innerRadius: number, outerRadius: number, startAngle: number, endAngle: number, fill: string, payload: { name: string, value: number, percent: number } }) => {
-    const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, value } = props;
+  const renderActiveShape = (props: any) => {
+    const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload } = props;
+    const value = payload.value;
     return (
       <g>
         <text x={cx} y={cy} dy={-10} textAnchor="middle" fill={fill} className="text-xs font-black uppercase tracking-widest">
@@ -1206,8 +1207,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                   assetType: asset.assetType
               };
           })
-          .filter(Boolean)
-          .sort((a: { progress: number }, b: { progress: number }) => b.progress - a.progress);
+          .filter((a): a is NonNullable<typeof a> => Boolean(a))
+          .sort((a, b) => b.progress - a.progress);
       
       return {
           achieved: all.filter((a: { buyingPower: number }) => a.buyingPower >= 1),
@@ -1779,7 +1780,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                                                 height={36}
                                                 content={({ payload }) => (
                                                     <div className="flex flex-wrap justify-center gap-2 mt-2">
-                                                        {payload?.slice(0, 5).map((entry: { color: string, name: string, value: number }, index: number) => (
+                                                        {payload?.slice(0, 5).map((entry: any, index: number) => (
                                                             <div key={`item-${index}`} className="flex items-center gap-1">
                                                                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
                                                                 <span className="text-[9px] font-bold text-zinc-500 dark:text-zinc-400">{entry.payload.name}</span>
@@ -1979,7 +1980,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                                 <Crown className="w-3 h-3" /> Conquistados (Efeito Bola de Neve Ativo)
                             </h3>
                             <div className="grid grid-cols-2 gap-2">
-                                {magicNumberData.achieved.map((item: { ticker: string, current: number, target: number, missing: number, progress: number, estimatedDiv: number, price: number, currentIncome: number, buyingPower: number, assetType: AssetType }) => (
+                                {magicNumberData.achieved.map((item: any) => (
                                     <div key={item.ticker} className="relative overflow-hidden p-3 rounded-2xl bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-900/20 dark:to-zinc-900 border border-emerald-200 dark:border-emerald-800 shadow-sm">
                                         <div className="flex justify-between items-start mb-2">
                                             <span className="text-sm font-black text-zinc-900 dark:text-white">{item.ticker}</span>
@@ -2014,7 +2015,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                                 <Target className="w-3 h-3" /> Em Progresso
                             </h3>
                             <div className="space-y-2">
-                                {magicNumberData.inProgress.map((item: { ticker: string, current: number, target: number, missing: number, progress: number, estimatedDiv: number, price: number, currentIncome: number, buyingPower: number, assetType: AssetType }) => (
+                                {magicNumberData.inProgress.map((item: any) => (
                                     <div key={item.ticker} className="p-3 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 shadow-sm">
                                         <div className="flex justify-between items-start mb-2">
                                             <div className="flex items-center gap-3">
@@ -2108,7 +2109,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
 
                 <div className="flex-1 overflow-y-auto min-h-0 pb-20 no-scrollbar">
                     <div className="grid grid-cols-3 gap-1.5">
-                        {filteredAchievements.map((achievement: Achievement) => (
+                        {filteredAchievements.map((achievement: any) => (
                             <motion.div 
                                 key={achievement.id} 
                                 layout
@@ -2271,7 +2272,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                                         <div>
                                             <p className="text-sm font-black text-zinc-900 dark:text-white leading-none mb-1">{item.name}</p>
                                             <p className="text-[10px] font-medium text-zinc-500 uppercase tracking-wide">
-                                                {allocationView === 'ASSET' ? item.sector : (allocationView === 'SECTOR' ? `${item.percent.toFixed(1)}% do Total` : 'Classe de Ativo')}
+                                                {allocationView === 'ASSET' ? (item as any).sector : (allocationView === 'SECTOR' ? `${item.percent.toFixed(1)}% do Total` : 'Classe de Ativo')}
                                             </p>
                                         </div>
                                     </div>

@@ -128,7 +128,7 @@ const CustomCandleShape = (props: { cx?: number, cy?: number, payload?: { open?:
     
     if (!yAxis || !yAxis.scale || cx == null || cy == null) return null;
 
-    const { open, close, high, low } = payload;
+    const { open, close, high, low } = payload || {};
     if (open == null || close == null || high == null || low == null) return null;
 
     const scale = yAxis.scale;
@@ -176,11 +176,12 @@ const CustomCandleShape = (props: { cx?: number, cy?: number, payload?: { open?:
 };
 
 const CurrentPriceLabel = ({ viewBox, value }: { viewBox?: { y: number, width: number }, value: number }) => {
-    const { y } = viewBox;
+    const y = viewBox?.y || 0;
+    const width = viewBox?.width || 0;
     // Posicionado dentro do gráfico, alinhado à direita
     // Desenha da direita para a esquerda
     return (
-        <g transform={`translate(${viewBox.width}, ${y})`}>
+        <g transform={`translate(${width}, ${y})`}>
             <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
                 <feDropShadow dx="0" dy="1" stdDeviation="1" floodColor="#000" floodOpacity="0.2" />
             </filter>
@@ -1526,8 +1527,8 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
             if(last12m[k]) {
                 const type = d.type || 'DIV';
                 activeTypes.add(type);
-                last12m[k][type] = (last12m[k][type] || 0) + d.totalReceived;
-                last12m[k].total += d.totalReceived;
+                last12m[k][type] = ((last12m[k][type] as number) || 0) + d.totalReceived;
+                last12m[k].total = ((last12m[k].total as number) || 0) + d.totalReceived;
             }
         });
         

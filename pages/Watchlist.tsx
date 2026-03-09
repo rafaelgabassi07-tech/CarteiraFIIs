@@ -157,7 +157,7 @@ export default function Watchlist({ showToast }: WatchlistProps) {
             setQuotes(prev => {
                 const newQuotes = { ...prev };
                 
-                brapiData.forEach((q: { symbol: string, regularMarketPrice: number, regularMarketChangePercent: number, regularMarketTime: string, logourl: string }) => {
+                brapiData.forEach((q: any) => {
                     const ticker = q.symbol;
                     newQuotes[ticker] = {
                         ...newQuotes[ticker],
@@ -173,7 +173,7 @@ export default function Watchlist({ showToast }: WatchlistProps) {
                 });
 
                 if (unifiedData?.metadata) {
-                    Object.entries(unifiedData.metadata).forEach(([ticker, meta]: [string, { fundamentals?: { company_name?: string } }]) => {
+                    Object.entries(unifiedData.metadata).forEach(([ticker, meta]: [string, any]) => {
                         newQuotes[ticker] = {
                             ...newQuotes[ticker],
                             ticker: ticker,
@@ -269,14 +269,14 @@ export default function Watchlist({ showToast }: WatchlistProps) {
 
     const handleAssetClick = (ticker: string) => {
         const quote = quotes[ticker];
-        const fundamentals = quote?.fundamentals || {};
+        const fundamentals: any = quote?.fundamentals || {};
         
         let assetType = quote?.type;
         if (!assetType) {
             assetType = (ticker.endsWith('11') || ticker.endsWith('11B')) ? AssetType.FII : AssetType.STOCK;
         }
 
-        const asset: AssetPosition = {
+        const asset: any = {
             ticker: ticker,
             quantity: 0,
             averagePrice: 0,
@@ -518,7 +518,7 @@ export default function Watchlist({ showToast }: WatchlistProps) {
                             const hasData = !!quote && price !== undefined && price !== 0;
                             const isUpdating = loading && !!quote;
                             const isLoadingInitial = loading && !quote;
-                            const fundamentals = quote?.fundamentals || {};
+                            const fundamentals: any = quote?.fundamentals || {};
                             const alert = alerts[ticker];
                             const isAlertTriggered = alert && (
                                 (alert.type === 'ABOVE' && price && price >= alert.target) ||
@@ -589,12 +589,12 @@ export default function Watchlist({ showToast }: WatchlistProps) {
                                         <div className="grid grid-cols-3 gap-2 pt-2 border-t border-dashed border-zinc-100 dark:border-zinc-800/60 relative z-10">
                                             <div className="flex flex-col">
                                                 <span className="text-[7px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-0.5">DY (12M)</span>
-                                                <span className="text-[9px] font-bold text-zinc-700 dark:text-zinc-200">{fundamentals.dy_12m ? `${fundamentals.dy_12m.toFixed(2)}%` : '--'}</span>
+                                                <span className="text-[9px] font-bold text-zinc-700 dark:text-zinc-200">{fundamentals.dy_12m ? `${Number(fundamentals.dy_12m).toFixed(2)}%` : '--'}</span>
                                             </div>
                                             <div className="flex flex-col text-center border-l border-zinc-50 dark:border-zinc-800/50">
                                                 <span className="text-[7px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-0.5">P/VP</span>
-                                                <span className={`text-[9px] font-bold ${fundamentals.p_vp > 1.1 ? 'text-rose-500' : fundamentals.p_vp < 0.9 ? 'text-emerald-500' : 'text-zinc-700 dark:text-zinc-200'}`}>
-                                                    {fundamentals.p_vp ? fundamentals.p_vp.toFixed(2) : '--'}
+                                                <span className={`text-[9px] font-bold ${Number(fundamentals.p_vp) > 1.1 ? 'text-rose-500' : Number(fundamentals.p_vp) < 0.9 ? 'text-emerald-500' : 'text-zinc-700 dark:text-zinc-200'}`}>
+                                                    {fundamentals.p_vp ? Number(fundamentals.p_vp).toFixed(2) : '--'}
                                                 </span>
                                             </div>
                                             <div className="flex flex-col items-end border-l border-zinc-50 dark:border-zinc-800/50">

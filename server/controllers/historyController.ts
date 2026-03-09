@@ -215,7 +215,7 @@ function parseInvestidor10Data(data: { created_at: string, price: number }[]) {
         // Adjust for timezone if needed, but UTC date string is safer for charts
         // Actually, we want the timestamp in seconds
         timestamps.push(Math.floor(date.getTime() / 1000));
-        prices.push(parseFloat(item.price));
+        prices.push(Number(item.price));
     });
 
     return {
@@ -274,7 +274,7 @@ async function fetchYahooData(symbol: string, range: string) {
                 highs: quote.high as (number | null)[],
                 lows: quote.low as (number | null)[]
             };
-        } catch (e: unknown) {
+        } catch (e: any) {
             console.warn(`Yahoo fetch failed for ${url}:`, e.message);
             // Continue to next endpoint
         }
@@ -293,7 +293,7 @@ async function fetchBcbSeries(seriesCode: number, startDate: Date) {
         // Retorna Map: "YYYY-MM-DD" -> valor
         const map = new Map<string, number>();
         if (Array.isArray(data)) {
-            data.forEach((item: { created_at: string, price: number }) => {
+            data.forEach((item: any) => {
                 // item.data é "DD/MM/YYYY"
                 const parts = item.data.split('/');
                 const isoDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
@@ -301,8 +301,8 @@ async function fetchBcbSeries(seriesCode: number, startDate: Date) {
             });
         }
         return map;
-    } catch (e) {
-        console.warn(`BCB Series ${seriesCode} failed`, e);
+    } catch (e: any) {
+        console.warn(`BCB Series ${seriesCode} failed`, e.message);
         return new Map<string, number>();
     }
 }
@@ -346,7 +346,7 @@ export async function getHistory(req: Request, res: Response) {
         if (!assetData) return res.status(404).json({ error: 'Asset not found' });
 
         // Maps for O(1) lookup
-        const createPriceMap = (data: { created_at: string, price: number }[]) => {
+        const createPriceMap = (data: any) => {
             const map = new Map<string, number>();
             if (!data) return map;
             data.timestamps.forEach((t: number, i: number) => {
@@ -423,7 +423,7 @@ export async function getHistory(req: Request, res: Response) {
             }
             accIpca = accIpca * ipcaDailyFactor;
 
-            const point: Record<string, unknown> = {
+            const point: any = {
                 date: dateObj.toISOString(),
                 timestamp: timestamps[i] * 1000,
                 price: price,
@@ -463,10 +463,10 @@ export async function getHistory(req: Request, res: Response) {
 
         // Re-normalize percentage curves
         if (points.length > 0) {
-            const baseCdi = points[0].cdiPct;
-            const baseIpca = points[0].ipcaPct;
-            const baseIbov = points[0].ibovPct;
-            const baseIfix = points[0].ifixPct || 0;
+            const baseCdi = (points[0] as any).cdiPct;
+            const baseIpca = (points[0] as any).ipcaPct;
+            const baseIbov = (points[0] as any).ibovPct;
+            const baseIfix = (points[0] as any).ifixPct || 0;
             
             const valCdi0 = 1 + (baseCdi / 100);
             const valIpca0 = 1 + (baseIpca / 100);
@@ -474,17 +474,17 @@ export async function getHistory(req: Request, res: Response) {
             const valIfix0 = 1 + (baseIfix / 100);
 
             for (const p of points) {
-                const valCdi = 1 + (p.cdiPct / 100);
-                const valIpca = 1 + (p.ipcaPct / 100);
-                const valIbov = 1 + (p.ibovPct / 100);
+                const valCdi = 1 + ((p as any).cdiPct / 100);
+                const valIpca = 1 + ((p as any).ipcaPct / 100);
+                const valIbov = 1 + ((p as any).ibovPct / 100);
                 
-                p.cdiPct = ((valCdi / valCdi0) - 1) * 100;
-                p.ipcaPct = ((valIpca / valIpca0) - 1) * 100;
-                p.ibovPct = ((valIbov / valIbov0) - 1) * 100;
+                (p as any).cdiPct = ((valCdi / valCdi0) - 1) * 100;
+                (p as any).ipcaPct = ((valIpca / valIpca0) - 1) * 100;
+                (p as any).ibovPct = ((valIbov / valIbov0) - 1) * 100;
                 
-                if (p.ifixPct !== null) {
-                    const valIfix = 1 + (p.ifixPct / 100);
-                    p.ifixPct = ((valIfix / valIfix0) - 1) * 100;
+                if ((p as any).ifixPct !== null) {
+                    const valIfix = 1 + ((p as any).ifixPct / 100);
+                    (p as any).ifixPct = ((valIfix / valIfix0) - 1) * 100;
                 }
             }
         }

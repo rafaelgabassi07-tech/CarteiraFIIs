@@ -87,27 +87,27 @@ export const mapScraperToFundamentals = (m: Record<string, unknown>): AssetFunda
         benchmark_ibov_12m: parseNumberSafe(getVal('benchmark_ibov_12m')),
 
         // Metadados
-        liquidity: getVal('liquidity', 'liquidez', 'liquidez_media_diaria') || '', 
-        market_cap: getVal('market_cap', 'val_mercado', 'valor_mercado') || undefined, 
+        liquidity: String(getVal('liquidity', 'liquidez', 'liquidez_media_diaria') || ''), 
+        market_cap: getVal('market_cap', 'val_mercado', 'valor_mercado') ? String(getVal('market_cap', 'val_mercado', 'valor_mercado')) : undefined, 
         
         // FII Específicos
-        assets_value: getVal('assets_value', 'patrimonio_liquido', 'patrimonio') || undefined, 
-        manager_type: getVal('manager_type', 'tipo_gestao', 'gestao') || undefined,
-        management_fee: getVal('management_fee', 'taxa_adm', 'taxa_administracao') || undefined,
+        assets_value: getVal('assets_value', 'patrimonio_liquido', 'patrimonio') ? String(getVal('assets_value', 'patrimonio_liquido', 'patrimonio')) : undefined, 
+        manager_type: getVal('manager_type', 'tipo_gestao', 'gestao') ? String(getVal('manager_type', 'tipo_gestao', 'gestao')) : undefined,
+        management_fee: getVal('management_fee', 'taxa_adm', 'taxa_administracao') ? String(getVal('management_fee', 'taxa_adm', 'taxa_administracao')) : undefined,
         vacancy: parseNumberSafe(getVal('vacancy', 'vacancia', 'vacancia_fisica')),
         last_dividend: parseNumberSafe(getVal('last_dividend', 'ultimo_rendimento')),
         properties_count: parseNumberSafe(getVal('properties_count', 'num_cotistas', 'cotistas')),
         
         // Informações Adicionais
-        company_name: getVal('company_name', 'razao_social') as string,
-        num_quotas: getVal('num_quotas', 'cotas_emitidas'),
-        cnpj: getVal('cnpj'),
-        mandate: getVal('mandate', 'mandato'),
-        target_audience: getVal('target_audience', 'publico_alvo'),
-        fund_type: getVal('fund_type', 'tipo_fundo'),
-        duration: getVal('duration', 'prazo'),
+        company_name: String(getVal('company_name', 'razao_social')),
+        num_quotas: getVal('num_quotas', 'cotas_emitidas') ? String(getVal('num_quotas', 'cotas_emitidas')) : undefined,
+        cnpj: getVal('cnpj') ? String(getVal('cnpj')) : undefined,
+        mandate: getVal('mandate', 'mandato') ? String(getVal('mandate', 'mandato')) : undefined,
+        target_audience: getVal('target_audience', 'publico_alvo') ? String(getVal('target_audience', 'publico_alvo')) : undefined,
+        fund_type: getVal('fund_type', 'tipo_fundo') ? String(getVal('fund_type', 'tipo_fundo')) : undefined,
+        duration: getVal('duration', 'prazo') ? String(getVal('duration', 'prazo')) : undefined,
         
-        properties: m.properties || [], 
+        properties: (m.properties || []) as any, 
         
         // Ações (Stocks) Estendidas
         net_margin: parseNumberSafe(getVal('net_margin', 'margem_liquida', 'margemliquida')),
@@ -122,7 +122,7 @@ export const mapScraperToFundamentals = (m: Record<string, unknown>): AssetFunda
         lpa: parseNumberSafe(getVal('lpa')),
         vpa: parseNumberSafe(getVal('vpa', 'vp_cota', 'valor_patrimonial_acao', 'valorpatrimonialcota')),
         
-        updated_at: m.updated_at,
+        updated_at: m.updated_at ? String(m.updated_at) : undefined,
         sentiment: 'Neutro',
         sources: []
     };
@@ -186,9 +186,9 @@ export const triggerScraperUpdate = async (tickers: string[], force = false): Pr
                 } else {
                     throw new Error(data.error || 'Erro desconhecido');
                 }
-            } catch (e: unknown) {
+            } catch (e: any) {
                 console.warn(`Update failed for ${ticker}`, e);
-                results.push({ ticker, status: 'error', message: e.message });
+                results.push({ ticker, status: 'error', message: (e as any).message });
             }
         }));
 
@@ -228,15 +228,15 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], trans
         const confirmedTickers = new Set<string>();
 
         if (data && data.length > 0) {
-            data.forEach((div: { type: string, dateCom: string, paymentDate: string, rate: number }) => {
+            data.forEach((div: any) => {
                 const normalizedTicker = normalizeTicker(div.ticker);
                 
                 // --- LÓGICA DE ELEGIBILIDADE REAL ---
                 // Se temos a data com, verificamos a quantidade que o usuário tinha naquela data.
                 // Se não temos a data com (raro para confirmados), usamos a quantidade atual.
                 let quantityAtDateCom = 0;
-                if (div.date_com) {
-                    quantityAtDateCom = getQuantityOnDate(normalizedTicker, div.date_com, transactions);
+                if (div.dateCom) {
+                    quantityAtDateCom = getQuantityOnDate(normalizedTicker, div.dateCom, transactions);
                 } else {
                     const asset = portfolio.find(p => normalizeTicker(p.ticker) === normalizedTicker);
                     quantityAtDateCom = asset?.quantity || 0;
@@ -247,8 +247,8 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], trans
                 // --- LÓGICA DE RELEVÂNCIA ---
                 let isRelevant = false;
                 
-                if (div.payment_date) {
-                    const payDate = parseDateToLocal(div.payment_date);
+                if (div.paymentDate) {
+                    const payDate = parseDateToLocal(div.paymentDate);
                     // Mostra se for futuro ou se foi nos últimos 7 dias (janela maior para conferência)
                     const recentCutoff = new Date(now);
                     recentCutoff.setDate(recentCutoff.getDate() - 7);
@@ -256,8 +256,8 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], trans
                     if (payDate && payDate >= recentCutoff) isRelevant = true;
                 } else {
                     // Sem data de pagamento = A Definir
-                    if (div.date_com) {
-                        const dCom = parseDateToLocal(div.date_com);
+                    if (div.dateCom) {
+                        const dCom = parseDateToLocal(div.dateCom);
                         // Se data com foi nos últimos 90 dias e ainda não pagou, é relevante
                         const comCutoff = new Date(now);
                         comCutoff.setDate(comCutoff.getDate() - 90);
@@ -275,28 +275,28 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], trans
 
                 const total = preciseMul(quantityAtDateCom, rate);
                 
-                const dateCom = div.date_com ? parseDateToLocal(div.date_com) : null;
+                const dateCom = div.dateCom ? parseDateToLocal(div.dateCom) : null;
                 const refDate = dateCom || now;
                 const diffTime = refDate.getTime() - now.getTime();
                 const daysToDateCom = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
 
                 // Marca que este ticker já tem um provento confirmado para este mês/período
-                const monthKey = (div.payment_date || div.date_com || '').substring(0, 7);
+                const monthKey = (div.paymentDate || div.dateCom || '').substring(0, 7);
                 if (monthKey === now.toISOString().substring(0, 7)) {
                     confirmedTickers.add(normalizedTicker);
                 }
 
                 predictions.push({
                     ticker: normalizedTicker,
-                    dateCom: div.date_com || 'Já ocorreu',
-                    paymentDate: div.payment_date || 'A Definir',
+                    dateCom: div.dateCom || 'Já ocorreu',
+                    paymentDate: div.paymentDate || 'A Definir',
                     rate: rate,
                     quantity: quantityAtDateCom,
                     projectedTotal: total,
                     type: div.type || 'DIV', 
                     daysToDateCom,
                     status: 'CONFIRMED', 
-                    reasoning: `Confirmado: ${div.type} para quem possuía em ${div.date_com || 'data com'}`
+                    reasoning: `Confirmado: ${div.type} para quem possuía em ${div.dateCom || 'data com'}`
                 });
             });
         }
@@ -402,7 +402,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
   // If no tickers need fetching, return cached data filtered for requested tickers
   if (tickersToFetch.length === 0) {
       console.log(`[DataService] Returning cached data for ${uniqueTickers.length} tickers`);
-      const filteredMetadata: Record<string, unknown> = {};
+      const filteredMetadata: any = {};
       uniqueTickers.forEach(t => {
           if (cachedData.data.metadata[t]) filteredMetadata[t] = cachedData.data.metadata[t];
       });
@@ -453,15 +453,15 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
               if (r.status === 'success' && r.rawFundamentals) {
                   metadataMap[normalizeTicker(r.ticker)] = r.rawFundamentals;
                   if (r.dividendsFound && r.dividendsFound.length > 0) {
-                      const newDivs = r.dividendsFound.map((d: { type: string, dateCom: string, paymentDate: string, rate: number }) => ({
+                      const newDivs = r.dividendsFound.map((d: any) => ({
                           ticker: r.ticker,
                           type: d.type || 'DIV',
-                          date_com: d.date_com || '',
-                          payment_date: d.payment_date || '',
+                          dateCom: d.dateCom || '',
+                          paymentDate: d.paymentDate || '',
                           rate: d.rate
                       }));
                       // Remove old dividends for this ticker to avoid duplicates if we just scraped them
-                      dividendsData = dividendsData.filter(d => normalizeTicker(d.ticker) !== normalizeTicker(r.ticker));
+                      dividendsData = dividendsData.filter((d: any) => normalizeTicker(d.ticker as string) !== normalizeTicker(r.ticker as string));
                       dividendsData = [...dividendsData, ...newDivs];
                   }
               }
@@ -469,12 +469,12 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
       }
 
       // 5. Process fetched data
-      const newDividends: DividendReceipt[] = dividendsData.map((d: Record<string, unknown>) => ({
-            id: (d.id as string) || `${d.ticker}-${d.date_com}-${d.rate}`,
+      const newDividends: DividendReceipt[] = dividendsData.map((d: any) => ({
+            id: (d.id as string) || `${d.ticker}-${d.dateCom}-${d.rate}`,
             ticker: normalizeTicker(d.ticker as string),
             type: (d.type as string) || 'DIV',
-            dateCom: (d.date_com as string) || '', 
-            paymentDate: (d.payment_date as string) || '',
+            dateCom: (d.dateCom as string) || '', 
+            paymentDate: (d.paymentDate as string) || '',
             rate: Number(d.rate),
             quantityOwned: 0, 
             totalReceived: 0
@@ -482,7 +482,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
 
       const newMetadata: Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }> = {};
       
-      Object.values(metadataMap).forEach((m: Record<string, unknown>) => {
+      Object.values(metadataMap).forEach((m: any) => {
           let assetType = AssetType.STOCK;
           if (m.type === 'FII' || m.ticker.endsWith('11') || m.ticker.endsWith('11B')) {
               assetType = AssetType.FII;
@@ -492,7 +492,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
           const rawSegment = m.segment || m.setor || m.segmento || m.sector || 'Geral';
           
           newMetadata[normalizedTicker] = {
-              segment: rawSegment,
+              segment: String(rawSegment),
               type: assetType,
               fundamentals: mapScraperToFundamentals(m)
           };
@@ -542,7 +542,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
       }
 
       // 8. Return only requested data
-      const requestedMetadata: Record<string, unknown> = {};
+      const requestedMetadata: Record<string, any> = {};
       uniqueTickers.forEach(t => {
           if (finalMetadata[t]) requestedMetadata[t] = finalMetadata[t];
       });
