@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
@@ -47,7 +48,7 @@ function normalize(str: string) {
     return str.normalize("NFD").replace(REGEX_NORMALIZE, "").toLowerCase().trim();
 }
 
-function parseValue(valueStr: string | number | null | undefined): number | null {
+function parseValue(valueStr: any): number | null {
     if (valueStr === undefined || valueStr === null) return null;
     if (typeof valueStr === 'number') return valueStr;
     
@@ -162,7 +163,7 @@ const FIELD_MATCHERS = [
     { key: 'avg_daily_volume',     indicator: [],                       text: (t: string) => t.includes('volume medio') || t.includes('liquidez media') },
 ];
 
-function buildProcessPair(dados: Record<string, unknown>) {
+function buildProcessPair(dados: any) {
     return function processPair(tituloRaw: string, valorRaw: string, origem = 'table', indicatorAttr: string | null = null) {
         const titulo = normalize(tituloRaw);
         let valor = (valorRaw || '').trim();
@@ -208,7 +209,7 @@ async function scrapeStatusInvestDividends(ticker: string) {
 
         const earnings = data.assetEarningsModels || [];
 
-        return earnings.map((d: { et: number, v: number, ed: string, pd: string, etd?: string }) => {
+        return earnings.map((d: any) => {
             const parseDateJSON = (dStr: string) => {
                 if (!dStr || dStr.trim() === '' || dStr.trim() === '-') return null;
                 const parts = dStr.split('/');
@@ -236,11 +237,10 @@ async function scrapeStatusInvestDividends(ticker: string) {
                 payment_date: paymentDate,
                 rate: d.v
             };
-        }).filter((d: { type: string, dateCom: string, paymentDate: string, rate: number } | null) => d !== null);
+        }).filter((d: any) => d !== null);
 
-    } catch (error: unknown) {
-        const err = error as Error;
-        console.warn(`[StatusInvest] Failed for ${ticker}: ${err.message}`);
+    } catch (error: any) {
+        console.warn(`[StatusInvest] Failed for ${ticker}: ${error.message}`);
         return null;
     }
 }

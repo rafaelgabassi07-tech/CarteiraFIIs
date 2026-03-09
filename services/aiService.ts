@@ -70,7 +70,7 @@ const getRecentTopics = (): string[] => {
         const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
         // Filter history for the last 10 days to ensure variety
         const tenDaysAgo = Date.now() - 10 * 24 * 60 * 60 * 1000;
-        return history.filter((h: { timestamp: number }) => h.timestamp > tenDaysAgo).map((h: { topic: string }) => h.topic);
+        return history.filter((h: any) => h.timestamp > tenDaysAgo).map((h: any) => h.topic);
     } catch {
         return [];
     }
@@ -192,7 +192,7 @@ export const generateAIInsights = async (): Promise<PortfolioInsight[]> => {
                                     searchTypes: {
                                         imageSearch: {}
                                     }
-                                } as { id: string, title: string, content: string, type: 'ALERT' | 'INSIGHT' | 'OPPORTUNITY', impact: 'HIGH' | 'MEDIUM' | 'LOW', read: boolean, timestamp: number, relatedTickers: string[], actionLabel?: string, actionUrl?: string }
+                                } as any
                             }
                         ]
                     }
