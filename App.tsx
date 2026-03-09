@@ -115,7 +115,7 @@ const App: React.FC = () => {
   const [targetAssetTicker, setTargetAssetTicker] = useState<string | null>(null);
   
   // PWA Install State
-  const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [installPrompt, setInstallPrompt] = useState<any | null>(null);
   const [showInstallModal, setShowInstallModal] = useState(false);
 
   // Preferências
@@ -211,7 +211,7 @@ const App: React.FC = () => {
 
   // --- PWA INSTALL HANDLER ---
   useEffect(() => {
-      const handler = (e: any) => {
+      const handler = (e: Event) => {
           e.preventDefault();
           setInstallPrompt(e);
           setTimeout(() => setShowInstallModal(true), 5000);
@@ -283,9 +283,10 @@ const App: React.FC = () => {
             latency = Date.now() - start;
             if (latency > 2500) status = 'degraded';
 
-        } catch (e: any) {
+        } catch (e: unknown) {
             status = 'error';
-            message = e.name === 'AbortError' ? 'Tempo limite (Timeout)' : (e.message || 'Falha');
+            const error = e as Error;
+            message = error.name === 'AbortError' ? 'Tempo limite (Timeout)' : (error.message || 'Falha');
             latency = 0;
         }
 
@@ -325,7 +326,7 @@ const App: React.FC = () => {
       }
       
       if (newQuotesData && newQuotesData.length > 0) {
-        setQuotes(prev => ({...prev, ...newQuotesData.reduce((acc: any, q: any) => ({...acc, [q.symbol]: q }), {})}));
+        setQuotes(prev => ({...prev, ...newQuotesData.reduce((acc: Record<string, BrapiQuote>, q: BrapiQuote) => ({...acc, [q.symbol]: q }), {})}));
       }
       
       if (initialLoad) setLoadingProgress(70); 
@@ -539,7 +540,7 @@ const App: React.FC = () => {
           if (error) showToast('error', `Brapi: ${error}`);
           
           if (newQuotesData && newQuotesData.length > 0) {
-              setQuotes(prev => ({...prev, ...newQuotesData.reduce((acc: any, q: any) => ({...acc, [q.symbol]: q }), {})}));
+              setQuotes(prev => ({...prev, ...newQuotesData.reduce((acc: Record<string, BrapiQuote>, q: BrapiQuote) => ({...acc, [q.symbol]: q }), {})}));
           }
           
           // 2. Sincroniza dados unificados FORÇANDO O SCRAPER (forceRefresh = true)
@@ -562,13 +563,13 @@ const App: React.FC = () => {
           }
 
           // Atualiza relatório e mostra modal
-          const results = tickers.map(t => ({
+          const results: ScrapeResult[] = tickers.map(t => ({
               ticker: t,
               status: 'success' as const,
           }));
 
           setLastUpdateReport({
-              results: results as any,
+              results: results,
               inflationRate: data.indicators?.ipca_cumulative || 0,
               cdiRate: data.indicators?.cdi_cumulative || 0,
               totalDividendsFound: data.dividends.length
@@ -593,7 +594,7 @@ const App: React.FC = () => {
   }, [session, fetchTransactionsFromCloud, showToast]);
 
   const handleUpdateTransaction = useCallback(async (id: string, t: Partial<Transaction>) => {
-      const dbPayload: any = {};
+      const dbPayload: Record<string, unknown> = {};
       if (t.ticker !== undefined) dbPayload.ticker = t.ticker;
       if (t.type !== undefined) dbPayload.type = t.type;
       if (t.quantity !== undefined) dbPayload.quantity = t.quantity;

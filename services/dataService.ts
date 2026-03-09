@@ -35,7 +35,7 @@ const isStale = (dateString?: string) => {
     return (now - lastUpdate) > getTTL();
 };
 
-const parseNumberSafe = (val: any): number | undefined => {
+const parseNumberSafe = (val: unknown): number | undefined => {
     if (typeof val === 'number') return val;
     if (val === undefined || val === null || val === '') return undefined;
     
@@ -61,8 +61,8 @@ const parseNumberSafe = (val: any): number | undefined => {
     return isNaN(num) ? undefined : num;
 };
 
-export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
-    const getVal = (...keys: string[]): any => {
+export const mapScraperToFundamentals = (m: Record<string, unknown>): AssetFundamentals => {
+    const getVal = (...keys: string[]): unknown => {
         for (const k of keys) {
             if (m[k] !== undefined && m[k] !== null && m[k] !== '' && m[k] !== 'N/A') return m[k];
         }
@@ -99,7 +99,7 @@ export const mapScraperToFundamentals = (m: any): AssetFundamentals => {
         properties_count: parseNumberSafe(getVal('properties_count', 'num_cotistas', 'cotistas')),
         
         // Informações Adicionais
-        company_name: getVal('company_name', 'razao_social'),
+        company_name: getVal('company_name', 'razao_social') as string,
         num_quotas: getVal('num_quotas', 'cotas_emitidas'),
         cnpj: getVal('cnpj'),
         mandate: getVal('mandate', 'mandato'),
@@ -186,7 +186,7 @@ export const triggerScraperUpdate = async (tickers: string[], force = false): Pr
                 } else {
                     throw new Error(data.error || 'Erro desconhecido');
                 }
-            } catch (e: any) {
+            } catch (e: unknown) {
                 console.warn(`Update failed for ${ticker}`, e);
                 results.push({ ticker, status: 'error', message: e.message });
             }
@@ -228,7 +228,7 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], trans
         const confirmedTickers = new Set<string>();
 
         if (data && data.length > 0) {
-            data.forEach((div: any) => {
+            data.forEach((div: { type: string, dateCom: string, paymentDate: string, rate: number }) => {
                 const normalizedTicker = normalizeTicker(div.ticker);
                 
                 // --- LÓGICA DE ELEGIBILIDADE REAL ---
@@ -402,7 +402,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
   // If no tickers need fetching, return cached data filtered for requested tickers
   if (tickersToFetch.length === 0) {
       console.log(`[DataService] Returning cached data for ${uniqueTickers.length} tickers`);
-      const filteredMetadata: any = {};
+      const filteredMetadata: Record<string, unknown> = {};
       uniqueTickers.forEach(t => {
           if (cachedData.data.metadata[t]) filteredMetadata[t] = cachedData.data.metadata[t];
       });
@@ -421,8 +421,8 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
 
   try {
       // 3. Fetch missing/stale data
-      let dividendsData: any[] = [];
-      let metaData: any[] = [];
+      let dividendsData: Record<string, unknown>[] = [];
+      let metaData: Record<string, unknown>[] = [];
 
       if (tickersToFetch.length > 0) {
           const [divRes, metaRes] = await Promise.all([
@@ -437,8 +437,8 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
           if (metaRes.error) console.error('[DataService] Error fetching metadata:', metaRes.error);
       }
 
-      const metadataMap: Record<string, any> = {};
-      metaData.forEach((m: any) => { metadataMap[normalizeTicker(m.ticker)] = m; });
+      const metadataMap: Record<string, Record<string, unknown>> = {};
+      metaData.forEach((m: Record<string, unknown>) => { metadataMap[normalizeTicker(m.ticker as string)] = m; });
 
       // Identify which are STILL missing (not in Supabase) or if we are forcing refresh
       const missingInSupabase = tickersToFetch.filter(t => !metadataMap[t]);
@@ -453,7 +453,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
               if (r.status === 'success' && r.rawFundamentals) {
                   metadataMap[normalizeTicker(r.ticker)] = r.rawFundamentals;
                   if (r.dividendsFound && r.dividendsFound.length > 0) {
-                      const newDivs = r.dividendsFound.map((d: any) => ({
+                      const newDivs = r.dividendsFound.map((d: { type: string, dateCom: string, paymentDate: string, rate: number }) => ({
                           ticker: r.ticker,
                           type: d.type || 'DIV',
                           date_com: d.date_com || '',
@@ -469,12 +469,12 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
       }
 
       // 5. Process fetched data
-      const newDividends: DividendReceipt[] = dividendsData.map((d: any) => ({
-            id: d.id || `${d.ticker}-${d.date_com}-${d.rate}`,
-            ticker: normalizeTicker(d.ticker),
-            type: d.type || 'DIV',
-            dateCom: d.date_com || '', 
-            paymentDate: d.payment_date || '',
+      const newDividends: DividendReceipt[] = dividendsData.map((d: Record<string, unknown>) => ({
+            id: (d.id as string) || `${d.ticker}-${d.date_com}-${d.rate}`,
+            ticker: normalizeTicker(d.ticker as string),
+            type: (d.type as string) || 'DIV',
+            dateCom: (d.date_com as string) || '', 
+            paymentDate: (d.payment_date as string) || '',
             rate: Number(d.rate),
             quantityOwned: 0, 
             totalReceived: 0
@@ -482,7 +482,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
 
       const newMetadata: Record<string, { segment: string; type: AssetType; fundamentals?: AssetFundamentals }> = {};
       
-      Object.values(metadataMap).forEach((m: any) => {
+      Object.values(metadataMap).forEach((m: Record<string, unknown>) => {
           let assetType = AssetType.STOCK;
           if (m.type === 'FII' || m.ticker.endsWith('11') || m.ticker.endsWith('11B')) {
               assetType = AssetType.FII;
@@ -542,7 +542,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
       }
 
       // 8. Return only requested data
-      const requestedMetadata: any = {};
+      const requestedMetadata: Record<string, unknown> = {};
       uniqueTickers.forEach(t => {
           if (finalMetadata[t]) requestedMetadata[t] = finalMetadata[t];
       });
@@ -554,8 +554,9 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
           indicators: fullResult.indicators
       };
 
-  } catch (error: any) {
+  } catch (error: unknown) {
       console.error("DataService Fatal:", error);
-      return { dividends: [], metadata: {}, error: error.message };
+      const e = error as Error;
+      return { dividends: [], metadata: {}, error: e.message };
   }
 };

@@ -14,7 +14,7 @@ interface WatchlistItem {
     dayLow?: number;
     name?: string;
     logo?: string;
-    fundamentals?: any;
+    fundamentals?: Record<string, unknown>;
     segment?: string;
     type?: AssetType;
     updatedAt?: number;
@@ -157,7 +157,7 @@ export default function Watchlist({ showToast }: WatchlistProps) {
             setQuotes(prev => {
                 const newQuotes = { ...prev };
                 
-                brapiData.forEach((q: any) => {
+                brapiData.forEach((q: { symbol: string, regularMarketPrice: number, regularMarketChangePercent: number, regularMarketTime: string, logourl: string }) => {
                     const ticker = q.symbol;
                     newQuotes[ticker] = {
                         ...newQuotes[ticker],
@@ -173,7 +173,7 @@ export default function Watchlist({ showToast }: WatchlistProps) {
                 });
 
                 if (unifiedData?.metadata) {
-                    Object.entries(unifiedData.metadata).forEach(([ticker, meta]: [string, any]) => {
+                    Object.entries(unifiedData.metadata).forEach(([ticker, meta]: [string, { fundamentals?: { company_name?: string } }]) => {
                         newQuotes[ticker] = {
                             ...newQuotes[ticker],
                             ticker: ticker,
@@ -322,8 +322,8 @@ export default function Watchlist({ showToast }: WatchlistProps) {
             const quoteA = quotes[a];
             const quoteB = quotes[b];
             
-            let valA: any = a;
-            let valB: any = b;
+            let valA: string | number = a as unknown as string | number;
+            let valB: string | number = b as unknown as string | number;
 
             if (sortBy === 'PRICE') {
                 valA = quoteA?.price || 0;
