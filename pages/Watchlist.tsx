@@ -406,12 +406,24 @@ export default function Watchlist({ showToast }: WatchlistProps) {
                                                 )}
                                             </div>
                                             <div>
-                                                <h3 className="font-black text-base text-zinc-900 dark:text-white leading-none group-hover:text-indigo-600 transition-colors">{searchResult.ticker}</h3>
+                                                <div className="flex items-center gap-2">
+                                                    <h3 className="font-black text-base text-zinc-900 dark:text-white leading-none group-hover:text-indigo-600 transition-colors">{searchResult.ticker}</h3>
+                                                    <span className={`text-[7px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide ${searchResult.type === AssetType.FII ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400'}`}>
+                                                        {searchResult.type}
+                                                    </span>
+                                                </div>
                                                 <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mt-1">{searchResult.name}</p>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-3">
-                                            <span className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(searchResult.price || 0)}</span>
+                                        <div className="flex items-center gap-4">
+                                            <div className="flex flex-col items-end gap-0.5">
+                                                <span className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(searchResult.price || 0)}</span>
+                                                {searchResult.change !== undefined && (
+                                                    <span className={`text-[9px] font-bold ${searchResult.change >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                        {searchResult.change >= 0 ? '+' : ''}{searchResult.change.toFixed(2)}%
+                                                    </span>
+                                                )}
+                                            </div>
                                             <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
                                                 <Plus className="w-4 h-4" strokeWidth={3} />
                                             </div>
