@@ -270,7 +270,7 @@ export const fetchFutureAnnouncements = async (portfolio: AssetPosition[], trans
 
                 if (!isRelevant) return;
 
-                const rate = Number(div.rate);
+                const rate = parseNumberSafe(String(div.rate)) || 0;
                 if (rate <= 0) return;
 
                 const total = preciseMul(quantityAtDateCom, rate);
@@ -458,7 +458,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
                           type: d.type || 'DIV',
                           date_com: d.date_com || d.dateCom || '',
                           payment_date: d.payment_date || d.paymentDate || '',
-                          rate: d.rate
+                          rate: parseNumberSafe(String(d.rate)) || 0
                       }));
                       // Remove old dividends for this ticker to avoid duplicates if we just scraped them
                       dividendsData = dividendsData.filter((d: any) => normalizeTicker(d.ticker as string) !== normalizeTicker(r.ticker as string));

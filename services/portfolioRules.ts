@@ -126,15 +126,23 @@ export const processPortfolio = (
 
     const safeDividends = dividends || [];
 
-    // 1. Processamento de Proventos
-    // Mapa auxiliar para somar dividendos por ativo para exibição no card
+    // 1. Processamento de Proventos (Deduplicado por Ticker + Data + Valor)
     const divPaidMap: Record<string, number> = {};
     let totalDividendsReceived = 0;
+    const processedDivKeys = new Set<string>();
 
     const receipts = safeDividends.map(d => {
         if (!d || !d.ticker) return null;
         const normalizedTicker = normalizeTicker(d.ticker);
         
+        // Chave de deduplicação para evitar somar o mesmo provento várias vezes
+        // Usamos Ticker + Data (Com ou Pagamento) + Valor (Rate)
+        const dateKey = (d.dateCom || d.paymentDate || '').split('T')[0];
+        const divKey = `${normalizedTicker}-${dateKey}-${Number(d.rate).toFixed(6)}`;
+        
+        if (processedDivKeys.has(divKey)) return null;
+        processedDivKeys.add(divKey);
+
         // Calcula quantidade EXATA na data COM
         let qty = 0;
         if (d.dateCom && d.dateCom !== 'Já ocorreu') {

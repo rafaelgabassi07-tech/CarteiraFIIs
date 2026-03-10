@@ -64,9 +64,10 @@ const mergeDividends = (current: DividendReceipt[], incoming: DividendReceipt[])
     const getStableKey = (d: DividendReceipt) => {
         const ticker = normalizeTicker(d.ticker);
         const type = d.type || 'DIV';
-        // Normaliza a data para YYYY-MM-DD para evitar duplicatas por causa de fuso horário/timestamp
+        // Usa a data COM como primária para deduplicação, pois é o evento gerador.
+        // Se não tiver data COM, usa a de pagamento.
         const date = (d.dateCom || d.paymentDate || '').split('T')[0];
-        const rate = Number(d.rate).toFixed(6); // Normaliza precisão do rate
+        const rate = Number(d.rate).toFixed(6);
         return `${ticker}-${type}-${date}-${rate}`;
     };
 
@@ -138,7 +139,10 @@ const App: React.FC = () => {
   
   const [quotes, setQuotes] = useState<Record<string, BrapiQuote>>(() => safeGetItem(STORAGE_KEYS.QUOTES, {}));
   
-  const [dividends, setDividends] = useState<DividendReceipt[]>(() => safeGetItem(STORAGE_KEYS.DIVS, []));
+  const [dividends, setDividends] = useState<DividendReceipt[]>(() => {
+      const cached = safeGetItem<DividendReceipt[]>(STORAGE_KEYS.DIVS, []);
+      return mergeDividends([], cached);
+  });
   
   const [marketIndicators, setMarketIndicators] = useState<{ipca: number, cdi: number, startDate: string}>(() => 
       safeGetItem(STORAGE_KEYS.INDICATORS, { ipca: 4.62, cdi: 11.25, startDate: '' })
