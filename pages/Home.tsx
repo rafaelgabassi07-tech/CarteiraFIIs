@@ -73,20 +73,30 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
         
         const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
         const maxDate = new Date();
+        // Extend maxDate to 6 months in the future to show provisioned dividends
+        const futureLimit = new Date();
+        futureLimit.setMonth(futureLimit.getMonth() + 6);
         
         // Initialize Timeline
         const timeline: Record<string, { 
             monthlyContribution: number, 
             monthlyDividend: number,
+            monthlyDividendProvisioned: number,
             accumulatedInvested: number,
             accumulatedDividends: number 
         }> = {};
 
         let current = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
         const allMonths: string[] = [];
-        while (current <= maxDate) {
+        while (current <= futureLimit) {
             const key = current.toISOString().slice(0, 7);
-            timeline[key] = { monthlyContribution: 0, monthlyDividend: 0, accumulatedInvested: 0, accumulatedDividends: 0 };
+            timeline[key] = { 
+                monthlyContribution: 0, 
+                monthlyDividend: 0, 
+                monthlyDividendProvisioned: 0,
+                accumulatedInvested: 0, 
+                accumulatedDividends: 0 
+            };
             allMonths.push(key);
             current.setMonth(current.getMonth() + 1);
         }
@@ -108,15 +118,37 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
         });
 
         // Process Dividends
-        const sortedDivs = [...dividends].filter(d => d.paymentDate).sort((a, b) => a.paymentDate!.localeCompare(b.paymentDate!));
+        const todayStr = new Date().toISOString().split('T')[0];
+        const currentMonthKey = todayStr.substring(0, 7);
+        
+        const sortedDivs = [...dividends]
+            .filter(d => d.paymentDate || d.dateCom)
+            .sort((a, b) => (a.paymentDate || a.dateCom)!.localeCompare((b.paymentDate || b.dateCom)!));
+            
         let runningDivs = 0;
 
         allMonths.forEach(month => {
-            const monthDivs = sortedDivs.filter(d => d.paymentDate?.startsWith(month));
-            const monthlyDivTotal = monthDivs.reduce((acc, d) => acc + d.totalReceived, 0);
+            const monthDivs = sortedDivs.filter(d => {
+                const date = d.paymentDate || d.dateCom;
+                return date?.startsWith(month);
+            });
 
-            timeline[month].monthlyDividend = monthlyDivTotal;
-            runningDivs += monthlyDivTotal;
+            const monthlyPaid = monthDivs.reduce((acc, d) => {
+                const date = d.paymentDate || d.dateCom;
+                // Consider paid if paymentDate is in the past or current month (approximation)
+                return (date && date <= todayStr) ? acc + d.totalReceived : acc;
+            }, 0);
+
+            const monthlyProvisioned = monthDivs.reduce((acc, d) => {
+                const date = d.paymentDate || d.dateCom;
+                return (date && date > todayStr) ? acc + d.totalReceived : acc;
+            }, 0);
+
+            timeline[month].monthlyDividend = monthlyPaid;
+            timeline[month].monthlyDividendProvisioned = monthlyProvisioned;
+            
+            // Only accumulate paid dividends
+            runningDivs += monthlyPaid;
             timeline[month].accumulatedDividends = runningDivs;
         });
 
@@ -144,6 +176,7 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                 fullLabel: getMonthName(m),
                 contribution: data.monthlyContribution,
                 dividend: data.monthlyDividend,
+                dividendProvisioned: data.monthlyDividendProvisioned,
                 invested: data.accumulatedInvested,
                 dividends: data.accumulatedDividends,
                 marketValue: marketValue,
@@ -292,6 +325,19 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                                 <button onClick={() => setChartType('RETURN')} className={`px-2 py-1 rounded-md text-[8px] font-black uppercase transition-all ${chartType === 'RETURN' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}>Retorno</button>
                             </div>
 
+                            {chartType === 'CASHFLOW' && (
+                                <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-1">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                                        <span className="text-[7px] font-bold text-zinc-500 uppercase">Recebido</span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-sky-500"></div>
+                                        <span className="text-[7px] font-bold text-zinc-500 uppercase">Provisionado</span>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="relative">
                                 <button 
                                     onClick={() => setShowTimeFilter(!showTimeFilter)}
@@ -389,32 +435,46 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                                             <ComposedChart data={filteredData} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
                                                 <defs>
                                                     <linearGradient id="colorCashBar" x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.8}/>
-                                                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0.2}/>
+                                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0.2}/>
+                                                    </linearGradient>
+                                                    <linearGradient id="colorProvisionedBar" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.6}/>
+                                                        <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0.1}/>
                                                     </linearGradient>
                                                 </defs>
                                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.05} />
                                                 <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 8, fill: '#71717a', fontWeight: 700 }} dy={5} minTickGap={20} />
-                                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 8, fill: '#71717a' }} tickFormatter={(val) => `R$${val/1000}k`} />
+                                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 8, fill: '#71717a' }} tickFormatter={(val) => `R$${val}`} />
                                                 <RechartsTooltip 
                                                     cursor={{ fill: 'rgba(99, 102, 241, 0.05)' }}
                                                     content={({ active, payload, label }) => {
                                                         if (active && payload && payload.length) {
-                                                            const uniquePayload = payload.filter((v: any, i: number, a: any[]) => a.findIndex(t => (t.name === v.name)) === i);
+                                                            const data = payload[0].payload;
                                                             return (
-                                                                <div className="bg-zinc-900/95 border border-zinc-800 p-3 rounded-xl shadow-xl backdrop-blur-md min-w-[120px]">
-                                                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">{label}</p>
+                                                                <div className="bg-zinc-900/95 border border-zinc-800 p-3 rounded-xl shadow-xl backdrop-blur-md min-w-[140px]">
+                                                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">{data.fullLabel}</p>
                                                                     <div className="space-y-2">
-                                                                        {uniquePayload.map((entry: any) => (
-                                                                            <div key={entry.name} className="flex flex-col">
-                                                                                <span className="text-[9px] font-bold text-zinc-500 uppercase">
-                                                                                    {entry.name === 'contribution' ? 'Aporte Líquido' : 'Dividendos'}
-                                                                                </span>
-                                                                                <span className={`text-xs font-black ${entry.name === 'dividend' ? 'text-emerald-400' : 'text-indigo-400'}`}>
-                                                                                    {formatBRL(entry.value)}
+                                                                        <div className="flex flex-col">
+                                                                            <span className="text-[9px] font-bold text-zinc-500 uppercase">Recebido</span>
+                                                                            <span className="text-xs font-black text-emerald-400">
+                                                                                {formatBRL(data.dividend)}
+                                                                            </span>
+                                                                        </div>
+                                                                        {data.dividendProvisioned > 0 && (
+                                                                            <div className="flex flex-col">
+                                                                                <span className="text-[9px] font-bold text-zinc-500 uppercase">Provisionado</span>
+                                                                                <span className="text-xs font-black text-sky-400">
+                                                                                    {formatBRL(data.dividendProvisioned)}
                                                                                 </span>
                                                                             </div>
-                                                                        ))}
+                                                                        )}
+                                                                        <div className="flex flex-col pt-1 border-t border-zinc-800">
+                                                                            <span className="text-[9px] font-bold text-zinc-500 uppercase">Aporte</span>
+                                                                            <span className="text-xs font-black text-indigo-400">
+                                                                                {formatBRL(data.contribution)}
+                                                                            </span>
+                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                             );
@@ -422,9 +482,9 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                                                         return null;
                                                     }}
                                                 />
-                                                <Bar dataKey="contribution" fill="url(#colorCashBar)" radius={[4, 4, 0, 0]} maxBarSize={16} animationDuration={1000} />
-                                                <Line type="monotone" dataKey="contribution" stroke="#6366f1" strokeWidth={1.5} strokeDasharray="3 3" dot={false} opacity={0.4} tooltipType="none" />
-                                                <Line type="monotone" dataKey="dividend" stroke="#10b981" strokeWidth={2} dot={{r: 3, fill: "#10b981", strokeWidth: 1, stroke: "#fff"}} activeDot={{ r: 5, strokeWidth: 0, fill: '#10b981' }} animationDuration={1500} />
+                                                <Bar dataKey="dividend" stackId="a" fill="url(#colorCashBar)" radius={[0, 0, 0, 0]} maxBarSize={16} animationDuration={1000} />
+                                                <Bar dataKey="dividendProvisioned" stackId="a" fill="url(#colorProvisionedBar)" radius={[4, 4, 0, 0]} maxBarSize={16} animationDuration={1000} />
+                                                <Line type="monotone" dataKey="contribution" stroke="#6366f1" strokeWidth={1.5} strokeDasharray="3 3" dot={false} opacity={0.4} />
                                             </ComposedChart>
                                         ) : (
                                             <ComposedChart data={filteredData} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
