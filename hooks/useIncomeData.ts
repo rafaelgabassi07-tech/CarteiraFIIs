@@ -5,7 +5,7 @@ import { getMonthName } from '../utils/formatters';
 export const useIncomeData = (dividendReceipts: DividendReceipt[]) => {
     return useMemo(() => {
         const groups: Record<string, number> = {};
-        const historyList: { date: string, ticker: string, type: string, amount: number, paymentDate: string, status: 'paid' | 'provisioned' }[] = [];
+        const historyList: { date: string, ticker: string, type: string, amount: number, paymentDate: string, status: 'paid' | 'provisioned', quantity: number, rate: number }[] = [];
         const today = new Date();
         const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
         
@@ -55,7 +55,9 @@ export const useIncomeData = (dividendReceipts: DividendReceipt[]) => {
                 type: d.type,
                 amount: d.totalReceived,
                 paymentDate: d.paymentDate && d.paymentDate !== 'A Definir' ? d.paymentDate : effectiveDate,
-                status
+                status,
+                quantity: d.quantityOwned,
+                rate: d.rate
             });
         });
         

@@ -1405,10 +1405,15 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                     </div>
                     <div className="relative pt-4 pl-4 border-t border-l border-white/10">
                         <span className="text-[9px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Projeção 12M</span>
-                        <div className="flex items-center gap-1.5 text-emerald-400">
-                            <Sparkles className="w-3.5 h-3.5" />
-                            <span className="text-sm font-black tabular-nums tracking-tight">
-                                {formatBRL(projectedDividends12m, privacyMode)}
+                        <div className="flex flex-col">
+                            <div className="flex items-center gap-1.5 text-emerald-400">
+                                <Sparkles className="w-3.5 h-3.5" />
+                                <span className="text-sm font-black tabular-nums tracking-tight">
+                                    {formatBRL(projectedDividends12m, privacyMode)}
+                                </span>
+                            </div>
+                            <span className="text-[8px] font-bold text-zinc-500 mt-0.5">
+                                ~{formatBRL(projectedDividends12m / 12, privacyMode)}/mês
                             </span>
                         </div>
                     </div>
@@ -1846,26 +1851,50 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                                                 </div>
                                                 <div className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
                                                     {incomeData.groupedHistory[monthKey].map((item, idx) => (
-                                                        <div key={`${item.ticker}-${idx}`} className="flex items-center justify-between p-2 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
-                                                            <div className="flex items-center gap-2.5">
-                                                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[9px] font-black border ${item.status === 'provisioned' ? 'bg-blue-50 dark:bg-blue-900/10 text-blue-600 border-blue-100 dark:border-blue-800/30' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border-zinc-200 dark:border-zinc-700'}`}>
-                                                                    {item.ticker.substring(0, 2)}
+                                                        <div key={`${item.ticker}-${idx}`} className="flex items-center justify-between p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-all group">
+                                                            <div className="flex items-center gap-4">
+                                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-[10px] font-black border transition-transform group-hover:scale-110 ${
+                                                                    item.status === 'provisioned' 
+                                                                        ? 'bg-blue-50 dark:bg-blue-900/10 text-blue-600 border-blue-100 dark:border-blue-800/30' 
+                                                                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border-zinc-200 dark:border-zinc-700'
+                                                                }`}>
+                                                                    {item.ticker.substring(0, 4)}
                                                                 </div>
                                                                 <div>
-                                                                    <div className="flex items-center gap-1.5">
-                                                                        <span className="text-xs font-bold text-zinc-900 dark:text-white">{item.ticker}</span>
-                                                                        <span className={`text-[7px] font-bold px-1 py-0.5 rounded uppercase ${item.type === 'JCP' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'}`}>
+                                                                    <div className="flex items-center gap-2 mb-0.5">
+                                                                        <span className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">{item.ticker}</span>
+                                                                        <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest ${
+                                                                            item.type === 'JCP' 
+                                                                                ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' 
+                                                                                : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                                                                        }`}>
                                                                             {item.type}
                                                                         </span>
+                                                                        {item.status === 'provisioned' ? (
+                                                                            <span className="px-1.5 py-0.5 rounded-md bg-blue-500/10 text-blue-500 text-[7px] font-black uppercase tracking-widest animate-pulse">
+                                                                                Pendente
+                                                                            </span>
+                                                                        ) : (
+                                                                            <span className="px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 text-[7px] font-black uppercase tracking-widest">
+                                                                                Pago
+                                                                            </span>
+                                                                        )}
                                                                     </div>
-                                                                    <span className="text-[9px] text-zinc-400">
-                                                                        {formatDateShort(item.paymentDate)}
-                                                                    </span>
+                                                                    <div className="flex items-center gap-2 text-[10px] text-zinc-400 font-bold">
+                                                                        <span>{formatDateShort(item.paymentDate)}</span>
+                                                                        <span className="text-zinc-200 dark:text-zinc-800">&bull;</span>
+                                                                        <span>{item.quantity} {item.quantity === 1 ? 'cota' : 'cotas'}</span>
+                                                                    </div>
                                                                 </div>
                                                             </div>
-                                                            <span className={`text-xs font-bold tabular-nums ${item.status === 'provisioned' ? 'text-blue-500' : 'text-zinc-900 dark:text-white'}`}>
-                                                                +{formatBRL(item.amount, privacyMode)}
-                                                            </span>
+                                                            <div className="text-right">
+                                                                <p className={`text-sm font-black tabular-nums tracking-tight ${item.status === 'provisioned' ? 'text-blue-500' : 'text-zinc-900 dark:text-white'}`}>
+                                                                    +{formatBRL(item.amount, privacyMode)}
+                                                                </p>
+                                                                <p className="text-[9px] font-bold text-zinc-400">
+                                                                    {formatBRL(item.rate)}/cota
+                                                                </p>
+                                                            </div>
                                                         </div>
                                                     ))}
                                                 </div>
