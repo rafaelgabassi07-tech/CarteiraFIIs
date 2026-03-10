@@ -1023,13 +1023,41 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
   };
 
   const projectedDividends12m = useMemo(() => {
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+      const oneYearAgoStr = oneYearAgo.toISOString().split('T')[0];
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      // Mapa para somar as taxas pagas por ticker nos últimos 12 meses
+      const tickerYieldMap: Record<string, number> = {};
+      
+      (marketDividends || []).forEach(d => {
+          const date = d.paymentDate || d.dateCom;
+          // Considera apenas proventos dos últimos 12 meses até hoje
+          if (date && date >= oneYearAgoStr && date <= todayStr) {
+              const ticker = d.ticker.toUpperCase();
+              tickerYieldMap[ticker] = (tickerYieldMap[ticker] || 0) + (d.rate || 0);
+          }
+      });
+
       return portfolio.reduce((acc, asset) => {
-          if (!asset.currentPrice || !asset.quantity) return acc;
-          const assetValue = asset.quantity * asset.currentPrice;
-          const dy = asset.dy_12m || 0;
-          return acc + (assetValue * (dy / 100));
+          if (!asset.quantity) return acc;
+          
+          const ticker = asset.ticker.toUpperCase();
+          const historicalYieldPerShare = tickerYieldMap[ticker] || 0;
+          
+          // Se temos histórico real de taxas, usamos (Qtd Atual * Soma das Taxas 12m)
+          // Isso é muito mais preciso que usar o DY% do scraper que pode estar inflado ou defasado
+          if (historicalYieldPerShare > 0) {
+              return acc + (asset.quantity * historicalYieldPerShare);
+          } else {
+              // Fallback para o DY% do scraper se não houver histórico de taxas
+              const assetValue = asset.quantity * (asset.currentPrice || 0);
+              const dy = asset.dy_12m || 0;
+              return acc + (assetValue * (dy / 100));
+          }
       }, 0);
-  }, [portfolio]);
+  }, [portfolio, marketDividends]);
 
   const capitalGain = totalAppreciation + salesGain;
   const totalReturn = capitalGain + totalDividendsReceived;
@@ -1404,7 +1432,13 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                         </div>
                     </div>
                     <div className="relative pt-4 pl-4 border-t border-l border-white/10">
-                        <span className="text-[9px] text-zinc-500 uppercase font-black tracking-widest block mb-1">Projeção 12M</span>
+                        <div className="flex items-center gap-1 mb-1">
+                            <span className="text-[9px] text-zinc-500 uppercase font-black tracking-widest block">Projeção 12M</span>
+                            <InfoTooltip 
+                                title="Projeção de Dividendos" 
+                                text="Estimativa baseada na soma das taxas reais pagas por cada ativo nos últimos 12 meses, multiplicada pela sua quantidade atual. Caso não haja histórico, utiliza o Dividend Yield de mercado." 
+                            />
+                        </div>
                         <div className="flex flex-col">
                             <div className="flex items-center gap-1.5 text-emerald-400">
                                 <Sparkles className="w-3.5 h-3.5" />
