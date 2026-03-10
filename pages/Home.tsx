@@ -1727,9 +1727,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
         </SwipeableModal>
 
         <SwipeableModal isOpen={showProventos} onClose={() => setShowProventos(false)}>
-            <div className="p-4 h-full flex flex-col anim-slide-up">
+            <div className="px-0 py-4 h-full flex flex-col anim-slide-up">
                 {/* Compact Header with Integrated Summary */}
-                <div className="flex flex-col gap-4 mb-6 shrink-0">
+                <div className="flex flex-col gap-4 mb-6 shrink-0 px-4">
                     <div className="flex items-center justify-between">
                         <div>
                             <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter">Proventos</h2>
@@ -1925,7 +1925,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
 
                     {/* History Section */}
                     <div className="pt-2">
-                        <div className="flex items-center justify-between mb-4 px-2">
+                        <div className="flex items-center justify-between mb-4 px-0">
                             <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Histórico</h3>
                             <div className="flex bg-zinc-100 dark:bg-zinc-800/50 p-0.5 rounded-lg">
                                 <button 
