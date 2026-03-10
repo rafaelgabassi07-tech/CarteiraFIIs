@@ -620,8 +620,16 @@ const App: React.FC = () => {
       });
   }, [session, fetchTransactionsFromCloud, showToast]);
 
-  const handleClearNotifications = useCallback(() => {
+  const handleMarkAllAsRead = useCallback(() => {
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  }, []);
+
+  const handleDeleteAllNotifications = useCallback(() => {
+      setNotifications([]);
+  }, []);
+
+  const handleDeleteReadNotifications = useCallback(() => {
+      setNotifications(prev => prev.filter(n => !n.read));
   }, []);
 
   // Handler para Navegação via Stories
@@ -884,7 +892,14 @@ const App: React.FC = () => {
             <BottomNav currentTab={currentTab} onTabChange={setCurrentTab} isVisible={!showSettings} />
             
             <ChangelogModal isOpen={isChangelogOpen} onClose={() => setShowChangelog(false)} version={APP_VERSION} notes={releaseNotes} onUpdate={startUpdateProcess} isUpdating={isUpdating} />
-            <NotificationsModal isOpen={showNotifications} onClose={() => setShowNotifications(false)} notifications={notifications} onClear={handleClearNotifications} />
+            <NotificationsModal 
+                isOpen={showNotifications} 
+                onClose={() => setShowNotifications(false)} 
+                notifications={notifications} 
+                onMarkAllRead={handleMarkAllAsRead}
+                onDeleteAll={handleDeleteAllNotifications}
+                onDeleteRead={handleDeleteReadNotifications}
+            />
             <ConfirmationModal {...confirmModal} onCancel={() => setConfirmModal(null)} />
             <UpdateReportModal isOpen={showUpdateReport} onClose={() => setShowUpdateReport(false)} results={lastUpdateReport} />
         </>
