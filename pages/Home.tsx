@@ -1028,30 +1028,50 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
       const oneYearAgoStr = oneYearAgo.toISOString().split('T')[0];
       const todayStr = new Date().toISOString().split('T')[0];
 
-      // Mapa para somar as taxas pagas por ticker nos últimos 12 meses
       const tickerYieldMap: Record<string, number> = {};
+      const seenEvents = new Set<string>();
       
+      // 1. Processa histórico de dividendos do mercado com deduplicação rigorosa
+      // Isso evita que o mesmo provento seja somado várias vezes se houver duplicatas no cache
       (marketDividends || []).forEach(d => {
           const date = d.paymentDate || d.dateCom;
-          // Considera apenas proventos dos últimos 12 meses até hoje
           if (date && date >= oneYearAgoStr && date <= todayStr) {
               const ticker = d.ticker.toUpperCase();
-              tickerYieldMap[ticker] = (tickerYieldMap[ticker] || 0) + (d.rate || 0);
+              // Chave única para evitar duplicatas: Ticker + Data + Valor (arredondado)
+              const rateStr = Number(d.rate).toFixed(4);
+              const eventKey = `${ticker}-${date}-${rateStr}`;
+              
+              if (!seenEvents.has(eventKey)) {
+                  seenEvents.add(eventKey);
+                  tickerYieldMap[ticker] = (tickerYieldMap[ticker] || 0) + (d.rate || 0);
+              }
           }
       });
 
+      // 2. Calcula projeção baseada na QUANTIDADE ATUAL de cada ativo
       return portfolio.reduce((acc, asset) => {
           if (!asset.quantity) return acc;
           
           const ticker = asset.ticker.toUpperCase();
           const historicalYieldPerShare = tickerYieldMap[ticker] || 0;
           
-          // Se temos histórico real de taxas, usamos (Qtd Atual * Soma das Taxas 12m)
-          // Isso é muito mais preciso que usar o DY% do scraper que pode estar inflado ou defasado
+          // Caso especial: FIIs (Geralmente pagam mensalmente e de forma estável)
+          // O "último rendimento" é o melhor projetor para o futuro próximo em FIIs
+          if (asset.assetType === AssetType.FII && asset.last_dividend && asset.last_dividend > 0) {
+              const currentMonthlyProjection = asset.last_dividend * 12;
+              
+              // Se o histórico de 12 meses estiver muito baixo (dados incompletos no cache), 
+              // usamos a projeção baseada no último pagamento.
+              // Se o histórico for maior (devido a dividendos extras), mantemos o histórico.
+              const finalYieldPerShare = Math.max(historicalYieldPerShare, currentMonthlyProjection);
+              return acc + (asset.quantity * finalYieldPerShare);
+          }
+          
+          // Caso Geral: Ações e outros ativos
           if (historicalYieldPerShare > 0) {
               return acc + (asset.quantity * historicalYieldPerShare);
           } else {
-              // Fallback para o DY% do scraper se não houver histórico de taxas
+              // Fallback para o DY% do scraper apenas se não houver histórico local
               const assetValue = asset.quantity * (asset.currentPrice || 0);
               const dy = asset.dy_12m || 0;
               return acc + (assetValue * (dy / 100));
