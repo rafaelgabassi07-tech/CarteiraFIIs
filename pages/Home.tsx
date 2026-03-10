@@ -2098,10 +2098,8 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
             </div>
         </SwipeableModal>
 
-        {/* ... (outros modais sem alterações complexas de lógica, apenas de render) ... */}
         
         <SwipeableModal isOpen={showMagicNumber} onClose={() => setShowMagicNumber(false)}>
-            {/* Mantido o conteúdo original, o usuário não pediu alterações de lógica aqui, apenas gráficos. */}
             <div className="p-4 h-full flex flex-col anim-slide-up">
                 <div className="flex items-center gap-3 mb-4 shrink-0">
                     <div className="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
@@ -2521,7 +2519,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
             </AnimatePresence>,
             document.body
         )}
-
     </motion.div>
   );
 };
