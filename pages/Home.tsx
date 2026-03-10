@@ -1743,13 +1743,13 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-zinc-50 dark:bg-zinc-800/30 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex flex-col justify-center">
+                        <div className="flex flex-col justify-center">
                             <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Total (12M)</p>
                             <p className="text-lg font-black text-zinc-900 dark:text-white tracking-tight leading-none">
                                 {formatBRL(incomeData.last12mTotal, privacyMode)}
                             </p>
                         </div>
-                        <div className="bg-zinc-50 dark:bg-zinc-800/30 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex flex-col justify-center">
+                        <div className="flex flex-col justify-center">
                             <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Média Mensal</p>
                             <p className="text-lg font-black text-zinc-900 dark:text-white tracking-tight leading-none">
                                 {formatBRL(incomeData.average, privacyMode)}
@@ -1949,129 +1949,126 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                             </div>
                         </div>
 
-                        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 overflow-hidden">
-                            {incomeHistoryTab === 'PROVENTOS' && (
-                                <div className="max-h-96 overflow-y-auto custom-scrollbar">
-                                    {Object.keys(incomeData.groupedHistory).length > 0 ? (
-                                        Object.keys(incomeData.groupedHistory).sort((a,b) => b.localeCompare(a)).map(monthKey => (
-                                            <div key={monthKey}>
-                                                <div className="sticky top-0 bg-zinc-50/95 dark:bg-zinc-800/95 backdrop-blur-sm z-10 py-1.5 px-3 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
-                                                    <span className="text-[9px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-                                                        {getMonthName(monthKey + '-01')}
-                                                    </span>
-                                                    <span className="text-[9px] font-bold text-zinc-400">
-                                                        {formatBRL(incomeData.groupedHistory[monthKey].reduce((acc, item) => acc + item.amount, 0), privacyMode)}
-                                                    </span>
-                                                </div>
-                                                <div className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
-                                                    {incomeData.groupedHistory[monthKey].map((item, idx) => (
-                                                        <div key={`${item.ticker}-${idx}`} className="flex items-center justify-between p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-all group">
-                                                            <div className="flex items-center gap-4">
-                                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-[10px] font-black border transition-transform group-hover:scale-110 ${
-                                                                    item.status === 'provisioned' 
-                                                                        ? 'bg-blue-50 dark:bg-blue-900/10 text-blue-600 border-blue-100 dark:border-blue-800/30' 
-                                                                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border-zinc-200 dark:border-zinc-700'
-                                                                }`}>
-                                                                    {item.ticker.substring(0, 4)}
-                                                                </div>
-                                                                <div>
-                                                                    <div className="flex items-center gap-2 mb-0.5">
-                                                                        <span className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">{item.ticker}</span>
-                                                                        <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest ${
-                                                                            item.type === 'JCP' 
-                                                                                ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' 
-                                                                                : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                                                                        }`}>
-                                                                            {item.type}
-                                                                        </span>
-                                                                        {item.status === 'provisioned' ? (
-                                                                            <span className="px-1.5 py-0.5 rounded-md bg-blue-500/10 text-blue-500 text-[7px] font-black uppercase tracking-widest animate-pulse">
-                                                                                Pendente
-                                                                            </span>
-                                                                        ) : (
-                                                                            <span className="px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 text-[7px] font-black uppercase tracking-widest">
-                                                                                Pago
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-                                                                    <div className="flex items-center gap-2 text-[10px] text-zinc-400 font-bold">
-                                                                        <span>{formatDateShort(item.paymentDate)}</span>
-                                                                        <span className="text-zinc-200 dark:text-zinc-800">&bull;</span>
-                                                                        <span>{item.quantity} {item.quantity === 1 ? 'cota' : 'cotas'}</span>
-                                                                    </div>
-                                                                </div>
+                        {incomeHistoryTab === 'PROVENTOS' && (
+                            <div className="max-h-96 overflow-y-auto custom-scrollbar">
+                                {Object.keys(incomeData.groupedHistory).length > 0 ? (
+                                    Object.keys(incomeData.groupedHistory).sort((a,b) => b.localeCompare(a)).map(monthKey => (
+                                        <div key={monthKey}>
+                                            <div className="sticky top-0 bg-zinc-50/95 dark:bg-zinc-800/95 backdrop-blur-sm z-10 py-1.5 px-3 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
+                                                <span className="text-[9px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                                                    {getMonthName(monthKey + '-01')}
+                                                </span>
+                                                <span className="text-[9px] font-bold text-zinc-400">
+                                                    {formatBRL(incomeData.groupedHistory[monthKey].reduce((acc, item) => acc + item.amount, 0), privacyMode)}
+                                                </span>
+                                            </div>
+                                            <div className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
+                                                {incomeData.groupedHistory[monthKey].map((item, idx) => (
+                                                    <div key={`${item.ticker}-${idx}`} className="flex items-center justify-between p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-all group">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-[10px] font-black border transition-transform group-hover:scale-110 ${
+                                                                item.status === 'provisioned' 
+                                                                    ? 'bg-blue-50 dark:bg-blue-900/10 text-blue-600 border-blue-100 dark:border-blue-800/30' 
+                                                                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border-zinc-200 dark:border-zinc-700'
+                                                            }`}>
+                                                                {item.ticker.substring(0, 4)}
                                                             </div>
-                                                            <div className="text-right">
-                                                                <p className={`text-sm font-black tabular-nums tracking-tight ${item.status === 'provisioned' ? 'text-blue-500' : 'text-zinc-900 dark:text-white'}`}>
-                                                                    +{formatBRL(item.amount, privacyMode)}
-                                                                </p>
-                                                                <p className="text-[9px] font-bold text-zinc-400">
-                                                                    {formatBRL(item.rate)}/cota
-                                                                </p>
+                                                            <div>
+                                                                <div className="flex items-center gap-2 mb-0.5">
+                                                                    <span className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">{item.ticker}</span>
+                                                                    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest ${
+                                                                        item.type === 'JCP' 
+                                                                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' 
+                                                                            : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                                                                    }`}>
+                                                                        {item.type}
+                                                                    </span>
+                                                                    {item.status === 'provisioned' ? (
+                                                                        <span className="px-1.5 py-0.5 rounded-md bg-blue-500/10 text-blue-500 text-[7px] font-black uppercase tracking-widest animate-pulse">
+                                                                            Pendente
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 text-[7px] font-black uppercase tracking-widest">
+                                                                            Pago
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex items-center gap-2 text-[10px] text-zinc-400 font-bold">
+                                                                    <span>{formatDateShort(item.paymentDate)}</span>
+                                                                    <span className="text-zinc-200 dark:text-zinc-800">&bull;</span>
+                                                                    <span>{item.quantity} {item.quantity === 1 ? 'cota' : 'cotas'}</span>
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                    ))}
-                                                </div>
+                                                        <div className="text-right">
+                                                            <p className={`text-sm font-black tabular-nums tracking-tight ${item.status === 'provisioned' ? 'text-blue-500' : 'text-zinc-900 dark:text-white'}`}>
+                                                                +{formatBRL(item.amount, privacyMode)}
+                                                            </p>
+                                                            <p className="text-[9px] font-bold text-zinc-400">
+                                                                {formatBRL(item.rate)}/cota
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                ))}
                                             </div>
-                                        ))
-                                    ) : (
-                                        <div className="p-8 text-center text-zinc-400 text-xs font-medium">
-                                            Nenhum histórico disponível
                                         </div>
-                                    )}
-                                </div>
-                            )}
+                                    ))
+                                ) : (
+                                    <div className="p-8 text-center text-zinc-400 text-xs font-medium">
+                                        Nenhum histórico disponível
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                             {incomeHistoryTab === 'MONTHLY' && (
-                                <div className="p-4 space-y-6">
-                                    {(() => {
-                                        const years = Object.keys(incomeData.groupedHistory).reduce((acc, key) => {
-                                            const y = key.substring(0, 4);
-                                            if (!acc.includes(y)) acc.push(y);
-                                            return acc;
-                                        }, [] as string[]).sort().reverse();
+                                (() => {
+                                    const years = Object.keys(incomeData.groupedHistory).reduce((acc, key) => {
+                                        const y = key.substring(0, 4);
+                                        if (!acc.includes(y)) acc.push(y);
+                                        return acc;
+                                    }, [] as string[]).sort().reverse();
 
-                                        const maxVal = Math.max(...Object.values(incomeData.groupedHistory).map(l => l.reduce((s, i) => s + i.amount, 0)));
+                                    const maxVal = Math.max(...Object.values(incomeData.groupedHistory).map(l => l.reduce((s, i) => s + i.amount, 0)));
 
-                                        if (years.length === 0) {
-                                            return (
-                                                <div className="text-center text-zinc-400 text-xs font-medium">
-                                                    Nenhum dado mensal disponível
-                                                </div>
-                                            );
-                                        }
-
-                                        return years.map(year => (
-                                            <div key={year} className="space-y-3">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-xs font-black text-zinc-300 dark:text-zinc-700 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded">{year}</span>
-                                                    <div className="h-px flex-1 bg-zinc-100 dark:bg-zinc-800"></div>
-                                                </div>
-                                                {Object.keys(incomeData.groupedHistory)
-                                                    .filter(k => k.startsWith(year))
-                                                    .sort().reverse()
-                                                    .map(monthKey => {
-                                                        const total = incomeData.groupedHistory[monthKey].reduce((s, i) => s + i.amount, 0);
-                                                        const percent = (total / (maxVal || 1)) * 100;
-                                                        return (
-                                                            <div key={monthKey} className="flex items-center gap-3">
-                                                                <span className="text-[10px] font-bold text-zinc-400 w-8 uppercase">{getMonthName(monthKey + '-01').substring(0, 3)}</span>
-                                                                <div className="flex-1 h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                                                                    <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${percent}%` }}></div>
-                                                                </div>
-                                                                <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 w-20 text-right">{formatBRL(total, privacyMode)}</span>
-                                                            </div>
-                                                        )
-                                                    })
-                                                }
+                                    if (years.length === 0) {
+                                        return (
+                                            <div className="text-center text-zinc-400 text-xs font-medium">
+                                                Nenhum dado mensal disponível
                                             </div>
-                                        ));
-                                    })()}
-                                </div>
+                                        );
+                                    }
+
+                                    return years.map(year => (
+                                        <div key={year} className="space-y-3">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs font-black text-zinc-300 dark:text-zinc-700 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded">{year}</span>
+                                                <div className="h-px flex-1 bg-zinc-100 dark:bg-zinc-800"></div>
+                                            </div>
+                                            {Object.keys(incomeData.groupedHistory)
+                                                .filter(k => k.startsWith(year))
+                                                .sort().reverse()
+                                                .map(monthKey => {
+                                                    const total = incomeData.groupedHistory[monthKey].reduce((s, i) => s + i.amount, 0);
+                                                    const percent = (total / (maxVal || 1)) * 100;
+                                                    return (
+                                                        <div key={monthKey} className="flex items-center gap-3">
+                                                            <span className="text-[10px] font-bold text-zinc-400 w-8 uppercase">{getMonthName(monthKey + '-01').substring(0, 3)}</span>
+                                                            <div className="flex-1 h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                                                                <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${percent}%` }}></div>
+                                                            </div>
+                                                            <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 w-20 text-right">{formatBRL(total, privacyMode)}</span>
+                                                        </div>
+                                                    )
+                                                })
+                                            }
+                                        </div>
+                                    ));
+                                })()
                             )}
 
                             {incomeHistoryTab === 'ANNUAL' && (
-                                <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                                <>
                                     <div className="grid grid-cols-3 gap-4 p-3 bg-zinc-50 dark:bg-zinc-800/50 text-[10px] font-black text-zinc-400 uppercase tracking-widest border-b border-zinc-100 dark:border-zinc-800">
                                         <span>Ano</span>
                                         <span className="text-right">Média</span>
@@ -2090,7 +2087,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                                             Nenhum dado anual disponível
                                         </div>
                                     )}
-                                </div>
+                                </>
                             )}
                         </div>
                     </div>
