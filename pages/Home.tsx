@@ -2095,7 +2095,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
 
 
 
-            </div>
         </SwipeableModal>
 
         
