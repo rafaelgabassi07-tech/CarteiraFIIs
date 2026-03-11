@@ -225,6 +225,13 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
     
     // Filters
     const [searchTerm, setSearchTerm] = useState('');
+
+    useEffect(() => {
+        if (editingId && !transactions.find(t => t.id === editingId)) {
+            setIsModalOpen(false);
+            setEditingId(null);
+        }
+    }, [transactions, editingId]);
     const [typeFilter, setTypeFilter] = useState<'ALL' | 'BUY' | 'SELL'>('ALL');
     const [assetFilter, setAssetFilter] = useState<'ALL' | 'FII' | 'STOCK'>('ALL');
     const [yearFilter, setYearFilter] = useState<string>('ALL');

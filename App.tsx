@@ -12,7 +12,6 @@ import { Transaction, BrapiQuote, DividendReceipt, AssetType, AppNotification, A
 import { getQuotes, isTokenValid } from './services/brapiService';
 import { fetchUnifiedMarketData, triggerScraperUpdate, mapScraperToFundamentals, fetchFutureAnnouncements } from './services/dataService';
 import { getQuantityOnDate, isSameDayLocal, mapSupabaseToTx, processPortfolio, normalizeTicker } from './services/portfolioRules';
-import { analyzePortfolio } from './services/analysisService';
 import { generateAIInsights } from './services/aiService';
 import { Check, Loader2, AlertTriangle, Info, Database, Activity, Globe } from 'lucide-react';
 import { useUpdateManager } from './hooks/useUpdateManager';
@@ -301,18 +300,6 @@ const App: React.FC = () => {
     setServices(results);
     setIsCheckingServices(false);
   }, []); 
-
-  useEffect(() => {
-    const fetchAI = async () => {
-        try {
-            const insights = await generateAIInsights();
-            setAiInsights(insights);
-        } catch (e) {
-            console.error("AI Insights Error:", e);
-        }
-    };
-    fetchAI();
-  }, []);
 
   // --- SINCRONIZAÇÃO DE DADOS ---
 
@@ -644,16 +631,32 @@ const App: React.FC = () => {
   }, [transactions, quotes, dividends, assetsMetadata, marketIndicators]);
 
   // --- GERAÇÃO DE STORIES (INSIGHTS) ---
+  useEffect(() => {
+    const fetchAI = async () => {
+        try {
+            // Only fetch if portfolio is loaded (or if it's empty but we still want to fetch)
+            // We can just pass the current portfolio state.
+            const insights = await generateAIInsights(memoizedPortfolioData.portfolio || [], marketIndicators.ipca || 0);
+            setAiInsights(insights);
+        } catch (e) {
+            console.error("AI Insights Error:", e);
+        }
+    };
+    
+    // We only want to run this once per session, or when portfolio changes significantly.
+    // Since generateAIInsights caches per day, it's safe to call it when portfolio updates.
+    fetchAI();
+  }, [memoizedPortfolioData.portfolio, marketIndicators.ipca]);
+
   const insights = useMemo(() => {
       try {
-          const portfolioInsights = analyzePortfolio(memoizedPortfolioData.portfolio || [], marketIndicators.ipca || 0);
           const safeAiInsights = Array.isArray(aiInsights) ? aiInsights : [];
-          return [...portfolioInsights, ...safeAiInsights].sort((a, b) => (b.score || 0) - (a.score || 0));
+          return [...safeAiInsights].sort((a, b) => (b.score || 0) - (a.score || 0));
       } catch (err) {
           console.error("Error generating insights:", err);
           return [];
       }
-  }, [memoizedPortfolioData.portfolio, marketIndicators.ipca, aiInsights]);
+  }, [aiInsights]);
 
   // --- LOGICA DE NOTIFICAÇÕES INTELIGENTES ---
   useEffect(() => {

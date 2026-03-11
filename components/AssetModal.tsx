@@ -3,7 +3,7 @@ import { AssetPosition, AssetType, DividendReceipt } from '../types';
 import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, BarChart3, PieChart, Coins, DollarSign, Building2, FileText, MapPin, Zap, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, SquareStack, Map as MapIcon, CandlestickChart, LineChart as LineChartIcon, Award, RefreshCcw, ArrowLeft, Briefcase, MoreHorizontal, LayoutGrid, List, Activity, Scale, Percent, ChevronDown, ChevronUp, ListFilter, BookOpen, Calendar } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, ReferenceLine, ComposedChart, CartesianGrid, AreaChart, Area, YAxis, PieChart as RePieChart, Pie, Cell, LineChart, Line, Label, Legend, Scatter } from 'recharts';
-import { formatBRL, formatDateShort, getMonthName } from '../utils/formatters';
+import { formatBRL, formatCompactBRL, formatDateShort, getMonthName } from '../utils/formatters';
 
 // --- TYPES ---
 interface AssetModalProps {
@@ -741,11 +741,12 @@ interface ValuationCardProps {
 }
 
 const ValuationCard: React.FC<ValuationCardProps> = ({ asset }) => {
-    const pvp = asset['p_vp'] || 0;
-    const pl = asset['p_l'] || 0;
-    const dy = asset['dy_12m'] || 0;
+    const pvp = asset['p_vp'];
+    const pl = asset['p_l'];
+    const dy = asset['dy_12m'];
 
-    const getValuationColor = (value: number, thresholds: [number, number]) => {
+    const getValuationColor = (value: number | undefined, thresholds: [number, number]) => {
+        if (value === undefined || value === null) return 'text-zinc-500';
         if (value <= thresholds[0]) return 'text-emerald-500';
         if (value <= thresholds[1]) return 'text-amber-500';
         return 'text-rose-500';
@@ -755,15 +756,15 @@ const ValuationCard: React.FC<ValuationCardProps> = ({ asset }) => {
         <div className="grid grid-cols-3 gap-3">
             <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 text-center">
                 <p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">P/VP <InfoTooltip title="P/VP" text="Preço sobre Valor Patrimonial. Idealmente abaixo de 1." /></p>
-                <p className={`text-lg font-black tracking-tighter ${getValuationColor(pvp, [1, 1.5])}`}>{pvp.toFixed(2)}</p>
+                <p className={`text-lg font-black tracking-tighter ${getValuationColor(pvp, [1, 1.5])}`}>{pvp !== undefined && pvp !== null ? pvp.toFixed(2) : 'N/A'}</p>
             </div>
             <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 text-center">
                 <p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">P/L <InfoTooltip title="P/L" text="Preço sobre Lucro. Mede o quão 'caro' o ativo está em relação ao lucro que gera." /></p>
-                <p className={`text-lg font-black tracking-tighter ${getValuationColor(pl, [10, 15])}`}>{pl.toFixed(2)}</p>
+                <p className={`text-lg font-black tracking-tighter ${getValuationColor(pl, [10, 15])}`}>{pl !== undefined && pl !== null ? pl.toFixed(2) : 'N/A'}</p>
             </div>
             <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 text-center">
                 <p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">Dividend Yield</p>
-                <p className="text-lg font-black tracking-tighter text-emerald-500">{(dy * 100).toFixed(2)}%</p>
+                <p className="text-lg font-black tracking-tighter text-emerald-500">{dy !== undefined && dy !== null ? `${dy.toFixed(2)}%` : 'N/A'}</p>
             </div>
         </div>
     );
@@ -779,13 +780,13 @@ const DetailedInfoBlock: React.FC<DetailedInfoBlockProps> = ({ asset }) => {
         { label: 'Preço Médio', value: formatBRL(asset.averagePrice), icon: Scale },
         { label: 'Tipo', value: asset.assetType, icon: Briefcase },
         { label: 'Segmento', value: asset.segment, icon: PieChart },
-        { label: 'Patrim. Líquido', value: asset.assets_value, icon: Wallet },
-        { label: 'P/VP', value: asset.p_vp?.toFixed(2), icon: Percent },
-        { label: 'P/L', value: asset.p_l?.toFixed(2), icon: Percent },
-        { label: 'Dividend Yield', value: asset.dy_12m ? `${(asset.dy_12m * 100).toFixed(2)}%` : 'N/A', icon: Coins },
-        { label: 'Vacância', value: asset.vacancy ? `${(asset.vacancy * 100).toFixed(2)}%` : 'N/A', icon: MapPin },
-        { label: 'Imóveis', value: asset.properties_count, icon: Building2 },
-    ].filter(d => d.value);
+        { label: 'Patrim. Líquido', value: asset.assets_value !== undefined && asset.assets_value !== null ? formatCompactBRL(asset.assets_value) : 'N/A', icon: Wallet },
+        { label: 'P/VP', value: asset.p_vp !== undefined && asset.p_vp !== null ? asset.p_vp.toFixed(2) : 'N/A', icon: Percent },
+        { label: 'P/L', value: asset.p_l !== undefined && asset.p_l !== null ? asset.p_l.toFixed(2) : 'N/A', icon: Percent },
+        { label: 'Dividend Yield', value: asset.dy_12m !== undefined && asset.dy_12m !== null ? `${asset.dy_12m.toFixed(2)}%` : 'N/A', icon: Coins },
+        { label: 'Vacância', value: asset.vacancy !== undefined && asset.vacancy !== null ? `${asset.vacancy.toFixed(2)}%` : 'N/A', icon: MapPin },
+        { label: 'Imóveis', value: asset.properties_count !== undefined && asset.properties_count !== null ? asset.properties_count : 'N/A', icon: Building2 },
+    ];
 
     return (
         <div className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
@@ -971,14 +972,20 @@ const Investidor10ChartsSection: React.FC<Investidor10ChartsSectionProps> = ({ t
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
-    const [chartType, setChartType] = useState(assetType === 'FII' ? 'net_worth' : 'net_profit');
+    const [chartType, setChartType] = useState(onlyPayout ? 'payout' : (assetType === 'FII' ? 'equity' : 'revenue_profit'));
 
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
             setError(false);
             try {
-                const res = await fetch(`/api/investidor10?ticker=${ticker}`);
+                // Determine the correct API chartType based on the UI chartType
+                let apiChartType = chartType;
+                if (chartType === 'net_profit') apiChartType = 'revenue_profit';
+                if (chartType === 'payout_dy') apiChartType = 'payout';
+                if (chartType === 'net_worth') apiChartType = 'equity';
+
+                const res = await fetch(`/api/investidor10-charts?ticker=${ticker}&chartType=${apiChartType}&assetType=${assetType}`);
                 if (!res.ok) throw new Error('Failed to fetch data');
                 const json = await res.json();
                 setData(json);
@@ -989,18 +996,18 @@ const Investidor10ChartsSection: React.FC<Investidor10ChartsSectionProps> = ({ t
             }
         };
         fetchData();
-    }, [ticker]);
+    }, [ticker, chartType, assetType]);
 
-    const chartData = data ? data[chartType] : [];
+    const chartData = data || [];
     const isFII = assetType === 'FII';
 
     const chartConfig = {
-        net_profit: { title: 'Receitas e Lucros', barKey: 'lucroLiquido', areaKey: 'receitaLiquida', barColor: '#8b5cf6', areaColor: '#ec4899' },
-        payout_dy: { title: 'Payout x Dividend Yield', barKey: 'payout', areaKey: 'dy', barColor: isFII ? '#10b981' : '#06b6d4', areaColor: '#f59e0b' },
-        net_worth: { title: isFII ? 'Histórico de Proventos' : 'Patrimônio Líquido', barKey: isFII ? 'rendimento' : 'patrimonioLiquido', areaKey: 'cotas', barColor: '#10b981', areaColor: '#6366f1' },
+        revenue_profit: { title: 'Receitas e Lucros', barKey: 'profit', areaKey: 'revenue', barColor: '#8b5cf6', areaColor: '#ec4899' },
+        payout: { title: 'Payout x Dividend Yield', barKey: 'payout', areaKey: 'dy', barColor: isFII ? '#10b981' : '#06b6d4', areaColor: '#f59e0b' },
+        equity: { title: isFII ? 'Histórico de Valor Patrimonial' : 'Patrimônio Líquido', barKey: 'equity', areaKey: 'revenue', barColor: '#10b981', areaColor: '#6366f1' },
     };
 
-    const currentChart = chartConfig[chartType as keyof typeof chartConfig];
+    const currentChart = chartConfig[chartType as keyof typeof chartConfig] || chartConfig.revenue_profit;
 
     if (loading) return <div className="text-center text-zinc-400">Carregando...</div>;
     if (error || !data) return <div className="text-center text-zinc-400">Dados não disponíveis.</div>;
@@ -1008,7 +1015,7 @@ const Investidor10ChartsSection: React.FC<Investidor10ChartsSectionProps> = ({ t
         return (
             <div className="h-60 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={data['payout_dy']} margin={{ top: 10, right: 0, left: -20, bottom: 5 }}>
+                    <ComposedChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 5 }}>
                         <XAxis dataKey="label" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
                         <YAxis yAxisId="left" orientation="left" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={(val) => `${val}%`} />
                         <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={(val) => `${(val * 100).toFixed(0)}%`} />
@@ -1028,14 +1035,14 @@ const Investidor10ChartsSection: React.FC<Investidor10ChartsSectionProps> = ({ t
                 <div className="flex p-0.5 bg-zinc-200 dark:bg-zinc-700 rounded-lg">
                     {isFII ? (
                         <>
-                            <button onClick={() => setChartType('net_worth')} className={`px-2 py-0.5 text-[8px] font-bold rounded-md ${chartType === 'net_worth' ? 'bg-white dark:bg-zinc-600' : ''}`}>Proventos</button>
-                            <button onClick={() => setChartType('payout_dy')} className={`px-2 py-0.5 text-[8px] font-bold rounded-md ${chartType === 'payout_dy' ? 'bg-white dark:bg-zinc-600' : ''}`}>DY</button>
+                            <button onClick={() => setChartType('equity')} className={`px-2 py-0.5 text-[8px] font-bold rounded-md ${chartType === 'equity' ? 'bg-white dark:bg-zinc-600' : ''}`}>Patrimônio</button>
+                            <button onClick={() => setChartType('payout')} className={`px-2 py-0.5 text-[8px] font-bold rounded-md ${chartType === 'payout' ? 'bg-white dark:bg-zinc-600' : ''}`}>DY</button>
                         </>
                     ) : (
                         <>
-                            <button onClick={() => setChartType('net_profit')} className={`px-2 py-0.5 text-[8px] font-bold rounded-md ${chartType === 'net_profit' ? 'bg-white dark:bg-zinc-600' : ''}`}>Lucros</button>
-                            <button onClick={() => setChartType('net_worth')} className={`px-2 py-0.5 text-[8px] font-bold rounded-md ${chartType === 'net_worth' ? 'bg-white dark:bg-zinc-600' : ''}`}>Patrimônio</button>
-                            <button onClick={() => setChartType('payout_dy')} className={`px-2 py-0.5 text-[8px] font-bold rounded-md ${chartType === 'payout_dy' ? 'bg-white dark:bg-zinc-600' : ''}`}>Payout</button>
+                            <button onClick={() => setChartType('revenue_profit')} className={`px-2 py-0.5 text-[8px] font-bold rounded-md ${chartType === 'revenue_profit' ? 'bg-white dark:bg-zinc-600' : ''}`}>Lucros</button>
+                            <button onClick={() => setChartType('equity')} className={`px-2 py-0.5 text-[8px] font-bold rounded-md ${chartType === 'equity' ? 'bg-white dark:bg-zinc-600' : ''}`}>Patrimônio</button>
+                            <button onClick={() => setChartType('payout')} className={`px-2 py-0.5 text-[8px] font-bold rounded-md ${chartType === 'payout' ? 'bg-white dark:bg-zinc-600' : ''}`}>Payout</button>
                         </>
                     )}
                 </div>
@@ -1044,11 +1051,11 @@ const Investidor10ChartsSection: React.FC<Investidor10ChartsSectionProps> = ({ t
                 <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 5 }}>
                         <XAxis dataKey="label" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-                        <YAxis yAxisId="left" orientation="left" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={(val) => isFII && chartType === 'net_worth' ? formatBRL(val) : `R$${(val / 1e9).toFixed(1)}bi`} />
-                        {chartType !== 'net_worth' && <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={(val) => `${(val / 1e9).toFixed(1)}bi`} />}
-                        <Tooltip contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '8px' }} labelStyle={{ color: '#a1a1aa' }} formatter={(value: number) => [formatBRL(value), null]} />
+                        <YAxis yAxisId="left" orientation="left" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={(val) => formatCompactBRL(val)} />
+                        {chartType !== 'equity' && <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={(val) => formatCompactBRL(val)} />}
+                        <Tooltip contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '8px' }} labelStyle={{ color: '#a1a1aa' }} formatter={(value: number) => [formatCompactBRL(value), null]} />
                         <Bar yAxisId="left" dataKey={currentChart.barKey} fill={currentChart.barColor} radius={[4, 4, 0, 0]} />
-                        {currentChart.areaKey && <Area yAxisId={chartType === 'net_worth' ? 'left' : 'right'} dataKey={currentChart.areaKey} fill={currentChart.areaColor} stroke={currentChart.areaColor} fillOpacity={0.2} />}
+                        {currentChart.areaKey && <Area yAxisId={chartType === 'equity' ? 'left' : 'right'} dataKey={currentChart.areaKey} fill={currentChart.areaColor} stroke={currentChart.areaColor} fillOpacity={0.2} />}
                     </ComposedChart>
                 </ResponsiveContainer>
             </div>

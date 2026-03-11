@@ -1101,62 +1101,22 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
       });
   };
 
+  const incomeData = useIncomeData(dividendReceipts);
+
   const projectedDividends12m = useMemo(() => {
-      const oneYearAgo = new Date();
-      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-      const oneYearAgoStr = oneYearAgo.toISOString().split('T')[0];
-      const todayStr = new Date().toISOString().split('T')[0];
-
-      const tickerYieldMap: Record<string, number> = {};
-      const seenEvents = new Set<string>();
-      
-      // 1. Processa histórico de dividendos do mercado com deduplicação rigorosa
-      // Isso evita que o mesmo provento seja somado várias vezes se houver duplicatas no cache
-      (marketDividends || []).forEach(d => {
-          const date = d.paymentDate || d.dateCom;
-          if (date && date >= oneYearAgoStr && date <= todayStr) {
-              const ticker = d.ticker.toUpperCase();
-              // Chave única para evitar duplicatas: Ticker + Data + Valor (arredondado)
-              const rateStr = Number(d.rate).toFixed(4);
-              const eventKey = `${ticker}-${date}-${rateStr}`;
-              
-              if (!seenEvents.has(eventKey)) {
-                  seenEvents.add(eventKey);
-                  tickerYieldMap[ticker] = (tickerYieldMap[ticker] || 0) + (d.rate || 0);
-              }
-          }
-      });
-
-      // 2. Calcula projeção baseada na QUANTIDADE ATUAL de cada ativo
+      // A maneira correta de projetar dividendos para 12 meses (Projeção 12M) 
+      // é basear-se na carteira ATUAL (quantidade de cotas que o usuário possui hoje) 
+      // multiplicada pelo Dividend Yield (DY) dos últimos 12 meses de cada ativo.
+      // Somar os proventos passados com os futuros geraria uma contagem dupla de meses 
+      // e ignoraria os aportes recentes (ex: se comprou 1000 cotas ontem, o passado é 0, mas a projeção deve ser > 0).
       return portfolio.reduce((acc, asset) => {
-          if (!asset.quantity) return acc;
-          
-          const ticker = asset.ticker.toUpperCase();
-          const historicalYieldPerShare = tickerYieldMap[ticker] || 0;
-          
-          // Caso especial: FIIs (Geralmente pagam mensalmente e de forma estável)
-          // O "último rendimento" é o melhor projetor para o futuro próximo em FIIs
-          if (asset.assetType === AssetType.FII && asset.last_dividend && asset.last_dividend > 0) {
-              const currentMonthlyProjection = asset.last_dividend * 12;
-              
-              // Se o histórico de 12 meses estiver muito baixo (dados incompletos no cache), 
-              // usamos a projeção baseada no último pagamento.
-              // Se o histórico for maior (devido a dividendos extras), mantemos o histórico.
-              const finalYieldPerShare = Math.max(historicalYieldPerShare, currentMonthlyProjection);
-              return acc + (asset.quantity * finalYieldPerShare);
-          }
-          
-          // Caso Geral: Ações e outros ativos
-          if (historicalYieldPerShare > 0) {
-              return acc + (asset.quantity * historicalYieldPerShare);
-          } else {
-              // Fallback para o DY% do scraper apenas se não houver histórico local
-              const assetValue = asset.quantity * (asset.currentPrice || 0);
-              const dy = asset.dy_12m || 0;
-              return acc + (assetValue * (dy / 100));
-          }
+          const price = asset.currentPrice || asset.averagePrice || 0;
+          const dy = asset.dy_12m || 0;
+          // O DY é uma porcentagem (ex: 10.5 para 10.5%)
+          const projectedAssetDividend = asset.quantity * price * (dy / 100);
+          return acc + projectedAssetDividend;
       }, 0);
-  }, [portfolio, marketDividends]);
+  }, [portfolio]);
 
   const capitalGain = totalAppreciation + salesGain;
   const totalReturn = capitalGain + totalDividendsReceived;
@@ -1252,8 +1212,6 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
       return { list, grouped, totalFuture, nextPayment };
   }, [marketDividends, portfolio]);
 
-  const incomeData = useIncomeData(dividendReceipts);
-
   const dividendsByAsset = useMemo(() => {
       return portfolio
           .map((asset, index) => ({
@@ -1265,7 +1223,49 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
           .sort((a, b) => b.value - a.value);
   }, [portfolio]);
 
-  const [incomeHistoryTab, setIncomeHistoryTab] = useState<'MONTHLY' | 'ANNUAL' | 'PROVENTOS'>('PROVENTOS');
+  const [activePieIndex, setActivePieIndex] = useState<number | undefined>(undefined);
+  const [incomeHistoryTab, setIncomeHistoryTab] = useState<'PROVENTOS' | 'MONTHLY' | 'ANNUAL'>('PROVENTOS');
+
+  const onDividendPieEnter = (_: any, index: number) => {
+      setActivePieIndex(index);
+  };
+  const onDividendPieLeave = () => {
+      setActivePieIndex(undefined);
+  };
+
+  const renderDividendActiveShape = (props: any) => {
+      const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, value } = props;
+      return (
+          <g>
+              <text x={cx} y={cy - 10} dy={8} textAnchor="middle" fill={fill} className="text-[10px] font-black uppercase tracking-widest">
+                  {payload.name}
+              </text>
+              <text x={cx} y={cy + 10} dy={8} textAnchor="middle" fill="#fff" className="text-sm font-black">
+                  {formatBRL(value, privacyMode)}
+              </text>
+              <Sector
+                  cx={cx}
+                  cy={cy}
+                  innerRadius={innerRadius}
+                  outerRadius={outerRadius + 8}
+                  startAngle={startAngle}
+                  endAngle={endAngle}
+                  fill={fill}
+                  className="transition-all duration-300"
+              />
+              <Sector
+                  cx={cx}
+                  cy={cy}
+                  startAngle={startAngle}
+                  endAngle={endAngle}
+                  innerRadius={outerRadius + 10}
+                  outerRadius={outerRadius + 12}
+                  fill={fill}
+                  className="transition-all duration-300"
+              />
+          </g>
+      );
+  };
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
   const [evolutionRange, setEvolutionRange] = useState<'3M' | '6M' | '12M' | 'ALL'>('ALL');
 
@@ -1535,7 +1535,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                             <span className="text-[9px] text-zinc-500 uppercase font-black tracking-widest block">Projeção 12M</span>
                             <InfoTooltip 
                                 title="Projeção de Dividendos" 
-                                text="Estimativa baseada na soma das taxas reais pagas por cada ativo nos últimos 12 meses, multiplicada pela sua quantidade atual. Caso não haja histórico, utiliza o Dividend Yield de mercado." 
+                                text="Estimativa baseada na sua carteira atual multiplicada pelo Dividend Yield (DY) dos últimos 12 meses de cada ativo." 
                             />
                         </div>
                         <div className="flex flex-col">
@@ -1897,14 +1897,23 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                                                 paddingAngle={5}
                                                 dataKey="value"
                                                 animationDuration={1500}
+                                                activeIndex={activePieIndex}
+                                                activeShape={renderDividendActiveShape}
+                                                onMouseEnter={onDividendPieEnter}
+                                                onMouseLeave={onDividendPieLeave}
                                             >
                                                 {dividendsByAsset.map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
+                                                    <Cell 
+                                                        key={`cell-${index}`} 
+                                                        fill={entry.color} 
+                                                        stroke="none" 
+                                                        className="transition-all duration-300 hover:opacity-80 cursor-pointer"
+                                                    />
                                                 ))}
                                             </Pie>
                                             <RechartsTooltip 
                                                 content={({ active, payload }) => {
-                                                    if (active && payload && payload.length) {
+                                                    if (active && payload && payload.length && activePieIndex === undefined) {
                                                         const data = payload[0].payload;
                                                         return (
                                                             <div className="bg-zinc-900/95 border border-white/10 p-2 rounded-lg shadow-xl backdrop-blur-md">

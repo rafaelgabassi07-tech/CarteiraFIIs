@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { PortfolioInsight, InsightType } from "../types";
+import { PortfolioInsight, InsightType, AssetPosition } from "../types";
 
 const getApiKey = () => {
     try {
@@ -91,7 +91,7 @@ const getRandomTopicsFromPool = (pool: string[], count: number) => {
     return shuffled.slice(0, count);
 };
 
-export const generateAIInsights = async (): Promise<PortfolioInsight[]> => {
+export const generateAIInsights = async (portfolio: AssetPosition[], ipca: number): Promise<PortfolioInsight[]> => {
     const todayStr = new Date().toISOString().split('T')[0];
     
     // 1. Try to load from cache
@@ -117,21 +117,34 @@ export const generateAIInsights = async (): Promise<PortfolioInsight[]> => {
         
         // If we run out of fresh topics (unlikely given the list size), fallback to full list
         const pool = availableTopics.length >= 3 ? availableTopics : TOPICS;
-        const selectedTopics = getRandomTopicsFromPool(pool, 3);
+        const selectedTopics = getRandomTopicsFromPool(pool, 2);
         
         console.log(`[AI Service] Selected topics: ${selectedTopics.join(', ')} (Avoided: ${recentTopics.length} recent topics)`);
+
+        // Prepare portfolio summary for Gemini
+        const totalValue = portfolio.reduce((acc, p) => acc + (p.currentPrice || 0) * p.quantity, 0);
+        const topAssets = [...portfolio].sort((a, b) => ((b.currentPrice || 0) * b.quantity) - ((a.currentPrice || 0) * a.quantity)).slice(0, 3);
+        const portfolioSummary = `
+            Valor Total: R$ ${totalValue.toFixed(2)}
+            IPCA Atual: ${ipca}%
+            Top 3 Ativos: ${topAssets.map(a => `${a.ticker} (R$ ${((a.currentPrice || 0) * a.quantity).toFixed(2)})`).join(', ')}
+        `;
 
         // 3. Generate Content
         const prompt = `
             Atue como um mentor financeiro experiente e criativo.
-            Gere 3 "Stories" curtos e engajadores para um app de investimentos.
+            Gere 5 "Stories" curtos e engajadores para um app de investimentos.
             
-            Tópicos selecionados para hoje: ${selectedTopics.join(', ')}.
+            Tópicos educacionais selecionados para hoje: ${selectedTopics.join(', ')}.
+            
+            Resumo da Carteira do Usuário:
+            ${portfolioSummary}
             
             Requisitos:
-            1. Crie 1 story do tipo 'motivation' (inspiracional, foco no longo prazo).
-            2. Crie 1 story do tipo 'education' (dica prática ou conceito explicado de forma simples).
-            3. Crie 1 story do tipo 'curiosity' (fato histórico ou dado interessante sobre mercado).
+            1. Crie 2 stories do tipo 'portfolio' (análise personalizada da carteira do usuário, elogiando a diversificação, alertando sobre concentração, ou comentando sobre os top ativos e o IPCA).
+            2. Crie 1 story do tipo 'motivation' (inspiracional, foco no longo prazo).
+            3. Crie 1 story do tipo 'education' (dica prática ou conceito explicado de forma simples, baseado nos tópicos).
+            4. Crie 1 story do tipo 'curiosity' (fato histórico ou dado interessante sobre mercado, baseado nos tópicos).
             
             Diretrizes de Estilo:
             - Texto curto, direto e impactante (máximo 140 caracteres por mensagem).
@@ -155,7 +168,7 @@ export const generateAIInsights = async (): Promise<PortfolioInsight[]> => {
                         properties: {
                             title: { type: Type.STRING },
                             message: { type: Type.STRING },
-                            type: { type: Type.STRING, enum: ['motivation', 'education', 'curiosity'] },
+                            type: { type: Type.STRING, enum: ['portfolio', 'motivation', 'education', 'curiosity'] },
                             topic: { type: Type.STRING } // Optional, helps with debugging/tracking
                         },
                         required: ['title', 'message', 'type']
@@ -166,7 +179,7 @@ export const generateAIInsights = async (): Promise<PortfolioInsight[]> => {
 
         const text = response.text;
         if (!text) return [];
-        const data = JSON.parse(text) as AIEducationalContent[];
+        const data = JSON.parse(text) as (AIEducationalContent | { title: string, message: string, type: 'portfolio', topic?: string })[];
         
         // 4. Generate Images
         const stories = await Promise.all(data.map(async (item, index) => {
@@ -206,9 +219,15 @@ export const generateAIInsights = async (): Promise<PortfolioInsight[]> => {
                 console.warn("Failed to generate AI image for story:", e);
             }
 
+            let insightType: InsightType = 'news';
+            if (item.type === 'portfolio') insightType = 'opportunity';
+            else if (item.type === 'motivation') insightType = 'success';
+            else if (item.type === 'education') insightType = 'magic-number';
+            else if (item.type === 'curiosity') insightType = 'news';
+
             return {
                 id: `ai-insight-${index}-${todayStr}`, // Stable ID for the day
-                type: (item.type === 'motivation' ? 'success' : 'news') as InsightType,
+                type: insightType,
                 title: item.title,
                 message: item.message,
                 score: 80 - index,

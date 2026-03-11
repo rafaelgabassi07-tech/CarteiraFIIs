@@ -7,6 +7,17 @@ export const formatBRL = (val: any, privacy = false) => {
   return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 };
 
+export const formatCompactBRL = (val: any, privacy = false) => {
+  if (privacy) return '••••••';
+  const num = typeof val === 'number' ? val : parseFloat(val) || 0;
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    notation: 'compact',
+    maximumFractionDigits: 2,
+  }).format(num);
+};
+
 export const formatPercent = (val: number | undefined | null) => {
     if (val === undefined || val === null || isNaN(val)) return '-';
     return `${val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
