@@ -544,14 +544,11 @@ export default function Watchlist({ showToast }: WatchlistProps) {
                                 <div 
                                     key={ticker} 
                                     onClick={() => handleAssetClick(ticker)}
-                                    className={`group bg-white dark:bg-zinc-900 p-2.5 rounded-xl border border-zinc-100 dark:border-zinc-800 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer active:scale-[0.99] relative overflow-hidden ${isUpdating ? 'opacity-90' : ''}`}
+                                    className={`group bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer active:scale-[0.98] relative overflow-hidden ${isUpdating ? 'opacity-90' : ''}`}
                                 >
-                                    {/* Subtle background gradient */}
-                                    <div className="absolute inset-0 bg-gradient-to-br from-white via-zinc-50/30 to-zinc-100/30 dark:from-zinc-900 dark:via-zinc-900/50 dark:to-zinc-950 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-
-                                    <div className="flex items-center justify-between relative z-10 mb-2.5">
-                                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                            <div className="w-8 h-8 rounded-md bg-zinc-50 dark:bg-zinc-800/50 flex items-center justify-center overflow-hidden border border-zinc-100 dark:border-zinc-700/30 shadow-sm relative shrink-0">
+                                    <div className="flex items-center justify-between relative z-10">
+                                        <div className="flex items-center gap-4 min-w-0 flex-1">
+                                            <div className="w-11 h-11 rounded-xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center overflow-hidden border border-zinc-100 dark:border-zinc-700 shadow-sm relative shrink-0">
                                                 {quote?.logo ? (
                                                     <img 
                                                         src={quote.logo} 
@@ -563,36 +560,36 @@ export default function Watchlist({ showToast }: WatchlistProps) {
                                                         }} 
                                                     />
                                                 ) : null}
-                                                <span className={`text-[10px] font-bold text-zinc-300 dark:text-zinc-600 absolute inset-0 flex items-center justify-center ${quote?.logo ? 'hidden fallback-initials:flex' : 'flex'}`}>
+                                                <span className={`text-xs font-black text-zinc-300 dark:text-zinc-600 absolute inset-0 flex items-center justify-center ${quote?.logo ? 'hidden fallback-initials:flex' : 'flex'}`}>
                                                     {ticker.substring(0, 2)}
                                                 </span>
                                                 {isUpdating && (
                                                     <div className="absolute inset-0 bg-white/50 dark:bg-black/50 backdrop-blur-[1px] flex items-center justify-center">
-                                                        <RefreshCcw className="w-2.5 h-2.5 text-indigo-500 animate-spin" />
+                                                        <RefreshCcw className="w-3 h-3 text-indigo-500 animate-spin" />
                                                     </div>
                                                 )}
                                             </div>
                                             <div className="min-w-0">
-                                                <div className="flex items-center gap-1">
-                                                    <h3 className="font-bold text-zinc-900 dark:text-white text-xs tracking-tight leading-none group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{ticker}</h3>
-                                                    <span className={`text-[7px] font-bold px-1 py-0.5 rounded uppercase tracking-wide ${quote?.type === 'FII' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400'}`}>
+                                                <div className="flex items-center gap-2">
+                                                    <h3 className="font-black text-zinc-900 dark:text-white text-base tracking-tight leading-none group-hover:text-indigo-600 transition-colors">{ticker}</h3>
+                                                    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest ${quote?.type === 'FII' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400'}`}>
                                                         {quote?.type || (ticker.endsWith('11') ? 'FII' : 'Ação')}
                                                     </span>
                                                 </div>
-                                                <p className="text-[8px] font-medium text-zinc-500 dark:text-zinc-400 mt-0.5 uppercase tracking-wide truncate">
+                                                <p className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 mt-1 uppercase tracking-wider truncate">
                                                     {quote?.name || (isLoadingInitial ? 'Atualizando...' : 'Ativo')}
                                                 </p>
                                             </div>
                                         </div>
 
-                                        <div className="flex flex-col items-end gap-0.5 pl-2 shrink-0">
-                                            <p className="font-bold text-zinc-900 dark:text-white tabular-nums text-sm tracking-tight">
-                                                {hasData ? formatBRL(price) : (isLoadingInitial ? <span className="animate-pulse text-zinc-200">---</span> : <span className="text-zinc-300 text-[8px] font-bold">Indisp.</span>)}
+                                        <div className="flex flex-col items-end gap-1 pl-2 shrink-0">
+                                            <p className="font-black text-zinc-900 dark:text-white tabular-nums text-base tracking-tight">
+                                                {hasData ? formatBRL(price) : (isLoadingInitial ? <span className="animate-pulse text-zinc-200">---</span> : <span className="text-zinc-300 text-[10px] font-bold">Indisp.</span>)}
                                             </p>
                                             
                                             {hasData && (
-                                                <div className={`flex items-center gap-0.5 px-1 py-0.5 rounded text-[8px] font-bold ${isPositive ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400'}`}>
-                                                    {isPositive ? <ArrowUpRight className="w-2 h-2" /> : <ArrowDownRight className="w-2 h-2" />}
+                                                <div className={`flex items-center gap-0.5 px-2 py-0.5 rounded-lg text-[10px] font-black ${isPositive ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400'}`}>
+                                                    {isPositive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
                                                     {Math.abs(change).toFixed(2)}%
                                                 </div>
                                             )}
@@ -601,63 +598,56 @@ export default function Watchlist({ showToast }: WatchlistProps) {
 
                                     {/* Additional Info Grid - Compact */}
                                     {hasData && (
-                                        <div className="grid grid-cols-3 gap-2 pt-2 border-t border-dashed border-zinc-100 dark:border-zinc-800/60 relative z-10">
+                                        <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-zinc-100 dark:border-zinc-800/60 relative z-10">
                                             <div className="flex flex-col">
-                                                <span className="text-[7px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-0.5">DY (12M)</span>
-                                                <span className="text-[9px] font-bold text-zinc-700 dark:text-zinc-200">{fundamentals.dy_12m ? `${Number(fundamentals.dy_12m).toFixed(2)}%` : '--'}</span>
+                                                <span className="text-[8px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-1">DY (12M)</span>
+                                                <span className="text-[11px] font-black text-zinc-700 dark:text-zinc-200">{fundamentals.dy_12m ? `${Number(fundamentals.dy_12m).toFixed(2)}%` : '--'}</span>
                                             </div>
-                                            <div className="flex flex-col text-center border-l border-zinc-50 dark:border-zinc-800/50">
-                                                <span className="text-[7px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-0.5">P/VP</span>
-                                                <span className={`text-[9px] font-bold ${Number(fundamentals.p_vp) > 1.1 ? 'text-rose-500' : Number(fundamentals.p_vp) < 0.9 ? 'text-emerald-500' : 'text-zinc-700 dark:text-zinc-200'}`}>
+                                            <div className="flex flex-col text-center">
+                                                <span className="text-[8px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-1">P/VP</span>
+                                                <span className={`text-[11px] font-black ${Number(fundamentals.p_vp) > 1.1 ? 'text-rose-500' : Number(fundamentals.p_vp) < 0.9 ? 'text-emerald-500' : 'text-zinc-700 dark:text-zinc-200'}`}>
                                                     {fundamentals.p_vp ? Number(fundamentals.p_vp).toFixed(2) : '--'}
                                                 </span>
                                             </div>
-                                            <div className="flex flex-col items-end border-l border-zinc-50 dark:border-zinc-800/50">
-                                                <span className="text-[7px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-0.5">Segmento</span>
-                                                <span className="text-[9px] font-bold text-zinc-700 dark:text-zinc-200 truncate max-w-[70px]">{quote?.segment || 'Geral'}</span>
+                                            <div className="flex flex-col items-end">
+                                                <span className="text-[8px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-1">Segmento</span>
+                                                <span className="text-[11px] font-black text-zinc-700 dark:text-zinc-200 truncate max-w-[90px]">{quote?.segment || 'Geral'}</span>
                                             </div>
                                         </div>
                                     )}
 
                                     {/* Alert Status */}
                                     {alert && (
-                                        <div className={`mt-2 flex items-center justify-between px-2 py-1 rounded-md border ${isAlertTriggered ? 'bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800/50' : 'bg-zinc-50 border-zinc-100 dark:bg-zinc-800/30 dark:border-zinc-700/50'} relative z-10 animate-in slide-in-from-top-1`}>
-                                            <div className="flex items-center gap-1">
-                                                <Bell className={`w-2 h-2 ${isAlertTriggered ? 'text-amber-500 animate-bounce' : 'text-zinc-400'}`} />
-                                                <span className={`text-[7px] font-bold uppercase tracking-wider ${isAlertTriggered ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-400'}`}>
+                                        <div className={`mt-4 flex items-center justify-between px-3 py-2 rounded-xl border ${isAlertTriggered ? 'bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800/50' : 'bg-zinc-50 border-zinc-100 dark:bg-zinc-800/30 dark:border-zinc-700/50'} relative z-10`}>
+                                            <div className="flex items-center gap-2">
+                                                <Bell className={`w-3 h-3 ${isAlertTriggered ? 'text-amber-500 animate-bounce' : 'text-zinc-400'}`} />
+                                                <span className={`text-[9px] font-black uppercase tracking-widest ${isAlertTriggered ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-400'}`}>
                                                     {alert.type === 'ABOVE' ? '>' : '<'} {formatBRL(alert.target)}
                                                 </span>
                                             </div>
                                             <button 
                                                 onClick={(e) => { e.stopPropagation(); removeAlert(ticker); }}
-                                                className="text-[7px] font-bold text-zinc-400 hover:text-rose-500 uppercase tracking-wider transition-colors"
+                                                className="text-[9px] font-black text-zinc-400 hover:text-rose-500 uppercase tracking-widest transition-colors"
                                             >
                                                 Remover
                                             </button>
                                         </div>
                                     )}
 
-                                    {/* Actions Overlay - Improved visibility */}
-                                    <div className="absolute top-2.5 right-2.5 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-300 z-20 translate-x-2 group-hover:translate-x-0">
+                                    {/* Actions Overlay */}
+                                    <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 z-20 translate-x-4 group-hover:translate-x-0">
                                         <button 
                                             onClick={(e) => { e.stopPropagation(); setAlertingTicker(ticker); setAlertPrice(price?.toString() || ''); }}
-                                            className="w-6 h-6 flex items-center justify-center text-zinc-400 hover:text-indigo-500 bg-white/90 dark:bg-zinc-800/90 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-full shadow-md border border-zinc-100 dark:border-zinc-700 transition-all backdrop-blur-sm"
-                                            title="Definir Alerta"
+                                            className="w-8 h-8 flex items-center justify-center text-zinc-400 hover:text-indigo-500 bg-white dark:bg-zinc-800 rounded-xl shadow-lg border border-zinc-100 dark:border-zinc-700 transition-all"
                                         >
-                                            <Bell className="w-2.5 h-2.5" />
+                                            <Bell className="w-3.5 h-3.5" />
                                         </button>
                                         <button 
                                             onClick={(e) => { e.stopPropagation(); removeTicker(ticker); }}
-                                            className="w-6 h-6 flex items-center justify-center text-zinc-400 hover:text-rose-500 bg-white/90 dark:bg-zinc-800/90 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-full shadow-md border border-zinc-100 dark:border-zinc-700 transition-all backdrop-blur-sm"
-                                            title="Remover"
+                                            className="w-8 h-8 flex items-center justify-center text-zinc-400 hover:text-rose-500 bg-white dark:bg-zinc-800 rounded-xl shadow-lg border border-zinc-100 dark:border-zinc-700 transition-all"
                                         >
-                                            <Trash2 className="w-2.5 h-2.5" />
+                                            <Trash2 className="w-3.5 h-3.5" />
                                         </button>
-                                    </div>
-                                    
-                                    {/* Chevron indicator */}
-                                    <div className="absolute bottom-2.5 right-2.5 opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-1 group-hover:translate-y-0 delay-100">
-                                        <ChevronRight className="w-2.5 h-2.5 text-zinc-300 dark:text-zinc-700" />
                                     </div>
                                 </div>
                             );

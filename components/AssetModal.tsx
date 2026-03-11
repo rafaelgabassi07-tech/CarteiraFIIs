@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
 import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, BarChart3, PieChart, Coins, DollarSign, Building2, FileText, MapPin, Zap, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, SquareStack, Map as MapIcon, CandlestickChart, LineChart as LineChartIcon, Award, RefreshCcw, ArrowLeft, Briefcase, MoreHorizontal, LayoutGrid, List, Activity, Scale, Percent, ChevronDown, ChevronUp, ListFilter, BookOpen, Calendar } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
@@ -714,22 +714,27 @@ const PositionSummaryCard: React.FC<PositionSummaryCardProps> = ({ asset, privac
     const isPositive = result >= 0;
 
     return (
-        <div className="grid grid-cols-2 gap-3">
-            <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                <p className="text-[9px] font-black text-zinc-400 uppercase tracking-[0.15em] mb-1">Patrimônio</p>
-                <p className="text-xl font-black text-zinc-900 dark:text-white tracking-tighter">{formatBRL(totalValue, privacyMode)}</p>
-                <p className="text-[10px] font-bold text-zinc-500 mt-1">{asset.quantity} cotas</p>
+        <div className="grid grid-cols-2 gap-4">
+            <div className="bg-zinc-50 dark:bg-zinc-900/50 p-6 rounded-[2.5rem] border border-zinc-100 dark:border-zinc-800/50 shadow-sm">
+                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-3">Patrimônio</p>
+                <p className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter leading-none">{formatBRL(totalValue, privacyMode)}</p>
+                <div className="flex items-center gap-2 mt-3">
+                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]"></div>
+                    <p className="text-[11px] font-bold text-zinc-500">{asset.quantity} cotas</p>
+                </div>
             </div>
-            <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                <p className="text-[9px] font-black text-zinc-400 uppercase tracking-[0.15em] mb-1">Resultado Total</p>
-                <div className="flex items-baseline gap-1.5">
-                    <p className={`text-xl font-black tracking-tighter ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
+            <div className="bg-zinc-50 dark:bg-zinc-900/50 p-6 rounded-[2.5rem] border border-zinc-100 dark:border-zinc-800/50 shadow-sm">
+                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-3">Resultado</p>
+                <div className="flex flex-col">
+                    <p className={`text-2xl font-black tracking-tighter leading-none ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
                         {isPositive ? '+' : ''}{formatBRL(result, privacyMode)}
                     </p>
-                </div>
-                <div className={`flex items-center gap-1 mt-1 ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
-                    {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                    <span className="text-[10px] font-black">{resultPercent.toFixed(2)}%</span>
+                    <div className={`flex items-center gap-1.5 mt-3 ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        <div className={`p-1 rounded-lg ${isPositive ? 'bg-emerald-500/10' : 'bg-rose-500/10'}`}>
+                            {isPositive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                        </div>
+                        <span className="text-xs font-black">{resultPercent.toFixed(2)}%</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -745,27 +750,23 @@ const ValuationCard: React.FC<ValuationCardProps> = ({ asset }) => {
     const pl = asset['p_l'];
     const dy = asset['dy_12m'];
 
-    const getValuationColor = (value: number | undefined, thresholds: [number, number]) => {
-        if (value === undefined || value === null) return 'text-zinc-500';
-        if (value <= thresholds[0]) return 'text-emerald-500';
-        if (value <= thresholds[1]) return 'text-amber-500';
-        return 'text-rose-500';
-    };
+    const items = [
+        { label: 'P/VP', value: pvp?.toFixed(2) || '-', color: (pvp || 0) > 1.1 ? 'text-rose-500' : (pvp || 0) < 0.9 ? 'text-emerald-500' : 'text-zinc-900 dark:text-white', icon: <Scale className="w-4 h-4" /> },
+        { label: 'P/L', value: pl?.toFixed(2) || '-', color: 'text-zinc-900 dark:text-white', icon: <Activity className="w-4 h-4" /> },
+        { label: 'DY (12M)', value: dy ? `${dy.toFixed(2)}%` : '-', color: 'text-emerald-500', icon: <Percent className="w-4 h-4" /> },
+    ];
 
     return (
-        <div className="grid grid-cols-3 gap-3">
-            <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 text-center">
-                <p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">P/VP <InfoTooltip title="P/VP" text="Preço sobre Valor Patrimonial. Idealmente abaixo de 1." /></p>
-                <p className={`text-lg font-black tracking-tighter ${getValuationColor(pvp, [1, 1.5])}`}>{pvp !== undefined && pvp !== null ? pvp.toFixed(2) : 'N/A'}</p>
-            </div>
-            <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 text-center">
-                <p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">P/L <InfoTooltip title="P/L" text="Preço sobre Lucro. Mede o quão 'caro' o ativo está em relação ao lucro que gera." /></p>
-                <p className={`text-lg font-black tracking-tighter ${getValuationColor(pl, [10, 15])}`}>{pl !== undefined && pl !== null ? pl.toFixed(2) : 'N/A'}</p>
-            </div>
-            <div className="bg-zinc-50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 text-center">
-                <p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">Dividend Yield</p>
-                <p className="text-lg font-black tracking-tighter text-emerald-500">{dy !== undefined && dy !== null ? `${dy.toFixed(2)}%` : 'N/A'}</p>
-            </div>
+        <div className="grid grid-cols-3 gap-4">
+            {items.map((item, idx) => (
+                <div key={idx} className="bg-zinc-50 dark:bg-zinc-900/50 p-5 rounded-[2rem] border border-zinc-100 dark:border-zinc-800/50 flex flex-col items-center text-center shadow-sm">
+                    <div className="w-10 h-10 rounded-2xl bg-white dark:bg-zinc-800 flex items-center justify-center mb-3 shadow-sm border border-zinc-100 dark:border-zinc-700">
+                        <span className="text-zinc-400">{item.icon}</span>
+                    </div>
+                    <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5">{item.label}</p>
+                    <p className={`text-sm font-black ${item.color}`}>{item.value}</p>
+                </div>
+            ))}
         </div>
     );
 };
@@ -775,34 +776,33 @@ interface DetailedInfoBlockProps {
 }
 
 const DetailedInfoBlock: React.FC<DetailedInfoBlockProps> = ({ asset }) => {
-    const dataPoints = [
-        { label: 'Cotação Atual', value: formatBRL(asset.currentPrice || 0), icon: DollarSign },
-        { label: 'Preço Médio', value: asset.quantity > 0 ? formatBRL(asset.averagePrice) : 'N/A', icon: Scale },
-        { label: 'Tipo', value: asset.assetType, icon: Briefcase },
-        { label: 'Segmento', value: asset.segment, icon: PieChart },
-        { label: 'Patrim. Líquido', value: asset.assets_value !== undefined && asset.assets_value !== null ? formatCompactBRL(asset.assets_value) : 'N/A', icon: Wallet },
-        { label: 'P/VP', value: asset.p_vp !== undefined && asset.p_vp !== null ? asset.p_vp.toFixed(2) : 'N/A', icon: Percent },
-        { label: 'P/L', value: asset.p_l !== undefined && asset.p_l !== null ? asset.p_l.toFixed(2) : 'N/A', icon: Percent },
-        { label: 'Dividend Yield', value: asset.dy_12m !== undefined && asset.dy_12m !== null ? `${asset.dy_12m.toFixed(2)}%` : 'N/A', icon: Coins },
-        { label: 'Rent. Real (12m)', value: asset.profitability_real_12m !== undefined && asset.profitability_real_12m !== null ? `${asset.profitability_real_12m.toFixed(2)}%` : 'N/A', icon: TrendingUp },
-        { label: 'Vacância', value: asset.vacancy !== undefined && asset.vacancy !== null ? `${asset.vacancy.toFixed(2)}%` : 'N/A', icon: MapPin },
+    const isFII = asset.assetType === 'FII';
+    
+    const infoItems = isFII ? [
+        { label: 'Segmento', value: asset.segment || '-', icon: LayoutGrid },
+        { label: 'Vacância', value: asset.vacancy !== undefined ? `${asset.vacancy.toFixed(2)}%` : '-', icon: X },
+        { label: 'Imóveis', value: asset.properties_count || '-', icon: Building2 },
+        { label: 'Liquidez', value: asset.liquidity || '-', icon: Zap },
+    ] : [
+        { label: 'Segmento', value: asset.segment || '-', icon: LayoutGrid },
+        { label: 'Margem Líq.', value: asset.net_margin !== undefined ? `${asset.net_margin.toFixed(2)}%` : '-', icon: Activity },
+        { label: 'CAGR Rec.', value: asset.cagr_revenue !== undefined ? `${asset.cagr_revenue.toFixed(2)}%` : '-', icon: TrendingUp },
+        { label: 'Liquidez', value: asset.liquidity || '-', icon: Zap },
     ];
 
     return (
-        <div className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
-            <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-                {dataPoints.map(({ label, value, icon: Icon }) => (
-                    <div key={label} className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center shrink-0">
-                            <Icon className="w-4 h-4 text-zinc-400" />
-                        </div>
-                        <div>
-                            <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-1">{label}</p>
-                            <p className="text-xs font-black text-zinc-900 dark:text-white tracking-tight">{value}</p>
-                        </div>
+        <div className="grid grid-cols-2 gap-4">
+            {infoItems.map((item, idx) => (
+                <div key={idx} className="bg-zinc-50 dark:bg-zinc-900/50 p-6 rounded-[2.5rem] border border-zinc-100 dark:border-zinc-800/50 flex items-center gap-4 shadow-sm">
+                    <div className="w-12 h-12 rounded-3xl bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm border border-zinc-100 dark:border-zinc-700 shrink-0">
+                        <item.icon className="w-5 h-5 text-indigo-500" />
                     </div>
-                ))}
-            </div>
+                    <div className="min-w-0">
+                        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-2">{item.label}</p>
+                        <p className="text-xs font-black text-zinc-900 dark:text-white truncate">{item.value}</p>
+                    </div>
+                </div>
+            ))}
         </div>
     );
 };
@@ -1130,6 +1130,19 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends, incomeCha
     const [historyError, setHistoryError] = useState(false);
     const [range, setRange] = useState('1D'); // Default to 1D (Intraday)
 
+    const [activeTab, setActiveTab] = useState('OVERVIEW');
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+    const scrollToSection = (id: string) => {
+        setActiveTab(id);
+        const element = document.getElementById(`section-${id}`);
+        if (element && scrollContainerRef.current) {
+            const container = scrollContainerRef.current;
+            const offsetTop = element.offsetTop - 120; // Adjust for sticky tabs
+            container.scrollTo({ top: offsetTop, behavior: 'smooth' });
+        }
+    };
+
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'Escape') onClose();
@@ -1168,83 +1181,107 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends, incomeCha
     const assetMarketHistory = marketDividends.filter(d => d.ticker === selectedAsset.ticker);
     const isWatchlist = selectedAsset.quantity === 0;
 
+    const tabs = useMemo(() => {
+        const baseTabs = [
+            { id: 'OVERVIEW', label: 'Resumo', icon: LayoutGrid },
+            { id: 'FUNDAMENTALS', label: 'Fundamentos', icon: List },
+            { id: 'INCOME', label: 'Renda', icon: Coins },
+            { id: 'CHARTS', label: 'Gráficos', icon: BarChart3 },
+        ];
+        if (selectedAsset.properties && selectedAsset.properties.length > 0) {
+            baseTabs.splice(3, 0, { id: 'PROPERTIES', label: 'Imóveis', icon: Building2 });
+        }
+        return baseTabs;
+    }, [selectedAsset]);
+
     return (
         <SwipeableModal isOpen={!!asset} onClose={onClose}>
             {selectedAsset && (
-                <div className="bg-white dark:bg-zinc-950 rounded-t-3xl md:rounded-3xl shadow-2xl flex flex-col h-full max-h-[92dvh]">
-                    {/* Header Moderno */}
-                    <div className="px-6 pt-6 pb-2 shrink-0 bg-white dark:bg-zinc-950 z-20 rounded-t-3xl">
+                <div className="bg-white dark:bg-zinc-950 flex flex-col h-full overflow-hidden">
+                    {/* Header Moderno & Clean */}
+                    <div className="px-6 pt-6 pb-4 shrink-0 bg-white dark:bg-zinc-950 z-30 border-b border-zinc-100 dark:border-zinc-900/50">
                         <div className="flex justify-between items-start mb-6">
                             <div className="flex items-center gap-4">
-                                <div className="relative group">
-                                    <div className="absolute inset-0 bg-indigo-500/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                                    <div className="w-16 h-16 rounded-2xl bg-white dark:bg-zinc-900 flex items-center justify-center overflow-hidden shadow-lg shadow-zinc-200/50 dark:shadow-black/50 border border-zinc-100 dark:border-zinc-800 relative z-10">
-                                        {selectedAsset.logoUrl ? (
-                                            <img src={selectedAsset.logoUrl} className="w-full h-full object-cover" alt={selectedAsset.ticker} />
-                                        ) : (
-                                            <span className="font-black text-2xl text-zinc-300 dark:text-zinc-700">{selectedAsset.ticker.substring(0, 2)}</span>
-                                        )}
-                                    </div>
-                                    <div className="absolute -bottom-1 -right-1 z-20">
-                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 border-white dark:border-zinc-950 ${selectedAsset.assetType === 'FII' ? 'bg-emerald-500' : 'bg-indigo-500'}`}>
-                                            {selectedAsset.assetType === 'FII' ? <Building2 className="w-3 h-3 text-white" /> : <TrendingUp className="w-3 h-3 text-white" />}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <h2 className="font-black text-2xl tracking-tighter text-zinc-900 dark:text-white leading-none">{selectedAsset.ticker}</h2>
-                                    </div>
-                                    <p className="text-xs font-bold text-zinc-400 mt-1 uppercase tracking-wider truncate max-w-[200px]">{selectedAsset.company_name || selectedAsset.ticker}</p>
-                                    
-                                    {selectedAsset.currentPrice && (
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <span className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">{formatBRL(selectedAsset.currentPrice)}</span>
-                                            {selectedAsset.dailyChange !== undefined && (
-                                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-lg ${selectedAsset.dailyChange >= 0 ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400'}`}>
-                                                    {selectedAsset.dailyChange >= 0 ? '+' : ''}{selectedAsset.dailyChange.toFixed(2)}%
-                                                </span>
-                                            )}
-                                        </div>
+                                <div className="w-16 h-16 rounded-3xl bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center overflow-hidden border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                                    {selectedAsset.logoUrl ? (
+                                        <img src={selectedAsset.logoUrl} className="w-full h-full object-cover" alt={selectedAsset.ticker} />
+                                    ) : (
+                                        <span className="font-black text-2xl text-zinc-300 dark:text-zinc-700">{selectedAsset.ticker.substring(0, 2)}</span>
                                     )}
                                 </div>
+                                <div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <h2 className="font-black text-3xl tracking-tighter text-zinc-900 dark:text-white leading-none">{selectedAsset.ticker}</h2>
+                                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${selectedAsset.assetType === 'FII' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400'}`}>
+                                            {selectedAsset.assetType}
+                                        </span>
+                                    </div>
+                                    <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider truncate max-w-[200px]">{selectedAsset.company_name || selectedAsset.ticker}</p>
+                                    <div className="flex items-center gap-2 mt-2">
+                                        <span className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(selectedAsset.currentPrice || 0)}</span>
+                                        <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-lg ${ (selectedAsset.dailyChange || 0) >= 0 ? 'text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' : 'text-rose-500 bg-rose-50 dark:bg-rose-900/20'}`}>
+                                            {(selectedAsset.dailyChange || 0) >= 0 ? '+' : ''}{(selectedAsset.dailyChange || 0).toFixed(2)}%
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="flex gap-2">
+                            
+                            <div className="flex items-center gap-2">
                                 <button 
                                     onClick={() => onAssetRefresh(selectedAsset.ticker)} 
-                                    className="w-10 h-10 bg-zinc-50 dark:bg-zinc-900 rounded-2xl flex items-center justify-center text-zinc-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all active:scale-90"
+                                    className="w-11 h-11 bg-zinc-50 dark:bg-zinc-900 rounded-2xl flex items-center justify-center text-zinc-400 hover:text-indigo-500 transition-all active:scale-90 border border-zinc-100 dark:border-zinc-800 shadow-sm"
                                 >
-                                    <RefreshCcw className="w-4.5 h-4.5" />
+                                    <RefreshCcw className="w-4 h-4" />
                                 </button>
                                 <button 
                                     onClick={onClose}
-                                    className="w-10 h-10 bg-zinc-50 dark:bg-zinc-900 rounded-2xl flex items-center justify-center text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all active:scale-90"
+                                    className="w-11 h-11 bg-zinc-50 dark:bg-zinc-900 rounded-2xl flex items-center justify-center text-zinc-400 hover:text-rose-500 transition-all active:scale-90 border border-zinc-100 dark:border-zinc-800 shadow-sm"
                                 >
                                     <X className="w-5 h-5" />
                                 </button>
                             </div>
                         </div>
+
+                        {/* Sticky Tabs Navigation */}
+                        <div className="flex gap-2 overflow-x-auto hide-scrollbar -mx-2 px-2">
+                            {tabs.map((tab) => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => scrollToSection(tab.id)}
+                                    className={`shrink-0 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-xl shadow-zinc-900/20 dark:shadow-white/10 scale-105' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                                >
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 pb-20 scroll-smooth">
-                        <div className="space-y-10 max-w-3xl mx-auto">
+                    <div 
+                        ref={scrollContainerRef}
+                        className="flex-1 overflow-y-auto overflow-x-hidden p-6 pb-24 scroll-smooth"
+                    >
+                        <div className="space-y-12 max-w-3xl mx-auto">
                             
                             {/* SEÇÃO: SUA POSIÇÃO */}
                             {!isWatchlist && (
-                                <div className="space-y-3">
-                                    <div className="flex items-center gap-2 px-1">
-                                        <Wallet className="w-4 h-4 text-indigo-500" />
-                                        <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Sua Posição</h3>
+                                <div id="section-OVERVIEW" className="space-y-4 scroll-mt-32">
+                                    <div className="flex items-center justify-between px-1">
+                                        <div className="flex items-center gap-2">
+                                            <Wallet className="w-3.5 h-3.5 text-indigo-500" />
+                                            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Sua Posição</h3>
+                                        </div>
                                     </div>
                                     <PositionSummaryCard asset={selectedAsset} privacyMode={privacyMode} />
                                 </div>
                             )}
                             
                             {/* SEÇÃO: COTAÇÃO & PERFORMANCE */}
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-2 px-1">
-                                    <BarChart3 className="w-4 h-4 text-indigo-500" />
-                                    <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Cotação & Performance</h3>
+                            <div id={isWatchlist ? "section-OVERVIEW" : "section-CHARTS"} className="space-y-4 scroll-mt-32">
+                                <div className="flex items-center justify-between px-1">
+                                    <div className="flex items-center gap-2">
+                                        <TrendingUp className="w-3.5 h-3.5 text-indigo-500" />
+                                        <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Performance</h3>
+                                    </div>
                                 </div>
                                 <PriceHistoryChart 
                                     fullData={historyData} 
@@ -1257,28 +1294,20 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends, incomeCha
                             </div>
 
                             {/* SEÇÃO: DADOS FUNDAMENTAIS */}
-                            <div className="space-y-4">
+                            <div id="section-FUNDAMENTALS" className="space-y-4 scroll-mt-32">
                                 <div className="flex items-center gap-2 px-1">
-                                    <List className="w-4 h-4 text-indigo-500" />
-                                    <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Dados Fundamentais</h3>
+                                    <List className="w-3.5 h-3.5 text-indigo-500" />
+                                    <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Fundamentos</h3>
                                 </div>
                                 <DetailedInfoBlock asset={selectedAsset} />
-                            </div>
-
-                            {/* SEÇÃO: VALUATION & INDICADORES */}
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-2 px-1">
-                                    <Activity className="w-4 h-4 text-indigo-500" />
-                                    <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Valuation & Indicadores</h3>
-                                </div>
                                 <ValuationCard asset={selectedAsset} />
                             </div>
 
                             {/* SEÇÃO: PROVENTOS */}
-                            <div className="space-y-4">
+                            <div id="section-INCOME" className="space-y-4 scroll-mt-32">
                                 <div className="flex items-center gap-2 px-1">
-                                    <Coins className="w-4 h-4 text-emerald-500" />
-                                    <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Fluxo de Dividendos</h3>
+                                    <Coins className="w-3.5 h-3.5 text-emerald-500" />
+                                    <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Dividendos</h3>
                                 </div>
                                 <IncomeAnalysisSection 
                                     asset={selectedAsset} 
@@ -1289,10 +1318,10 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends, incomeCha
                             </div>
 
                             {/* SEÇÃO: RENTABILIDADE COMPARADA */}
-                            <div className="space-y-4">
+                            <div id="section-CHARTS-EXTRA" className="space-y-4 scroll-mt-32">
                                 <div className="flex items-center gap-2 px-1">
-                                    <TrendingUp className="w-4 h-4 text-indigo-500" />
-                                    <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Rentabilidade Comparada</h3>
+                                    <Activity className="w-3.5 h-3.5 text-indigo-500" />
+                                    <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Comparativo</h3>
                                 </div>
                                 <ComparativeChart ticker={selectedAsset.ticker} type={selectedAsset.assetType} />
                             </div>
@@ -1300,29 +1329,18 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends, incomeCha
                             {/* SEÇÃO: EVOLUÇÃO FUNDAMENTALISTA */}
                             <div className="space-y-4">
                                 <div className="flex items-center gap-2 px-1">
-                                    <BookOpen className="w-4 h-4 text-indigo-500" />
-                                    <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Evolução Fundamentalista</h3>
+                                    <BookOpen className="w-3.5 h-3.5 text-indigo-500" />
+                                    <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Evolução</h3>
                                 </div>
                                 <Investidor10ChartsSection ticker={selectedAsset.ticker} assetType={selectedAsset.assetType} />
                             </div>
 
-                            {/* SEÇÃO: HISTÓRICO DE PAYOUT (Apenas Ações) */}
-                            {selectedAsset.assetType === AssetType.STOCK && (
-                                <div className="space-y-4">
-                                    <div className="flex items-center gap-2 px-1">
-                                        <PieChart className="w-4 h-4 text-indigo-500" />
-                                        <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Histórico de Payout</h3>
-                                    </div>
-                                    <Investidor10ChartsSection ticker={selectedAsset.ticker} assetType={selectedAsset.assetType} onlyPayout={true} />
-                                </div>
-                            )}
-
-                            {/* SEÇÃO: PORTFÓLIO FÍSICO (Apenas FIIs com imóveis) */}
+                            {/* SEÇÃO: PORTFÓLIO FÍSICO */}
                             {selectedAsset.properties && selectedAsset.properties.length > 0 && (
-                                <div className="space-y-4">
+                                <div id="section-PROPERTIES" className="space-y-4 scroll-mt-32">
                                     <div className="flex items-center gap-2 px-1">
-                                        <Building2 className="w-4 h-4 text-indigo-500" />
-                                        <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Portfólio Físico</h3>
+                                        <Building2 className="w-3.5 h-3.5 text-indigo-500" />
+                                        <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Imóveis</h3>
                                     </div>
                                     <PropertiesAnalysis properties={selectedAsset.properties} />
                                 </div>
