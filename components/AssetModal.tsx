@@ -1123,7 +1123,7 @@ const Investidor10ChartsSection: React.FC<Investidor10ChartsSectionProps> = ({ t
 
 // --- MAIN COMPONENT ---
 
-const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends, incomeChartData, privacyMode }: AssetModalProps) => {
+const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends = [], incomeChartData = { data: [], average: 0, activeTypes: [] }, privacyMode }: AssetModalProps) => {
     // History Data State (Moved from ChartsContainer)
     const [historyData, setHistoryData] = useState<any[]>([]);
     const [historyLoading, setHistoryLoading] = useState(true);
