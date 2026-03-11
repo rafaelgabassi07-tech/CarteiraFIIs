@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Search, Trash2, TrendingUp, TrendingDown, Plus, Star, ArrowLeft, RefreshCcw, AlertCircle, X, Filter, BarChart3, ArrowUpRight, ArrowDownRight, Bell, BellOff, ChevronRight } from 'lucide-react';
-import { getQuotes } from '../services/brapiService';
+import { getQuotes, searchAssets } from '../services/brapiService';
 import { fetchUnifiedMarketData } from '../services/dataService';
 import { formatBRL } from '../utils/formatters';
 import AssetModal from '../components/AssetModal';
@@ -56,7 +56,7 @@ export default function Watchlist({ showToast }: WatchlistProps) {
 
     // Search State
     const [searchTerm, setSearchTerm] = useState('');
-    const [searchResult, setSearchResult] = useState<WatchlistItem | null>(null);
+    const [searchResults, setSearchResults] = useState<WatchlistItem[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [searchError, setSearchError] = useState<string | null>(null);
 
@@ -210,25 +210,28 @@ export default function Watchlist({ showToast }: WatchlistProps) {
     // Search Logic
     useEffect(() => {
         const delayDebounceFn = setTimeout(async () => {
-            if (searchTerm.length >= 3) {
+            if (searchTerm.length >= 2) {
                 setIsSearching(true);
                 setSearchError(null);
-                setSearchResult(null);
+                setSearchResults([]);
                 try {
-                    const ticker = searchTerm.toUpperCase().trim();
-                    const { quotes } = await getQuotes([ticker]);
-                    if (quotes && quotes.length > 0) {
-                        const q = quotes[0];
-                        setSearchResult({
-                            ticker: q.symbol,
-                            price: q.regularMarketPrice,
-                            change: q.regularMarketChangePercent,
-                            name: q.longName || q.shortName,
-                            logo: q.logourl,
-                            type: (ticker.endsWith('11') || ticker.endsWith('11B')) ? AssetType.FII : AssetType.STOCK
-                        });
+                    const query = searchTerm.toUpperCase().trim();
+                    const { results, error } = await searchAssets(query);
+                    
+                    if (error) {
+                        setSearchError(error);
+                    } else if (results && results.length > 0) {
+                        const formattedResults = results.map((q: any) => ({
+                            ticker: q.stock,
+                            name: q.name,
+                            logo: q.logo,
+                            price: q.close,
+                            change: q.change,
+                            type: (q.stock.endsWith('11') || q.stock.endsWith('11B')) ? AssetType.FII : AssetType.STOCK
+                        }));
+                        setSearchResults(formattedResults);
                     } else {
-                        setSearchError("Ativo não encontrado.");
+                        setSearchError("Nenhum ativo encontrado.");
                     }
                 } catch (err) {
                     setSearchError("Erro ao buscar ativo.");
@@ -236,7 +239,7 @@ export default function Watchlist({ showToast }: WatchlistProps) {
                     setIsSearching(false);
                 }
             } else {
-                setSearchResult(null);
+                setSearchResults([]);
                 setSearchError(null);
             }
         }, 600);
@@ -247,13 +250,14 @@ export default function Watchlist({ showToast }: WatchlistProps) {
     const handleAddTicker = async (tickerToAdd: string) => {
         if (watchlist.includes(tickerToAdd)) {
             setSearchTerm('');
+            setSearchResults([]);
             return;
         }
 
         const newWatchlist = [...watchlist, tickerToAdd];
         setWatchlist(newWatchlist);
         setSearchTerm('');
-        setSearchResult(null);
+        setSearchResults([]);
 
         await fetchData(true, [tickerToAdd]);
     };
@@ -391,43 +395,48 @@ export default function Watchlist({ showToast }: WatchlistProps) {
 
                         {/* Search Results Dropdown */}
                         {searchTerm && (
-                            <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-2xl shadow-zinc-200/50 dark:shadow-black/50 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
-                                {searchResult ? (
-                                    <div 
-                                        onClick={() => { handleAddTicker(searchResult.ticker); setSearchTerm(''); }}
-                                        className="p-4 flex items-center justify-between cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors group"
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center overflow-hidden border border-zinc-100 dark:border-zinc-700 shadow-sm">
-                                                {searchResult.logo ? (
-                                                    <img src={searchResult.logo} alt={searchResult.ticker} className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <span className="font-black text-xs text-zinc-400">{searchResult.ticker.substring(0, 2)}</span>
-                                                )}
-                                            </div>
-                                            <div>
-                                                <div className="flex items-center gap-2">
-                                                    <h3 className="font-black text-base text-zinc-900 dark:text-white leading-none group-hover:text-indigo-600 transition-colors">{searchResult.ticker}</h3>
-                                                    <span className={`text-[7px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide ${searchResult.type === AssetType.FII ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400'}`}>
-                                                        {searchResult.type}
-                                                    </span>
+                            <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-2xl shadow-zinc-200/50 dark:shadow-black/50 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 max-h-[300px] overflow-y-auto no-scrollbar">
+                                {searchResults.length > 0 ? (
+                                    <div className="flex flex-col">
+                                        {searchResults.map((result) => (
+                                            <div 
+                                                key={result.ticker}
+                                                onClick={() => { handleAddTicker(result.ticker); }}
+                                                className="p-4 flex items-center justify-between cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors group border-b border-zinc-100 dark:border-zinc-800 last:border-0"
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center overflow-hidden border border-zinc-100 dark:border-zinc-700 shadow-sm">
+                                                        {result.logo ? (
+                                                            <img src={result.logo} alt={result.ticker} className="w-full h-full object-cover" />
+                                                        ) : (
+                                                            <span className="font-black text-xs text-zinc-400">{result.ticker.substring(0, 2)}</span>
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        <div className="flex items-center gap-2">
+                                                            <h3 className="font-black text-base text-zinc-900 dark:text-white leading-none group-hover:text-indigo-600 transition-colors">{result.ticker}</h3>
+                                                            <span className={`text-[7px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide ${result.type === AssetType.FII ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400'}`}>
+                                                                {result.type}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mt-1 truncate max-w-[120px]">{result.name}</p>
+                                                    </div>
                                                 </div>
-                                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mt-1">{searchResult.name}</p>
+                                                <div className="flex items-center gap-4">
+                                                    <div className="flex flex-col items-end gap-0.5">
+                                                        <span className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(result.price || 0)}</span>
+                                                        {result.change !== undefined && (
+                                                            <span className={`text-[9px] font-bold ${result.change >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                                {result.change >= 0 ? '+' : ''}{result.change.toFixed(2)}%
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm shrink-0">
+                                                        <Plus className="w-4 h-4" strokeWidth={3} />
+                                                    </div>
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div className="flex items-center gap-4">
-                                            <div className="flex flex-col items-end gap-0.5">
-                                                <span className="text-sm font-black text-zinc-900 dark:text-white">{formatBRL(searchResult.price || 0)}</span>
-                                                {searchResult.change !== undefined && (
-                                                    <span className={`text-[9px] font-bold ${searchResult.change >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                                        {searchResult.change >= 0 ? '+' : ''}{searchResult.change.toFixed(2)}%
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
-                                                <Plus className="w-4 h-4" strokeWidth={3} />
-                                            </div>
-                                        </div>
+                                        ))}
                                     </div>
                                 ) : isSearching ? (
                                     <div className="p-6 text-center">
@@ -441,7 +450,7 @@ export default function Watchlist({ showToast }: WatchlistProps) {
                                         <div className="w-10 h-10 bg-rose-50 dark:bg-rose-900/20 rounded-full flex items-center justify-center mx-auto mb-3">
                                             <AlertCircle className="w-5 h-5 text-rose-500" />
                                         </div>
-                                        <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest">Ativo não encontrado</p>
+                                        <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest">{searchError}</p>
                                     </div>
                                 ) : null}
                             </div>

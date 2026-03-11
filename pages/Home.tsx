@@ -154,21 +154,30 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
 
         // Calculate Market Value Approximation
         const finalInvested = runningInvested;
-        const totalAppreciation = Math.max(0, currentBalance - finalInvested);
-        const n = allMonths.length;
+        const totalAppreciation = currentBalance - finalInvested; // Allow negative appreciation
+        
+        const currentMonthKeyStr = new Date().toISOString().slice(0, 7);
+        const historicalMonthsCount = allMonths.filter(m => m <= currentMonthKeyStr).length;
+        const n = historicalMonthsCount > 0 ? historicalMonthsCount : 1;
         
         return allMonths.map((m, i) => {
             const data = timeline[m];
+            const isFuture = m > currentMonthKeyStr;
             
             // Heuristic for Market Value Curve
-            const timeFactor = (i + 1) / n;
-            const investedFactor = finalInvested > 0 ? data.accumulatedInvested / finalInvested : 0;
-            // Non-linear appreciation curve to simulate compounding/market effect
-            const estimatedAppreciation = totalAppreciation * investedFactor * Math.pow(timeFactor, 0.7);
+            let estimatedAppreciation = 0;
+            if (!isFuture) {
+                const timeFactor = (i + 1) / n;
+                const investedFactor = finalInvested > 0 ? data.accumulatedInvested / finalInvested : 0;
+                // Non-linear appreciation curve to simulate compounding/market effect
+                estimatedAppreciation = totalAppreciation * investedFactor * Math.pow(timeFactor, 0.7);
+            } else {
+                estimatedAppreciation = totalAppreciation;
+            }
             
-            const marketValue = data.accumulatedInvested + estimatedAppreciation;
-            const totalReturn = marketValue - data.accumulatedInvested;
-            const returnPercent = data.accumulatedInvested > 0 ? (totalReturn / data.accumulatedInvested) * 100 : 0;
+            const marketValue = isFuture ? null : data.accumulatedInvested + estimatedAppreciation;
+            const totalReturn = isFuture ? null : marketValue - data.accumulatedInvested;
+            const returnPercent = isFuture ? null : (data.accumulatedInvested > 0 ? (totalReturn / data.accumulatedInvested) * 100 : 0);
 
             return {
                 month: m,
@@ -177,11 +186,12 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                 contribution: data.monthlyContribution,
                 dividend: data.monthlyDividend,
                 dividendProvisioned: data.monthlyDividendProvisioned,
-                invested: data.accumulatedInvested,
+                invested: isFuture ? null : data.accumulatedInvested,
                 dividends: data.accumulatedDividends,
                 marketValue: marketValue,
                 appreciation: estimatedAppreciation,
-                returnPercent: returnPercent
+                returnPercent: returnPercent,
+                isFuture: isFuture
             };
         });
     }, [transactions, dividends, currentBalance]);
@@ -196,27 +206,29 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
 
     // 3. Calculate Stats
     const stats = useMemo(() => {
-        if (filteredData.length === 0) return null;
-        const last = filteredData[filteredData.length - 1];
-        const first = filteredData[0];
+        const currentMonthKeyStr = new Date().toISOString().slice(0, 7);
+        const historicalFilteredData = filteredData.filter(d => !d.isFuture);
         
-        const totalInvested = last.invested;
-        const totalValue = last.marketValue;
+        if (historicalFilteredData.length === 0) return null;
+        const last = historicalFilteredData[historicalFilteredData.length - 1];
+        const first = historicalFilteredData[0];
+        
+        const totalInvested = last.invested || 0;
+        const totalValue = last.marketValue || 0;
         const totalReturn = totalValue - totalInvested;
         const roi = totalInvested > 0 ? (totalReturn / totalInvested) * 100 : 0;
         
-        const contributions = filteredData.map(d => d.contribution).filter(c => c > 0);
+        const contributions = historicalFilteredData.map(d => d.contribution).filter(c => c > 0);
         const avgContribution = contributions.length > 0 ? contributions.reduce((a, b) => a + b, 0) / contributions.length : 0;
         
-        const divs = filteredData.map(d => d.dividend).filter(d => d > 0);
+        const divs = historicalFilteredData.map(d => d.dividend).filter(d => d > 0);
         const avgDividend = divs.length > 0 ? divs.reduce((a, b) => a + b, 0) / divs.length : 0;
 
         // --- PROJEÇÃO DE DIVIDENDOS (MÉDIA 12M) ---
-        // Calcula o Yield on Cost médio dos últimos 12 meses
-        // Total de dividendos recebidos nos últimos 12 meses / Valor investido médio no período
-        const last12Months = fullHistory.slice(-12);
+        const historicalFullData = fullHistory.filter(d => !d.isFuture);
+        const last12Months = historicalFullData.slice(-12);
         const totalDivs12m = last12Months.reduce((acc, d) => acc + d.dividend, 0);
-        const avgInvested12m = last12Months.reduce((acc, d) => acc + d.invested, 0) / (last12Months.length || 1);
+        const avgInvested12m = last12Months.reduce((acc, d) => acc + (d.invested || 0), 0) / (last12Months.length || 1);
         
         // Yield Anualizado Histórico
         const historicalYield = avgInvested12m > 0 ? totalDivs12m / avgInvested12m : 0;
@@ -226,22 +238,22 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
         const projectedMonthlyDividends = projectedAnnualDividends / 12;
 
         // CAGR Calculation (Approximate)
-        const years = filteredData.length / 12;
-        const cagr = years >= 1 && first.marketValue > 0 ? (Math.pow(totalValue / first.marketValue, 1 / years) - 1) * 100 : roi;
+        const years = historicalFilteredData.length / 12;
+        const cagr = years >= 1 && (first.marketValue || 0) > 0 ? (Math.pow(totalValue / (first.marketValue || 1), 1 / years) - 1) * 100 : roi;
 
         // Best/Worst Month & Win Rate
-        let bestMonth = { ...filteredData[0], change: 0 };
-        let worstMonth = { ...filteredData[0], change: 0 };
+        let bestMonth = { ...historicalFilteredData[0], change: 0 };
+        let worstMonth = { ...historicalFilteredData[0], change: 0 };
         let positiveMonths = 0;
         let negativeMonths = 0;
         const monthlyReturns: number[] = [];
 
-        for (let i = 1; i < filteredData.length; i++) {
-            const prev = filteredData[i-1];
-            const curr = filteredData[i];
+        for (let i = 1; i < historicalFilteredData.length; i++) {
+            const prev = historicalFilteredData[i-1];
+            const curr = historicalFilteredData[i];
             // Organic change % (excluding contribution)
-            const organicGrowth = (curr.marketValue - prev.marketValue) - curr.contribution;
-            const pct = prev.marketValue > 0 ? (organicGrowth / prev.marketValue) * 100 : 0;
+            const organicGrowth = ((curr.marketValue || 0) - (prev.marketValue || 0)) - curr.contribution;
+            const pct = (prev.marketValue || 0) > 0 ? (organicGrowth / (prev.marketValue || 1)) * 100 : 0;
             
             monthlyReturns.push(pct);
             
@@ -278,6 +290,13 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
             historicalYield
         };
     }, [filteredData, fullHistory]);
+
+    const chartData = useMemo(() => {
+        if (chartType === 'WEALTH' || chartType === 'RETURN') {
+            return filteredData.filter(d => !d.isFuture);
+        }
+        return filteredData;
+    }, [filteredData, chartType]);
 
     if (!stats) return null;
 
@@ -386,7 +405,7 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                                 >
                                     <ResponsiveContainer width="100%" height="100%">
                                         {chartType === 'WEALTH' ? (
-                                            <ComposedChart data={filteredData} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
+                                            <ComposedChart data={chartData} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
                                                 <defs>
                                                     <linearGradient id="colorWealthBar" x1="0" y1="0" x2="0" y2="1">
                                                         <stop offset="5%" stopColor="#6366f1" stopOpacity={0.6}/>
@@ -432,7 +451,7 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                                                 <Line type="monotone" dataKey="invested" stroke="#a1a1aa" strokeWidth={1.5} strokeDasharray="4 4" dot={false} activeDot={false} opacity={0.6} />
                                             </ComposedChart>
                                         ) : chartType === 'CASHFLOW' ? (
-                                            <ComposedChart data={filteredData} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
+                                            <ComposedChart data={chartData} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
                                                 <defs>
                                                     <linearGradient id="colorCashBar" x1="0" y1="0" x2="0" y2="1">
                                                         <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
@@ -487,7 +506,7 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                                                 <Line type="monotone" dataKey="contribution" stroke="#6366f1" strokeWidth={1.5} strokeDasharray="3 3" dot={false} opacity={0.4} />
                                             </ComposedChart>
                                         ) : (
-                                            <ComposedChart data={filteredData} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
+                                            <ComposedChart data={chartData} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
                                                 <defs>
                                                     <linearGradient id="colorReturnBar" x1="0" y1="0" x2="0" y2="1">
                                                         <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8}/>

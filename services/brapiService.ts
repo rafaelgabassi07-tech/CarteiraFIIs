@@ -71,6 +71,24 @@ const LOGO_OVERRIDES: Record<string, string> = {
   'RVBI11': 'https://vbi-realestate.com/wp-content/themes/vbi/assets/img/logo-vbi.png',
 };
 
+export const searchAssets = async (query: string): Promise<{ results: any[], error?: string }> => {
+  if (!isTokenValid()) {
+    return { results: [], error: "Token não configurado" };
+  }
+  try {
+    const response = await fetch(`https://brapi.dev/api/quote/list?search=${encodeURIComponent(query)}&limit=5&token=${BRAPI_TOKEN}`, {
+      cache: 'no-store'
+    });
+    if (!response.ok) {
+      return { results: [], error: "Erro na busca" };
+    }
+    const data = await response.json();
+    return { results: data.stocks || [] };
+  } catch (e) {
+    return { results: [], error: "Erro de conexão API" };
+  }
+};
+
 export const getQuotes = async (tickers: string[]): Promise<{ quotes: BrapiQuote[], error?: string }> => {
   if (!tickers || tickers.length === 0) {
     return { quotes: [] };
