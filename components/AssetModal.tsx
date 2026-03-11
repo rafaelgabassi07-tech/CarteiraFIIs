@@ -944,17 +944,70 @@ const IncomeAnalysisSection: React.FC<IncomeAnalysisSectionProps> = ({ asset, ch
                 </div>
                 <div className="h-48 w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={historyChartData} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
-                            <XAxis dataKey="month" tick={{ fontSize: 9, fontWeight: 600, fill: '#71717a' }} tickLine={false} axisLine={false} dy={10} />
-                            <YAxis tick={{ fontSize: 9, fontWeight: 600, fill: '#71717a' }} tickLine={false} axisLine={false} tickFormatter={(val) => `R$${val}`} />
-                            <Tooltip 
-                                cursor={{fill: 'rgba(0,0,0,0.02)'}} 
-                                contentStyle={{ backgroundColor: '#18181b', border: 'none', borderRadius: '12px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} 
-                                labelStyle={{ color: '#a1a1aa', fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' }} 
-                                formatter={(value: number) => [formatBRL(value), isWatchlist ? 'Valor por Cota' : 'Total Recebido']} 
-                            />
-                            <Bar dataKey="total" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={30} />
-                        </BarChart>
+                            <BarChart data={historyChartData} margin={{ top: 10, right: 0, left: -25, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="#10b981" stopOpacity={1} />
+                                        <stop offset="100%" stopColor="#059669" stopOpacity={0.8} />
+                                    </linearGradient>
+                                </defs>
+                                <XAxis 
+                                    dataKey="month" 
+                                    tick={{ fontSize: 9, fontWeight: 700, fill: '#71717a' }} 
+                                    tickLine={false} 
+                                    axisLine={false} 
+                                    dy={10} 
+                                />
+                                <YAxis 
+                                    tick={{ fontSize: 9, fontWeight: 700, fill: '#71717a' }} 
+                                    tickLine={false} 
+                                    axisLine={false} 
+                                    tickFormatter={(val) => `R$${val}`} 
+                                />
+                                <Tooltip 
+                                    cursor={{ fill: 'rgba(16, 185, 129, 0.05)' }} 
+                                    content={({ active, payload, label }) => {
+                                        if (active && payload && payload.length) {
+                                            const value = payload[0].value as number;
+                                            return (
+                                                <div className="bg-zinc-900/95 backdrop-blur-md border border-white/10 p-3 rounded-xl shadow-2xl">
+                                                    <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">{label}</p>
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                                                        <p className="text-sm font-black text-white">{formatBRL(value)}</p>
+                                                    </div>
+                                                    <p className="text-[8px] font-bold text-zinc-500 mt-1 uppercase tracking-tighter">
+                                                        {isWatchlist ? 'Valor por Cota' : 'Total Recebido'}
+                                                    </p>
+                                                </div>
+                                            );
+                                        }
+                                        return null;
+                                    }}
+                                />
+                                <ReferenceLine 
+                                    y={historyChartData.reduce((acc: number, curr: any) => acc + curr.total, 0) / (historyChartData.length || 1)} 
+                                    stroke="#10b981" 
+                                    strokeDasharray="3 3" 
+                                    strokeOpacity={0.3}
+                                    label={{ 
+                                        position: 'right', 
+                                        value: 'MÉDIA', 
+                                        fill: '#10b981', 
+                                        fontSize: 8, 
+                                        fontWeight: 900,
+                                        letterSpacing: 1
+                                    }} 
+                                />
+                                <Bar 
+                                    dataKey="total" 
+                                    fill="url(#barGradient)" 
+                                    radius={[6, 6, 0, 0]} 
+                                    maxBarSize={32}
+                                    animationDuration={1500}
+                                    animationEasing="ease-out"
+                                />
+                            </BarChart>
                     </ResponsiveContainer>
                 </div>
             </div>

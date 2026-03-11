@@ -3,7 +3,7 @@ import {
     User, Bell, Shield, Database, 
     RefreshCw, LogOut, ChevronRight, Moon, Sun, 
     Monitor, Palette, Eye, EyeOff, Download, Upload, 
-    Trash2, Zap, Smartphone, FileText, Globe
+    Trash2, Zap, Smartphone, FileText, Globe, Search
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Transaction, DividendReceipt, ServiceMetric, AssetType } from '../types';
@@ -40,32 +40,25 @@ interface SettingsProps {
     showToast: (type: 'success' | 'error' | 'info', text: string) => void;
 }
 
-const ToggleSwitch = ({ enabled, onToggle, icon: Icon }: { enabled: boolean; onToggle: () => void; icon?: React.ElementType }) => (
+const ToggleSwitch = ({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) => (
     <button
         onClick={onToggle}
-        className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-            enabled ? 'bg-indigo-500' : 'bg-zinc-200 dark:bg-zinc-800'
+        className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none ${
+            enabled ? 'bg-indigo-500/50' : 'bg-zinc-300 dark:bg-zinc-700'
         }`}
     >
         <span
-            className={`pointer-events-none relative inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out flex items-center justify-center ${
-                enabled ? 'translate-x-5' : 'translate-x-0'
+            className={`pointer-events-none relative inline-block h-6 w-6 transform rounded-full shadow-lg transition duration-200 ease-in-out -translate-y-0.5 ${
+                enabled ? 'translate-x-5 bg-indigo-500' : 'translate-x-0 bg-white dark:bg-zinc-400'
             }`}
-        >
-            {Icon && <Icon className={`w-3.5 h-3.5 ${enabled ? 'text-indigo-500' : 'text-zinc-400'}`} />}
-        </span>
+        />
     </button>
 );
 
-const SettingsGroup = ({ title, children, icon: Icon }: { title: string; children: React.ReactNode; icon: React.ElementType }) => (
-    <div className="mb-8 last:mb-0">
-        <div className="flex items-center gap-3 mb-4 px-2">
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-500">
-                <Icon className="w-4 h-4" />
-            </div>
-            <h3 className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-widest">{title}</h3>
-        </div>
-        <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 overflow-hidden shadow-sm">
+const SettingsGroup = ({ title, children }: { title: string; children: React.ReactNode }) => (
+    <div className="mb-6">
+        <h3 className="text-[11px] font-black text-indigo-500 dark:text-indigo-400 uppercase tracking-[0.2em] mb-3 px-6">{title}</h3>
+        <div className="space-y-1">
             {children}
         </div>
     </div>
@@ -75,6 +68,7 @@ const SettingsItem = ({
     label, 
     description, 
     icon: Icon, 
+    iconBg,
     onClick, 
     value, 
     badge, 
@@ -84,6 +78,7 @@ const SettingsItem = ({
     label: string; 
     description?: string; 
     icon: React.ElementType;
+    iconBg?: string;
     onClick?: () => void; 
     value?: React.ReactNode;
     badge?: string;
@@ -93,37 +88,34 @@ const SettingsItem = ({
     <button
         onClick={onClick}
         disabled={!onClick || isLoading}
-        className={`w-full flex items-center justify-between p-5 text-left transition-all hover:bg-zinc-50 dark:hover:bg-zinc-800/50 border-b border-zinc-50 dark:border-zinc-800/50 last:border-0 group ${
-            danger ? 'hover:bg-rose-50 dark:hover:bg-rose-500/5' : ''
+        className={`w-full flex items-center justify-between px-6 py-4 text-left transition-all active:bg-zinc-100 dark:active:bg-zinc-800/50 group ${
+            danger ? 'text-rose-500' : ''
         }`}
     >
-        <div className="flex items-center gap-4">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
-                danger 
-                    ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-500' 
-                    : 'bg-zinc-50 dark:bg-zinc-800 text-zinc-400 group-hover:text-indigo-500 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-500/10'
+        <div className="flex items-center gap-5 flex-1">
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                iconBg || (danger ? 'bg-rose-100 dark:bg-rose-500/10 text-rose-500' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500')
             }`}>
-                {isLoading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Icon className="w-5 h-5" />}
+                {isLoading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Icon className="w-5 h-5" strokeWidth={2} />}
             </div>
-            <div>
+            <div className="flex-1">
                 <div className="flex items-center gap-2">
-                    <span className={`text-sm font-bold ${danger ? 'text-rose-500' : 'text-zinc-900 dark:text-white'}`}>
+                    <span className={`text-base font-medium ${danger ? 'text-rose-500' : 'text-zinc-900 dark:text-white'}`}>
                         {label}
                     </span>
                     {badge && (
-                        <span className="px-1.5 py-0.5 rounded-md bg-indigo-500 text-[10px] font-black text-white uppercase tracking-wider">
+                        <span className="px-1.5 py-0.5 rounded-full bg-indigo-500 text-[8px] font-black text-white uppercase tracking-wider">
                             {badge}
                         </span>
                     )}
                 </div>
                 {description && (
-                    <p className="text-xs text-zinc-400 font-medium mt-0.5">{description}</p>
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400 font-normal mt-0.5 line-clamp-1">{description}</p>
                 )}
             </div>
         </div>
-        <div className="flex items-center gap-3">
-            {value && <div className="text-sm font-bold text-zinc-500">{value}</div>}
-            {onClick && !value && <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-indigo-500 transition-colors" />}
+        <div className="flex items-center gap-3 ml-4">
+            {value ? value : (onClick && <ChevronRight className="w-5 h-5 text-zinc-300" />)}
         </div>
     </button>
 );
@@ -230,176 +222,137 @@ export const Settings: React.FC<SettingsProps> = ({
     };
 
     return (
-        <div className="pb-20">
-            {/* Perfil Header */}
-            <div className="relative mb-10 px-2">
-                <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 blur-3xl rounded-full -z-10"></div>
-                <div className="flex items-center gap-6">
-                    <div className="relative group">
-                        <div className="w-24 h-24 rounded-[2.5rem] bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center overflow-hidden border-4 border-white dark:border-zinc-900 shadow-xl">
-                            {user?.user_metadata?.avatar_url ? (
-                                <img src={user.user_metadata.avatar_url} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                            ) : (
-                                <User className="w-10 h-10 text-zinc-400" />
-                            )}
-                        </div>
-                        <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-xl bg-indigo-500 border-4 border-white dark:border-zinc-900 flex items-center justify-center text-white shadow-lg">
-                            <Zap className="w-4 h-4" />
-                        </div>
+        <div className="pb-24 -mx-4">
+            {/* Android Settings Header */}
+            <div className="px-6 pt-4 pb-6 sticky top-0 bg-primary-light dark:bg-primary-dark z-20">
+                <div className="flex items-center justify-between mb-6">
+                    <h1 className="text-2xl font-normal text-zinc-900 dark:text-white">Configurações</h1>
+                    <div className="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center overflow-hidden border border-zinc-200 dark:border-zinc-700">
+                        {user?.user_metadata?.avatar_url ? (
+                            <img src={user.user_metadata.avatar_url} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        ) : (
+                            <User className="w-5 h-5 text-zinc-400" />
+                        )}
                     </div>
-                    <div>
-                        <div className="flex items-center gap-2 mb-1">
-                            <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter">
-                                {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Investidor'}
-                            </h2>
-                            <span className="px-2 py-0.5 rounded-lg bg-indigo-500 text-[10px] font-black text-white uppercase tracking-widest">PRO</span>
-                        </div>
-                        <p className="text-sm font-medium text-zinc-400 mb-3">{user?.email}</p>
-                        <div className="flex items-center gap-4">
-                            <div className="flex flex-col">
-                                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Ordens</span>
-                                <span className="text-sm font-black text-zinc-900 dark:text-white">{transactions.length}</span>
-                            </div>
-                            <div className="w-px h-6 bg-zinc-100 dark:bg-zinc-800"></div>
-                            <div className="flex flex-col">
-                                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Ativos</span>
-                                <span className="text-sm font-black text-zinc-900 dark:text-white">
-                                    {new Set(transactions.map(t => t.ticker)).size}
-                                </span>
-                            </div>
-                        </div>
+                </div>
+
+                {/* Android Search Bar */}
+                <div className="relative group">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2">
+                        <Search className="w-5 h-5 text-zinc-400" />
                     </div>
+                    <input 
+                        type="text" 
+                        placeholder="Pesquisar nas configurações" 
+                        className="w-full bg-zinc-100 dark:bg-zinc-800/50 border-none pl-12 pr-4 py-3.5 rounded-full text-sm font-normal outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                    />
                 </div>
             </div>
 
-            <div className="space-y-8">
-                {/* Conta */}
-                <SettingsGroup title="Conta" icon={User}>
+            <div className="mt-2">
+                {/* Perfil Android Style */}
+                <button 
+                    onClick={() => {}} 
+                    className="w-full flex items-center gap-5 px-6 py-6 active:bg-zinc-100 dark:active:bg-zinc-800/50 transition-all border-b border-zinc-100 dark:border-zinc-800/50 mb-4"
+                >
+                    <div className="w-14 h-14 rounded-full bg-indigo-500 flex items-center justify-center text-white text-xl font-bold shadow-lg">
+                        {user?.user_metadata?.full_name?.[0] || user?.email?.[0]?.toUpperCase() || 'I'}
+                    </div>
+                    <div className="flex-1 text-left">
+                        <h2 className="text-lg font-medium text-zinc-900 dark:text-white">
+                            {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Investidor'}
+                        </h2>
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400">Conta Google, serviços e backup</p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-zinc-300" />
+                </button>
+
+                {/* Grupos de Configurações */}
+                <SettingsGroup title="Conectividade e Sincronização">
                     <SettingsItem 
-                        label="Sair da Conta" 
-                        description="Encerrar sessão atual"
-                        icon={LogOut}
-                        danger
-                        onClick={onLogout}
+                        label="Sincronizar Agora" 
+                        description="Atualizar dados com a nuvem"
+                        icon={RefreshCw}
+                        iconBg="bg-blue-100 dark:bg-blue-500/10 text-blue-500"
+                        onClick={handleSync}
+                        isLoading={isSyncing}
+                    />
+                    <SettingsItem 
+                        label="Status dos Serviços" 
+                        description="Verificar latência e conexão"
+                        icon={Globe}
+                        iconBg="bg-emerald-100 dark:bg-emerald-500/10 text-emerald-500"
+                        onClick={onCheckConnection}
+                        isLoading={isCheckingConnection}
                     />
                 </SettingsGroup>
 
-                {/* Aparência & Preferências */}
-                <SettingsGroup title="Aparência & Preferências" icon={Palette}>
-                    <div className="p-5 flex items-center justify-between border-b border-zinc-50 dark:border-zinc-800/50">
-                        <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-400">
-                                {theme === 'dark' ? <Moon className="w-5 h-5" /> : theme === 'light' ? <Sun className="w-5 h-5" /> : <Monitor className="w-5 h-5" />}
-                            </div>
-                            <div>
-                                <span className="text-sm font-bold text-zinc-900 dark:text-white">Tema do App</span>
-                                <p className="text-xs text-zinc-400 font-medium mt-0.5">Escolha o visual preferido</p>
-                            </div>
-                        </div>
-                        <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl">
-                            {(['light', 'system', 'dark'] as const).map((t) => (
-                                <button
-                                    key={t}
-                                    onClick={() => onSetTheme(t)}
-                                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-                                        theme === t 
-                                            ? 'bg-white dark:bg-zinc-700 text-indigo-500 shadow-sm' 
-                                            : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200'
-                                    }`}
-                                >
-                                    {t === 'light' ? 'Claro' : t === 'dark' ? 'Escuro' : 'Auto'}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
+                <SettingsGroup title="Personalização">
+                    <SettingsItem 
+                        label="Tema do Dispositivo" 
+                        description={theme === 'dark' ? 'Escuro' : theme === 'light' ? 'Claro' : 'Seguir sistema'}
+                        icon={theme === 'dark' ? Moon : theme === 'light' ? Sun : Monitor}
+                        iconBg="bg-purple-100 dark:bg-purple-500/10 text-purple-500"
+                        onClick={() => {
+                            const themes: ('light' | 'system' | 'dark')[] = ['light', 'system', 'dark'];
+                            const next = themes[(themes.indexOf(theme) + 1) % themes.length];
+                            onSetTheme(next);
+                        }}
+                    />
                     <SettingsItem 
                         label="Modo Privacidade" 
-                        description="Ocultar valores sensíveis na tela"
+                        description="Ocultar valores sensíveis"
                         icon={privacyMode ? EyeOff : Eye}
+                        iconBg="bg-amber-100 dark:bg-amber-500/10 text-amber-500"
                         value={<ToggleSwitch enabled={privacyMode} onToggle={() => onSetPrivacyMode(!privacyMode)} />}
                     />
                     <SettingsItem 
-                        label="Notificações Push" 
+                        label="Notificações" 
                         description="Alertas de proventos e mercado"
                         icon={Bell}
+                        iconBg="bg-rose-100 dark:bg-rose-500/10 text-rose-500"
                         value={<ToggleSwitch enabled={pushEnabled} onToggle={handleTogglePush} />}
                     />
                 </SettingsGroup>
 
-                {/* Dados e Backup */}
-                <SettingsGroup title="Dados & Backup" icon={Database}>
+                <SettingsGroup title="Armazenamento e Backup">
                     <SettingsItem 
-                        label="Importar Planilha B3" 
+                        label="Importar Dados" 
                         description="Sincronizar ordens via Excel (.xlsx)"
                         icon={Upload}
+                        iconBg="bg-indigo-100 dark:bg-indigo-500/10 text-indigo-500"
                         onClick={() => fileInputRef.current?.click()}
                         isLoading={isImporting}
-                    />
-                    <input 
-                        type="file" 
-                        ref={fileInputRef} 
-                        onChange={handleImport} 
-                        accept=".xlsx" 
-                        className="hidden" 
                     />
                     <SettingsItem 
                         label="Exportar Backup" 
                         description="Salvar dados em arquivo JSON"
                         icon={Download}
+                        iconBg="bg-sky-100 dark:bg-sky-500/10 text-sky-500"
                         onClick={handleExport}
                         isLoading={isExporting}
                     />
-                    <SettingsItem 
-                        label="Sincronizar Agora" 
-                        description="Forçar atualização com a nuvem"
-                        icon={RefreshCw}
-                        onClick={handleSync}
-                        isLoading={isSyncing}
-                    />
                 </SettingsGroup>
 
-                {/* Sistema */}
-                <SettingsGroup title="Sistema" icon={Globe}>
+                <SettingsGroup title="Sobre o Aplicativo">
                     <SettingsItem 
-                        label="Status dos Serviços" 
-                        description="Verificar latência e conexão"
-                        icon={Globe}
-                        onClick={onCheckConnection}
-                        isLoading={isCheckingConnection}
-                    />
-                    {services.length > 0 && (
-                        <div className="px-5 pb-5 space-y-3">
-                            {services.map(s => (
-                                <div key={s.id} className="flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800">
-                                    <div className="flex items-center gap-3">
-                                        <div className={`w-2 h-2 rounded-full ${
-                                            s.status === 'operational' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 
-                                            s.status === 'checking' ? 'bg-amber-500 animate-pulse' : 'bg-rose-500'
-                                        }`} />
-                                        <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">{s.label}</span>
-                                    </div>
-                                    <span className="text-[10px] font-black text-zinc-400">{s.latency ? `${s.latency}ms` : '--'}</span>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                    <SettingsItem 
-                        label="Verificar Updates" 
-                        description={`Versão atual: ${appVersion}`}
+                        label="Atualização do Sistema" 
+                        description={`Versão ${appVersion} instalada`}
                         icon={Smartphone}
+                        iconBg="bg-zinc-100 dark:bg-zinc-800 text-zinc-500"
                         onClick={handleCheckUpdates}
                         badge={updateAvailable ? 'Novo' : undefined}
                     />
                     <SettingsItem 
                         label="Notas da Versão" 
-                        description={`Atualizado em ${currentVersionDate}`}
+                        description={`Última atualização: ${currentVersionDate}`}
                         icon={FileText}
+                        iconBg="bg-zinc-100 dark:bg-zinc-800 text-zinc-500"
                         onClick={onShowChangelog}
                     />
                 </SettingsGroup>
 
-                {/* Avançado */}
-                <SettingsGroup title="Avançado" icon={Shield}>
+                <SettingsGroup title="Segurança e Privacidade">
                     <SettingsItem 
                         label="Resetar Aplicativo" 
                         description="Limpar cache e dados locais"
@@ -407,10 +360,18 @@ export const Settings: React.FC<SettingsProps> = ({
                         danger
                         onClick={() => setShowResetConfirm(true)}
                     />
+                    <SettingsItem 
+                        label="Sair da Conta" 
+                        description="Encerrar sessão no dispositivo"
+                        icon={LogOut}
+                        danger
+                        onClick={onLogout}
+                    />
                 </SettingsGroup>
 
-                <div className="text-center pt-4 opacity-30">
-                    <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.4em]">InvestFiis © 2024</p>
+                <div className="text-center py-10 opacity-30">
+                    <p className="text-xs font-medium text-zinc-400">InvestFiis v{appVersion}</p>
+                    <p className="text-[10px] font-bold text-zinc-400 mt-1 uppercase tracking-widest">Powered by Android Style</p>
                 </div>
             </div>
 
