@@ -1341,11 +1341,11 @@ const AssetCard = ({ asset, maxVal, totalVal, privacyMode, onClick }: { asset: A
             >
                 <div className="flex items-center gap-3">
                     <div className="relative">
-                        {asset.logoUrl ? (
+                        {asset.logoUrl && asset.assetType !== AssetType.FII ? (
                             <img src={asset.logoUrl} className="w-10 h-10 rounded-xl object-cover bg-white shadow-sm border border-zinc-100 dark:border-zinc-800" />
                         ) : (
-                            <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center font-black text-[10px] text-zinc-400 border border-zinc-200 dark:border-zinc-700">
-                                {asset.ticker.substring(0, 2)}
+                            <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center font-black text-[11px] text-zinc-500 border border-zinc-200 dark:border-zinc-700">
+                                {asset.assetType === AssetType.FII ? asset.ticker.substring(0, 4) : asset.ticker.substring(0, 2)}
                             </div>
                         )}
                     </div>
@@ -1418,7 +1418,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
 }) => {
     const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
     const [filter, setFilter] = useState('');
-    const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'ANALYSIS' | 'INCOME'>('OVERVIEW');
+    const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'ANALYSIS' | 'INCOME' | 'FUNDAMENTALS' | 'PROPERTIES'>('OVERVIEW');
     const [showDailyVariationModal, setShowDailyVariationModal] = useState(false);
     
     // History data state for reorganized tabs
@@ -1564,7 +1564,13 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
                         <div className="flex flex-col items-end">
                             <div className="flex items-center gap-2">
                                 <span className="font-black text-xl text-zinc-900 dark:text-white tracking-tight">{selectedAsset.ticker}</span>
-                                {selectedAsset.logoUrl && <img src={selectedAsset.logoUrl} className="w-6 h-6 rounded-lg object-cover shadow-sm border border-zinc-100 dark:border-zinc-800" />}
+                                {selectedAsset.logoUrl && selectedAsset.assetType !== AssetType.FII ? (
+                                    <img src={selectedAsset.logoUrl} className="w-6 h-6 rounded-lg object-cover shadow-sm border border-zinc-100 dark:border-zinc-800" />
+                                ) : (
+                                    <div className="w-6 h-6 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center font-black text-[8px] text-zinc-500 border border-zinc-200 dark:border-zinc-700">
+                                        {selectedAsset.assetType === AssetType.FII ? selectedAsset.ticker.substring(0, 4) : selectedAsset.ticker.substring(0, 2)}
+                                    </div>
+                                )}
                             </div>
                             <div className="flex items-center gap-1.5">
                                 <span className="text-sm font-bold text-zinc-500 dark:text-zinc-400 tabular-nums">{formatBRL(selectedAsset.currentPrice, privacyMode)}</span>
@@ -1578,25 +1584,33 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
                     </div>
 
                     {/* Modern Tabs */}
-                    <div className="flex p-1 bg-zinc-100 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                    <div className="flex p-1 bg-zinc-100 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-x-auto hide-scrollbar">
                         <button 
                             onClick={() => setActiveTab('OVERVIEW')} 
-                            className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${activeTab === 'OVERVIEW' ? 'bg-white dark:bg-zinc-800 shadow-sm text-indigo-600 dark:text-indigo-400 ring-1 ring-black/5 dark:ring-white/5' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                            className={`flex-1 min-w-[80px] py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${activeTab === 'OVERVIEW' ? 'bg-white dark:bg-zinc-800 shadow-sm text-indigo-600 dark:text-indigo-400 ring-1 ring-black/5 dark:ring-white/5' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                         >
                             Resumo
                         </button>
                         <button 
-                            onClick={() => setActiveTab('ANALYSIS')} 
-                            className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${activeTab === 'ANALYSIS' ? 'bg-white dark:bg-zinc-800 shadow-sm text-indigo-600 dark:text-indigo-400 ring-1 ring-black/5 dark:ring-white/5' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                            onClick={() => setActiveTab('FUNDAMENTALS')} 
+                            className={`flex-1 min-w-[90px] py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${activeTab === 'FUNDAMENTALS' ? 'bg-white dark:bg-zinc-800 shadow-sm text-indigo-600 dark:text-indigo-400 ring-1 ring-black/5 dark:ring-white/5' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                         >
-                            Análises
+                            Fundamentos
                         </button>
                         <button 
                             onClick={() => setActiveTab('INCOME')} 
-                            className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${activeTab === 'INCOME' ? 'bg-white dark:bg-zinc-800 shadow-sm text-indigo-600 dark:text-indigo-400 ring-1 ring-black/5 dark:ring-white/5' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                            className={`flex-1 min-w-[80px] py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${activeTab === 'INCOME' ? 'bg-white dark:bg-zinc-800 shadow-sm text-indigo-600 dark:text-indigo-400 ring-1 ring-black/5 dark:ring-white/5' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                         >
                             Renda
                         </button>
+                        {selectedAsset.properties && selectedAsset.properties.length > 0 && (
+                            <button 
+                                onClick={() => setActiveTab('PROPERTIES')} 
+                                className={`flex-1 min-w-[80px] py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${activeTab === 'PROPERTIES' ? 'bg-white dark:bg-zinc-800 shadow-sm text-indigo-600 dark:text-indigo-400 ring-1 ring-black/5 dark:ring-white/5' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                            >
+                                Imóveis
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -1626,21 +1640,6 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
                             </div>
 
                             <div className="space-y-3">
-                                <div className="flex items-center gap-2 px-1">
-                                    <Activity className="w-4 h-4 text-indigo-500" />
-                                    <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest">Performance Relativa</h3>
-                                </div>
-                                <ComparativeChart 
-                                    ticker={selectedAsset.ticker} 
-                                    type={selectedAsset.assetType} 
-                                />
-                            </div>
-                        </div>
-                    )}
-
-                    {activeTab === 'ANALYSIS' && (
-                        <div className="anim-fade-in space-y-8">
-                            <div className="space-y-3">
                                 <div className="flex items-center justify-between px-1">
                                     <div className="flex items-center gap-2">
                                         <TrendingUp className="w-4 h-4 text-indigo-500" />
@@ -1667,7 +1666,11 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
                                     onRangeChange={setHistoryRange}
                                 />
                             </div>
+                        </div>
+                    )}
 
+                    {activeTab === 'FUNDAMENTALS' && (
+                        <div className="anim-fade-in space-y-8">
                             <div className="space-y-3">
                                 <div className="flex items-center gap-2 px-1">
                                     <BarChart3 className="w-4 h-4 text-indigo-500" />
@@ -1676,16 +1679,27 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
                                 <ValuationCard asset={selectedAsset} />
                                 <DetailedInfoBlock asset={selectedAsset} />
                             </div>
-                            
-                            {selectedAsset.properties && selectedAsset.properties.length > 0 && (
-                                <div className="space-y-3">
-                                    <div className="flex items-center gap-2 px-1">
-                                        <Building2 className="w-4 h-4 text-indigo-500" />
-                                        <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest">Portfólio Físico</h3>
-                                    </div>
-                                    <PropertiesAnalysis properties={selectedAsset.properties} />
+
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2 px-1">
+                                    <Activity className="w-4 h-4 text-indigo-500" />
+                                    <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest">Performance Relativa</h3>
                                 </div>
-                            )}
+                                <ComparativeChart 
+                                    ticker={selectedAsset.ticker} 
+                                    type={selectedAsset.assetType} 
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'PROPERTIES' && selectedAsset.properties && selectedAsset.properties.length > 0 && (
+                        <div className="anim-fade-in space-y-3">
+                            <div className="flex items-center gap-2 px-1">
+                                <Building2 className="w-4 h-4 text-indigo-500" />
+                                <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest">Portfólio Físico</h3>
+                            </div>
+                            <PropertiesAnalysis properties={selectedAsset.properties} />
                         </div>
                     )}
 

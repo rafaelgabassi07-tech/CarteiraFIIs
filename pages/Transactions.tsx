@@ -429,55 +429,55 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
             </div>
 
             <SwipeableModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
-                <div className="p-6 h-full flex flex-col bg-white dark:bg-zinc-950">
-                    <div className="flex justify-between items-center mb-8 shrink-0">
-                        <div className="flex items-center gap-4">
-                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl ring-4 ring-zinc-50 dark:ring-zinc-900 transition-all ${editingId ? 'bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-indigo-500/20' : 'bg-gradient-to-br from-zinc-900 to-zinc-800 dark:from-white dark:to-zinc-200 text-white dark:text-zinc-900 shadow-zinc-500/20'}`}>
-                                {editingId ? <ArrowRightLeft className="w-6 h-6" strokeWidth={2.5} /> : <Plus className="w-7 h-7" strokeWidth={3} />}
+                <div className="p-5 h-full flex flex-col bg-white dark:bg-zinc-950">
+                    <div className="flex justify-between items-center mb-6 shrink-0">
+                        <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-lg ring-2 ring-zinc-50 dark:ring-zinc-900 transition-all ${editingId ? 'bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-indigo-500/20' : 'bg-gradient-to-br from-zinc-900 to-zinc-800 dark:from-white dark:to-zinc-200 text-white dark:text-zinc-900 shadow-zinc-500/20'}`}>
+                                {editingId ? <ArrowRightLeft className="w-5 h-5" strokeWidth={2.5} /> : <Plus className="w-5 h-5" strokeWidth={3} />}
                             </div>
                             <div>
-                                <h2 className="text-2xl font-black text-zinc-900 dark:text-white leading-none tracking-tighter mb-1">{editingId ? 'Editar' : 'Nova'} Ordem</h2>
-                                <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Preencha os dados</p>
+                                <h2 className="text-xl font-black text-zinc-900 dark:text-white leading-none tracking-tight mb-0.5">{editingId ? 'Editar' : 'Nova'} Ordem</h2>
+                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Preencha os dados</p>
                             </div>
                         </div>
                         {editingId && (
                             <button 
                                 onClick={() => onRequestDeleteConfirmation(editingId)} 
-                                className="w-10 h-10 flex items-center justify-center text-rose-500 bg-rose-50 dark:bg-rose-900/10 rounded-xl hover:bg-rose-100 dark:hover:bg-rose-900/30 transition-all border border-rose-100 dark:border-rose-900/30"
+                                className="w-8 h-8 flex items-center justify-center text-rose-500 bg-rose-50 dark:bg-rose-900/10 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-900/30 transition-all border border-rose-100 dark:border-rose-900/30"
                             >
-                                <Trash2 className="w-5 h-5" />
+                                <Trash2 className="w-4 h-4" />
                             </button>
                         )}
                     </div>
                     
-                    <div className="space-y-6 flex-1 overflow-y-auto no-scrollbar pb-8">
+                    <div className="space-y-4 flex-1 overflow-y-auto no-scrollbar pb-6">
                         {/* Type Selector */}
-                        <div className="bg-zinc-100 dark:bg-zinc-900 p-1.5 rounded-2xl flex relative shadow-inner border border-zinc-200/50 dark:border-zinc-800">
-                            <div className={`absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] rounded-xl shadow-sm transition-all duration-300 ease-spring ${type === 'BUY' ? 'left-1.5 bg-emerald-500 shadow-emerald-500/20' : 'left-[calc(50%+1.5px)] bg-rose-500 shadow-rose-500/20'}`}></div>
+                        <div className="bg-zinc-100 dark:bg-zinc-900 p-1 rounded-xl flex relative shadow-inner border border-zinc-200/50 dark:border-zinc-800">
+                            <div className={`absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-lg shadow-sm transition-all duration-300 ease-spring ${type === 'BUY' ? 'left-1 bg-emerald-500 shadow-emerald-500/20' : 'left-[calc(50%+2px)] bg-rose-500 shadow-rose-500/20'}`}></div>
                             <button 
                                 onClick={() => setType('BUY')} 
-                                className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-3.5 text-xs font-black uppercase tracking-widest transition-colors ${type === 'BUY' ? 'text-white' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                                className={`relative z-10 flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[10px] font-black uppercase tracking-widest transition-colors ${type === 'BUY' ? 'text-white' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                             >
-                                <ArrowDownLeft className="w-4 h-4" strokeWidth={3} /> Compra
+                                <ArrowDownLeft className="w-3.5 h-3.5" strokeWidth={3} /> Compra
                             </button>
                             <button 
                                 onClick={() => setType('SELL')} 
-                                className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-3.5 text-xs font-black uppercase tracking-widest transition-colors ${type === 'SELL' ? 'text-white' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                                className={`relative z-10 flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[10px] font-black uppercase tracking-widest transition-colors ${type === 'SELL' ? 'text-white' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                             >
-                                <ArrowUpRight className="w-4 h-4" strokeWidth={3} /> Venda
+                                <ArrowUpRight className="w-3.5 h-3.5" strokeWidth={3} /> Venda
                             </button>
                         </div>
 
                         {/* Ticker Input */}
-                        <div className="space-y-2">
+                        <div className="space-y-1.5">
                             <div className="flex justify-between items-center px-1">
-                                <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-1.5">
+                                <label className="text-[9px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-1">
                                     <Tag className="w-3 h-3" /> Ativo
                                 </label>
                                 {ticker.length >= 4 && (
                                     <button 
                                         onClick={() => setAssetType(assetType === AssetType.FII ? AssetType.STOCK : AssetType.FII)}
-                                        className={`text-[9px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider flex items-center gap-1.5 transition-all border ${assetType === AssetType.FII ? 'bg-indigo-50 text-indigo-600 border-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-400 dark:border-indigo-800' : 'bg-sky-50 text-sky-600 border-sky-100 dark:bg-sky-900/20 dark:text-sky-400 dark:border-sky-800'}`}
+                                        className={`text-[8px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider flex items-center gap-1 transition-all border ${assetType === AssetType.FII ? 'bg-indigo-50 text-indigo-600 border-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-400 dark:border-indigo-800' : 'bg-sky-50 text-sky-600 border-sky-100 dark:bg-sky-900/20 dark:text-sky-400 dark:border-sky-800'}`}
                                     >
                                         {assetType === AssetType.FII ? 'Fundo Imobiliário' : 'Ação'}
                                         <RefreshCw className="w-2.5 h-2.5" />
@@ -490,52 +490,52 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                                     value={ticker} 
                                     onChange={e => handleTickerChange(e.target.value)} 
                                     placeholder="EX: PETR4" 
-                                    className="w-full bg-zinc-50 dark:bg-zinc-900 border-2 border-zinc-100 dark:border-zinc-800 rounded-2xl pl-5 pr-12 py-4 text-2xl font-black uppercase outline-none focus:border-indigo-500 dark:focus:border-indigo-500 focus:bg-white dark:focus:bg-zinc-950 focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder:text-zinc-300 dark:placeholder:text-zinc-700 shadow-sm" 
+                                    className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-4 pr-10 py-2.5 text-lg font-black uppercase outline-none focus:border-indigo-500 dark:focus:border-indigo-500 focus:bg-white dark:focus:bg-zinc-950 focus:ring-2 focus:ring-indigo-500/10 transition-all placeholder:text-zinc-300 dark:placeholder:text-zinc-700 shadow-sm" 
                                 />
-                                <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none">
-                                    <Search className="w-6 h-6 text-zinc-300 dark:text-zinc-600" />
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                                    <Search className="w-4 h-4 text-zinc-300 dark:text-zinc-600" />
                                 </div>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-5">
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1 block">Quantidade</label>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                                <label className="text-[9px] font-black text-zinc-400 uppercase tracking-widest ml-1 block">Quantidade</label>
                                 <div className="relative group">
                                     <input 
                                         type="number" 
                                         value={quantity} 
                                         onChange={e => setQuantity(e.target.value)} 
                                         placeholder="0" 
-                                        className="w-full bg-zinc-50 dark:bg-zinc-900 border-2 border-zinc-100 dark:border-zinc-800 rounded-2xl pl-4 pr-10 py-3.5 text-lg font-bold outline-none focus:border-indigo-500 dark:focus:border-indigo-500 focus:bg-white dark:focus:bg-zinc-950 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm placeholder:text-zinc-300 dark:placeholder:text-zinc-700" 
+                                        className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-3 pr-8 py-2.5 text-base font-bold outline-none focus:border-indigo-500 dark:focus:border-indigo-500 focus:bg-white dark:focus:bg-zinc-950 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-sm placeholder:text-zinc-300 dark:placeholder:text-zinc-700" 
                                     />
-                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-zinc-400 uppercase">UN</span>
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black text-zinc-400 uppercase">UN</span>
                                 </div>
                             </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1 block">Preço Unitário</label>
+                            <div className="space-y-1.5">
+                                <label className="text-[9px] font-black text-zinc-400 uppercase tracking-widest ml-1 block">Preço Unitário</label>
                                 <div className="relative group">
-                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-black text-zinc-400">R$</span>
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-zinc-400">R$</span>
                                     <input 
                                         type="text" 
                                         inputMode="decimal" 
                                         value={price} 
                                         onChange={handlePriceChange} 
                                         placeholder="0,00" 
-                                        className="w-full bg-zinc-50 dark:bg-zinc-900 border-2 border-zinc-100 dark:border-zinc-800 rounded-2xl pl-10 pr-4 py-3.5 text-lg font-bold outline-none focus:border-indigo-500 dark:focus:border-indigo-500 focus:bg-white dark:focus:bg-zinc-950 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm placeholder:text-zinc-300 dark:placeholder:text-zinc-700" 
+                                        className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-8 pr-3 py-2.5 text-base font-bold outline-none focus:border-indigo-500 dark:focus:border-indigo-500 focus:bg-white dark:focus:bg-zinc-950 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-sm placeholder:text-zinc-300 dark:placeholder:text-zinc-700" 
                                     />
                                 </div>
                             </div>
                         </div>
 
-                        <div className="space-y-2">
+                        <div className="space-y-1.5">
                             <div className="flex justify-between items-center px-1">
-                                <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-1.5">
+                                <label className="text-[9px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-1">
                                     <Calendar className="w-3 h-3" /> Data da Operação
                                 </label>
                                 <button 
                                     onClick={() => setDate(new Date().toISOString().split('T')[0])} 
-                                    className="text-[9px] font-bold text-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 px-2.5 py-1 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors uppercase tracking-wide"
+                                    className="text-[8px] font-bold text-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-0.5 rounded-md hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors uppercase tracking-wide"
                                 >
                                     Hoje
                                 </button>
@@ -545,39 +545,39 @@ const TransactionsComponent: React.FC<TransactionsProps> = ({ transactions, onAd
                                     type="date" 
                                     value={date} 
                                     onChange={e => setDate(e.target.value)} 
-                                    className="w-full bg-zinc-50 dark:bg-zinc-900 border-2 border-zinc-100 dark:border-zinc-800 rounded-2xl px-4 py-3.5 text-sm font-bold outline-none focus:border-indigo-500 dark:focus:border-indigo-500 focus:bg-white dark:focus:bg-zinc-950 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm appearance-none text-zinc-900 dark:text-white" 
+                                    className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-sm font-bold outline-none focus:border-indigo-500 dark:focus:border-indigo-500 focus:bg-white dark:focus:bg-zinc-950 focus:ring-2 focus:ring-indigo-500/10 transition-all shadow-sm appearance-none text-zinc-900 dark:text-white" 
                                 />
-                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
                                     <ChevronDown className="w-4 h-4 text-zinc-400" />
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div className="pt-4 mt-auto border-t border-zinc-100 dark:border-zinc-800/50">
-                        <div className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl p-5 flex justify-between items-center relative overflow-hidden shadow-sm group mb-4">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl -mr-10 -mt-10 group-hover:bg-indigo-500/10 transition-colors pointer-events-none"></div>
-                            <div className="flex items-center gap-4 relative z-10">
-                                <div className="w-12 h-12 rounded-xl bg-white dark:bg-zinc-800 flex items-center justify-center text-zinc-400 shadow-sm border border-zinc-100 dark:border-zinc-700">
-                                    <Calculator className="w-6 h-6" strokeWidth={1.5} />
+                    <div className="pt-3 mt-auto border-t border-zinc-100 dark:border-zinc-800/50">
+                        <div className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-xl p-3 flex justify-between items-center relative overflow-hidden shadow-sm group mb-3">
+                            <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl -mr-8 -mt-8 group-hover:bg-indigo-500/10 transition-colors pointer-events-none"></div>
+                            <div className="flex items-center gap-3 relative z-10">
+                                <div className="w-8 h-8 rounded-lg bg-white dark:bg-zinc-800 flex items-center justify-center text-zinc-400 shadow-sm border border-zinc-100 dark:border-zinc-700">
+                                    <Calculator className="w-4 h-4" strokeWidth={1.5} />
                                 </div>
                                 <div>
-                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Total Estimado</p>
-                                    <p className="text-xs text-zinc-500 font-medium">{quantity || 0} un x {formatBRL(rawPrice)}</p>
+                                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Total Estimado</p>
+                                    <p className="text-[10px] text-zinc-500 font-medium">{quantity || 0} un x {formatBRL(rawPrice)}</p>
                                 </div>
                             </div>
                             <div className="text-right relative z-10">
-                                <p className={`text-2xl font-black tracking-tighter ${type === 'BUY' ? 'text-zinc-900 dark:text-white' : 'text-emerald-500'}`}>{formatBRL(estimatedTotal)}</p>
+                                <p className={`text-lg font-black tracking-tight ${type === 'BUY' ? 'text-zinc-900 dark:text-white' : 'text-emerald-500'}`}>{formatBRL(estimatedTotal)}</p>
                             </div>
                         </div>
                         
                         <button 
                             onClick={handleSave} 
                             disabled={isSaving || !ticker || !quantity || !price} 
-                            className="w-full py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-zinc-900/10 dark:shadow-white/5 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-2xl hover:-translate-y-0.5 flex items-center justify-center gap-2"
+                            className="w-full py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-zinc-900/10 dark:shadow-white/5 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-xl hover:-translate-y-0.5 flex items-center justify-center gap-2"
                         >
                             {isSaving ? (
-                                <><div className="w-4 h-4 border-2 border-white/30 border-t-white dark:border-zinc-900/30 dark:border-t-zinc-900 rounded-full animate-spin"></div> Salvando...</>
+                                <><div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white dark:border-zinc-900/30 dark:border-t-zinc-900 rounded-full animate-spin"></div> Salvando...</>
                             ) : (
                                 'Confirmar Ordem'
                             )}
