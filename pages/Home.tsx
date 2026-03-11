@@ -1225,12 +1225,22 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
 
   const [activePieIndex, setActivePieIndex] = useState<number | undefined>(undefined);
   const [incomeHistoryTab, setIncomeHistoryTab] = useState<'PROVENTOS' | 'MONTHLY' | 'ANNUAL'>('PROVENTOS');
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
+
+  useEffect(() => {
+      setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0);
+  }, []);
 
   const onDividendPieEnter = (_: any, index: number) => {
-      setActivePieIndex(index);
+      if (!isTouchDevice) setActivePieIndex(index);
   };
   const onDividendPieLeave = () => {
-      setActivePieIndex(undefined);
+      if (!isTouchDevice) setActivePieIndex(undefined);
+  };
+  const onDividendPieClick = (_: any, index: number) => {
+      if (isTouchDevice) {
+          setActivePieIndex(prev => prev === index ? undefined : index);
+      }
   };
 
   const renderDividendActiveShape = (props: any) => {
@@ -1901,6 +1911,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                                                 activeShape={renderDividendActiveShape}
                                                 onMouseEnter={onDividendPieEnter}
                                                 onMouseLeave={onDividendPieLeave}
+                                                onClick={onDividendPieClick}
                                             >
                                                 {dividendsByAsset.map((entry, index) => (
                                                     <Cell 
