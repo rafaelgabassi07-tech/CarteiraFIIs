@@ -15,6 +15,7 @@ interface WatchlistItem {
     name?: string;
     logo?: string;
     fundamentals?: Record<string, unknown>;
+    metadata?: Record<string, unknown>;
     segment?: string;
     type?: AssetType;
     updatedAt?: number;
@@ -177,8 +178,9 @@ export default function Watchlist({ showToast }: WatchlistProps) {
                         newQuotes[ticker] = {
                             ...newQuotes[ticker],
                             ticker: ticker,
-                            name: newQuotes[ticker]?.name || meta.fundamentals?.company_name || ticker,
+                            name: newQuotes[ticker]?.name || meta.company_name || meta.fundamentals?.company_name || ticker,
                             fundamentals: meta.fundamentals,
+                            metadata: meta, // Store full metadata
                             segment: meta.segment,
                             type: meta.type,
                             price: newQuotes[ticker]?.price || meta.fundamentals?.price || 0,
@@ -274,36 +276,28 @@ export default function Watchlist({ showToast }: WatchlistProps) {
     const handleAssetClick = (ticker: string) => {
         const quote = quotes[ticker];
         const fundamentals: any = quote?.fundamentals || {};
+        const metadata: any = quote?.metadata || {};
         
-        let assetType = quote?.type;
+        let assetType = quote?.type || metadata.type;
         if (!assetType) {
             assetType = (ticker.endsWith('11') || ticker.endsWith('11B')) ? AssetType.FII : AssetType.STOCK;
         }
 
         const asset: any = {
+            ...metadata,
+            ...fundamentals,
             ticker: ticker,
             quantity: 0,
             averagePrice: 0,
             currentPrice: quote?.price || 0,
             totalDividends: 0,
             assetType: assetType,
-            segment: quote?.segment || fundamentals.segment || 'Geral',
+            segment: quote?.segment || metadata.segment || fundamentals.segment || 'Geral',
             logoUrl: quote?.logo,
             dividends: [],
-            company_name: quote?.name || fundamentals.company_name,
-            sector: fundamentals.sector,
-            sub_sector: fundamentals.sub_sector,
-            p_vp: fundamentals.p_vp,
-            p_l: fundamentals.p_l,
-            dy_12m: fundamentals.dy_12m || fundamentals.dy,
-            vacancy: fundamentals.vacancy,
-            assets_value: fundamentals.assets_value,
-            market_cap: fundamentals.market_cap,
-            last_dividend: fundamentals.last_dividend,
-            next_dividend: fundamentals.next_dividend,
-            properties: fundamentals.properties || [],
-            properties_count: fundamentals.properties_count || 0,
-            ...fundamentals
+            company_name: quote?.name || metadata.company_name || fundamentals.company_name,
+            change: quote?.change || 0,
+            dailyChange: quote?.change || 0,
         };
         
         setSelectedAsset(asset);

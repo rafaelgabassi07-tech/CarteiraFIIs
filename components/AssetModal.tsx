@@ -777,15 +777,15 @@ interface DetailedInfoBlockProps {
 const DetailedInfoBlock: React.FC<DetailedInfoBlockProps> = ({ asset }) => {
     const dataPoints = [
         { label: 'Cotação Atual', value: formatBRL(asset.currentPrice || 0), icon: DollarSign },
-        { label: 'Preço Médio', value: formatBRL(asset.averagePrice), icon: Scale },
+        { label: 'Preço Médio', value: asset.quantity > 0 ? formatBRL(asset.averagePrice) : 'N/A', icon: Scale },
         { label: 'Tipo', value: asset.assetType, icon: Briefcase },
         { label: 'Segmento', value: asset.segment, icon: PieChart },
         { label: 'Patrim. Líquido', value: asset.assets_value !== undefined && asset.assets_value !== null ? formatCompactBRL(asset.assets_value) : 'N/A', icon: Wallet },
         { label: 'P/VP', value: asset.p_vp !== undefined && asset.p_vp !== null ? asset.p_vp.toFixed(2) : 'N/A', icon: Percent },
         { label: 'P/L', value: asset.p_l !== undefined && asset.p_l !== null ? asset.p_l.toFixed(2) : 'N/A', icon: Percent },
         { label: 'Dividend Yield', value: asset.dy_12m !== undefined && asset.dy_12m !== null ? `${asset.dy_12m.toFixed(2)}%` : 'N/A', icon: Coins },
+        { label: 'Rent. Real (12m)', value: asset.profitability_real_12m !== undefined && asset.profitability_real_12m !== null ? `${asset.profitability_real_12m.toFixed(2)}%` : 'N/A', icon: TrendingUp },
         { label: 'Vacância', value: asset.vacancy !== undefined && asset.vacancy !== null ? `${asset.vacancy.toFixed(2)}%` : 'N/A', icon: MapPin },
-        { label: 'Imóveis', value: asset.properties_count !== undefined && asset.properties_count !== null ? asset.properties_count : 'N/A', icon: Building2 },
     ];
 
     return (
@@ -951,6 +951,7 @@ const IncomeAnalysisSection: React.FC<IncomeAnalysisSectionProps> = ({ asset, ch
                                         <stop offset="100%" stopColor="#059669" stopOpacity={0.8} />
                                     </linearGradient>
                                 </defs>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.05} />
                                 <XAxis 
                                     dataKey="month" 
                                     tick={{ fontSize: 9, fontWeight: 700, fill: '#71717a' }} 
@@ -996,7 +997,8 @@ const IncomeAnalysisSection: React.FC<IncomeAnalysisSectionProps> = ({ asset, ch
                                         fill: '#10b981', 
                                         fontSize: 8, 
                                         fontWeight: 900,
-                                        letterSpacing: 1
+                                        letterSpacing: 1,
+                                        offset: 10
                                     }} 
                                 />
                                 <Bar 

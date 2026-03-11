@@ -492,6 +492,7 @@ export const fetchUnifiedMarketData = async (tickers: string[], startDate?: stri
           const rawSegment = m.segment || m.setor || m.segmento || m.sector || 'Geral';
           
           newMetadata[normalizedTicker] = {
+              ...m,
               segment: String(rawSegment),
               type: assetType,
               fundamentals: mapScraperToFundamentals(m)
