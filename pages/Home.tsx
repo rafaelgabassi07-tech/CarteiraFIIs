@@ -176,8 +176,8 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
             }
             
             const marketValue = isFuture ? null : data.accumulatedInvested + estimatedAppreciation;
-            const totalReturn = isFuture ? null : marketValue - data.accumulatedInvested;
-            const returnPercent = isFuture ? null : (data.accumulatedInvested > 0 ? (totalReturn / data.accumulatedInvested) * 100 : 0);
+            const totalReturn = marketValue !== null ? marketValue - data.accumulatedInvested : null;
+            const returnPercent = totalReturn !== null ? (data.accumulatedInvested > 0 ? (totalReturn / data.accumulatedInvested) * 100 : 0) : null;
 
             return {
                 month: m,
