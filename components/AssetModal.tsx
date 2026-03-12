@@ -842,6 +842,7 @@ interface IncomeAnalysisSectionProps {
 }
 
 const IncomeAnalysisSection: React.FC<IncomeAnalysisSectionProps> = ({ asset, chartData, marketHistory, isWatchlist = false }) => {
+    console.log('IncomeAnalysisSection rendering for:', asset?.ticker, 'marketHistory:', marketHistory);
     // Tenta pegar dos dividendos do ativo (carteira) ou do histórico de mercado (watchlist)
     const lastDividend = (asset.dividends || []).length > 0 
         ? asset.dividends[0] 
