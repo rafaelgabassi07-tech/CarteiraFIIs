@@ -2,6 +2,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import axios from 'axios';
 import https from 'https';
+import * as cheerio from 'cheerio';
 
 const httpsAgent = new https.Agent({ 
     keepAlive: true,
@@ -20,20 +21,34 @@ async function getIds(ticker: string, type: string) {
     const url = `https://investidor10.com.br/${type}/${ticker.toLowerCase()}/`;
     try {
         const { data } = await axios.get(url, { headers: HEADERS, httpsAgent });
+        const $ = cheerio.load(data);
         
-        const idMatch = data.match(/id:\s*(\d+)/);
-        const companyIdMatch = data.match(/companyId:\s*['"]?(\d+)['"]?/) || data.match(/company_id:\s*['"]?(\d+)['"]?/);
-        const tickerIdMatch = data.match(/tickerId:\s*['"]?(\d+)['"]?/) || data.match(/ticker_id:\s*['"]?(\d+)['"]?/);
+        // Try to find IDs in script tags or data attributes
+        let id = null;
+        let companyId = null;
+        let tickerId = null;
+        let revenueId = null;
+
+        // Common patterns
+        const scripts = $('script').text();
         
-        // Also look for the revenue/equity ID which is often different or same as companyId
+        const idMatch = scripts.match(/id:\s*(\d+)/);
+        const companyIdMatch = scripts.match(/companyId:\s*['"]?(\d+)['"]?/) || scripts.match(/company_id:\s*['"]?(\d+)['"]?/);
+        const tickerIdMatch = scripts.match(/tickerId:\s*['"]?(\d+)['"]?/) || scripts.match(/ticker_id:\s*['"]?(\d+)['"]?/);
+        
+        id = idMatch ? idMatch[1] : null;
+        companyId = companyIdMatch ? companyIdMatch[1] : null;
+        tickerId = tickerIdMatch ? tickerIdMatch[1] : null;
+
+        // Fallback to URL patterns if script search fails
         const revenueMatch = data.match(/\/api\/balancos\/receitaliquida\/chart\/(\d+)\//);
-        const equityMatch = data.match(/\/api\/balancos\/ativospassivos\/chart\/(\d+)\//);
+        revenueId = revenueMatch ? revenueMatch[1] : (companyId || id);
 
         return {
-            id: idMatch ? idMatch[1] : null,
-            companyId: companyIdMatch ? companyIdMatch[1] : (revenueMatch ? revenueMatch[1] : null),
-            tickerId: tickerIdMatch ? tickerIdMatch[1] : (idMatch ? idMatch[1] : null),
-            revenueId: revenueMatch ? revenueMatch[1] : (companyIdMatch ? companyIdMatch[1] : null)
+            id,
+            companyId: companyId || revenueId,
+            tickerId: tickerId || id,
+            revenueId: revenueId
         };
     } catch (e) {
         return null;
