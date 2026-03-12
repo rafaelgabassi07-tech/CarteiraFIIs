@@ -59,11 +59,21 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
       
       return (
           <div className="min-h-screen bg-[#020617] flex items-center justify-center p-6 text-white text-center font-sans">
-            <div>
-              <h1 className="text-xl font-bold mb-2">Ops! Algo deu errado.</h1>
-              <p className="text-zinc-400">Um erro inesperado ocorreu. Por favor, recarregue a página.</p>
-              <button onClick={() => window.location.reload()} className="mt-4 px-4 py-2 bg-white text-black rounded-lg font-bold text-xs uppercase tracking-widest">
-                  Recarregar
+            <div className="max-w-xl w-full">
+              <h1 className="text-xl font-bold mb-2 text-rose-500">Ops! Algo deu errado.</h1>
+              <p className="text-zinc-400 mb-4">Um erro inesperado ocorreu. Por favor, recarregue a página ou tire um print desta tela.</p>
+              
+              {error && (
+                <div className="bg-black/50 p-4 rounded-xl text-left overflow-auto border border-rose-500/30 mb-6">
+                  <p className="text-rose-400 font-mono text-sm mb-2">{error.toString()}</p>
+                  <pre className="text-zinc-500 font-mono text-[10px] whitespace-pre-wrap">
+                    {error.stack}
+                  </pre>
+                </div>
+              )}
+
+              <button onClick={() => window.location.reload()} className="px-6 py-3 bg-white text-black rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-zinc-200 transition-colors">
+                  Recarregar Página
               </button>
             </div>
           </div>

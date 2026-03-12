@@ -4,6 +4,7 @@ import { AssetPosition, AssetType, DividendReceipt, Transaction } from '../types
 import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, BarChart3, PieChart, Coins, DollarSign, Building2, FileText, MapPin, Zap, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, SquareStack, Map as MapIcon, CandlestickChart, LineChart as LineChartIcon, Award, RefreshCcw, ArrowLeft, Briefcase, MoreHorizontal, LayoutGrid, List, Activity, Scale, Percent, ChevronDown, ChevronUp, ListFilter, ChevronRight, Info } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import AssetModal from '../components/AssetModal';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import { useDailyVariationHistory } from '../hooks/useDailyVariationHistory';
 import { DailyVariationModal } from '../components/DailyVariationModal';
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, ReferenceLine, ComposedChart, CartesianGrid, AreaChart, Area, YAxis, PieChart as RePieChart, Pie, Cell, LineChart, Line, Label, Legend, Scatter } from 'recharts';
@@ -1417,7 +1418,7 @@ const AssetCard = ({ asset, maxVal, totalVal, privacyMode, onClick }: { asset: A
 }
 
 const PortfolioComponent: React.FC<PortfolioProps> = ({ 
-    portfolio, dividends, marketDividends, privacyMode, 
+    portfolio = [], dividends = [], marketDividends = [], privacyMode, 
     onAssetRefresh, headerVisible, targetAsset, onClearTarget,
     transactions = [], currentBalance = 0
 }) => {
@@ -1658,16 +1659,18 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
                 history={dailyHistory}
             />
 
-            <AssetModal 
-                asset={selectedAsset || null}
-                onClose={() => setSelectedTicker(null)}
-                onAssetRefresh={(ticker) => {
-                    // Trigger refresh logic if needed, or just let the modal handle it
-                }}
-                marketDividends={marketDividends}
-                incomeChartData={incomeChartData}
-                privacyMode={privacyMode}
-            />
+            <ErrorBoundary>
+                <AssetModal 
+                    asset={selectedAsset || null}
+                    onClose={() => setSelectedTicker(null)}
+                    onAssetRefresh={(ticker) => {
+                        // Trigger refresh logic if needed, or just let the modal handle it
+                    }}
+                    marketDividends={marketDividends}
+                    incomeChartData={incomeChartData}
+                    privacyMode={privacyMode}
+                />
+            </ErrorBoundary>
         </div>
     );
 };
