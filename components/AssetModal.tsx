@@ -487,6 +487,7 @@ const ComparativeChart: React.FC<ComparativeChartProps> = ({ ticker, type }) => 
         const fetchData = async () => {
             setLoading(true);
             setError(false);
+            setChartData([]); // Reset data on change
             try {
                 // Fetch data specifically for this chart based on its own range
                 const res = await fetch(`/api/history?ticker=${ticker}&range=${range}`);
@@ -1031,9 +1032,11 @@ const Investidor10ChartsSection: React.FC<Investidor10ChartsSectionProps> = ({ t
     const [chartType, setChartType] = useState(onlyPayout ? 'payout' : (assetType === 'FII' ? 'equity' : 'revenue_profit'));
 
     useEffect(() => {
+        let mounted = true;
         const fetchData = async () => {
             setLoading(true);
             setError(false);
+            setData(null); // Reset data on change
             try {
                 // Determine the correct API chartType based on the UI chartType
                 let apiChartType = chartType;
@@ -1044,24 +1047,25 @@ const Investidor10ChartsSection: React.FC<Investidor10ChartsSectionProps> = ({ t
                 const res = await fetch(`/api/investidor10-charts?ticker=${ticker}&chartType=${apiChartType}&assetType=${assetType}`);
                 if (!res.ok) throw new Error('Failed to fetch data');
                 const json = await res.json();
-                setData(json);
+                if (mounted) setData(json);
             } catch (e) {
-                setError(true);
+                if (mounted) setError(true);
             } finally {
-                setLoading(false);
+                if (mounted) setLoading(false);
             }
         };
         fetchData();
+        return () => { mounted = false; };
     }, [ticker, chartType, assetType]);
 
     const chartData = data || [];
     const isFII = assetType === 'FII';
 
-    const chartConfig = {
+    const chartConfig = useMemo(() => ({
         revenue_profit: { title: 'Receitas e Lucros', barKey: 'profit', areaKey: 'revenue', barColor: '#8b5cf6', areaColor: '#ec4899' },
         payout: { title: 'Payout x Dividend Yield', barKey: 'payout', areaKey: 'dy', barColor: isFII ? '#10b981' : '#06b6d4', areaColor: '#f59e0b' },
         equity: { title: isFII ? 'Histórico de Valor Patrimonial' : 'Patrimônio Líquido', barKey: 'equity', areaKey: 'revenue', barColor: '#10b981', areaColor: '#6366f1' },
-    };
+    }), [isFII]);
 
     const currentChart = chartConfig[chartType as keyof typeof chartConfig] || chartConfig.revenue_profit;
 
@@ -1153,6 +1157,16 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends = [], inco
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [onClose]);
 
+    // Reset state when asset changes
+    useEffect(() => {
+        if (asset?.ticker) {
+            setActiveTab('OVERVIEW');
+            setRange('1D');
+            setHistoryData([]);
+            setHistoryError(false);
+        }
+    }, [asset?.ticker]);
+
     // Fetch History Data Effect
     useEffect(() => {
         if (!asset) return;
@@ -1177,195 +1191,182 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends = [], inco
         return () => { mounted = false; };
     }, [asset?.ticker, range]);
 
-    if (!asset) return null;
+    const assetMarketHistory = useMemo(() => {
+        if (!asset) return [];
+        return (marketDividends || []).filter(d => d.ticker === asset.ticker);
+    }, [asset?.ticker, marketDividends]);
 
-    const selectedAsset = asset;
-    const assetMarketHistory = (marketDividends || []).filter(d => d.ticker === selectedAsset.ticker);
-    const isWatchlist = selectedAsset.quantity === 0;
+    const isWatchlist = useMemo(() => {
+        return asset ? asset.quantity === 0 : false;
+    }, [asset?.quantity]);
 
     const tabs = useMemo(() => {
+        if (!asset) return [];
         const baseTabs = [
             { id: 'OVERVIEW', label: 'Resumo', icon: LayoutGrid },
             { id: 'FUNDAMENTALS', label: 'Fundamentos', icon: List },
             { id: 'INCOME', label: 'Renda', icon: Coins },
             { id: 'CHARTS', label: 'Gráficos', icon: BarChart3 },
         ];
-        if (selectedAsset.properties && selectedAsset.properties.length > 0) {
+        if (asset.properties && asset.properties.length > 0) {
             baseTabs.splice(3, 0, { id: 'PROPERTIES', label: 'Imóveis', icon: Building2 });
         }
         return baseTabs;
-    }, [selectedAsset]);
+    }, [asset?.ticker, asset?.properties]);
 
     return (
         <SwipeableModal isOpen={!!asset} onClose={onClose}>
-            {selectedAsset && (
-                <div className="bg-white dark:bg-zinc-950 flex flex-col h-full overflow-hidden">
-                    {(() => {
-                        console.log('AssetModal rendering for:', selectedAsset?.ticker);
-                        try {
-                            return (
-                                <>
-                                    {/* Header Moderno & Clean */}
-                                    <div className="px-6 pt-6 pb-4 shrink-0 bg-white dark:bg-zinc-950 z-30 border-b border-zinc-100 dark:border-zinc-900/50">
-                                        <div className="flex justify-between items-start mb-6">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-16 h-16 rounded-3xl bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center overflow-hidden border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                                                    {selectedAsset.logoUrl ? (
-                                                        <img src={selectedAsset.logoUrl} className="w-full h-full object-cover" alt={selectedAsset.ticker} />
-                                                    ) : (
-                                                        <span className="font-black text-2xl text-zinc-300 dark:text-zinc-700">{selectedAsset.ticker.substring(0, 2)}</span>
-                                                    )}
-                                                </div>
-                                                <div>
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <h2 className="font-black text-3xl tracking-tighter text-zinc-900 dark:text-white leading-none">{selectedAsset.ticker}</h2>
-                                                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${selectedAsset.assetType === 'FII' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400'}`}>
-                                                            {selectedAsset.assetType}
-                                                        </span>
-                                                    </div>
-                                                    <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider truncate max-w-[200px]">{selectedAsset.company_name || selectedAsset.ticker}</p>
-                                                    <div className="flex items-center gap-2 mt-2">
-                                                        <span className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(selectedAsset.currentPrice || 0)}</span>
-                                                        <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-lg ${ (selectedAsset.dailyChange || 0) >= 0 ? 'text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' : 'text-rose-500 bg-rose-50 dark:bg-rose-900/20'}`}>
-                                                            {(selectedAsset.dailyChange || 0) >= 0 ? '+' : ''}{(selectedAsset.dailyChange || 0).toFixed(2)}%
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            
-                                            <div className="flex items-center gap-2">
-                                                <button 
-                                                    onClick={() => onAssetRefresh(selectedAsset.ticker)} 
-                                                    className="w-11 h-11 bg-zinc-50 dark:bg-zinc-900 rounded-2xl flex items-center justify-center text-zinc-400 hover:text-indigo-500 transition-all active:scale-90 border border-zinc-100 dark:border-zinc-800 shadow-sm"
-                                                >
-                                                    <RefreshCcw className="w-4 h-4" />
-                                                </button>
-                                                <button 
-                                                    onClick={onClose}
-                                                    className="w-11 h-11 bg-zinc-50 dark:bg-zinc-900 rounded-2xl flex items-center justify-center text-zinc-400 hover:text-rose-500 transition-all active:scale-90 border border-zinc-100 dark:border-zinc-800 shadow-sm"
-                                                >
-                                                    <X className="w-5 h-5" />
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        {/* Sticky Tabs Navigation */}
-                                        <div className="flex gap-2 overflow-x-auto hide-scrollbar -mx-2 px-2">
-                                            {tabs.map((tab) => (
-                                                <button
-                                                    key={tab.id}
-                                                    onClick={() => scrollToSection(tab.id)}
-                                                    className={`shrink-0 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-xl shadow-zinc-900/20 dark:shadow-white/10 scale-105' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
-                                                >
-                                                    {tab.label}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    <div 
-                                        ref={scrollContainerRef}
-                                        className="flex-1 overflow-y-auto overflow-x-hidden p-6 pb-24 scroll-smooth"
-                                    >
-                                        <div className="space-y-12 max-w-3xl mx-auto">
-                                            
-                                            {/* SEÇÃO: SUA POSIÇÃO */}
-                                            {!isWatchlist && (
-                                                <div id="section-OVERVIEW" className="space-y-4 scroll-mt-32">
-                                                    <div className="flex items-center justify-between px-1">
-                                                        <div className="flex items-center gap-2">
-                                                            <Wallet className="w-3.5 h-3.5 text-indigo-500" />
-                                                            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Sua Posição</h3>
-                                                        </div>
-                                                    </div>
-                                                    <PositionSummaryCard asset={selectedAsset} privacyMode={privacyMode} />
-                                                </div>
-                                            )}
-                                            
-                                            {/* SEÇÃO: COTAÇÃO & PERFORMANCE */}
-                                            <div id={isWatchlist ? "section-OVERVIEW" : "section-CHARTS"} className="space-y-4 scroll-mt-32">
-                                                <div className="flex items-center justify-between px-1">
-                                                    <div className="flex items-center gap-2">
-                                                        <TrendingUp className="w-3.5 h-3.5 text-indigo-500" />
-                                                        <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Performance</h3>
-                                                    </div>
-                                                </div>
-                                                <PriceHistoryChart 
-                                                    fullData={historyData} 
-                                                    loading={historyLoading} 
-                                                    error={historyError} 
-                                                    ticker={selectedAsset.ticker} 
-                                                    range={range}
-                                                    onRangeChange={setRange}
-                                                />
-                                            </div>
-
-                                            {/* SEÇÃO: DADOS FUNDAMENTAIS */}
-                                            <div id="section-FUNDAMENTALS" className="space-y-4 scroll-mt-32">
-                                                <div className="flex items-center gap-2 px-1">
-                                                    <List className="w-3.5 h-3.5 text-indigo-500" />
-                                                    <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Fundamentos</h3>
-                                                </div>
-                                                <DetailedInfoBlock asset={selectedAsset} />
-                                                <ValuationCard asset={selectedAsset} />
-                                            </div>
-
-                                            {/* SEÇÃO: PROVENTOS */}
-                                            <div id="section-INCOME" className="space-y-4 scroll-mt-32">
-                                                <div className="flex items-center gap-2 px-1">
-                                                    <Coins className="w-3.5 h-3.5 text-emerald-500" />
-                                                    <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Dividendos</h3>
-                                                </div>
-                                                <IncomeAnalysisSection 
-                                                    asset={selectedAsset} 
-                                                    chartData={incomeChartData}
-                                                    marketHistory={assetMarketHistory}
-                                                    isWatchlist={isWatchlist}
-                                                />
-                                            </div>
-
-                                            {/* SEÇÃO: RENTABILIDADE COMPARADA */}
-                                            <div id="section-CHARTS-EXTRA" className="space-y-4 scroll-mt-32">
-                                                <div className="flex items-center gap-2 px-1">
-                                                    <Activity className="w-3.5 h-3.5 text-indigo-500" />
-                                                    <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Comparativo</h3>
-                                                </div>
-                                                <ComparativeChart ticker={selectedAsset.ticker} type={selectedAsset.assetType} />
-                                            </div>
-
-                                            {/* SEÇÃO: EVOLUÇÃO FUNDAMENTALISTA */}
-                                            <div className="space-y-4">
-                                                <div className="flex items-center gap-2 px-1">
-                                                    <BookOpen className="w-3.5 h-3.5 text-indigo-500" />
-                                                    <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Evolução</h3>
-                                                </div>
-                                                <Investidor10ChartsSection ticker={selectedAsset.ticker} assetType={selectedAsset.assetType} />
-                                            </div>
-
-                                            {/* SEÇÃO: PORTFÓLIO FÍSICO */}
-                                            {selectedAsset.properties && selectedAsset.properties.length > 0 && (
-                                                <div id="section-PROPERTIES" className="space-y-4 scroll-mt-32">
-                                                    <div className="flex items-center gap-2 px-1">
-                                                        <Building2 className="w-3.5 h-3.5 text-indigo-500" />
-                                                        <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Imóveis</h3>
-                                                    </div>
-                                                    <PropertiesAnalysis properties={selectedAsset.properties} />
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </>
-                            );
-                        } catch (e) {
-                            console.error('Error rendering AssetModal:', e);
-                            return (
-                                <div className="p-4 text-center text-red-500">
-                                    <p>Erro ao carregar detalhes do ativo.</p>
-                                    <p className="text-xs mt-2">{e instanceof Error ? e.message : String(e)}</p>
+            {asset && (
+                <div key={asset.ticker} className="bg-white dark:bg-zinc-950 flex flex-col h-full overflow-hidden">
+                    {/* Header Moderno & Clean */}
+                    <div className="px-6 pt-6 pb-4 shrink-0 bg-white dark:bg-zinc-950 z-30 border-b border-zinc-100 dark:border-zinc-900/50">
+                        <div className="flex justify-between items-start mb-6">
+                            <div className="flex items-center gap-4">
+                                <div className="w-16 h-16 rounded-3xl bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center overflow-hidden border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                                    {asset.logoUrl ? (
+                                        <img src={asset.logoUrl} className="w-full h-full object-cover" alt={asset.ticker} referrerPolicy="no-referrer" />
+                                    ) : (
+                                        <span className="font-black text-2xl text-zinc-300 dark:text-zinc-700">{asset.ticker.substring(0, 2)}</span>
+                                    )}
                                 </div>
-                            );
-                        }
-                    })()}
+                                <div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <h2 className="font-black text-3xl tracking-tighter text-zinc-900 dark:text-white leading-none">{asset.ticker}</h2>
+                                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${asset.assetType === 'FII' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400'}`}>
+                                            {asset.assetType}
+                                        </span>
+                                    </div>
+                                    <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider truncate max-w-[200px]">{asset.company_name || asset.ticker}</p>
+                                    <div className="flex items-center gap-2 mt-2">
+                                        <span className="text-lg font-black text-zinc-900 dark:text-white">{formatBRL(asset.currentPrice || 0)}</span>
+                                        <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-lg ${ (asset.dailyChange || 0) >= 0 ? 'text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' : 'text-rose-500 bg-rose-50 dark:bg-rose-900/20'}`}>
+                                            {(asset.dailyChange || 0) >= 0 ? '+' : ''}{(asset.dailyChange || 0).toFixed(2)}%
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                                <button 
+                                    onClick={() => onAssetRefresh && onAssetRefresh(asset.ticker)} 
+                                    className="w-11 h-11 bg-zinc-50 dark:bg-zinc-900 rounded-2xl flex items-center justify-center text-zinc-400 hover:text-indigo-500 transition-all active:scale-90 border border-zinc-100 dark:border-zinc-800 shadow-sm"
+                                >
+                                    <RefreshCcw className="w-4 h-4" />
+                                </button>
+                                <button 
+                                    onClick={onClose}
+                                    className="w-11 h-11 bg-zinc-50 dark:bg-zinc-900 rounded-2xl flex items-center justify-center text-zinc-400 hover:text-rose-500 transition-all active:scale-90 border border-zinc-100 dark:border-zinc-800 shadow-sm"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Sticky Tabs Navigation */}
+                        <div className="flex gap-2 overflow-x-auto hide-scrollbar -mx-2 px-2">
+                            {tabs.map((tab) => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => scrollToSection(tab.id)}
+                                    className={`shrink-0 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-xl shadow-zinc-900/20 dark:shadow-white/10 scale-105' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                                >
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div 
+                        ref={scrollContainerRef}
+                        className="flex-1 overflow-y-auto overflow-x-hidden p-6 pb-24 scroll-smooth"
+                    >
+                        <div className="space-y-12 max-w-3xl mx-auto">
+                            
+                            {/* SEÇÃO: SUA POSIÇÃO */}
+                            {!isWatchlist && (
+                                <div id="section-OVERVIEW" className="space-y-4 scroll-mt-32">
+                                    <div className="flex items-center justify-between px-1">
+                                        <div className="flex items-center gap-2">
+                                            <Wallet className="w-3.5 h-3.5 text-indigo-500" />
+                                            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Sua Posição</h3>
+                                        </div>
+                                    </div>
+                                    <PositionSummaryCard asset={asset} privacyMode={privacyMode} />
+                                </div>
+                            )}
+                            
+                            {/* SEÇÃO: COTAÇÃO & PERFORMANCE */}
+                            <div id={isWatchlist ? "section-OVERVIEW" : "section-CHARTS"} className="space-y-4 scroll-mt-32">
+                                <div className="flex items-center justify-between px-1">
+                                    <div className="flex items-center gap-2">
+                                        <TrendingUp className="w-3.5 h-3.5 text-indigo-500" />
+                                        <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Performance</h3>
+                                    </div>
+                                </div>
+                                <PriceHistoryChart 
+                                    fullData={historyData} 
+                                    loading={historyLoading} 
+                                    error={historyError} 
+                                    ticker={asset.ticker} 
+                                    range={range}
+                                    onRangeChange={setRange}
+                                />
+                            </div>
+
+                            {/* SEÇÃO: DADOS FUNDAMENTAIS */}
+                            <div id="section-FUNDAMENTALS" className="space-y-4 scroll-mt-32">
+                                <div className="flex items-center gap-2 px-1">
+                                    <List className="w-3.5 h-3.5 text-indigo-500" />
+                                    <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Fundamentos</h3>
+                                </div>
+                                <DetailedInfoBlock asset={asset} />
+                                <ValuationCard asset={asset} />
+                            </div>
+
+                            {/* SEÇÃO: PROVENTOS */}
+                            <div id="section-INCOME" className="space-y-4 scroll-mt-32">
+                                <div className="flex items-center gap-2 px-1">
+                                    <Coins className="w-3.5 h-3.5 text-emerald-500" />
+                                    <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Dividendos</h3>
+                                </div>
+                                <IncomeAnalysisSection 
+                                    asset={asset} 
+                                    chartData={incomeChartData}
+                                    marketHistory={assetMarketHistory}
+                                    isWatchlist={isWatchlist}
+                                />
+                            </div>
+
+                            {/* SEÇÃO: RENTABILIDADE COMPARADA */}
+                            <div id="section-CHARTS-EXTRA" className="space-y-4 scroll-mt-32">
+                                <div className="flex items-center gap-2 px-1">
+                                    <Activity className="w-3.5 h-3.5 text-indigo-500" />
+                                    <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Comparativo</h3>
+                                </div>
+                                <ComparativeChart ticker={asset.ticker} type={asset.assetType} />
+                            </div>
+
+                            {/* SEÇÃO: EVOLUÇÃO FUNDAMENTALISTA */}
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-2 px-1">
+                                    <Activity className="w-3.5 h-3.5 text-indigo-500" />
+                                    <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Evolução</h3>
+                                </div>
+                                <Investidor10ChartsSection ticker={asset.ticker} assetType={asset.assetType} />
+                            </div>
+
+                            {/* SEÇÃO: PORTFÓLIO FÍSICO */}
+                            {asset.properties && asset.properties.length > 0 && (
+                                <div id="section-PROPERTIES" className="space-y-4 scroll-mt-32">
+                                    <div className="flex items-center gap-2 px-1">
+                                        <Building2 className="w-3.5 h-3.5 text-indigo-500" />
+                                        <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Imóveis</h3>
+                                    </div>
+                                    <PropertiesAnalysis properties={asset.properties} />
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             )}
         </SwipeableModal>
