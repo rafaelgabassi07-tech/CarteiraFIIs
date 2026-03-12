@@ -1267,7 +1267,8 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends = [], inco
         const element = document.getElementById(`section-${id}`);
         if (element && scrollContainerRef.current) {
             const container = scrollContainerRef.current;
-            const offsetTop = element.offsetTop - 120; // Adjust for sticky tabs
+            // Calculate position relative to container
+            const offsetTop = element.offsetTop - (isWatchlist ? 140 : 180); 
             container.scrollTo({ top: offsetTop, behavior: 'smooth' });
         }
     };
@@ -1336,6 +1337,26 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends = [], inco
         }
         return baseTabs;
     }, [asset?.ticker, asset?.properties]);
+
+    useEffect(() => {
+        const container = scrollContainerRef.current;
+        if (!container) return;
+
+        const handleScroll = () => {
+            const sections = tabs.map(tab => document.getElementById(`section-${tab.id}`));
+            
+            for (let i = sections.length - 1; i >= 0; i--) {
+                const section = sections[i];
+                if (section && section.getBoundingClientRect().top <= 200) {
+                    setActiveTab(tabs[i].id);
+                    break;
+                }
+            }
+        };
+
+        container.addEventListener('scroll', handleScroll);
+        return () => container.removeEventListener('scroll', handleScroll);
+    }, [tabs]);
 
     return (
         <SwipeableModal isOpen={!!asset} onClose={onClose}>
