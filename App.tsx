@@ -140,9 +140,7 @@ const App: React.FC = () => {
   
   const [dividends, setDividends] = useState<DividendReceipt[]>(() => {
       const cached = safeGetItem<DividendReceipt[]>(STORAGE_KEYS.DIVS, []);
-      const merged = mergeDividends([], cached);
-      console.log('App - Loaded dividends from cache:', merged.length);
-      return merged;
+      return mergeDividends([], cached);
   });
   
   const [marketIndicators, setMarketIndicators] = useState<{ipca: number, cdi: number, startDate: string}>(() => 

@@ -1182,10 +1182,6 @@ interface SmartRadarProps {
 }
 
 const SmartRadar: React.FC<SmartRadarProps> = ({ asset }) => {
-    console.log('SmartRadar - Asset Ticker:', asset?.ticker);
-    console.log('SmartRadar - Asset Dividends:', asset?.dividends);
-    console.log('SmartRadar - Asset Dividends Type:', Array.isArray(asset?.dividends) ? 'Array' : typeof asset?.dividends);
-    
     const [activeTab, setActiveTab] = useState<'datacom' | 'payment'>('datacom');
 
     const calendarData = useMemo(() => {
@@ -1235,7 +1231,6 @@ const SmartRadar: React.FC<SmartRadarProps> = ({ asset }) => {
                 }
             });
         }
-        console.log('SmartRadar - Calendar Data:', months);
         return months;
     }, [asset.dividends]);
 

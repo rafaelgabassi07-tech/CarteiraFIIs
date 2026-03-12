@@ -282,6 +282,7 @@ export const processPortfolio = (
             return { 
                 ...p, 
                 totalDividends: divPaidMap[p.ticker] || 0, 
+                dividends: receipts.filter(r => r.ticker === p.ticker),
                 segment: segment, 
                 currentPrice: currentPrice, 
                 dailyChange: quote?.regularMarketChangePercent || 0, 
