@@ -1195,13 +1195,20 @@ const SmartRadar: React.FC<SmartRadarProps> = ({ asset }) => {
 
         if (asset.dividends && Array.isArray(asset.dividends)) {
             asset.dividends.forEach(div => {
-                const comDate = new Date(div.dateCom);
-                const payDate = new Date(div.paymentDate);
+                // Robust date parsing: handle YYYY-MM-DD format
+                const parseDate = (dateStr: string) => {
+                    if (!dateStr) return null;
+                    const [year, month, day] = dateStr.split('-').map(Number);
+                    return new Date(year, month - 1, day);
+                };
+
+                const comDate = parseDate(div.dateCom);
+                const payDate = parseDate(div.paymentDate);
                 
-                if (!isNaN(comDate.getTime())) {
+                if (comDate && !isNaN(comDate.getTime())) {
                     months[comDate.getMonth()].datacom = 1;
                 }
-                if (!isNaN(payDate.getTime())) {
+                if (payDate && !isNaN(payDate.getTime())) {
                     months[payDate.getMonth()].payment = 1;
                 }
             });
