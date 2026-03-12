@@ -1182,6 +1182,7 @@ interface SmartRadarProps {
 }
 
 const SmartRadar: React.FC<SmartRadarProps> = ({ asset }) => {
+    console.log('SmartRadar asset dividends:', asset.dividends);
     const [activeTab, setActiveTab] = useState<'datacom' | 'payment'>('datacom');
 
     const calendarData = useMemo(() => {
@@ -1195,11 +1196,29 @@ const SmartRadar: React.FC<SmartRadarProps> = ({ asset }) => {
 
         if (asset.dividends && Array.isArray(asset.dividends)) {
             asset.dividends.forEach(div => {
-                // Robust date parsing: handle YYYY-MM-DD format
+                // Robust date parsing: handle YYYY-MM-DD and DD/MM/YYYY formats
                 const parseDate = (dateStr: string) => {
                     if (!dateStr) return null;
-                    const [year, month, day] = dateStr.split('-').map(Number);
-                    return new Date(year, month - 1, day);
+                    
+                    // Try YYYY-MM-DD
+                    if (dateStr.includes('-')) {
+                        const parts = dateStr.split('-');
+                        if (parts.length === 3) {
+                            const [year, month, day] = parts.map(Number);
+                            return new Date(year, month - 1, day);
+                        }
+                    }
+                    
+                    // Try DD/MM/YYYY
+                    if (dateStr.includes('/')) {
+                        const parts = dateStr.split('/');
+                        if (parts.length === 3) {
+                            const [day, month, year] = parts.map(Number);
+                            return new Date(year, month - 1, day);
+                        }
+                    }
+                    
+                    return new Date(dateStr);
                 };
 
                 const comDate = parseDate(div.dateCom);
@@ -1240,6 +1259,7 @@ const SmartRadar: React.FC<SmartRadarProps> = ({ asset }) => {
 
             <div className="grid grid-cols-3 gap-2">
                 {calendarData.map((m) => {
+                    console.log('Mapping month:', m, 'ActiveTab:', activeTab);
                     const isActive = m[activeTab] === 1;
                     return (
                         <div 
