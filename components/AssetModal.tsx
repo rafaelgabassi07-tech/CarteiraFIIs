@@ -843,9 +843,9 @@ interface IncomeAnalysisSectionProps {
 
 const IncomeAnalysisSection: React.FC<IncomeAnalysisSectionProps> = ({ asset, chartData, marketHistory, isWatchlist = false }) => {
     // Tenta pegar dos dividendos do ativo (carteira) ou do histórico de mercado (watchlist)
-    const lastDividend = asset.dividends?.length > 0 
+    const lastDividend = (asset.dividends || []).length > 0 
         ? asset.dividends[0] 
-        : (marketHistory && marketHistory.length > 0 
+        : ((marketHistory || []).length > 0 
             ? [...marketHistory].sort((a: any, b: any) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime())[0] 
             : null);
 
@@ -856,13 +856,13 @@ const IncomeAnalysisSection: React.FC<IncomeAnalysisSectionProps> = ({ asset, ch
     const displayYield = isWatchlist ? ((asset.dy_12m || 0) * 100) : yieldOnCost;
     const yieldLabel = isWatchlist ? "Dividend Yield (12m)" : "Yield on Cost";
 
-    const nextEvents = marketHistory
+    const nextEvents = (marketHistory || [])
         .filter((d: any) => new Date(d.paymentDate) >= new Date())
         .sort((a: any, b: any) => new Date(a.paymentDate).getTime() - new Date(b.paymentDate).getTime())
         .slice(0, 3);
 
     const historyChartData = useMemo(() => {
-        if (!isWatchlist) return chartData.data;
+        if (!isWatchlist) return chartData?.data || [];
 
         const grouped = new Map();
         const sortedHistory = [...marketHistory].sort((a: any, b: any) => new Date(a.paymentDate).getTime() - new Date(b.paymentDate).getTime());
