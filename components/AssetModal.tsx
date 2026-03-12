@@ -1193,17 +1193,19 @@ const SmartRadar: React.FC<SmartRadarProps> = ({ asset }) => {
             payment: 0
         }));
 
-        asset.dividends.forEach(div => {
-            const comDate = new Date(div.dateCom);
-            const payDate = new Date(div.paymentDate);
-            
-            if (!isNaN(comDate.getTime())) {
-                months[comDate.getMonth()].datacom = 1;
-            }
-            if (!isNaN(payDate.getTime())) {
-                months[payDate.getMonth()].payment = 1;
-            }
-        });
+        if (asset.dividends && Array.isArray(asset.dividends)) {
+            asset.dividends.forEach(div => {
+                const comDate = new Date(div.dateCom);
+                const payDate = new Date(div.paymentDate);
+                
+                if (!isNaN(comDate.getTime())) {
+                    months[comDate.getMonth()].datacom = 1;
+                }
+                if (!isNaN(payDate.getTime())) {
+                    months[payDate.getMonth()].payment = 1;
+                }
+            });
+        }
 
         return months;
     }, [asset.dividends]);
