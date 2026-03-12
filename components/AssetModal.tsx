@@ -715,25 +715,25 @@ const PositionSummaryCard: React.FC<PositionSummaryCardProps> = ({ asset, privac
 
     return (
         <div className="grid grid-cols-2 gap-4">
-            <div className="bg-zinc-50 dark:bg-zinc-900/50 p-6 rounded-[2.5rem] border border-zinc-100 dark:border-zinc-800/50 shadow-sm">
-                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-3">Patrimônio</p>
-                <p className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter leading-none">{formatBRL(totalValue, privacyMode)}</p>
-                <div className="flex items-center gap-2 mt-3">
-                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]"></div>
-                    <p className="text-[11px] font-bold text-zinc-500">{asset.quantity} cotas</p>
+            <div className="bg-zinc-100 dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-md">
+                <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Patrimônio</p>
+                <p className="text-xl font-bold text-zinc-900 dark:text-white tracking-tight leading-none">{formatBRL(totalValue, privacyMode)}</p>
+                <div className="flex items-center gap-2 mt-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
+                    <p className="text-[11px] font-bold text-zinc-600">{asset.quantity} cotas</p>
                 </div>
             </div>
-            <div className="bg-zinc-50 dark:bg-zinc-900/50 p-6 rounded-[2.5rem] border border-zinc-100 dark:border-zinc-800/50 shadow-sm">
-                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-3">Resultado</p>
+            <div className="bg-zinc-100 dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-md">
+                <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Resultado</p>
                 <div className="flex flex-col">
-                    <p className={`text-2xl font-black tracking-tighter leading-none ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
+                    <p className={`text-xl font-bold tracking-tight leading-none ${isPositive ? 'text-emerald-600' : 'text-rose-600'}`}>
                         {isPositive ? '+' : ''}{formatBRL(result, privacyMode)}
                     </p>
-                    <div className={`flex items-center gap-1.5 mt-3 ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
-                        <div className={`p-1 rounded-lg ${isPositive ? 'bg-emerald-500/10' : 'bg-rose-500/10'}`}>
-                            {isPositive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                    <div className={`flex items-center gap-1.5 mt-2 ${isPositive ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        <div className={`p-0.5 rounded ${isPositive ? 'bg-emerald-500/10' : 'bg-rose-500/10'}`}>
+                            {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                         </div>
-                        <span className="text-xs font-black">{resultPercent.toFixed(2)}%</span>
+                        <span className="text-xs font-bold">{resultPercent.toFixed(2)}%</span>
                     </div>
                 </div>
             </div>
@@ -757,14 +757,14 @@ const ValuationCard: React.FC<ValuationCardProps> = ({ asset }) => {
     ];
 
     return (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-3">
             {items.map((item, idx) => (
-                <div key={idx} className="bg-zinc-50 dark:bg-zinc-900/50 p-5 rounded-[2rem] border border-zinc-100 dark:border-zinc-800/50 flex flex-col items-center text-center shadow-sm">
-                    <div className="w-10 h-10 rounded-2xl bg-white dark:bg-zinc-800 flex items-center justify-center mb-3 shadow-sm border border-zinc-100 dark:border-zinc-700">
-                        <span className="text-zinc-400">{item.icon}</span>
+                <div key={idx} className="bg-zinc-100 dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 flex flex-col items-center text-center shadow-md">
+                    <div className="w-8 h-8 rounded-lg bg-white dark:bg-zinc-800 flex items-center justify-center mb-2 shadow-sm border border-zinc-200 dark:border-zinc-700">
+                        <span className="text-zinc-500">{item.icon}</span>
                     </div>
-                    <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5">{item.label}</p>
-                    <p className={`text-sm font-black ${item.color}`}>{item.value}</p>
+                    <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest mb-1">{item.label}</p>
+                    <p className={`text-xs font-bold ${item.color}`}>{item.value}</p>
                 </div>
             ))}
         </div>
@@ -791,15 +791,15 @@ const DetailedInfoBlock: React.FC<DetailedInfoBlockProps> = ({ asset }) => {
     ];
 
     return (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3">
             {infoItems.map((item, idx) => (
-                <div key={idx} className="bg-zinc-50 dark:bg-zinc-900/50 p-6 rounded-[2.5rem] border border-zinc-100 dark:border-zinc-800/50 flex items-center gap-4 shadow-sm">
-                    <div className="w-12 h-12 rounded-3xl bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm border border-zinc-100 dark:border-zinc-700 shrink-0">
-                        <item.icon className="w-5 h-5 text-indigo-500" />
+                <div key={idx} className="bg-zinc-100 dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 flex items-center gap-3 shadow-md">
+                    <div className="w-10 h-10 rounded-lg bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm border border-zinc-200 dark:border-zinc-700 shrink-0">
+                        <item.icon className="w-4 h-4 text-indigo-600" />
                     </div>
                     <div className="min-w-0">
-                        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-2">{item.label}</p>
-                        <p className="text-xs font-black text-zinc-900 dark:text-white truncate">{item.value}</p>
+                        <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest leading-none mb-1">{item.label}</p>
+                        <p className="text-xs font-bold text-zinc-900 dark:text-white truncate">{item.value}</p>
                     </div>
                 </div>
             ))}
@@ -1123,7 +1123,7 @@ const Investidor10ChartsSection: React.FC<Investidor10ChartsSectionProps> = ({ t
 
 // --- MAIN COMPONENT ---
 
-const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends = [], incomeChartData = { data: [], average: 0, activeTypes: [] }, privacyMode }: AssetModalProps) => {
+const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends, incomeChartData, privacyMode }: AssetModalProps) => {
     // History Data State (Moved from ChartsContainer)
     const [historyData, setHistoryData] = useState<any[]>([]);
     const [historyLoading, setHistoryLoading] = useState(true);
