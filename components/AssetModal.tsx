@@ -1184,61 +1184,47 @@ interface SmartRadarProps {
 const SmartRadar: React.FC<SmartRadarProps> = ({ asset }) => {
     const isFII = asset.assetType === 'FII';
 
-    const data = useMemo(() => {
-        const normalize = (val: number | undefined, min: number, max: number, reverse = false) => {
-            if (val === undefined || val === null) return 0;
-            let score = ((val - min) / (max - min)) * 100;
-            if (reverse) score = 100 - score;
-            return Math.min(Math.max(score, 0), 100);
-        };
+    const calendarData = useMemo(() => {
+        const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+        const months = Array.from({ length: 12 }, (_, i) => ({
+            month: i + 1,
+            label: monthNames[i],
+            datacom: 0,
+            payment: 0
+        }));
 
-        if (isFII) {
-            return [
-                { subject: 'DY', value: normalize(asset.dy_12m, 0, 0.12), fullMark: 100 },
-                { subject: 'P/VP', value: normalize(asset.p_vp, 0.8, 1.2, true), fullMark: 100 },
-                { subject: 'Vacância', value: normalize(asset.vacancy, 0, 20, true), fullMark: 100 },
-                { subject: 'Liquidez', value: asset.liquidity ? 80 : 20, fullMark: 100 },
-                { subject: 'Imóveis', value: normalize(asset.properties_count, 0, 20), fullMark: 100 },
-            ];
-        }
+        asset.dividends.forEach(div => {
+            const comDate = new Date(div.dateCom);
+            const payDate = new Date(div.paymentDate);
+            
+            if (!isNaN(comDate.getTime())) {
+                months[comDate.getMonth()].datacom = 1;
+            }
+            if (!isNaN(payDate.getTime())) {
+                months[payDate.getMonth()].payment = 1;
+            }
+        });
 
-        return [
-            { subject: 'DY', value: normalize(asset.dy_12m, 0, 0.10), fullMark: 100 },
-            { subject: 'P/L', value: normalize(asset.p_l, 5, 25, true), fullMark: 100 },
-            { subject: 'P/VP', value: normalize(asset.p_vp, 0.5, 3, true), fullMark: 100 },
-            { subject: 'ROE', value: normalize(asset.roe, 0, 25), fullMark: 100 },
-            { subject: 'Margem', value: normalize(asset.net_margin, 0, 25), fullMark: 100 },
-            { subject: 'Cresc.', value: normalize(asset.cagr_revenue, 0, 20), fullMark: 100 },
-        ];
-    }, [asset, isFII]);
-
-    const averageScore = Math.round(data.reduce((acc, curr) => acc + curr.value, 0) / data.length);
+        return months;
+    }, [asset.dividends]);
 
     return (
-        <div className="space-y-4">
-            <div className="flex items-center justify-between mb-2 px-1">
-                <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Radar Inteligente</h4>
-                <div className="flex items-center gap-2">
-                    <div className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-900/20 text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter">
-                        Score: {averageScore}
-                    </div>
-                </div>
+        <div className="mb-6">
+            <div className="flex justify-between items-center mb-4">
+                <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Calendário de Dividendos</h4>
             </div>
-            <div className="h-64 w-full flex items-center justify-center py-4 border-y border-zinc-100 dark:border-zinc-900/50">
+            <div className="h-48 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                    <RadarChart cx="50%" cy="50%" outerRadius="80%" data={data}>
-                        <PolarGrid stroke="#3f3f46" opacity={0.1} />
-                        <PolarAngleAxis dataKey="subject" tick={{ fontSize: 9, fontWeight: 900, fill: '#71717a' }} />
-                        <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                        <Radar
-                            name={asset.ticker}
-                            dataKey="value"
-                            stroke="#6366f1"
-                            fill="#6366f1"
-                            fillOpacity={0.2}
-                            animationDuration={1500}
+                    <BarChart data={calendarData} margin={{ top: 10, right: 0, left: -20, bottom: 5 }}>
+                        <XAxis dataKey="label" tick={{ fontSize: 9, fontWeight: 700, fill: '#71717a' }} tickLine={false} axisLine={false} />
+                        <Tooltip 
+                            contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '12px', fontSize: '10px' }} 
+                            labelStyle={{ color: '#a1a1aa' }}
+                            formatter={(value: number, name: string) => [value ? 'Sim' : 'Não', name === 'datacom' ? 'Datacom' : 'Pagamento']}
                         />
-                    </RadarChart>
+                        <Bar dataKey="datacom" name="datacom" fill="#6366f1" radius={[2, 2, 0, 0]} />
+                        <Bar dataKey="payment" name="payment" fill="#10b981" radius={[2, 2, 0, 0]} />
+                    </BarChart>
                 </ResponsiveContainer>
             </div>
         </div>
