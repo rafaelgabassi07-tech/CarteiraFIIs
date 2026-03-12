@@ -1473,7 +1473,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
     };
 
     const sortedPortfolio = useMemo(() => {
-        return portfolio
+        return (portfolio || [])
             .filter(p => p.ticker.includes(filter.toUpperCase()))
             .sort((a, b) => (b.quantity * (b.currentPrice||0)) - (a.quantity * (a.currentPrice||0)));
     }, [portfolio, filter]);
@@ -1505,7 +1505,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
     }, [sortedPortfolio]);
 
     const selectedAsset = useMemo(() => {
-        const asset = portfolio.find(p => p.ticker === selectedTicker);
+        const asset = (portfolio || []).find(p => p.ticker === selectedTicker);
         console.log('selectedTicker:', selectedTicker, 'found asset:', asset);
         return asset;
     }, [portfolio, selectedTicker]);
@@ -1520,7 +1520,7 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
         if (!selectedAsset) return { data: [], average: 0, activeTypes: [] };
         
         // Filter dividends for this asset from wallet receipts
-        const assetDivs = dividends.filter(d => d.ticker === selectedAsset.ticker);
+        const assetDivs = (dividends || []).filter(d => d.ticker === selectedAsset.ticker);
         
         // Group by month
         const today = new Date();

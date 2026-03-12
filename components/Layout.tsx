@@ -12,7 +12,12 @@ const useAnimatedVisibility = (isOpen: boolean, duration: number) => {
     if (isOpen) {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       setIsMounted(true);
-      requestAnimationFrame(() => setIsVisible(true));
+      // Double requestAnimationFrame ensures the element is in the DOM before adding the visible class
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setIsVisible(true);
+        });
+      });
     } else {
       setIsVisible(false);
       timeoutRef.current = window.setTimeout(() => {

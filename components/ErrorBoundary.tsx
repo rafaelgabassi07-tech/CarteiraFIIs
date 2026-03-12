@@ -58,7 +58,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
       }
       
       return (
-          <div className="min-h-screen bg-[#020617] flex items-center justify-center p-6 text-white text-center font-sans">
+          <div className="fixed inset-0 z-[10000] bg-[#020617] flex items-center justify-center p-6 text-white text-center font-sans overflow-auto">
             <div className="max-w-xl w-full">
               <h1 className="text-xl font-bold mb-2 text-rose-500">Ops! Algo deu errado.</h1>
               <p className="text-zinc-400 mb-4">Um erro inesperado ocorreu. Por favor, recarregue a página ou tire um print desta tela.</p>

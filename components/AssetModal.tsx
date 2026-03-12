@@ -1180,7 +1180,7 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends = [], inco
     if (!asset) return null;
 
     const selectedAsset = asset;
-    const assetMarketHistory = marketDividends.filter(d => d.ticker === selectedAsset.ticker);
+    const assetMarketHistory = (marketDividends || []).filter(d => d.ticker === selectedAsset.ticker);
     const isWatchlist = selectedAsset.quantity === 0;
 
     const tabs = useMemo(() => {
