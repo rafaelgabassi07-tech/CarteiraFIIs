@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { AssetPosition, AssetType, DividendReceipt } from '../types';
 import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, BarChart3, PieChart, Coins, DollarSign, Building2, FileText, MapPin, Zap, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, SquareStack, Map as MapIcon, CandlestickChart, LineChart as LineChartIcon, Award, RefreshCcw, ArrowLeft, Briefcase, MoreHorizontal, LayoutGrid, List, Activity, Scale, Percent, ChevronDown, ChevronUp, ListFilter, BookOpen, Calendar } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
-import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, ReferenceLine, ComposedChart, CartesianGrid, AreaChart, Area, YAxis, PieChart as RePieChart, Pie, Cell, LineChart, Line, Label, Legend, Scatter } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, ReferenceLine, ComposedChart, CartesianGrid, AreaChart, Area, YAxis, PieChart as RePieChart, Pie, Cell, LineChart, Line, Label, Legend, Scatter, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 import { formatBRL, formatCompactBRL, formatDateShort, getMonthName } from '../utils/formatters';
 
 // --- TYPES ---
@@ -16,6 +16,31 @@ interface AssetModalProps {
 }
 
 // --- SUB-COMPONENTS & HELPERS ---
+
+const DataRow = ({ label, value, color = 'text-zinc-900 dark:text-white', icon, subValue }: { label: string, value: string | React.ReactNode, color?: string, icon?: React.ReactNode, subValue?: string }) => (
+    <div className="flex items-center justify-between py-3 border-b border-zinc-100 dark:border-zinc-900/50 last:border-0 group">
+        <div className="flex items-center gap-2.5">
+            {icon && <div className="w-7 h-7 rounded-lg bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center text-zinc-400 group-hover:text-indigo-500 transition-colors">{icon}</div>}
+            <div className="flex flex-col">
+                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest leading-none">{label}</span>
+                {subValue && <span className="text-[9px] font-bold text-zinc-500 mt-1">{subValue}</span>}
+            </div>
+        </div>
+        <div className={`text-sm font-black tabular-nums text-right ${color}`}>{value}</div>
+    </div>
+);
+
+const SectionHeader = ({ title, icon: Icon, action }: { title: string, icon: any, action?: React.ReactNode }) => (
+    <div className="flex items-center justify-between mb-6 px-1">
+        <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center text-zinc-400 border border-zinc-100 dark:border-zinc-800">
+                <Icon className="w-4 h-4" />
+            </div>
+            <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-[0.25em]">{title}</h3>
+        </div>
+        {action}
+    </div>
+);
 
 const TYPE_LABELS: { [key: string]: string } = {
     'JCP': 'JCP',
@@ -236,32 +261,31 @@ const PriceHistoryChart: React.FC<PriceHistoryChartProps> = ({ fullData, loading
 
     return (
         <>
-        <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 p-3 shadow-xl shadow-zinc-200/50 dark:shadow-black/20 mb-6 relative overflow-hidden">
-            <div className="flex flex-col gap-3 mb-3">
+        <div className="mb-6 relative overflow-hidden">
+            <div className="flex flex-col gap-3 mb-4">
                 <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-                            <CandlestickChart className="w-4.5 h-4.5" />
+                        <div className="w-8 h-8 rounded-xl bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center text-zinc-400">
+                            <CandlestickChart className="w-4 h-4" />
                         </div>
                         <div>
-                            <h3 className="text-xs font-black text-zinc-900 dark:text-white leading-none">Histórico de Preço</h3>
-                            <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mt-0.5">Análise Técnica</p>
+                            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest leading-none">Histórico de Preço</h3>
                         </div>
                     </div>
                     <div className="flex items-center gap-1.5">
-                        <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5">
-                            <button onClick={() => setChartType('AREA')} className={`p-1.5 rounded-md transition-all ${chartType === 'AREA' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}><LineChartIcon className="w-3.5 h-3.5" /></button>
-                            <button onClick={() => setChartType('CANDLE')} className={`p-1.5 rounded-md transition-all ${chartType === 'CANDLE' ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}><CandlestickChart className="w-3.5 h-3.5" /></button>
+                        <div className="flex bg-zinc-100 dark:bg-zinc-900 rounded-lg p-0.5 border border-zinc-200 dark:border-zinc-800">
+                            <button onClick={() => setChartType('AREA')} className={`p-1.5 rounded-md transition-all ${chartType === 'AREA' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}><LineChartIcon className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => setChartType('CANDLE')} className={`p-1.5 rounded-md transition-all ${chartType === 'CANDLE' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}><CandlestickChart className="w-3.5 h-3.5" /></button>
                         </div>
                         <button 
                             onClick={() => setShowFilterModal(true)}
-                            className={`p-2 rounded-lg transition-all ${showFilterModal ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                            className={`p-2 rounded-lg transition-all border ${showFilterModal ? 'bg-indigo-50 border-indigo-200 text-indigo-600 dark:bg-indigo-900/30 dark:border-indigo-800 dark:text-indigo-400' : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                         >
                             <ListFilter className="w-3.5 h-3.5" />
                         </button>
                     </div>
                 </div>
-                <div className="flex gap-2 items-center justify-between bg-zinc-50 dark:bg-zinc-800/50 p-1.5 rounded-lg">
+                <div className="flex gap-2 items-center justify-between py-2 border-y border-zinc-100 dark:border-zinc-900/50">
                     <div className="flex gap-1.5">
                          <button onClick={() => toggleIndicator('sma20')} className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider border transition-all ${indicators.sma20 ? 'bg-amber-100 border-amber-200 text-amber-700 dark:bg-amber-900/30 dark:border-amber-800 dark:text-amber-400' : 'border-transparent text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'}`}>MA20</button>
                          <button onClick={() => toggleIndicator('sma50')} className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider border transition-all ${indicators.sma50 ? 'bg-violet-100 border-violet-200 text-violet-700 dark:bg-violet-900/30 dark:border-violet-800 dark:text-violet-400' : 'border-transparent text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'}`}>MA50</button>
@@ -272,7 +296,7 @@ const PriceHistoryChart: React.FC<PriceHistoryChartProps> = ({ fullData, loading
                 </div>
             </div>
 
-            <div className="h-60 w-full relative">
+            <div className="h-64 w-full relative">
                 {loading ? (
                     <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm z-10"><div className="animate-pulse text-xs font-bold text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-3 py-1.5 rounded-full">Carregando...</div></div>
                 ) : error || !fullData || fullData.length === 0 ? (
@@ -540,28 +564,33 @@ const ComparativeChart: React.FC<ComparativeChartProps> = ({ ticker, type }) => 
 
     return (
         <>
-        <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 p-3 shadow-sm mb-4 relative overflow-hidden transition-all duration-300">
-            <div className="flex flex-col gap-3 mb-3">
+        <div className="mb-6 relative overflow-hidden">
+            <div className="flex flex-col gap-3 mb-4">
                 <div className="flex justify-between items-center">
-                    <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
-                        <TrendingUp className="w-3.5 h-3.5" /> Rentabilidade
-                    </h3>
+                    <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center text-zinc-400">
+                            <TrendingUp className="w-4 h-4" />
+                        </div>
+                        <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                            Rentabilidade
+                        </h3>
+                    </div>
                     <div className="flex items-center gap-2">
-                         <div className="flex bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5">
+                         <div className="flex bg-zinc-100 dark:bg-zinc-900 rounded-lg p-0.5 border border-zinc-200 dark:border-zinc-800">
                             {['1Y', '2Y', '5Y', 'MAX'].map((r) => (
-                                <button key={r} onClick={() => setRange(r)} className={`px-2 py-0.5 text-[8px] font-bold rounded-md transition-all ${range === r ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>{r}</button>
+                                <button key={r} onClick={() => setRange(r)} className={`px-2 py-0.5 text-[8px] font-bold rounded-md transition-all ${range === r ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>{r}</button>
                             ))}
                         </div>
                         <button 
                             onClick={() => setShowFilterModal(true)}
-                            className={`p-1.5 rounded-lg transition-all ${showFilterModal ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                            className={`p-1.5 rounded-lg transition-all border ${showFilterModal ? 'bg-indigo-50 border-indigo-200 text-indigo-600 dark:bg-indigo-900/30 dark:border-indigo-800 dark:text-indigo-400' : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                         >
                             <ListFilter className="w-3.5 h-3.5" />
                         </button>
                     </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 py-2 border-y border-zinc-100 dark:border-zinc-900/50">
                     <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg border border-indigo-100 dark:border-indigo-900/30 bg-indigo-50 dark:bg-indigo-900/20">
                         <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
                         <span className="text-[9px] font-bold text-indigo-700 dark:text-indigo-300">{ticker}</span>
@@ -583,7 +612,7 @@ const ComparativeChart: React.FC<ComparativeChartProps> = ({ ticker, type }) => 
                 </div>
             </div>
 
-            <div className="h-56 w-full relative">
+            <div className="h-64 w-full relative">
                 {loading ? (
                     <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm z-10">
                         <div className="animate-pulse text-xs font-bold text-zinc-400">Carregando dados...</div>
@@ -715,29 +744,30 @@ const PositionSummaryCard: React.FC<PositionSummaryCardProps> = ({ asset, privac
     const isPositive = result >= 0;
 
     return (
-        <div className="grid grid-cols-2 gap-4">
-            <div className="bg-zinc-100 dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-md">
-                <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Patrimônio</p>
-                <p className="text-xl font-bold text-zinc-900 dark:text-white tracking-tight leading-none">{formatBRL(totalValue, privacyMode)}</p>
-                <div className="flex items-center gap-2 mt-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
-                    <p className="text-[11px] font-bold text-zinc-600">{asset.quantity} cotas</p>
-                </div>
-            </div>
-            <div className="bg-zinc-100 dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-md">
-                <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">Resultado</p>
-                <div className="flex flex-col">
-                    <p className={`text-xl font-bold tracking-tight leading-none ${isPositive ? 'text-emerald-600' : 'text-rose-600'}`}>
-                        {isPositive ? '+' : ''}{formatBRL(result, privacyMode)}
-                    </p>
-                    <div className={`flex items-center gap-1.5 mt-2 ${isPositive ? 'text-emerald-600' : 'text-rose-600'}`}>
-                        <div className={`p-0.5 rounded ${isPositive ? 'bg-emerald-500/10' : 'bg-rose-500/10'}`}>
-                            {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                        </div>
-                        <span className="text-xs font-bold">{resultPercent.toFixed(2)}%</span>
-                    </div>
-                </div>
-            </div>
+        <div className="space-y-0">
+            <DataRow 
+                label="Patrimônio Atual" 
+                value={formatBRL(totalValue, privacyMode)} 
+                icon={<Wallet className="w-3.5 h-3.5" />}
+                subValue={`${asset.quantity} cotas acumuladas`}
+            />
+            <DataRow 
+                label="Preço Médio" 
+                value={formatBRL(asset.averagePrice)} 
+                icon={<Calculator className="w-3.5 h-3.5" />}
+            />
+            <DataRow 
+                label="Custo Total" 
+                value={formatBRL(totalCost, privacyMode)} 
+                icon={<DollarSign className="w-3.5 h-3.5" />}
+            />
+            <DataRow 
+                label="Resultado Total" 
+                value={formatBRL(result, privacyMode)} 
+                color={isPositive ? 'text-emerald-500' : 'text-rose-500'}
+                icon={isPositive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                subValue={`${isPositive ? '+' : ''}${resultPercent.toFixed(2)}% de rentabilidade`}
+            />
         </div>
     );
 };
@@ -751,23 +781,28 @@ const ValuationCard: React.FC<ValuationCardProps> = ({ asset }) => {
     const pl = asset['p_l'];
     const dy = asset['dy_12m'];
 
-    const items = [
-        { label: 'P/VP', value: pvp?.toFixed(2) || '-', color: (pvp || 0) > 1.1 ? 'text-rose-500' : (pvp || 0) < 0.9 ? 'text-emerald-500' : 'text-zinc-900 dark:text-white', icon: <Scale className="w-4 h-4" /> },
-        { label: 'P/L', value: pl?.toFixed(2) || '-', color: 'text-zinc-900 dark:text-white', icon: <Activity className="w-4 h-4" /> },
-        { label: 'DY (12M)', value: dy ? `${dy.toFixed(2)}%` : '-', color: 'text-emerald-500', icon: <Percent className="w-4 h-4" /> },
-    ];
-
     return (
-        <div className="grid grid-cols-3 gap-3">
-            {items.map((item, idx) => (
-                <div key={idx} className="bg-zinc-100 dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 flex flex-col items-center text-center shadow-md">
-                    <div className="w-8 h-8 rounded-lg bg-white dark:bg-zinc-800 flex items-center justify-center mb-2 shadow-sm border border-zinc-200 dark:border-zinc-700">
-                        <span className="text-zinc-500">{item.icon}</span>
-                    </div>
-                    <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest mb-1">{item.label}</p>
-                    <p className={`text-xs font-bold ${item.color}`}>{item.value}</p>
-                </div>
-            ))}
+        <div className="space-y-0">
+            <DataRow 
+                label="P/VP" 
+                value={pvp?.toFixed(2) || '-'} 
+                color={(pvp || 0) > 1.1 ? 'text-rose-500' : (pvp || 0) < 0.9 ? 'text-emerald-500' : 'text-zinc-900 dark:text-white'}
+                icon={<Scale className="w-3.5 h-3.5" />}
+                subValue="Preço sobre Valor Patrimonial"
+            />
+            <DataRow 
+                label="P/L" 
+                value={pl?.toFixed(2) || '-'} 
+                icon={<Activity className="w-3.5 h-3.5" />}
+                subValue="Preço sobre Lucro"
+            />
+            <DataRow 
+                label="Dividend Yield" 
+                value={dy ? `${dy.toFixed(2)}%` : '-'} 
+                color="text-emerald-500"
+                icon={<Percent className="w-3.5 h-3.5" />}
+                subValue="Rendimento nos últimos 12 meses"
+            />
         </div>
     );
 };
@@ -780,29 +815,27 @@ const DetailedInfoBlock: React.FC<DetailedInfoBlockProps> = ({ asset }) => {
     const isFII = asset.assetType === 'FII';
     
     const infoItems = isFII ? [
-        { label: 'Segmento', value: asset.segment || '-', icon: LayoutGrid },
-        { label: 'Vacância', value: asset.vacancy !== undefined ? `${asset.vacancy.toFixed(2)}%` : '-', icon: X },
-        { label: 'Imóveis', value: asset.properties_count || '-', icon: Building2 },
-        { label: 'Liquidez', value: asset.liquidity || '-', icon: Zap },
+        { label: 'Segmento', value: asset.segment || '-', icon: <LayoutGrid className="w-3.5 h-3.5" /> },
+        { label: 'Vacância', value: asset.vacancy !== undefined ? `${asset.vacancy.toFixed(2)}%` : '-', icon: <X className="w-3.5 h-3.5" />, color: (asset.vacancy || 0) > 10 ? 'text-rose-500' : 'text-zinc-900 dark:text-white' },
+        { label: 'Qtd. Imóveis', value: asset.properties_count || '-', icon: <Building2 className="w-3.5 h-3.5" /> },
+        { label: 'Liquidez Diária', value: asset.liquidity || '-', icon: <Zap className="w-3.5 h-3.5" /> },
     ] : [
-        { label: 'Segmento', value: asset.segment || '-', icon: LayoutGrid },
-        { label: 'Margem Líq.', value: asset.net_margin !== undefined ? `${asset.net_margin.toFixed(2)}%` : '-', icon: Activity },
-        { label: 'CAGR Rec.', value: asset.cagr_revenue !== undefined ? `${asset.cagr_revenue.toFixed(2)}%` : '-', icon: TrendingUp },
-        { label: 'Liquidez', value: asset.liquidity || '-', icon: Zap },
+        { label: 'Segmento', value: asset.segment || '-', icon: <LayoutGrid className="w-3.5 h-3.5" /> },
+        { label: 'Margem Líquida', value: asset.net_margin !== undefined ? `${asset.net_margin.toFixed(2)}%` : '-', icon: <Activity className="w-3.5 h-3.5" /> },
+        { label: 'CAGR Receita', value: asset.cagr_revenue !== undefined ? `${asset.cagr_revenue.toFixed(2)}%` : '-', icon: <TrendingUp className="w-3.5 h-3.5" /> },
+        { label: 'Liquidez Diária', value: asset.liquidity || '-', icon: <Zap className="w-3.5 h-3.5" /> },
     ];
 
     return (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-0">
             {infoItems.map((item, idx) => (
-                <div key={idx} className="bg-zinc-100 dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 flex items-center gap-3 shadow-md">
-                    <div className="w-10 h-10 rounded-lg bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm border border-zinc-200 dark:border-zinc-700 shrink-0">
-                        <item.icon className="w-4 h-4 text-indigo-600" />
-                    </div>
-                    <div className="min-w-0">
-                        <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest leading-none mb-1">{item.label}</p>
-                        <p className="text-xs font-bold text-zinc-900 dark:text-white truncate">{item.value}</p>
-                    </div>
-                </div>
+                <DataRow 
+                    key={idx}
+                    label={item.label}
+                    value={item.value}
+                    icon={item.icon}
+                    color={(item as any).color}
+                />
             ))}
         </div>
     );
@@ -816,17 +849,22 @@ const PropertiesAnalysis: React.FC<PropertiesAnalysisProps> = ({ properties }) =
     if (!properties || properties.length === 0) return null;
 
     return (
-        <div className="space-y-3">
+        <div className="space-y-0">
             {properties.map((prop, index) => (
-                <div key={index} className="bg-zinc-100 dark:bg-zinc-800/50 p-3 rounded-xl">
+                <div key={index} className="py-3 border-b border-zinc-100 dark:border-zinc-900/50 last:border-0">
                     <div className="flex justify-between items-start">
-                        <div>
-                            <p className="font-bold text-sm text-zinc-900 dark:text-white">{prop.name}</p>
-                            <p className="text-xs text-zinc-500 flex items-center gap-1"><MapIcon className="w-3 h-3" /> {prop.city} / {prop.state}</p>
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center text-zinc-400">
+                                <Building2 className="w-4 h-4" />
+                            </div>
+                            <div>
+                                <p className="font-black text-xs text-zinc-900 dark:text-white uppercase tracking-tight">{prop.name}</p>
+                                <p className="text-[10px] font-bold text-zinc-500 flex items-center gap-1 mt-0.5"><MapIcon className="w-3 h-3" /> {prop.city} / {prop.state}</p>
+                            </div>
                         </div>
                         <div className="text-right">
-                            <p className="text-xs font-bold text-zinc-500">ABL</p>
-                            <p className="text-sm font-semibold text-zinc-900 dark:text-white">{(prop.area * 100).toFixed(2)}%</p>
+                            <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-1">ABL</p>
+                            <p className="text-xs font-black text-zinc-900 dark:text-white">{(prop.area * 100).toFixed(2)}%</p>
                         </div>
                     </div>
                 </div>
@@ -843,8 +881,6 @@ interface IncomeAnalysisSectionProps {
 }
 
 const IncomeAnalysisSection: React.FC<IncomeAnalysisSectionProps> = ({ asset, chartData, marketHistory, isWatchlist = false }) => {
-    console.log('IncomeAnalysisSection rendering for:', asset?.ticker, 'marketHistory:', marketHistory);
-    // Tenta pegar dos dividendos do ativo (carteira) ou do histórico de mercado (watchlist)
     const lastDividend = (asset.dividends || []).length > 0 
         ? asset.dividends[0] 
         : ((marketHistory || []).length > 0 
@@ -854,7 +890,6 @@ const IncomeAnalysisSection: React.FC<IncomeAnalysisSectionProps> = ({ asset, ch
     const totalInvested = (asset.averagePrice || 0) * (asset.quantity || 0);
     const yieldOnCost = totalInvested > 0 ? ((asset.totalDividends || 0) / totalInvested) * 100 : 0;
 
-    // Se for watchlist, usamos o DY de 12m dos fundamentos
     const displayYield = isWatchlist ? ((asset.dy_12m || 0) * 100) : yieldOnCost;
     const yieldLabel = isWatchlist ? "Dividend Yield (12m)" : "Yield on Cost";
 
@@ -887,60 +922,47 @@ const IncomeAnalysisSection: React.FC<IncomeAnalysisSectionProps> = ({ asset, ch
     }, [chartData, marketHistory, isWatchlist]);
 
     return (
-        <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {/* Summary Cards */}
-                <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                        <p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mb-1">Último Provento</p>
-                        <p className="text-lg font-black text-zinc-900 dark:text-white tracking-tight">{formatBRL(lastDividend?.value || lastDividend?.rate || 0)}</p>
-                        <p className="text-[9px] font-bold text-zinc-500 mt-0.5">Pago em {formatDateShort(lastDividend?.paymentDate)}</p>
-                    </div>
-                    <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                        <p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mb-1">{yieldLabel}</p>
-                        <p className="text-lg font-black text-emerald-500 tracking-tight">{displayYield.toFixed(2)}%</p>
-                        <p className="text-[9px] font-bold text-zinc-500 mt-0.5">{isWatchlist ? 'Anualizado' : 'Yield on Cost'}</p>
-                    </div>
-                </div>
-
-                {/* Next Payments */}
-                {nextEvents.length > 0 ? (
-                    <div className="bg-zinc-50 dark:bg-zinc-900/50 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
-                        <div className="flex items-center gap-1.5 mb-2">
-                            <Calendar className="w-3.5 h-3.5 text-indigo-500" />
-                            <h4 className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Próximos Pagamentos</h4>
-                        </div>
-                        <div className="space-y-2">
-                            {nextEvents.slice(0, 2).map((event: any, i: number) => (
-                                <div key={i} className="flex justify-between items-center">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-6 h-6 rounded-lg bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm border border-zinc-100 dark:border-zinc-700">
-                                            <Coins className="w-3 h-3 text-emerald-500" />
-                                        </div>
-                                        <div>
-                                            <p className="text-[10px] font-black text-zinc-900 dark:text-white">{formatBRL(event.rate || event.value)}</p>
-                                            <p className="text-[8px] font-bold text-zinc-500 uppercase tracking-tighter">Com: {formatDateShort(event.dateCom)}</p>
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-[10px] font-black text-emerald-500">{formatDateShort(event.paymentDate)}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                ) : (
-                    <div className="bg-zinc-50 dark:bg-zinc-900/50 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 flex items-center justify-center text-center">
-                        <div>
-                            <Calendar className="w-6 h-6 text-zinc-300 mx-auto mb-1" />
-                            <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Sem previsões futuras</p>
-                        </div>
-                    </div>
-                )}
+        <div className="space-y-6">
+            <div className="space-y-0">
+                <DataRow 
+                    label="Último Provento" 
+                    value={formatBRL(lastDividend?.value || lastDividend?.rate || 0)} 
+                    icon={<Coins className="w-3.5 h-3.5" />}
+                    subValue={`Pago em ${formatDateShort(lastDividend?.paymentDate)}`}
+                />
+                <DataRow 
+                    label={yieldLabel} 
+                    value={`${displayYield.toFixed(2)}%`} 
+                    color="text-emerald-500"
+                    icon={<TrendingUp className="w-3.5 h-3.5" />}
+                    subValue={isWatchlist ? 'Rendimento anualizado' : 'Rentabilidade sobre custo'}
+                />
             </div>
 
-            <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
+            {nextEvents.length > 0 && (
+                <div className="space-y-3">
+                    <div className="flex items-center gap-2 px-1">
+                        <Calendar className="w-3 h-3 text-zinc-400" />
+                        <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Eventos Futuros</span>
+                    </div>
+                    <div className="space-y-0">
+                        {nextEvents.map((event: any, i: number) => (
+                            <div key={i} className="flex justify-between items-center py-2 border-b border-zinc-100 dark:border-zinc-900/30 last:border-0">
+                                <div className="flex flex-col">
+                                    <span className="text-xs font-black text-zinc-900 dark:text-white">{formatBRL(event.rate || event.value)}</span>
+                                    <span className="text-[9px] font-bold text-zinc-500 uppercase">Data Com: {formatDateShort(event.dateCom)}</span>
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-[10px] font-black text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-md">{formatDateShort(event.paymentDate)}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            <div className="pt-4">
+                <div className="flex items-center justify-between mb-4 px-1">
                     <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Histórico de Proventos</h4>
                     <span className="text-[9px] font-bold text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-md uppercase tracking-tighter">Por Cota</span>
                 </div>
@@ -1073,13 +1095,13 @@ const Investidor10ChartsSection: React.FC<Investidor10ChartsSectionProps> = ({ t
     if (error || !data) return <div className="text-center text-zinc-400">Dados não disponíveis.</div>;
     if (onlyPayout) {
         return (
-            <div className="h-60 w-full">
+            <div className="h-64 w-full py-4 border-y border-zinc-100 dark:border-zinc-900/50">
                 <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 5 }}>
-                        <XAxis dataKey="label" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-                        <YAxis yAxisId="left" orientation="left" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={(val) => `${val}%`} />
-                        <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={(val) => `${(val * 100).toFixed(0)}%`} />
-                        <Tooltip contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '8px' }} labelStyle={{ color: '#a1a1aa' }} formatter={(value: number, name: string) => [name === 'payout' ? `${value.toFixed(2)}%` : `${(value * 100).toFixed(2)}%`, name === 'payout' ? 'Payout' : 'Div. Yield']} />
+                        <XAxis dataKey="label" tick={{ fontSize: 9, fontWeight: 700, fill: '#71717a' }} tickLine={false} axisLine={false} />
+                        <YAxis yAxisId="left" orientation="left" tick={{ fontSize: 9, fontWeight: 700, fill: '#71717a' }} tickLine={false} axisLine={false} tickFormatter={(val) => `${val}%`} />
+                        <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 9, fontWeight: 700, fill: '#71717a' }} tickLine={false} axisLine={false} tickFormatter={(val) => `${(val * 100).toFixed(0)}%`} />
+                        <Tooltip contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '12px', fontSize: '10px' }} labelStyle={{ color: '#a1a1aa' }} formatter={(value: number, name: string) => [name === 'payout' ? `${value.toFixed(2)}%` : `${(value * 100).toFixed(2)}%`, name === 'payout' ? 'Payout' : 'Div. Yield']} />
                         <Bar yAxisId="left" dataKey="payout" fill={isFII ? '#10b981' : '#06b6d4'} radius={[4, 4, 0, 0]} name="Payout" />
                         <Line yAxisId="right" dataKey="dy" stroke="#f59e0b" strokeWidth={2} dot={false} name="Div. Yield" />
                     </ComposedChart>
@@ -1089,33 +1111,33 @@ const Investidor10ChartsSection: React.FC<Investidor10ChartsSectionProps> = ({ t
     }
 
     return (
-        <div className="bg-zinc-100 dark:bg-zinc-800/50 p-3 rounded-3xl">
-            <div className="flex justify-between items-center mb-3">
+        <div className="mb-6">
+            <div className="flex justify-between items-center mb-4">
                 <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{currentChart.title}</h4>
-                <div className="flex p-0.5 bg-zinc-200 dark:bg-zinc-700 rounded-lg">
+                <div className="flex p-0.5 bg-zinc-100 dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
                     {isFII ? (
                         <>
-                            <button onClick={() => setChartType('equity')} className={`px-2 py-0.5 text-[8px] font-bold rounded-md ${chartType === 'equity' ? 'bg-white dark:bg-zinc-600' : ''}`}>Patrimônio</button>
-                            <button onClick={() => setChartType('payout')} className={`px-2 py-0.5 text-[8px] font-bold rounded-md ${chartType === 'payout' ? 'bg-white dark:bg-zinc-600' : ''}`}>DY</button>
+                            <button onClick={() => setChartType('equity')} className={`px-2 py-0.5 text-[8px] font-bold rounded-md transition-all ${chartType === 'equity' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}>Patrimônio</button>
+                            <button onClick={() => setChartType('payout')} className={`px-2 py-0.5 text-[8px] font-bold rounded-md transition-all ${chartType === 'payout' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}>DY</button>
                         </>
                     ) : (
                         <>
-                            <button onClick={() => setChartType('revenue_profit')} className={`px-2 py-0.5 text-[8px] font-bold rounded-md ${chartType === 'revenue_profit' ? 'bg-white dark:bg-zinc-600' : ''}`}>Lucros</button>
-                            <button onClick={() => setChartType('equity')} className={`px-2 py-0.5 text-[8px] font-bold rounded-md ${chartType === 'equity' ? 'bg-white dark:bg-zinc-600' : ''}`}>Patrimônio</button>
-                            <button onClick={() => setChartType('payout')} className={`px-2 py-0.5 text-[8px] font-bold rounded-md ${chartType === 'payout' ? 'bg-white dark:bg-zinc-600' : ''}`}>Payout</button>
+                            <button onClick={() => setChartType('revenue_profit')} className={`px-2 py-0.5 text-[8px] font-bold rounded-md transition-all ${chartType === 'revenue_profit' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}>Lucros</button>
+                            <button onClick={() => setChartType('equity')} className={`px-2 py-0.5 text-[8px] font-bold rounded-md transition-all ${chartType === 'equity' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}>Patrimônio</button>
+                            <button onClick={() => setChartType('payout')} className={`px-2 py-0.5 text-[8px] font-bold rounded-md transition-all ${chartType === 'payout' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}>Payout</button>
                         </>
                     )}
                 </div>
             </div>
-            <div className="h-60 w-full">
+            <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 5 }}>
-                        <XAxis dataKey="label" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-                        <YAxis yAxisId="left" orientation="left" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={(val) => formatCompactBRL(val)} />
-                        {chartType !== 'equity' && <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={(val) => formatCompactBRL(val)} />}
-                        <Tooltip contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '8px' }} labelStyle={{ color: '#a1a1aa' }} formatter={(value: number) => [formatCompactBRL(value), null]} />
+                        <XAxis dataKey="label" tick={{ fontSize: 9, fontWeight: 700, fill: '#71717a' }} tickLine={false} axisLine={false} />
+                        <YAxis yAxisId="left" orientation="left" tick={{ fontSize: 9, fontWeight: 700, fill: '#71717a' }} tickLine={false} axisLine={false} tickFormatter={(val) => formatCompactBRL(val)} />
+                        {chartType !== 'equity' && <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 9, fontWeight: 700, fill: '#71717a' }} tickLine={false} axisLine={false} tickFormatter={(val) => formatCompactBRL(val)} />}
+                        <Tooltip contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '12px', fontSize: '10px' }} labelStyle={{ color: '#a1a1aa' }} formatter={(value: number) => [formatCompactBRL(value), null]} />
                         <Bar yAxisId="left" dataKey={currentChart.barKey} fill={currentChart.barColor} radius={[4, 4, 0, 0]} />
-                        {currentChart.areaKey && <Area yAxisId={chartType === 'equity' ? 'left' : 'right'} dataKey={currentChart.areaKey} fill={currentChart.areaColor} stroke={currentChart.areaColor} fillOpacity={0.2} />}
+                        {currentChart.areaKey && <Area yAxisId={chartType === 'equity' ? 'left' : 'right'} dataKey={currentChart.areaKey} fill={currentChart.areaColor} stroke={currentChart.areaColor} fillOpacity={0.1} strokeWidth={2} />}
                     </ComposedChart>
                 </ResponsiveContainer>
             </div>
@@ -1125,6 +1147,74 @@ const Investidor10ChartsSection: React.FC<Investidor10ChartsSectionProps> = ({ t
 
 
 
+
+interface SmartRadarProps {
+    asset: AssetPosition;
+}
+
+const SmartRadar: React.FC<SmartRadarProps> = ({ asset }) => {
+    const isFII = asset.assetType === 'FII';
+
+    const data = useMemo(() => {
+        const normalize = (val: number | undefined, min: number, max: number, reverse = false) => {
+            if (val === undefined || val === null) return 0;
+            let score = ((val - min) / (max - min)) * 100;
+            if (reverse) score = 100 - score;
+            return Math.min(Math.max(score, 0), 100);
+        };
+
+        if (isFII) {
+            return [
+                { subject: 'DY', value: normalize(asset.dy_12m, 0, 0.12), fullMark: 100 },
+                { subject: 'P/VP', value: normalize(asset.p_vp, 0.8, 1.2, true), fullMark: 100 },
+                { subject: 'Vacância', value: normalize(asset.vacancy, 0, 20, true), fullMark: 100 },
+                { subject: 'Liquidez', value: asset.liquidity ? 80 : 20, fullMark: 100 },
+                { subject: 'Imóveis', value: normalize(asset.properties_count, 0, 20), fullMark: 100 },
+            ];
+        }
+
+        return [
+            { subject: 'DY', value: normalize(asset.dy_12m, 0, 0.10), fullMark: 100 },
+            { subject: 'P/L', value: normalize(asset.p_l, 5, 25, true), fullMark: 100 },
+            { subject: 'P/VP', value: normalize(asset.p_vp, 0.5, 3, true), fullMark: 100 },
+            { subject: 'ROE', value: normalize(asset.roe, 0, 25), fullMark: 100 },
+            { subject: 'Margem', value: normalize(asset.net_margin, 0, 25), fullMark: 100 },
+            { subject: 'Cresc.', value: normalize(asset.cagr_revenue, 0, 20), fullMark: 100 },
+        ];
+    }, [asset, isFII]);
+
+    const averageScore = Math.round(data.reduce((acc, curr) => acc + curr.value, 0) / data.length);
+
+    return (
+        <div className="space-y-4">
+            <div className="flex items-center justify-between mb-2 px-1">
+                <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Radar Inteligente</h4>
+                <div className="flex items-center gap-2">
+                    <div className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-900/20 text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter">
+                        Score: {averageScore}
+                    </div>
+                </div>
+            </div>
+            <div className="h-64 w-full flex items-center justify-center py-4 border-y border-zinc-100 dark:border-zinc-900/50">
+                <ResponsiveContainer width="100%" height="100%">
+                    <RadarChart cx="50%" cy="50%" outerRadius="80%" data={data}>
+                        <PolarGrid stroke="#3f3f46" opacity={0.1} />
+                        <PolarAngleAxis dataKey="subject" tick={{ fontSize: 9, fontWeight: 900, fill: '#71717a' }} />
+                        <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                        <Radar
+                            name={asset.ticker}
+                            dataKey="value"
+                            stroke="#6366f1"
+                            fill="#6366f1"
+                            fillOpacity={0.2}
+                            animationDuration={1500}
+                        />
+                    </RadarChart>
+                </ResponsiveContainer>
+            </div>
+        </div>
+    );
+};
 
 // --- MAIN COMPONENT ---
 
@@ -1280,29 +1370,19 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends = [], inco
                         ref={scrollContainerRef}
                         className="flex-1 overflow-y-auto overflow-x-hidden p-6 pb-24 scroll-smooth"
                     >
-                        <div className="space-y-12 max-w-3xl mx-auto">
+                        <div className="space-y-0 max-w-3xl mx-auto divide-y divide-zinc-100 dark:divide-zinc-900/50">
                             
                             {/* SEÇÃO: SUA POSIÇÃO */}
                             {!isWatchlist && (
-                                <div id="section-OVERVIEW" className="space-y-4 scroll-mt-32">
-                                    <div className="flex items-center justify-between px-1">
-                                        <div className="flex items-center gap-2">
-                                            <Wallet className="w-3.5 h-3.5 text-indigo-500" />
-                                            <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Sua Posição</h3>
-                                        </div>
-                                    </div>
+                                <div id="section-OVERVIEW" className="py-10 first:pt-0 scroll-mt-32">
+                                    <SectionHeader title="Sua Posição" icon={Wallet} />
                                     <PositionSummaryCard asset={asset} privacyMode={privacyMode} />
                                 </div>
                             )}
                             
                             {/* SEÇÃO: COTAÇÃO & PERFORMANCE */}
-                            <div id={isWatchlist ? "section-OVERVIEW" : "section-CHARTS"} className="space-y-4 scroll-mt-32">
-                                <div className="flex items-center justify-between px-1">
-                                    <div className="flex items-center gap-2">
-                                        <TrendingUp className="w-3.5 h-3.5 text-indigo-500" />
-                                        <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Performance</h3>
-                                    </div>
-                                </div>
+                            <div id={isWatchlist ? "section-OVERVIEW" : "section-CHARTS"} className="py-10 first:pt-0 scroll-mt-32">
+                                <SectionHeader title="Performance" icon={TrendingUp} />
                                 <PriceHistoryChart 
                                     fullData={historyData} 
                                     loading={historyLoading} 
@@ -1314,54 +1394,50 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends = [], inco
                             </div>
 
                             {/* SEÇÃO: DADOS FUNDAMENTAIS */}
-                            <div id="section-FUNDAMENTALS" className="space-y-4 scroll-mt-32">
-                                <div className="flex items-center gap-2 px-1">
-                                    <List className="w-3.5 h-3.5 text-indigo-500" />
-                                    <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Fundamentos</h3>
+                            <div id="section-FUNDAMENTALS" className="py-10 scroll-mt-32">
+                                <SectionHeader title="Análise Fundamentalista" icon={List} />
+                                <div className="space-y-10">
+                                    <SmartRadar asset={asset} />
+                                    <div className="space-y-0">
+                                        <DetailedInfoBlock asset={asset} />
+                                        <ValuationCard asset={asset} />
+                                    </div>
                                 </div>
-                                <DetailedInfoBlock asset={asset} />
-                                <ValuationCard asset={asset} />
                             </div>
 
                             {/* SEÇÃO: PROVENTOS */}
-                            <div id="section-INCOME" className="space-y-4 scroll-mt-32">
-                                <div className="flex items-center gap-2 px-1">
-                                    <Coins className="w-3.5 h-3.5 text-emerald-500" />
-                                    <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Dividendos</h3>
-                                </div>
+                            <div id="section-INCOME" className="py-10 scroll-mt-32">
+                                <SectionHeader title="Dividendos & Proventos" icon={Coins} />
                                 <IncomeAnalysisSection 
                                     asset={asset} 
                                     chartData={incomeChartData}
                                     marketHistory={assetMarketHistory}
                                     isWatchlist={isWatchlist}
                                 />
+                                <div className="mt-10 pt-10 border-t border-zinc-100 dark:border-zinc-900/50">
+                                    <div className="flex items-center justify-between mb-4 px-1">
+                                        <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Histórico de Payout e Yield</h4>
+                                    </div>
+                                    <Investidor10ChartsSection ticker={asset.ticker} assetType={asset.assetType} onlyPayout={true} />
+                                </div>
                             </div>
 
                             {/* SEÇÃO: RENTABILIDADE COMPARADA */}
-                            <div id="section-CHARTS-EXTRA" className="space-y-4 scroll-mt-32">
-                                <div className="flex items-center gap-2 px-1">
-                                    <Activity className="w-3.5 h-3.5 text-indigo-500" />
-                                    <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Comparativo</h3>
-                                </div>
+                            <div id="section-CHARTS-EXTRA" className="py-10 scroll-mt-32">
+                                <SectionHeader title="Comparativo de Mercado" icon={Activity} />
                                 <ComparativeChart ticker={asset.ticker} type={asset.assetType} />
                             </div>
 
                             {/* SEÇÃO: EVOLUÇÃO FUNDAMENTALISTA */}
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-2 px-1">
-                                    <Activity className="w-3.5 h-3.5 text-indigo-500" />
-                                    <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Evolução</h3>
-                                </div>
+                            <div className="py-10 scroll-mt-32">
+                                <SectionHeader title="Evolução Histórica" icon={Activity} />
                                 <Investidor10ChartsSection ticker={asset.ticker} assetType={asset.assetType} />
                             </div>
 
                             {/* SEÇÃO: PORTFÓLIO FÍSICO */}
                             {asset.properties && asset.properties.length > 0 && (
-                                <div id="section-PROPERTIES" className="space-y-4 scroll-mt-32">
-                                    <div className="flex items-center gap-2 px-1">
-                                        <Building2 className="w-3.5 h-3.5 text-indigo-500" />
-                                        <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Imóveis</h3>
-                                    </div>
+                                <div id="section-PROPERTIES" className="py-10 scroll-mt-32">
+                                    <SectionHeader title="Portfólio de Imóveis" icon={Building2} />
                                     <PropertiesAnalysis properties={asset.properties} />
                                 </div>
                             )}
