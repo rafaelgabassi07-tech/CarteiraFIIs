@@ -1340,9 +1340,9 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends = [], inco
     return (
         <SwipeableModal isOpen={!!asset} onClose={onClose}>
             {asset && (
-                <div key={asset.ticker} className="bg-white dark:bg-zinc-950 flex flex-col h-full overflow-hidden">
+                <div key={asset.ticker} className="bg-white dark:bg-zinc-900 flex flex-col h-full overflow-hidden">
                     {/* Header Moderno & Clean */}
-                    <div className="px-6 pt-6 pb-4 shrink-0 bg-white dark:bg-zinc-950 z-30 border-b border-zinc-100 dark:border-zinc-900/50">
+                    <div className="px-6 pt-6 pb-4 shrink-0 bg-white dark:bg-zinc-900 z-30 border-b border-zinc-100 dark:border-zinc-900/50">
                         <div className="flex justify-between items-start mb-6">
                             <div className="flex items-center gap-4">
                                 <div className="w-16 h-16 rounded-3xl bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center overflow-hidden border border-zinc-100 dark:border-zinc-800 shadow-sm">
