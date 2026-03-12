@@ -1182,7 +1182,7 @@ interface SmartRadarProps {
 }
 
 const SmartRadar: React.FC<SmartRadarProps> = ({ asset }) => {
-    const isFII = asset.assetType === 'FII';
+    const [activeTab, setActiveTab] = useState<'datacom' | 'payment'>('datacom');
 
     const calendarData = useMemo(() => {
         const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -1215,19 +1215,35 @@ const SmartRadar: React.FC<SmartRadarProps> = ({ asset }) => {
             <div className="flex justify-between items-center mb-4">
                 <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Calendário de Dividendos</h4>
             </div>
-            <div className="h-48 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={calendarData} margin={{ top: 10, right: 0, left: -20, bottom: 5 }}>
-                        <XAxis dataKey="label" tick={{ fontSize: 9, fontWeight: 700, fill: '#71717a' }} tickLine={false} axisLine={false} />
-                        <Tooltip 
-                            contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '12px', fontSize: '10px' }} 
-                            labelStyle={{ color: '#a1a1aa' }}
-                            formatter={(value: number, name: string) => [value ? 'Sim' : 'Não', name === 'datacom' ? 'Datacom' : 'Pagamento']}
-                        />
-                        <Bar dataKey="datacom" name="datacom" fill="#6366f1" radius={[2, 2, 0, 0]} />
-                        <Bar dataKey="payment" name="payment" fill="#10b981" radius={[2, 2, 0, 0]} />
-                    </BarChart>
-                </ResponsiveContainer>
+            
+            <div className="flex p-1 bg-zinc-100 dark:bg-zinc-900 rounded-xl mb-4 border border-zinc-200 dark:border-zinc-800">
+                <button 
+                    onClick={() => setActiveTab('datacom')}
+                    className={`flex-1 py-2 text-[10px] font-black uppercase tracking-tight rounded-lg transition-all ${activeTab === 'datacom' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-500'}`}
+                >
+                    Data Com
+                </button>
+                <button 
+                    onClick={() => setActiveTab('payment')}
+                    className={`flex-1 py-2 text-[10px] font-black uppercase tracking-tight rounded-lg transition-all ${activeTab === 'payment' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-500'}`}
+                >
+                    Data Pagamento
+                </button>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+                {calendarData.map((m) => {
+                    const isActive = m[activeTab] === 1;
+                    return (
+                        <div 
+                            key={m.month}
+                            className={`flex items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-tight transition-all ${isActive ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' : 'bg-zinc-50 dark:bg-zinc-900 text-zinc-300 dark:text-zinc-700'}`}
+                        >
+                            {isActive && <Coins className="w-3 h-3" />}
+                            {m.label}
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );
