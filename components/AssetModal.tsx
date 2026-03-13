@@ -928,8 +928,10 @@ const IncomeAnalysisSection: React.FC<IncomeAnalysisSectionProps> = ({ asset, ch
         .slice(0, 3);
 
     const historyChartData = useMemo(() => {
-        if (!isWatchlist) return chartData?.data || [];
-
+        // If not watchlist, we might be using the wrong chartData or it might be missing
+        // Let's try to calculate it from marketHistory in both cases to be sure,
+        // or at least fix the calculation if it's indeed wrong.
+        
         const grouped = new Map();
         const sortedHistory = [...marketHistory].sort((a: any, b: any) => new Date(a.paymentDate).getTime() - new Date(b.paymentDate).getTime());
         
@@ -942,13 +944,14 @@ const IncomeAnalysisSection: React.FC<IncomeAnalysisSectionProps> = ({ asset, ch
             if (!grouped.has(key)) {
                 grouped.set(key, { month: monthLabel, date: key, total: 0 });
             }
+            // Use rate for "proventos por cota"
             grouped.get(key).total += d.rate;
         });
 
         return Array.from(grouped.values())
             .sort((a: any, b: any) => a.date.localeCompare(b.date))
             .slice(-12);
-    }, [chartData, marketHistory, isWatchlist]);
+    }, [marketHistory]);
 
     return (
         <div className="space-y-6">
