@@ -726,7 +726,9 @@ const App: React.FC = () => {
       });
 
       // 2. Alertas de Preço (Variação > 5%)
+      const ownedTickers = new Set(memoizedPortfolioData.portfolio.map(a => a.ticker));
       Object.entries(quotes).forEach(([ticker, quote]) => {
+          if (!ownedTickers.has(ticker)) return; // Apenas ativos na carteira
           const change = quote.regularMarketChangePercent;
           if (change && Math.abs(change) >= 5) {
               const id = `price-${ticker}-${new Date().toISOString().split('T')[0]}`;
