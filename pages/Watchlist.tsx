@@ -46,7 +46,7 @@ export default function Watchlist({ showToast }: WatchlistProps) {
     const [selectedAsset, setSelectedAsset] = useState<AssetPosition | null>(null);
     const [marketDividends, setMarketDividends] = useState<DividendReceipt[]>([]);
     const [error, setError] = useState<string | null>(null);
-    const [filter, setFilter] = useState<'ALL' | 'STOCK' | 'FII'>('ALL');
+    const [filter, setFilter] = useState<'ALL' | 'STOCK' | 'FII' | 'ALERTS'>('ALL');
     const [sortBy, setSortBy] = useState<'TICKER' | 'PRICE' | 'CHANGE'>('TICKER');
     const [sortOrder, setSortOrder] = useState<'ASC' | 'DESC'>('ASC');
 
@@ -309,6 +309,9 @@ export default function Watchlist({ showToast }: WatchlistProps) {
         // Filter
         if (filter !== 'ALL') {
             list = list.filter(ticker => {
+                if (filter === 'ALERTS') {
+                    return !!alerts[ticker];
+                }
                 const quote = quotes[ticker];
                 const type = quote?.type || ((ticker.endsWith('11') || ticker.endsWith('11B')) ? AssetType.FII : AssetType.STOCK);
                 return type === (filter === 'STOCK' ? AssetType.STOCK : AssetType.FII);
@@ -453,13 +456,13 @@ export default function Watchlist({ showToast }: WatchlistProps) {
 
                     {/* Filters */}
                     <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar mask-linear-fade">
-                        {(['ALL', 'STOCK', 'FII'] as const).map((f) => (
+                        {(['ALL', 'STOCK', 'FII', 'ALERTS'] as const).map((f) => (
                             <button 
                                 key={f}
                                 onClick={() => setFilter(f)}
                                 className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border shrink-0 ${filter === f ? 'bg-zinc-900 dark:bg-white border-transparent text-white dark:text-zinc-900 shadow-md transform scale-105' : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}
                             >
-                                {f === 'ALL' ? 'Todos' : f === 'STOCK' ? 'Ações' : 'FIIs'}
+                                {f === 'ALL' ? 'Todos' : f === 'STOCK' ? 'Ações' : f === 'FII' ? 'FIIs' : 'Alertas'}
                             </button>
                         ))}
                     </div>
@@ -549,7 +552,7 @@ export default function Watchlist({ showToast }: WatchlistProps) {
                                     <div className="flex items-center justify-between relative z-10">
                                         <div className="flex items-center gap-4 min-w-0 flex-1">
                                             <div className="w-11 h-11 rounded-xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center overflow-hidden border border-zinc-100 dark:border-zinc-700 shadow-sm relative shrink-0">
-                                                {quote?.logo ? (
+                                                {quote?.logo && (
                                                     <img 
                                                         src={quote.logo} 
                                                         alt={ticker} 
@@ -559,7 +562,7 @@ export default function Watchlist({ showToast }: WatchlistProps) {
                                                             e.currentTarget.parentElement?.classList.add('fallback-initials');
                                                         }} 
                                                     />
-                                                ) : null}
+                                                )}
                                                 <span className={`text-xs font-black text-zinc-300 dark:text-zinc-600 absolute inset-0 flex items-center justify-center ${quote?.logo ? 'hidden fallback-initials:flex' : 'flex'}`}>
                                                     {ticker.substring(0, 2)}
                                                 </span>
