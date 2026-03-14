@@ -1697,7 +1697,16 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends = [], inco
                             <div className="flex items-center gap-4">
                                 <div className="w-16 h-16 rounded-3xl bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center overflow-hidden border border-zinc-100 dark:border-zinc-800 shadow-sm">
                                     {asset.logoUrl ? (
-                                        <img src={asset.logoUrl} className="w-full h-full object-cover" alt={asset.ticker} referrerPolicy="no-referrer" />
+                                        <motion.img
+                                            key={asset.logoUrl}
+                                            src={asset.logoUrl}
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            transition={{ duration: 0.3 }}
+                                            className="w-full h-full object-cover"
+                                            alt={asset.ticker}
+                                            referrerPolicy="no-referrer"
+                                        />
                                     ) : (
                                         <span className="font-black text-2xl text-zinc-300 dark:text-zinc-700">{asset.ticker.substring(0, 2)}</span>
                                     )}
