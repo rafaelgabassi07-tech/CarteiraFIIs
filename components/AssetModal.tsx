@@ -221,9 +221,10 @@ interface PriceHistoryChartProps {
     ticker: string;
     range: string;
     onRangeChange: (range: string) => void;
+    averagePrice?: number;
 }
 
-const PriceHistoryChart: React.FC<PriceHistoryChartProps> = ({ fullData, loading, error, ticker, range, onRangeChange }) => {
+const PriceHistoryChart: React.FC<PriceHistoryChartProps> = ({ fullData, loading, error, ticker, range, onRangeChange, averagePrice }) => {
     const [chartType, setChartType] = useState<'AREA' | 'CANDLE'>('AREA');
     const [indicators, setIndicators] = useState({ sma20: false, sma50: false, volume: true });
     const [showFilterModal, setShowFilterModal] = useState(false);
@@ -326,6 +327,22 @@ const PriceHistoryChart: React.FC<PriceHistoryChartProps> = ({ fullData, loading
                                 />
                                 <YAxis yAxisId="price" domain={yDomain} hide={false} orientation="right" axisLine={false} tickLine={false} tick={{fontSize: 9, fill: '#71717a'}} width={40} tickFormatter={(val) => val.toFixed(2)} tickMargin={5} />
                                 <YAxis yAxisId="volume" hide={true} domain={[0, 'dataMax * 4']} />
+                                {averagePrice && (
+                                    <ReferenceLine 
+                                        y={averagePrice} 
+                                        yAxisId="price" 
+                                        stroke="#8b5cf6" 
+                                        strokeDasharray="3 3" 
+                                        label={{ 
+                                            value: 'Preço Médio', 
+                                            position: 'left', 
+                                            fill: '#8b5cf6', 
+                                            fontSize: 8, 
+                                            fontWeight: 900,
+                                            className: 'uppercase tracking-widest'
+                                        }} 
+                                    />
+                                )}
                                 <Tooltip 
                                     cursor={{ stroke: '#52525b', strokeWidth: 1, strokeDasharray: '3 3' }} 
                                     content={({ active, payload, label }) => {
@@ -598,15 +615,15 @@ const ComparativeChart: React.FC<ComparativeChartProps> = ({ ticker, type }) => 
                     <button onClick={() => toggleBenchmark('CDI')} className={`flex items-center gap-1 px-2 py-0.5 rounded-lg border transition-all ${visibleBenchmarks.CDI ? 'bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700' : 'bg-transparent border-dashed border-zinc-200 dark:border-zinc-800 opacity-60'}`}>
                         <span className="w-2 h-2 rounded-full bg-zinc-500"></span><span className="text-[9px] font-bold text-zinc-600 dark:text-zinc-400">CDI</span>
                     </button>
-                    <button onClick={() => toggleBenchmark('IPCA')} className={`flex items-center gap-1 px-2 py-0.5 rounded-lg border transition-all ${visibleBenchmarks.IPCA ? 'bg-cyan-50 dark:bg-cyan-900/20 border-cyan-100 dark:border-cyan-900/30' : 'bg-transparent border-dashed border-zinc-200 dark:border-zinc-800 opacity-60'}`}>
-                        <span className="w-2 h-2 rounded-full bg-cyan-500"></span><span className="text-[9px] font-bold text-cyan-700 dark:text-cyan-300">IPCA</span>
+                    <button onClick={() => toggleBenchmark('IPCA')} className={`flex items-center gap-1 px-2 py-0.5 rounded-lg border transition-all ${visibleBenchmarks.IPCA ? 'bg-orange-100 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800' : 'bg-transparent border-dashed border-zinc-200 dark:border-zinc-800 opacity-60'}`}>
+                        <span className="w-2 h-2 rounded-full bg-orange-500"></span><span className="text-[9px] font-bold text-orange-600 dark:text-orange-400">IPCA</span>
                     </button>
-                    <button onClick={() => toggleBenchmark('IBOV')} className={`flex items-center gap-1 px-2 py-0.5 rounded-lg border transition-all ${visibleBenchmarks.IBOV ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-900/30' : 'bg-transparent border-dashed border-zinc-200 dark:border-zinc-800 opacity-60'}`}>
-                        <span className="w-2 h-2 rounded-full bg-amber-500"></span><span className="text-[9px] font-bold text-amber-700 dark:text-amber-300">IBOV</span>
+                    <button onClick={() => toggleBenchmark('IBOV')} className={`flex items-center gap-1 px-2 py-0.5 rounded-lg border transition-all ${visibleBenchmarks.IBOV ? 'bg-sky-100 dark:bg-sky-900/20 border-sky-200 dark:border-sky-800' : 'bg-transparent border-dashed border-zinc-200 dark:border-zinc-800 opacity-60'}`}>
+                        <span className="w-2 h-2 rounded-full bg-sky-500"></span><span className="text-[9px] font-bold text-sky-600 dark:text-sky-400">IBOV</span>
                     </button>
                     {type === 'FII' && (
-                        <button onClick={() => toggleBenchmark('IFIX')} className={`flex items-center gap-1 px-2 py-0.5 rounded-lg border transition-all ${visibleBenchmarks.IFIX ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-900/30' : 'bg-transparent border-dashed border-zinc-200 dark:border-zinc-800 opacity-60'}`}>
-                            <span className="w-2 h-2 rounded-full bg-emerald-500"></span><span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300">IFIX</span>
+                        <button onClick={() => toggleBenchmark('IFIX')} className={`flex items-center gap-1 px-2 py-0.5 rounded-lg border transition-all ${visibleBenchmarks.IFIX ? 'bg-emerald-100 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800' : 'bg-transparent border-dashed border-zinc-200 dark:border-zinc-800 opacity-60'}`}>
+                            <span className="w-2 h-2 rounded-full bg-emerald-500"></span><span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400">IFIX</span>
                         </button>
                     )}
                 </div>
@@ -1128,6 +1145,8 @@ const Investidor10ChartsSection: React.FC<Investidor10ChartsSectionProps> = ({ t
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
     const [chartType, setChartType] = useState(onlyPayout ? 'payout' : (assetType === 'FII' ? 'equity' : 'revenue_profit'));
+    const [revenueYear, setRevenueYear] = useState<string>('');
+    const [revenueSubTab, setRevenueSubTab] = useState<'type' | 'region'>('type');
 
     useEffect(() => {
         let mounted = true;
@@ -1139,13 +1158,20 @@ const Investidor10ChartsSection: React.FC<Investidor10ChartsSectionProps> = ({ t
                 // Determine the correct API chartType based on the UI chartType
                 let apiChartType = chartType;
                 if (chartType === 'net_profit') apiChartType = 'revenue_profit';
-                if (chartType === 'payout_dy') apiChartType = 'payout';
+                if (chartType === 'payout' || chartType === 'payout_dy') apiChartType = 'payout';
                 if (chartType === 'net_worth') apiChartType = 'equity';
+                if (chartType === 'revenues_by_type') apiChartType = 'revenues_by_type';
 
                 const res = await fetch(`/api/investidor10-charts?ticker=${ticker}&chartType=${apiChartType}&assetType=${assetType}`);
                 if (!res.ok) throw new Error('Failed to fetch data');
                 const json = await res.json();
-                if (mounted) setData(json);
+                if (mounted) {
+                    setData(json);
+                    if (apiChartType === 'revenues_by_type' && json.revenuesByType) {
+                        const years = Object.keys(json.revenuesByType).sort((a, b) => b.localeCompare(a));
+                        if (years.length > 0) setRevenueYear(years[0]);
+                    }
+                }
             } catch (e) {
                 if (mounted) setError(true);
             } finally {
@@ -1163,9 +1189,96 @@ const Investidor10ChartsSection: React.FC<Investidor10ChartsSectionProps> = ({ t
         revenue_profit: { title: 'Receitas e Lucros', barKey: 'profit', areaKey: 'revenue', barColor: '#8b5cf6', areaColor: '#ec4899' },
         payout: { title: 'Payout x Dividend Yield', barKey: 'payout', areaKey: 'dy', barColor: isFII ? '#10b981' : '#06b6d4', areaColor: '#f59e0b' },
         equity: { title: isFII ? 'Histórico de Valor Patrimonial' : 'Patrimônio Líquido', barKey: 'equity', areaKey: 'revenue', barColor: '#10b981', areaColor: '#6366f1' },
+        revenues_by_type: { title: 'Composição da Receita', barKey: '', areaKey: '', barColor: '', areaColor: '' },
     }), [isFII]);
 
     const currentChart = chartConfig[chartType as keyof typeof chartConfig] || chartConfig.revenue_profit;
+
+    const COLORS = ['#8b5cf6', '#ec4899', '#10b981', '#f59e0b', '#06b6d4', '#6366f1', '#f43f5e', '#14b8a6'];
+
+    const renderPieChart = () => {
+        if (!data || chartType !== 'revenues_by_type') return null;
+
+        const source = revenueSubTab === 'type' ? data.revenuesByType : data.revenuesByRegion;
+        if (!source || !revenueYear || !source[revenueYear]) {
+            return <div className="h-full flex items-center justify-center text-zinc-500 text-[10px] font-bold uppercase tracking-widest">Sem dados para {revenueYear}</div>;
+        }
+
+        const yearData = source[revenueYear];
+        const pieData = Object.entries(yearData).map(([name, val]: [string, any]) => ({
+            name,
+            value: val.value,
+            revenue: val.revenue
+        })).sort((a, b) => b.value - a.value);
+
+        return (
+            <div className="flex flex-col h-full">
+                <div className="flex justify-center gap-4 mb-4">
+                    <button 
+                        onClick={() => setRevenueSubTab('type')}
+                        className={`text-[9px] font-black uppercase tracking-widest pb-1 border-b-2 transition-all ${revenueSubTab === 'type' ? 'border-indigo-500 text-zinc-900 dark:text-white' : 'border-transparent text-zinc-400'}`}
+                    >
+                        Por Negócio
+                    </button>
+                    <button 
+                        onClick={() => setRevenueSubTab('region')}
+                        className={`text-[9px] font-black uppercase tracking-widest pb-1 border-b-2 transition-all ${revenueSubTab === 'region' ? 'border-indigo-500 text-zinc-900 dark:text-white' : 'border-transparent text-zinc-400'}`}
+                    >
+                        Por Região
+                    </button>
+                </div>
+                <div className="flex-1 flex items-center">
+                    <div className="w-1/2 h-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <RePieChart>
+                                <Pie
+                                    data={pieData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={40}
+                                    outerRadius={70}
+                                    paddingAngle={5}
+                                    dataKey="value"
+                                    animationDuration={1000}
+                                >
+                                    {pieData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    ))}
+                                </Pie>
+                                <Tooltip 
+                                    contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '12px', fontSize: '10px' }}
+                                    itemStyle={{ color: '#fff' }}
+                                    formatter={(value: number, name: string, props: any) => [`${value}% (${props.payload.revenue})`, name]}
+                                />
+                            </RePieChart>
+                        </ResponsiveContainer>
+                    </div>
+                    <div className="w-1/2 flex flex-col justify-center gap-2 pl-4">
+                        {pieData.map((item, idx) => (
+                            <div key={idx} className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
+                                <div className="flex flex-col">
+                                    <span className="text-[9px] font-bold text-zinc-900 dark:text-zinc-100 truncate max-w-[120px]">{item.name}</span>
+                                    <span className="text-[8px] font-medium text-zinc-500">{item.value}% • {item.revenue}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+                <div className="flex justify-center gap-2 mt-4">
+                    {Object.keys(source).sort((a, b) => b.localeCompare(a)).map(year => (
+                        <button
+                            key={year}
+                            onClick={() => setRevenueYear(year)}
+                            className={`px-2 py-0.5 text-[8px] font-bold rounded-md transition-all ${revenueYear === year ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white' : 'text-zinc-400 hover:text-zinc-600'}`}
+                        >
+                            {year}
+                        </button>
+                    ))}
+                </div>
+            </div>
+        );
+    };
 
     if (loading) return <div className="text-center text-zinc-400">Carregando...</div>;
     if (error || !data) return <div className="text-center text-zinc-400">Dados não disponíveis.</div>;
@@ -1201,21 +1314,31 @@ const Investidor10ChartsSection: React.FC<Investidor10ChartsSectionProps> = ({ t
                             <button onClick={() => setChartType('revenue_profit')} className={`px-2 py-0.5 text-[8px] font-bold rounded-md transition-all ${chartType === 'revenue_profit' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}>Lucros</button>
                             <button onClick={() => setChartType('equity')} className={`px-2 py-0.5 text-[8px] font-bold rounded-md transition-all ${chartType === 'equity' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}>Patrimônio</button>
                             <button onClick={() => setChartType('payout')} className={`px-2 py-0.5 text-[8px] font-bold rounded-md transition-all ${chartType === 'payout' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}>Payout</button>
+                            <button onClick={() => setChartType('revenues_by_type')} className={`px-2 py-0.5 text-[8px] font-bold rounded-md transition-all ${chartType === 'revenues_by_type' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}>Receita</button>
                         </>
                     )}
                 </div>
             </div>
             <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 5 }}>
-                        <XAxis dataKey="label" tick={{ fontSize: 9, fontWeight: 700, fill: '#71717a' }} tickLine={false} axisLine={false} />
-                        <YAxis yAxisId="left" orientation="left" tick={{ fontSize: 9, fontWeight: 700, fill: '#71717a' }} tickLine={false} axisLine={false} tickFormatter={(val) => formatCompactBRL(val)} />
-                        {chartType !== 'equity' && <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 9, fontWeight: 700, fill: '#71717a' }} tickLine={false} axisLine={false} tickFormatter={(val) => formatCompactBRL(val)} />}
-                        <Tooltip contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '12px', fontSize: '10px' }} labelStyle={{ color: '#a1a1aa' }} formatter={(value: number) => [formatCompactBRL(value), null]} />
-                        <Bar yAxisId="left" dataKey={currentChart.barKey} fill={currentChart.barColor} radius={[4, 4, 0, 0]} />
-                        {currentChart.areaKey && <Area yAxisId={chartType === 'equity' ? 'left' : 'right'} dataKey={currentChart.areaKey} fill={currentChart.areaColor} stroke={currentChart.areaColor} fillOpacity={0.1} strokeWidth={2} />}
-                    </ComposedChart>
-                </ResponsiveContainer>
+                {chartType === 'revenues_by_type' ? renderPieChart() : (
+                    <ResponsiveContainer width="100%" height="100%">
+                        <ComposedChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 5 }}>
+                            <XAxis dataKey="label" tick={{ fontSize: 9, fontWeight: 700, fill: '#71717a' }} tickLine={false} axisLine={false} />
+                            <YAxis yAxisId="left" orientation="left" tick={{ fontSize: 9, fontWeight: 700, fill: '#71717a' }} tickLine={false} axisLine={false} tickFormatter={(val) => chartType === 'payout' ? `${val}%` : formatCompactBRL(val)} />
+                            {chartType !== 'equity' && <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 9, fontWeight: 700, fill: '#71717a' }} tickLine={false} axisLine={false} tickFormatter={(val) => chartType === 'payout' ? `${val}%` : formatCompactBRL(val)} />}
+                            <Tooltip 
+                                contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '12px', fontSize: '10px' }} 
+                                labelStyle={{ color: '#a1a1aa' }} 
+                                formatter={(value: number, name: string) => {
+                                    const isPercent = name === 'payout' || name === 'dy';
+                                    return [isPercent ? `${value.toFixed(2)}%` : formatCompactBRL(value), null];
+                                }} 
+                            />
+                            <Bar yAxisId="left" dataKey={currentChart.barKey} fill={currentChart.barColor} radius={[4, 4, 0, 0]} />
+                            {currentChart.areaKey && <Area yAxisId={chartType === 'equity' ? 'left' : 'right'} dataKey={currentChart.areaKey} fill={currentChart.areaColor} stroke={currentChart.areaColor} fillOpacity={0.1} strokeWidth={2} />}
+                        </ComposedChart>
+                    </ResponsiveContainer>
+                )}
             </div>
         </div>
     );
@@ -1314,10 +1437,25 @@ const SmartRadar: React.FC<SmartRadarProps> = ({ asset, marketHistory }) => {
         return months;
     }, [asset.dividends, marketHistory]);
 
+    const nextProbableMonth = useMemo(() => {
+        const currentMonth = new Date().getMonth() + 1;
+        // Look for months from current onwards
+        const futureMonths = [...calendarData.slice(currentMonth - 1), ...calendarData.slice(0, currentMonth - 1)];
+        const probable = futureMonths.find(m => m[activeTab] >= 0.4);
+        return probable;
+    }, [calendarData, activeTab]);
+
     return (
         <div className="mb-6">
             <div className="flex justify-between items-center mb-4">
-                <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Radar de Dividendos (Últimos 5 anos)</h4>
+                <div className="flex flex-col">
+                    <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Radar de Dividendos Inteligente</h4>
+                    {nextProbableMonth && (
+                        <span className="text-[9px] font-bold text-emerald-500 mt-0.5 uppercase tracking-wider">
+                            Próximo provável: {nextProbableMonth.label} ({(nextProbableMonth[activeTab] * 100).toFixed(0)}%)
+                        </span>
+                    )}
+                </div>
             </div>
             
             <div className="flex p-1 bg-zinc-100 dark:bg-zinc-900 rounded-xl mb-4 border border-zinc-200 dark:border-zinc-800">
@@ -1534,19 +1672,6 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends = [], inco
                                 </button>
                             </div>
                         </div>
-
-                        {/* Sticky Tabs Navigation */}
-                        <div className="flex gap-2 overflow-x-auto hide-scrollbar -mx-2 px-2">
-                            {tabs.map((tab) => (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => scrollToSection(tab.id)}
-                                    className={`shrink-0 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-xl shadow-zinc-900/20 dark:shadow-white/10 scale-105' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
-                                >
-                                    {tab.label}
-                                </button>
-                            ))}
-                        </div>
                     </div>
 
                     <div 
@@ -1573,6 +1698,7 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends = [], inco
                                     ticker={asset.ticker} 
                                     range={range}
                                     onRangeChange={setRange}
+                                    averagePrice={!isWatchlist ? asset.averagePrice : undefined}
                                 />
                             </div>
 

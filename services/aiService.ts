@@ -132,26 +132,27 @@ export const generateAIInsights = async (portfolio: AssetPosition[], ipca: numbe
 
         // 3. Generate Content
         const prompt = `
-            Atue como um mentor financeiro experiente e criativo.
-            Gere 5 "Stories" curtos e engajadores para um app de investimentos.
+            Atue como um analista financeiro sênior, mentor de investimentos e estrategista de mercado.
+            Gere 10 "Stories" curtos, impactantes e extremamente inteligentes para um app de investimentos premium.
             
-            Tópicos educacionais selecionados para hoje: ${selectedTopics.join(', ')}.
+            Tópicos educacionais e de mercado para hoje: ${selectedTopics.join(', ')}.
             
             Resumo da Carteira do Usuário:
             ${portfolioSummary}
             
-            Requisitos:
-            1. Crie 2 stories do tipo 'portfolio' (análise personalizada da carteira do usuário, elogiando a diversificação, alertando sobre concentração, ou comentando sobre os top ativos e o IPCA).
-            2. Crie 1 story do tipo 'motivation' (inspiracional, foco no longo prazo).
-            3. Crie 1 story do tipo 'education' (dica prática ou conceito explicado de forma simples, baseado nos tópicos).
-            4. Crie 1 story do tipo 'curiosity' (fato histórico ou dado interessante sobre mercado, baseado nos tópicos).
+            Requisitos de Conteúdo (Gere 10 stories no total):
+            1. 3 stories do tipo 'portfolio': Faça análises profundas. Não apenas "sua carteira está boa". Comente sobre a relação risco/retorno dos top ativos, sugira setores que podem complementar a carteira, ou analise o impacto do IPCA real no poder de compra do usuário.
+            2. 2 stories do tipo 'motivation': Foco em psicologia do investidor, estoicismo aplicado às finanças e a jornada da liberdade financeira.
+            3. 3 stories do tipo 'education': Explique conceitos complexos de forma brilhante e simples (baseado nos tópicos). Use analogias.
+            4. 2 stories do tipo 'curiosity': Fatos que mudam a percepção do usuário sobre o dinheiro ou o mercado (baseado nos tópicos).
             
-            Diretrizes de Estilo:
-            - Texto curto, direto e impactante (máximo 140 caracteres por mensagem).
-            - Use emojis com moderação para dar vida.
-            - Evite clichês genéricos como "compre na baixa e venda na alta".
-            - Traga uma perspectiva nova ou um dado concreto.
-            - NÃO repita informações óbvias.
+            Diretrizes de Estilo & Inteligência:
+            - Tom de voz: Profissional, sofisticado, mas acessível. Como um "Bloomberg" pessoal.
+            - Texto curto, direto e impactante (máximo 160 caracteres por mensagem).
+            - Use emojis com inteligência para destacar pontos chave.
+            - Traga dados, insights contrários ao senso comum ou provocações intelectuais.
+            - NÃO use frases feitas como "o sol nasce para todos". Seja técnico e inspirador.
+            - Se o IPCA estiver alto, comente sobre ativos protegidos. Se a carteira estiver concentrada, sugira cautela.
             
             Retorne APENAS um JSON array.
         `;

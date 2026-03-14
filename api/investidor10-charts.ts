@@ -44,11 +44,27 @@ async function getIds(ticker: string, type: string) {
         const revenueMatch = data.match(/\/api\/balancos\/receitaliquida\/chart\/(\d+)\//);
         revenueId = revenueMatch ? revenueMatch[1] : (companyId || id);
 
+        // Extract Receitas por tipo e por região
+        const bussinesRevenuesMatch = data.match(/let companyBussinesRevenuesChartPie = (\{.*?\});/);
+        const regionRevenuesMatch = data.match(/let companyRevenuesChartPie = (\{.*?\});/);
+        
+        let revenuesByType = null;
+        let revenuesByRegion = null;
+        
+        try {
+            if (bussinesRevenuesMatch) revenuesByType = JSON.parse(bussinesRevenuesMatch[1]);
+            if (regionRevenuesMatch) revenuesByRegion = JSON.parse(regionRevenuesMatch[1]);
+        } catch (e) {
+            console.error("Failed to parse revenues data", e);
+        }
+
         return {
             id,
             companyId: companyId || revenueId,
             tickerId: tickerId || id,
-            revenueId: revenueId
+            revenueId: revenueId,
+            revenuesByType,
+            revenuesByRegion
         };
     } catch (e) {
         return null;
@@ -77,6 +93,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             } else {
                 url = `https://investidor10.com.br/api/cotacao-lucro/${t}/adjusted/`;
             }
+        } else if (chartType === 'revenues_by_type') {
+            // We already have the data from getIds
+            return res.status(200).json({
+                revenuesByType: ids.revenuesByType,
+                revenuesByRegion: ids.revenuesByRegion
+            });
         } else {
             switch (chartType) {
                 case 'revenue_profit':

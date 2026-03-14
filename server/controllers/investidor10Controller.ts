@@ -15,7 +15,7 @@ const HEADERS = {
     'X-Requested-With': 'XMLHttpRequest'
 };
 
-async function getIds(ticker: string, type: string) {
+async function getIdsAndData(ticker: string, type: string) {
     const url = `https://investidor10.com.br/${type}/${ticker.toLowerCase()}/`;
     try {
         const { data } = await axios.get(url, { headers: HEADERS, httpsAgent });
@@ -27,11 +27,27 @@ async function getIds(ticker: string, type: string) {
         // Also look for the revenue/equity ID which is often different or same as companyId
         const revenueMatch = data.match(/\/api\/balancos\/receitaliquida\/chart\/(\d+)\//);
         
+        // Extract Receitas por tipo e por região
+        const bussinesRevenuesMatch = data.match(/let companyBussinesRevenuesChartPie = (\{.*?\});/);
+        const regionRevenuesMatch = data.match(/let companyRevenuesChartPie = (\{.*?\});/);
+        
+        let revenuesByType = null;
+        let revenuesByRegion = null;
+        
+        try {
+            if (bussinesRevenuesMatch) revenuesByType = JSON.parse(bussinesRevenuesMatch[1]);
+            if (regionRevenuesMatch) revenuesByRegion = JSON.parse(regionRevenuesMatch[1]);
+        } catch (e) {
+            console.error("Failed to parse revenues data", e);
+        }
+        
         return {
             id: idMatch ? idMatch[1] : null,
             companyId: companyIdMatch ? companyIdMatch[1] : (revenueMatch ? revenueMatch[1] : null),
             tickerId: tickerIdMatch ? tickerIdMatch[1] : (idMatch ? idMatch[1] : null),
-            revenueId: revenueMatch ? revenueMatch[1] : (companyIdMatch ? companyIdMatch[1] : null)
+            revenueId: revenueMatch ? revenueMatch[1] : (companyIdMatch ? companyIdMatch[1] : null),
+            revenuesByType,
+            revenuesByRegion
         };
     } catch (e) {
         return null;
@@ -49,25 +65,25 @@ export async function getInvestidor10Data(req: Request, res: Response) {
     const isFii = type === 'fiis';
     
     try {
-        const ids = await getIds(t, type);
-        if (!ids) return res.status(404).json({ error: 'Could not find IDs for ticker' });
+        const idsAndData = await getIdsAndData(t, type);
+        if (!idsAndData) return res.status(404).json({ error: 'Could not find IDs for ticker' });
 
         // URLs para buscar
         const requests: Record<string, string> = {};
 
         if (isFii) {
             // FIIs
-            requests.payout = `https://investidor10.com.br/api/fii/dividend-yield/chart/${ids.id}/3650/`;
-            requests.dividends = `https://investidor10.com.br/api/fii/dividendos/chart/${ids.id}/3650/`; // Usado para "net_worth" (proventos)
-            requests.equity = `https://investidor10.com.br/api/fii/valor-patrimonial/chart/${ids.id}/3650/`;
+            requests.payout = `https://investidor10.com.br/api/fii/dividend-yield/chart/${idsAndData.id}/3650/`;
+            requests.dividends = `https://investidor10.com.br/api/fii/dividendos/chart/${idsAndData.id}/3650/`; // Usado para "net_worth" (proventos)
+            requests.equity = `https://investidor10.com.br/api/fii/valor-patrimonial/chart/${idsAndData.id}/3650/`;
         } else {
             // Ações
-            if (ids.revenueId) {
-                requests.revenue = `https://investidor10.com.br/api/balancos/receitaliquida/chart/${ids.revenueId}/3650/false/`;
-                requests.equity = `https://investidor10.com.br/api/balancos/ativospassivos/chart/${ids.revenueId}/3650/`;
+            if (idsAndData.revenueId) {
+                requests.revenue = `https://investidor10.com.br/api/balancos/receitaliquida/chart/${idsAndData.revenueId}/3650/false/`;
+                requests.equity = `https://investidor10.com.br/api/balancos/ativospassivos/chart/${idsAndData.revenueId}/3650/`;
             }
-            if (ids.companyId && ids.tickerId) {
-                requests.payout = `https://investidor10.com.br/api/acoes/payout-chart/${ids.companyId}/${ids.tickerId}/${t}/365`;
+            if (idsAndData.companyId && idsAndData.tickerId) {
+                requests.payout = `https://investidor10.com.br/api/acoes/payout-chart/${idsAndData.companyId}/${idsAndData.tickerId}/${t}/365`;
             }
         }
 
@@ -90,7 +106,9 @@ export async function getInvestidor10Data(req: Request, res: Response) {
         const responseData: any = {
             net_profit: [],
             payout_dy: [],
-            net_worth: []
+            net_worth: [],
+            revenuesByType: idsAndData.revenuesByType,
+            revenuesByRegion: idsAndData.revenuesByRegion
         };
 
         if (isFii) {
