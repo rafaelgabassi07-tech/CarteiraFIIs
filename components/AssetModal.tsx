@@ -1294,7 +1294,7 @@ const Investidor10ChartsSection: React.FC<Investidor10ChartsSectionProps> = ({ t
                     </div>
                     <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{currentChart.title}</h4>
                 </div>
-                <div className="flex p-1 bg-zinc-100 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 w-full sm:w-auto overflow-x-auto no-scrollbar">
+                <div className="flex flex-wrap p-1 bg-zinc-100 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 w-full">
                     {isFII ? (
                         <>
                             <button 
