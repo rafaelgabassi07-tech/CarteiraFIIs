@@ -1182,9 +1182,10 @@ const Investidor10ChartsSection: React.FC<Investidor10ChartsSectionProps> = ({ t
 
 interface SmartRadarProps {
     asset: AssetPosition;
+    marketHistory: any[];
 }
 
-const SmartRadar: React.FC<SmartRadarProps> = ({ asset }) => {
+const SmartRadar: React.FC<SmartRadarProps> = ({ asset, marketHistory }) => {
     const [activeTab, setActiveTab] = useState<'datacom' | 'payment'>('datacom');
 
     const calendarData = useMemo(() => {
@@ -1196,8 +1197,10 @@ const SmartRadar: React.FC<SmartRadarProps> = ({ asset }) => {
             payment: 0
         }));
 
-        if (asset.dividends && Array.isArray(asset.dividends)) {
-            asset.dividends.forEach(div => {
+        const historyToUse = marketHistory && marketHistory.length > 0 ? marketHistory : (asset.dividends || []);
+
+        if (historyToUse && Array.isArray(historyToUse)) {
+            historyToUse.forEach(div => {
                 // Robust date parsing: handle YYYY-MM-DD and DD/MM/YYYY formats
                 const parseDate = (dateStr: string) => {
                     if (!dateStr) return null;
@@ -1235,7 +1238,7 @@ const SmartRadar: React.FC<SmartRadarProps> = ({ asset }) => {
             });
         }
         return months;
-    }, [asset.dividends]);
+    }, [asset.dividends, marketHistory]);
 
     return (
         <div className="mb-6">
@@ -1479,7 +1482,9 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends = [], inco
                             <div id="section-FUNDAMENTALS" className="py-10 scroll-mt-32">
                                 <SectionHeader title="Análise Fundamentalista" icon={List} />
                                 <div className="space-y-10">
-                                    <SmartRadar asset={asset} />
+                                    {asset.assetType !== 'FII' && (
+                                        <SmartRadar asset={asset} marketHistory={assetMarketHistory} />
+                                    )}
                                     <div className="space-y-0">
                                         <DetailedInfoBlock asset={asset} />
                                         <ValuationCard asset={asset} />
@@ -1496,12 +1501,6 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends = [], inco
                                     marketHistory={assetMarketHistory}
                                     isWatchlist={isWatchlist}
                                 />
-                                <div className="mt-10 pt-10 border-t border-zinc-100 dark:border-zinc-900/50">
-                                    <div className="flex items-center justify-between mb-4 px-1">
-                                        <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Histórico de Payout e Yield</h4>
-                                    </div>
-                                    <Investidor10ChartsSection ticker={asset.ticker} assetType={asset.assetType} onlyPayout={true} />
-                                </div>
                             </div>
 
                             {/* SEÇÃO: RENTABILIDADE COMPARADA */}

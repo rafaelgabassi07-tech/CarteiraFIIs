@@ -100,43 +100,33 @@ export const MarketTicker: React.FC = () => {
 
     return (
         <div 
-            className="w-full overflow-hidden bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md border-b border-zinc-200/50 dark:border-zinc-800/50 py-1.5 relative group z-40"
+            className="w-full overflow-hidden bg-transparent py-2 relative group z-40 mb-2"
             onMouseEnter={() => setPaused(true)}
             onMouseLeave={() => setPaused(false)}
         >
-            <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-zinc-50 dark:from-zinc-950 to-transparent z-10 pointer-events-none"></div>
-            <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-zinc-50 dark:from-zinc-950 to-transparent z-10 pointer-events-none"></div>
+            <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-zinc-50 dark:from-zinc-950 to-transparent z-10 pointer-events-none"></div>
+            <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-zinc-50 dark:from-zinc-950 to-transparent z-10 pointer-events-none"></div>
 
             <div 
-                className={`flex items-center gap-8 w-max ${paused ? '' : 'animate-marquee'}`}
+                className={`flex items-center gap-6 w-max ${paused ? '' : 'animate-marquee'}`}
                 style={{ animationPlayState: paused ? 'paused' : 'running' }}
             >
                 {displayIndices.map((index, i) => (
-                    <div key={`${index.ticker}-${i}`} className="flex items-center gap-2.5 shrink-0 select-none group/item transition-opacity hover:opacity-80">
+                    <div key={`${index.ticker}-${i}`} className="flex items-center gap-3 shrink-0 select-none group/item transition-opacity hover:opacity-80 bg-white dark:bg-zinc-900 px-3 py-1.5 rounded-full border border-zinc-200/50 dark:border-zinc-800/50 shadow-sm">
                         <div className={`w-1.5 h-1.5 rounded-full ${index.change >= 0 ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]'}`}></div>
                         
-                        <div className="flex flex-col">
-                            <div className="flex items-center gap-1.5">
-                                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{index.name}</span>
-                                {index.type === 'CURRENCY' && <DollarSign className="w-2.5 h-2.5 text-zinc-500" />}
-                                {index.type === 'CRYPTO' && <Percent className="w-2.5 h-2.5 text-zinc-500" />}
-                                {index.type === 'INDEX' && <Globe className="w-2.5 h-2.5 text-zinc-500" />}
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <span className="text-sm font-black text-zinc-900 dark:text-white tabular-nums tracking-tight">
-                                    {index.type === 'INDEX' 
-                                        ? index.price.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) 
-                                        : index.price.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                </span>
-                                <div className={`flex items-center text-[10px] font-bold ${index.change >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                                    {index.change > 0 ? <TrendingUp className="w-3 h-3 mr-0.5" /> : index.change < 0 ? <TrendingDown className="w-3 h-3 mr-0.5" /> : <Minus className="w-3 h-3 mr-0.5" />}
-                                    {Math.abs(index.change).toFixed(2)}%
-                                </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">{index.name}</span>
+                            <span className="text-xs font-black text-zinc-900 dark:text-white tabular-nums tracking-tight">
+                                {index.type === 'INDEX' 
+                                    ? index.price.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) 
+                                    : index.price.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                            <div className={`flex items-center text-[10px] font-bold ${index.change >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                {index.change > 0 ? <TrendingUp className="w-3 h-3 mr-0.5" /> : index.change < 0 ? <TrendingDown className="w-3 h-3 mr-0.5" /> : <Minus className="w-3 h-3 mr-0.5" />}
+                                {Math.abs(index.change).toFixed(2)}%
                             </div>
                         </div>
-                        
-                        {/* Vertical Separator */}
-                        <div className="h-6 w-px bg-zinc-200 dark:bg-zinc-800 ml-4"></div>
                     </div>
                 ))}
             </div>

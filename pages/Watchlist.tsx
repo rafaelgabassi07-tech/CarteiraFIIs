@@ -547,11 +547,11 @@ export default function Watchlist({ showToast }: WatchlistProps) {
                                 <div 
                                     key={ticker} 
                                     onClick={() => handleAssetClick(ticker)}
-                                    className={`group bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer active:scale-[0.98] relative overflow-hidden ${isUpdating ? 'opacity-90' : ''}`}
+                                    className={`group bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer active:scale-[0.98] relative overflow-hidden ${isUpdating ? 'opacity-90' : ''}`}
                                 >
                                     <div className="flex items-center justify-between relative z-10">
-                                        <div className="flex items-center gap-4 min-w-0 flex-1">
-                                            <div className="w-11 h-11 rounded-xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center overflow-hidden border border-zinc-100 dark:border-zinc-700 shadow-sm relative shrink-0">
+                                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                                            <div className="w-9 h-9 rounded-xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center overflow-hidden border border-zinc-100 dark:border-zinc-700 shadow-sm relative shrink-0">
                                                 {quote?.logo && (
                                                     <img 
                                                         src={quote.logo} 
@@ -563,7 +563,7 @@ export default function Watchlist({ showToast }: WatchlistProps) {
                                                         }} 
                                                     />
                                                 )}
-                                                <span className={`text-xs font-black text-zinc-300 dark:text-zinc-600 absolute inset-0 flex items-center justify-center ${quote?.logo ? 'hidden fallback-initials:flex' : 'flex'}`}>
+                                                <span className={`text-[10px] font-black text-zinc-300 dark:text-zinc-600 absolute inset-0 flex items-center justify-center ${quote?.logo ? 'hidden fallback-initials:flex' : 'flex'}`}>
                                                     {ticker.substring(0, 2)}
                                                 </span>
                                                 {isUpdating && (
@@ -574,25 +574,25 @@ export default function Watchlist({ showToast }: WatchlistProps) {
                                             </div>
                                             <div className="min-w-0">
                                                 <div className="flex items-center gap-2">
-                                                    <h3 className="font-black text-zinc-900 dark:text-white text-base tracking-tight leading-none group-hover:text-indigo-600 transition-colors">{ticker}</h3>
+                                                    <h3 className="font-black text-zinc-900 dark:text-white text-sm tracking-tight leading-none group-hover:text-indigo-600 transition-colors">{ticker}</h3>
                                                     <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest ${quote?.type === 'FII' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400'}`}>
                                                         {quote?.type || (ticker.endsWith('11') ? 'FII' : 'Ação')}
                                                     </span>
                                                 </div>
-                                                <p className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 mt-1 uppercase tracking-wider truncate">
+                                                <p className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 mt-0.5 uppercase tracking-wider truncate">
                                                     {quote?.name || (isLoadingInitial ? 'Atualizando...' : 'Ativo')}
                                                 </p>
                                             </div>
                                         </div>
 
                                         <div className="flex flex-col items-end gap-1 pl-2 shrink-0">
-                                            <p className="font-black text-zinc-900 dark:text-white tabular-nums text-base tracking-tight">
+                                            <p className="font-black text-zinc-900 dark:text-white tabular-nums text-sm tracking-tight">
                                                 {hasData ? formatBRL(price) : (isLoadingInitial ? <span className="animate-pulse text-zinc-200">---</span> : <span className="text-zinc-300 text-[10px] font-bold">Indisp.</span>)}
                                             </p>
                                             
                                             {hasData && (
-                                                <div className={`flex items-center gap-0.5 px-2 py-0.5 rounded-lg text-[10px] font-black ${isPositive ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400'}`}>
-                                                    {isPositive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                                                <div className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-lg text-[9px] font-black ${isPositive ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400'}`}>
+                                                    {isPositive ? <ArrowUpRight className="w-2.5 h-2.5" /> : <ArrowDownRight className="w-2.5 h-2.5" />}
                                                     {Math.abs(change).toFixed(2)}%
                                                 </div>
                                             )}
@@ -601,20 +601,20 @@ export default function Watchlist({ showToast }: WatchlistProps) {
 
                                     {/* Additional Info Grid - Compact */}
                                     {hasData && (
-                                        <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-zinc-100 dark:border-zinc-800/60 relative z-10">
+                                        <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-800/60 relative z-10">
                                             <div className="flex flex-col">
-                                                <span className="text-[8px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-1">DY (12M)</span>
-                                                <span className="text-[11px] font-black text-zinc-700 dark:text-zinc-200">{fundamentals.dy_12m ? `${Number(fundamentals.dy_12m).toFixed(2)}%` : '--'}</span>
+                                                <span className="text-[8px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-0.5">DY (12M)</span>
+                                                <span className="text-[10px] font-black text-zinc-700 dark:text-zinc-200">{fundamentals.dy_12m ? `${Number(fundamentals.dy_12m).toFixed(2)}%` : '--'}</span>
                                             </div>
                                             <div className="flex flex-col text-center">
-                                                <span className="text-[8px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-1">P/VP</span>
-                                                <span className={`text-[11px] font-black ${Number(fundamentals.p_vp) > 1.1 ? 'text-rose-500' : Number(fundamentals.p_vp) < 0.9 ? 'text-emerald-500' : 'text-zinc-700 dark:text-zinc-200'}`}>
+                                                <span className="text-[8px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-0.5">P/VP</span>
+                                                <span className={`text-[10px] font-black ${Number(fundamentals.p_vp) > 1.1 ? 'text-rose-500' : Number(fundamentals.p_vp) < 0.9 ? 'text-emerald-500' : 'text-zinc-700 dark:text-zinc-200'}`}>
                                                     {fundamentals.p_vp ? Number(fundamentals.p_vp).toFixed(2) : '--'}
                                                 </span>
                                             </div>
                                             <div className="flex flex-col items-end">
-                                                <span className="text-[8px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-1">Segmento</span>
-                                                <span className="text-[11px] font-black text-zinc-700 dark:text-zinc-200 truncate max-w-[90px]">{quote?.segment || 'Geral'}</span>
+                                                <span className="text-[8px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-0.5">Segmento</span>
+                                                <span className="text-[10px] font-black text-zinc-700 dark:text-zinc-200 truncate max-w-[80px]">{quote?.segment || 'Geral'}</span>
                                             </div>
                                         </div>
                                     )}
