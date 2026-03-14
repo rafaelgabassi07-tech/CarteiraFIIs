@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useDragControls } from 'framer-motion';
 import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, Bell, Download, Trash2, Cloud, CloudOff, Loader2, AlertTriangle, Gift, Star, Inbox, RefreshCw, Smartphone, X, Check, Mail, Server, WifiOff, FileText, CheckCircle, Percent, TrendingUp, DollarSign, Activity, Newspaper, CloudLightning, Wifi, CircleHelp, Calendar, Award, Clock } from 'lucide-react';
 import { UpdateReportData } from '../types';
 
@@ -235,6 +235,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange, i
 interface SwipeableModalProps { isOpen: boolean; onClose: () => void; children: React.ReactNode; className?: string; }
 
 export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose, children, className = 'h-[92dvh]' }) => {
+  const dragControls = useDragControls();
   // Scroll Lock Effect
   useEffect(() => {
     if (isOpen) {
@@ -289,6 +290,8 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
                 restDelta: 0.001
               }}
               drag="y"
+              dragControls={dragControls}
+              dragListener={false}
               dragConstraints={{ top: 0 }}
               dragElastic={0.2}
               onDragEnd={(_, info) => {
@@ -296,7 +299,10 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
               }}
               className={`relative bg-zinc-50 dark:bg-zinc-900 w-full ${className} rounded-t-3xl shadow-2xl shadow-black/50 flex flex-col ring-1 ring-black/5 dark:ring-white/5`}
             >
-              <div className="w-full flex justify-center pt-3 pb-3 bg-zinc-50 dark:bg-zinc-900 shrink-0 cursor-grab active:cursor-grabbing touch-none z-10">
+              <div 
+                onPointerDown={(e) => dragControls.start(e)}
+                className="w-full flex justify-center pt-3 pb-3 bg-zinc-50 dark:bg-zinc-900 shrink-0 cursor-grab active:cursor-grabbing touch-none z-10"
+              >
                 <div className="w-12 h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full transition-colors hover:bg-zinc-300 dark:hover:bg-zinc-700"></div>
               </div>
 
