@@ -848,36 +848,78 @@ interface PropertiesAnalysisProps {
 const PropertiesAnalysis: React.FC<PropertiesAnalysisProps> = ({ properties }) => {
     if (!properties || properties.length === 0) return null;
 
-    const pieData = properties.map(p => ({
-        name: p.name,
-        value: p.area
-    }));
+    const locationData = useMemo(() => {
+        const counts: Record<string, number> = {};
+        properties.forEach(p => {
+            let loc = p.location || 'Outros';
+            if (loc.length > 2 && loc.includes('-')) {
+                const parts = loc.split('-');
+                const state = parts[parts.length - 1].trim();
+                if (state.length === 2) loc = state;
+            }
+            if (loc.length === 2) loc = loc.toUpperCase();
+            counts[loc] = (counts[loc] || 0) + 1;
+        });
+
+        return Object.entries(counts)
+            .map(([name, value]) => ({ name, value }))
+            .sort((a, b) => b.value - a.value);
+    }, [properties]);
 
     const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
+    const total = properties.length;
+
     return (
         <div className="space-y-6">
-            <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                    <RePieChart>
-                        <Pie
-                            data={pieData}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={60}
-                            outerRadius={80}
-                            paddingAngle={5}
-                            dataKey="value"
-                        >
-                            {pieData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                        </Pie>
-                        <Tooltip contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '12px', fontSize: '10px' }} />
-                    </RePieChart>
-                </ResponsiveContainer>
+            <div className="flex flex-col md:flex-row gap-6">
+                <div className="w-full md:w-1/2 h-48 relative">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <RePieChart>
+                            <Pie
+                                data={locationData}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={60}
+                                outerRadius={80}
+                                paddingAngle={5}
+                                dataKey="value"
+                            >
+                                {locationData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                            </Pie>
+                            <Tooltip contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '12px', fontSize: '10px' }} />
+                        </RePieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="text-center">
+                            <span className="block text-2xl font-black text-zinc-900 dark:text-white">{total}</span>
+                            <span className="block text-[9px] font-bold text-zinc-400 uppercase">Imóveis</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="w-full md:w-1/2 flex flex-col justify-center space-y-2">
+                    {locationData.slice(0, 6).map((item, idx) => (
+                        <div key={item.name} className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-2">
+                                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }}></div>
+                                <span className="font-bold text-zinc-600 dark:text-zinc-300">{item.name}</span>
+                            </div>
+                            <div className="flex gap-2">
+                                <span className="font-medium text-zinc-900 dark:text-white">{item.value}</span>
+                                <span className="text-zinc-400 text-[10px]">({((item.value / total) * 100).toFixed(0)}%)</span>
+                            </div>
+                        </div>
+                    ))}
+                    {locationData.length > 6 && (
+                        <p className="text-[10px] text-zinc-400 italic text-center mt-2">+ {locationData.length - 6} outras regiões</p>
+                    )}
+                </div>
             </div>
-            <div className="space-y-0">
+
+            <div className="space-y-0 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
                 {properties.map((prop, index) => (
                     <div key={index} className="py-3 border-b border-zinc-100 dark:border-zinc-900/50 last:border-0">
                         <div className="flex justify-between items-start">
@@ -887,13 +929,15 @@ const PropertiesAnalysis: React.FC<PropertiesAnalysisProps> = ({ properties }) =
                                 </div>
                                 <div>
                                     <p className="font-black text-xs text-zinc-900 dark:text-white uppercase tracking-tight">{prop.name}</p>
-                                    <p className="text-[10px] font-bold text-zinc-500 flex items-center gap-1 mt-0.5"><MapIcon className="w-3 h-3" /> {prop.city} / {prop.state}</p>
+                                    <p className="text-[10px] font-bold text-zinc-500 flex items-center gap-1 mt-0.5"><MapIcon className="w-3 h-3" /> {prop.location || 'N/A'}</p>
                                 </div>
                             </div>
-                            <div className="text-right">
-                                <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-1">ABL</p>
-                                <p className="text-xs font-black text-zinc-900 dark:text-white">{(prop.area * 100).toFixed(2)}%</p>
-                            </div>
+                            {prop.abl && (
+                                <div className="text-right">
+                                    <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-1">ABL</p>
+                                    <p className="text-xs font-black text-zinc-900 dark:text-white">{prop.abl}</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 ))}
@@ -1446,9 +1490,9 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends = [], inco
     return (
         <SwipeableModal isOpen={!!asset} onClose={onClose}>
             {asset && (
-                <div key={asset.ticker} className="bg-white dark:bg-zinc-900 flex flex-col h-full overflow-hidden">
+                <div key={asset.ticker} className="bg-zinc-50 dark:bg-zinc-900 flex flex-col h-full overflow-hidden">
                     {/* Header Moderno & Clean */}
-                    <div className="px-6 pt-6 pb-4 shrink-0 bg-white dark:bg-zinc-900 z-30 border-b border-zinc-100 dark:border-zinc-900/50">
+                    <div className="px-6 pt-6 pb-4 shrink-0 bg-white dark:bg-zinc-800 z-30 border-b border-zinc-200/50 dark:border-zinc-700/50 shadow-sm">
                         <div className="flex justify-between items-start mb-6">
                             <div className="flex items-center gap-4">
                                 <div className="w-16 h-16 rounded-3xl bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center overflow-hidden border border-zinc-100 dark:border-zinc-800 shadow-sm">
@@ -1507,20 +1551,20 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends = [], inco
 
                     <div 
                         ref={scrollContainerRef}
-                        className="flex-1 overflow-y-auto overflow-x-hidden p-6 pb-24 scroll-smooth"
+                        className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 pb-24 scroll-smooth bg-zinc-50 dark:bg-zinc-900"
                     >
-                        <div className="space-y-0 max-w-3xl mx-auto divide-y divide-zinc-100 dark:divide-zinc-900/50">
+                        <div className="space-y-6 max-w-3xl mx-auto">
                             
                             {/* SEÇÃO: SUA POSIÇÃO */}
                             {!isWatchlist && (
-                                <div id="section-OVERVIEW" className="py-10 first:pt-0 scroll-mt-32">
+                                <div id="section-OVERVIEW" className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32">
                                     <SectionHeader title="Sua Posição" icon={Wallet} />
                                     <PositionSummaryCard asset={asset} privacyMode={privacyMode} />
                                 </div>
                             )}
                             
                             {/* SEÇÃO: COTAÇÃO & PERFORMANCE */}
-                            <div id={isWatchlist ? "section-OVERVIEW" : "section-CHARTS"} className="py-10 first:pt-0 scroll-mt-32">
+                            <div id={isWatchlist ? "section-OVERVIEW" : "section-CHARTS"} className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32">
                                 <SectionHeader title="Performance" icon={TrendingUp} />
                                 <PriceHistoryChart 
                                     fullData={historyData} 
@@ -1533,13 +1577,13 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends = [], inco
                             </div>
 
                             {/* SEÇÃO: DADOS FUNDAMENTAIS */}
-                            <div id="section-FUNDAMENTALS" className="py-10 scroll-mt-32">
+                            <div id="section-FUNDAMENTALS" className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32">
                                 <SectionHeader title="Análise Fundamentalista" icon={List} />
-                                <div className="space-y-10">
+                                <div className="space-y-8">
                                     {asset.assetType !== 'FII' && (
                                         <SmartRadar asset={asset} marketHistory={assetMarketHistory} />
                                     )}
-                                    <div className="space-y-0">
+                                    <div className="space-y-6">
                                         <DetailedInfoBlock asset={asset} />
                                         <ValuationCard asset={asset} />
                                     </div>
@@ -1547,7 +1591,7 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends = [], inco
                             </div>
 
                             {/* SEÇÃO: PROVENTOS */}
-                            <div id="section-INCOME" className="py-10 scroll-mt-32">
+                            <div id="section-INCOME" className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32">
                                 <SectionHeader title="Dividendos & Proventos" icon={Coins} />
                                 <IncomeAnalysisSection 
                                     asset={asset} 
@@ -1558,20 +1602,20 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends = [], inco
                             </div>
 
                             {/* SEÇÃO: RENTABILIDADE COMPARADA */}
-                            <div id="section-CHARTS-EXTRA" className="py-10 scroll-mt-32">
+                            <div id="section-CHARTS-EXTRA" className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32">
                                 <SectionHeader title="Comparativo de Mercado" icon={Activity} />
                                 <ComparativeChart ticker={asset.ticker} type={asset.assetType} />
                             </div>
 
                             {/* SEÇÃO: EVOLUÇÃO FUNDAMENTALISTA */}
-                            <div className="py-10 scroll-mt-32">
+                            <div className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32">
                                 <SectionHeader title="Evolução Histórica" icon={Activity} />
                                 <Investidor10ChartsSection ticker={asset.ticker} assetType={asset.assetType} />
                             </div>
 
                             {/* SEÇÃO: PORTFÓLIO FÍSICO */}
                             {asset.properties && asset.properties.length > 0 && (
-                                <div id="section-PROPERTIES" className="py-10 scroll-mt-32">
+                                <div id="section-PROPERTIES" className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32">
                                     <SectionHeader title="Portfólio de Imóveis" icon={Building2} />
                                     <PropertiesAnalysis properties={asset.properties} />
                                 </div>

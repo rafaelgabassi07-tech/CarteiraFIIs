@@ -249,7 +249,7 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
     <div className={`fixed inset-0 z-[9999] flex flex-col justify-end isolate touch-none`}>
       <div 
           onClick={onClose} 
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-500"
+          className="absolute inset-0 bg-zinc-900/40 backdrop-blur-md transition-opacity duration-500"
           style={{ opacity: isVisible ? 1 : 0 }} 
       ></div>
       
@@ -258,9 +258,9 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
             transform: isVisible ? `translateY(${dragY}px)` : 'translateY(100%)',
             transition: dragY === 0 ? 'transform 500ms cubic-bezier(0.32, 0.72, 0, 1)' : 'none',
         }}
-        className={`relative bg-white dark:bg-zinc-900 w-full ${className} rounded-t-3xl shadow-2xl shadow-black/50 overflow-hidden flex flex-col ring-1 ring-black/5 dark:ring-white/5`}
+        className={`relative bg-zinc-50 dark:bg-zinc-900 w-full ${className} rounded-t-3xl shadow-2xl shadow-black/50 overflow-hidden flex flex-col ring-1 ring-black/5 dark:ring-white/5`}
       >
-        <div className="w-full flex justify-center pt-3 pb-3 bg-white dark:bg-zinc-900 shrink-0 cursor-grab active:cursor-grabbing touch-none z-10"
+        <div className="w-full flex justify-center pt-3 pb-3 bg-zinc-50 dark:bg-zinc-900 shrink-0 cursor-grab active:cursor-grabbing touch-none z-10"
              onTouchMove={(e) => {
                // Simple drag logic
                const val = e.touches[0].clientY - (window.innerHeight - (e.currentTarget.parentElement?.clientHeight || 0));
