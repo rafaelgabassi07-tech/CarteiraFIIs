@@ -1720,20 +1720,18 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends = [], inco
                             </div>
                             
                             <div className="flex items-center gap-2">
-                                <motion.button 
-                                    whileTap={{ scale: 0.9 }}
+                                <button 
                                     onClick={() => onAssetRefresh && onAssetRefresh(asset.ticker)} 
-                                    className="w-11 h-11 bg-zinc-50 dark:bg-zinc-900 rounded-2xl flex items-center justify-center text-zinc-400 hover:text-indigo-500 transition-all border border-zinc-100 dark:border-zinc-800 shadow-sm"
+                                    className="w-11 h-11 bg-zinc-50 dark:bg-zinc-900 rounded-2xl flex items-center justify-center text-zinc-400 hover:text-indigo-500 transition-all active:scale-90 border border-zinc-100 dark:border-zinc-800 shadow-sm"
                                 >
                                     <RefreshCcw className="w-4 h-4" />
-                                </motion.button>
-                                <motion.button 
-                                    whileTap={{ scale: 0.9 }}
+                                </button>
+                                <button 
                                     onClick={onClose}
-                                    className="w-11 h-11 bg-zinc-50 dark:bg-zinc-900 rounded-2xl flex items-center justify-center text-zinc-400 hover:text-rose-500 transition-all border border-zinc-100 dark:border-zinc-800 shadow-sm"
+                                    className="w-11 h-11 bg-zinc-50 dark:bg-zinc-900 rounded-2xl flex items-center justify-center text-zinc-400 hover:text-rose-500 transition-all active:scale-90 border border-zinc-100 dark:border-zinc-800 shadow-sm"
                                 >
                                     <X className="w-5 h-5" />
-                                </motion.button>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -1742,39 +1740,18 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends = [], inco
                         ref={scrollContainerRef}
                         className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 pb-24 scroll-smooth bg-zinc-50 dark:bg-zinc-900"
                     >
-                        <motion.div 
-                            className="space-y-6 max-w-3xl mx-auto"
-                            initial="hidden"
-                            animate="visible"
-                            variants={{
-                                visible: { transition: { staggerChildren: 0.1 } }
-                            }}
-                        >
+                        <div className="space-y-6 max-w-3xl mx-auto">
                             
                             {/* SEÇÃO: SUA POSIÇÃO */}
                             {!isWatchlist && (
-                                <motion.div 
-                                    id="section-OVERVIEW" 
-                                    className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32"
-                                    variants={{
-                                        hidden: { opacity: 0, y: 20 },
-                                        visible: { opacity: 1, y: 0 }
-                                    }}
-                                >
+                                <div id="section-OVERVIEW" className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32">
                                     <SectionHeader title="Sua Posição" icon={Wallet} />
                                     <PositionSummaryCard asset={asset} privacyMode={privacyMode} />
-                                </motion.div>
+                                </div>
                             )}
                             
                             {/* SEÇÃO: COTAÇÃO & PERFORMANCE */}
-                            <motion.div 
-                                id={isWatchlist ? "section-OVERVIEW" : "section-CHARTS"} 
-                                className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32"
-                                variants={{
-                                    hidden: { opacity: 0, y: 20 },
-                                    visible: { opacity: 1, y: 0 }
-                                }}
-                            >
+                            <div id={isWatchlist ? "section-OVERVIEW" : "section-CHARTS"} className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32">
                                 <SectionHeader title="Performance" icon={TrendingUp} />
                                 <PriceHistoryChart 
                                     fullData={historyData} 
@@ -1785,17 +1762,10 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends = [], inco
                                     onRangeChange={setRange}
                                     averagePrice={!isWatchlist ? asset.averagePrice : undefined}
                                 />
-                            </motion.div>
+                            </div>
 
                             {/* SEÇÃO: DADOS FUNDAMENTAIS */}
-                            <motion.div 
-                                id="section-FUNDAMENTALS" 
-                                className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32"
-                                variants={{
-                                    hidden: { opacity: 0, y: 20 },
-                                    visible: { opacity: 1, y: 0 }
-                                }}
-                            >
+                            <div id="section-FUNDAMENTALS" className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32">
                                 <SectionHeader title="Análise Fundamentalista" icon={List} />
                                 <div className="space-y-8">
                                     {asset.assetType !== 'FII' && (
@@ -1806,17 +1776,10 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends = [], inco
                                         <ValuationCard asset={asset} />
                                     </div>
                                 </div>
-                            </motion.div>
+                            </div>
 
                             {/* SEÇÃO: PROVENTOS */}
-                            <motion.div 
-                                id="section-INCOME" 
-                                className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32"
-                                variants={{
-                                    hidden: { opacity: 0, y: 20 },
-                                    visible: { opacity: 1, y: 0 }
-                                }}
-                            >
+                            <div id="section-INCOME" className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32">
                                 <SectionHeader title="Dividendos & Proventos" icon={Coins} />
                                 <IncomeAnalysisSection 
                                     asset={asset} 
@@ -1824,48 +1787,28 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends = [], inco
                                     marketHistory={assetMarketHistory}
                                     isWatchlist={isWatchlist}
                                 />
-                            </motion.div>
+                            </div>
 
                             {/* SEÇÃO: RENTABILIDADE COMPARADA */}
-                            <motion.div 
-                                id="section-CHARTS-EXTRA" 
-                                className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32"
-                                variants={{
-                                    hidden: { opacity: 0, y: 20 },
-                                    visible: { opacity: 1, y: 0 }
-                                }}
-                            >
+                            <div id="section-CHARTS-EXTRA" className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32">
                                 <SectionHeader title="Comparativo de Mercado" icon={Activity} />
                                 <ComparativeChart ticker={asset.ticker} type={asset.assetType} />
-                            </motion.div>
+                            </div>
 
                             {/* SEÇÃO: EVOLUÇÃO FUNDAMENTALISTA */}
-                            <motion.div 
-                                className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32"
-                                variants={{
-                                    hidden: { opacity: 0, y: 20 },
-                                    visible: { opacity: 1, y: 0 }
-                                }}
-                            >
+                            <div className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32">
                                 <SectionHeader title="Evolução Histórica" icon={Activity} />
                                 <Investidor10ChartsSection ticker={asset.ticker} assetType={asset.assetType} />
-                            </motion.div>
+                            </div>
 
                             {/* SEÇÃO: PORTFÓLIO FÍSICO */}
                             {asset.properties && asset.properties.length > 0 && (
-                                <motion.div 
-                                    id="section-PROPERTIES" 
-                                    className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32"
-                                    variants={{
-                                        hidden: { opacity: 0, y: 20 },
-                                        visible: { opacity: 1, y: 0 }
-                                    }}
-                                >
+                                <div id="section-PROPERTIES" className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32">
                                     <SectionHeader title="Portfólio de Imóveis" icon={Building2} />
                                     <PropertiesAnalysis properties={asset.properties} />
-                                </motion.div>
+                                </div>
                             )}
-                        </motion.div>
+                        </div>
                     </div>
                 </div>
             )}

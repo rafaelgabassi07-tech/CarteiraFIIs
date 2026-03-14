@@ -1645,15 +1645,9 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
             />
 
             {/* Redesigned Allocation Card */}
-            <motion.div 
-                variants={{
-                    hidden: { opacity: 0, y: 20 },
-                    show: { opacity: 1, y: 0 }
-                }}
+            <div 
                 className="col-span-2 bg-white dark:bg-zinc-900 rounded-[2.5rem] p-6 border border-zinc-100 dark:border-zinc-800 shadow-sm relative overflow-hidden cursor-pointer group"
                 onClick={() => setShowAllocation(true)}
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.99 }}
             >
                 <div className="absolute top-0 right-0 w-32 h-32 bg-sky-500/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
                 
@@ -1705,7 +1699,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                         </div>
                     ))}
                 </div>
-            </motion.div>
+            </div>
         </motion.div>
 
         <StoryViewer 

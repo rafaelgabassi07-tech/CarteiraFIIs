@@ -208,25 +208,23 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange, i
           {navItems.map((item) => {
             const isActive = currentTab === item.id;
             return (
-              <motion.button
-                key={item.id}
-                onClick={() => onTabChange(item.id)}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.92 }}
-                className={`relative flex items-center justify-center w-12 h-12 rounded-full transition-all duration-300 group ${isActive ? 'bg-white text-black shadow-lg shadow-white/20' : 'text-zinc-400 hover:text-white hover:bg-white/10'}`}
-              >
-                {isActive && (
-                  <motion.div 
-                    layoutId="nav-active"
-                    className="absolute inset-0 bg-white rounded-full"
-                    transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                <button
+                    key={item.id}
+                    onClick={() => onTabChange(item.id)}
+                    className={`relative flex items-center justify-center w-12 h-12 rounded-full transition-all duration-300 group ${isActive ? 'bg-white text-black shadow-lg shadow-white/20' : 'text-zinc-400 hover:text-white hover:bg-white/10'}`}
+                >
+                  {isActive && (
+                    <motion.div 
+                      layoutId="nav-active"
+                      className="absolute inset-0 bg-white rounded-full"
+                      transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                    />
+                  )}
+                  <item.icon 
+                      className={`relative z-10 w-5 h-5 transition-all duration-300 ${isActive ? 'scale-100' : 'scale-100 group-active:scale-90'}`} 
+                      strokeWidth={isActive ? 2.5 : 2}
                   />
-                )}
-                <item.icon 
-                    className={`relative z-10 w-5 h-5 transition-all duration-300 ${isActive ? 'scale-100' : 'scale-100 group-active:scale-90'}`} 
-                    strokeWidth={isActive ? 2.5 : 2}
-                />
-              </motion.button>
+                </button>
             );
           })}
       </nav>
