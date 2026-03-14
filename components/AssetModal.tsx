@@ -1200,42 +1200,72 @@ const SmartRadar: React.FC<SmartRadarProps> = ({ asset, marketHistory }) => {
         const historyToUse = marketHistory && marketHistory.length > 0 ? marketHistory : (asset.dividends || []);
 
         if (historyToUse && Array.isArray(historyToUse)) {
-            historyToUse.forEach(div => {
-                // Robust date parsing: handle YYYY-MM-DD and DD/MM/YYYY formats
-                const parseDate = (dateStr: string) => {
-                    if (!dateStr) return null;
-                    
-                    // Try YYYY-MM-DD
-                    if (dateStr.includes('-')) {
-                        const parts = dateStr.split('-');
-                        if (parts.length === 3) {
-                            const [year, month, day] = parts.map(Number);
-                            return new Date(year, month - 1, day);
-                        }
-                    }
-                    
-                    // Try DD/MM/YYYY
-                    if (dateStr.includes('/')) {
-                        const parts = dateStr.split('/');
-                        if (parts.length === 3) {
-                            const [day, month, year] = parts.map(Number);
-                            return new Date(year, month - 1, day);
-                        }
-                    }
-                    
-                    return new Date(dateStr);
-                };
-
-                const comDate = parseDate(div.dateCom);
-                const payDate = parseDate(div.paymentDate);
+            const parseDate = (dateStr: string) => {
+                if (!dateStr) return null;
                 
-                if (comDate && !isNaN(comDate.getTime())) {
-                    months[comDate.getMonth()].datacom = 1;
+                // Try YYYY-MM-DD
+                if (dateStr.includes('-')) {
+                    const parts = dateStr.split('-');
+                    if (parts.length === 3) {
+                        const [year, month, day] = parts.map(Number);
+                        return new Date(year, month - 1, day);
+                    }
                 }
-                if (payDate && !isNaN(payDate.getTime())) {
-                    months[payDate.getMonth()].payment = 1;
+                
+                // Try DD/MM/YYYY
+                if (dateStr.includes('/')) {
+                    const parts = dateStr.split('/');
+                    if (parts.length === 3) {
+                        const [day, month, year] = parts.map(Number);
+                        return new Date(year, month - 1, day);
+                    }
                 }
-            });
+                
+                return new Date(dateStr);
+            };
+
+            const parsedDivs = historyToUse.map(div => ({
+                comDate: parseDate(div.dateCom),
+                payDate: parseDate(div.paymentDate)
+            })).filter(d => d.comDate || d.payDate);
+
+            if (parsedDivs.length > 0) {
+                // Find the latest year in the data
+                const latestYear = Math.max(...parsedDivs.map(d => {
+                    const y1 = d.comDate ? d.comDate.getFullYear() : 0;
+                    const y2 = d.payDate ? d.payDate.getFullYear() : 0;
+                    return Math.max(y1, y2);
+                }));
+
+                // Look at the last 5 years
+                const startYear = latestYear - 4;
+
+                const datacomYears = new Array(12).fill(null).map(() => new Set<number>());
+                const paymentYears = new Array(12).fill(null).map(() => new Set<number>());
+
+                parsedDivs.forEach(d => {
+                    if (d.comDate && d.comDate.getFullYear() >= startYear && d.comDate.getFullYear() <= latestYear) {
+                        datacomYears[d.comDate.getMonth()].add(d.comDate.getFullYear());
+                    }
+                    if (d.payDate && d.payDate.getFullYear() >= startYear && d.payDate.getFullYear() <= latestYear) {
+                        paymentYears[d.payDate.getMonth()].add(d.payDate.getFullYear());
+                    }
+                });
+
+                // Calculate the actual number of years we have data for in this 5-year window
+                const earliestYearInData = Math.max(startYear, Math.min(...parsedDivs.map(d => {
+                    const y1 = d.comDate ? d.comDate.getFullYear() : 9999;
+                    const y2 = d.payDate ? d.payDate.getFullYear() : 9999;
+                    return Math.min(y1, y2);
+                })));
+
+                const yearsOfHistory = Math.max(1, latestYear - earliestYearInData + 1);
+
+                for (let i = 0; i < 12; i++) {
+                    months[i].datacom = datacomYears[i].size / yearsOfHistory;
+                    months[i].payment = paymentYears[i].size / yearsOfHistory;
+                }
+            }
         }
         return months;
     }, [asset.dividends, marketHistory]);
@@ -1243,7 +1273,7 @@ const SmartRadar: React.FC<SmartRadarProps> = ({ asset, marketHistory }) => {
     return (
         <div className="mb-6">
             <div className="flex justify-between items-center mb-4">
-                <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Calendário de Dividendos</h4>
+                <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Radar de Dividendos (Últimos 5 anos)</h4>
             </div>
             
             <div className="flex p-1 bg-zinc-100 dark:bg-zinc-900 rounded-xl mb-4 border border-zinc-200 dark:border-zinc-800">
@@ -1263,18 +1293,42 @@ const SmartRadar: React.FC<SmartRadarProps> = ({ asset, marketHistory }) => {
 
             <div className="grid grid-cols-3 gap-2">
                 {calendarData.map((m) => {
-                    console.log('Mapping month:', m, 'ActiveTab:', activeTab);
-                    const isActive = m[activeTab] === 1;
+                    const probability = m[activeTab];
+                    const isHigh = probability >= 0.6;
+                    const isMedium = probability >= 0.2 && probability < 0.6;
+                    const isLow = probability > 0 && probability < 0.2;
+                    const isNone = probability === 0;
+
+                    let bgClass = 'bg-zinc-50 dark:bg-zinc-900 text-zinc-300 dark:text-zinc-700';
+                    let iconClass = '';
+                    
+                    if (isHigh) {
+                        bgClass = 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800';
+                        iconClass = 'text-emerald-500';
+                    } else if (isMedium) {
+                        bgClass = 'bg-emerald-50/50 dark:bg-emerald-900/10 text-emerald-500/70 dark:text-emerald-400/70 border border-emerald-100 dark:border-emerald-800/50';
+                        iconClass = 'text-emerald-400/70';
+                    } else if (isLow) {
+                        bgClass = 'bg-zinc-50 dark:bg-zinc-800/50 text-zinc-400 dark:text-zinc-500 border border-zinc-100 dark:border-zinc-800';
+                        iconClass = 'text-zinc-400';
+                    }
+
                     return (
                         <div 
                             key={m.month}
-                            className={`flex items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-tight transition-all ${isActive ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' : 'bg-zinc-50 dark:bg-zinc-900 text-zinc-300 dark:text-zinc-700'}`}
+                            className={`flex items-center justify-center gap-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-tight transition-all ${bgClass}`}
+                            title={`Probabilidade: ${(probability * 100).toFixed(0)}%`}
                         >
-                            {isActive && <Coins className="w-3 h-3" />}
+                            {!isNone && <Coins className={`w-3 h-3 ${iconClass}`} />}
                             {m.label}
                         </div>
                     );
                 })}
+            </div>
+            <div className="flex items-center justify-center gap-4 mt-4 text-[9px] font-bold text-zinc-400 uppercase tracking-widest">
+                <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-emerald-500"></div> Alta</div>
+                <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-emerald-400/50"></div> Média</div>
+                <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-zinc-300 dark:bg-zinc-700"></div> Rara/Nenhuma</div>
             </div>
         </div>
     );
