@@ -277,7 +277,7 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
           />
           
           <motion.div
-            initial={{ y: '100%' }}
+            initial={{ y: 0 }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ 
@@ -293,7 +293,7 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
             onDragEnd={(_, info) => {
               if (info.offset.y > 150) onClose();
             }}
-            className={`relative bg-zinc-50 dark:bg-zinc-900 w-full ${className} rounded-t-3xl shadow-2xl shadow-black/50 overflow-hidden flex flex-col ring-1 ring-black/5 dark:ring-white/5`}
+            className={`relative bg-zinc-50 dark:bg-zinc-900 w-full ${className} rounded-t-3xl shadow-2xl shadow-black/50 flex flex-col ring-1 ring-black/5 dark:ring-white/5`}
           >
             <div className="w-full flex justify-center pt-3 pb-3 bg-zinc-50 dark:bg-zinc-900 shrink-0 cursor-grab active:cursor-grabbing touch-none z-10">
               <div className="w-12 h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full transition-colors hover:bg-zinc-300 dark:hover:bg-zinc-700"></div>
