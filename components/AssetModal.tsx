@@ -226,7 +226,6 @@ interface PriceHistoryChartProps {
 }
 
 const PriceHistoryChart: React.FC<PriceHistoryChartProps> = ({ fullData, loading, error, ticker, range, onRangeChange, averagePrice }) => {
-    const [chartType, setChartType] = useState<'AREA' | 'CANDLE'>('AREA');
     const [indicators, setIndicators] = useState({ sma20: false, sma50: false, volume: true });
     const [showFilterModal, setShowFilterModal] = useState(false);
     
@@ -268,17 +267,13 @@ const PriceHistoryChart: React.FC<PriceHistoryChartProps> = ({ fullData, loading
                 <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2.5">
                         <div className="w-8 h-8 rounded-xl bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center text-zinc-400">
-                            <CandlestickChart className="w-4 h-4" />
+                            <LineChartIcon className="w-4 h-4" />
                         </div>
                         <div>
                             <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest leading-none">Histórico de Preço</h3>
                         </div>
                     </div>
                     <div className="flex items-center gap-1.5">
-                        <div className="flex bg-zinc-100 dark:bg-zinc-900 rounded-lg p-0.5 border border-zinc-200 dark:border-zinc-800">
-                            <button onClick={() => setChartType('AREA')} className={`p-1.5 rounded-md transition-all ${chartType === 'AREA' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}><LineChartIcon className="w-3.5 h-3.5" /></button>
-                            <button onClick={() => setChartType('CANDLE')} className={`p-1.5 rounded-md transition-all ${chartType === 'CANDLE' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}><CandlestickChart className="w-3.5 h-3.5" /></button>
-                        </div>
                         <button 
                             onClick={() => setShowFilterModal(true)}
                             className={`p-2 rounded-lg transition-all border ${showFilterModal ? 'bg-indigo-50 border-indigo-200 text-indigo-600 dark:bg-indigo-900/30 dark:border-indigo-800 dark:text-indigo-400' : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
@@ -424,28 +419,18 @@ const PriceHistoryChart: React.FC<PriceHistoryChartProps> = ({ fullData, loading
                                 <ReferenceLine y={lastPrice} yAxisId="price" stroke="#6366f1" strokeDasharray="3 3" strokeOpacity={0.8} ifOverflow="extendDomain"><Label content={<CurrentPriceLabel value={lastPrice} />} position="right" /></ReferenceLine>
                                 {indicators.volume && <Bar dataKey="volume" yAxisId="volume" barSize={range === '1Y' ? 2 : 4} fillOpacity={0.3} radius={[2, 2, 0, 0]}>{processedData.map((entry: any, index: number) => (<Cell key={`cell-${index}`} fill={entry.volColor} />))}</Bar>}
                                 
-                                {chartType === 'AREA' ? (
-                                    <Area 
-                                        yAxisId="price" 
-                                        type="monotone" 
-                                        dataKey="price" 
-                                        stroke={isPositive ? '#10b981' : '#f43f5e'} 
-                                        strokeWidth={2} 
-                                        fillOpacity={1} 
-                                        fill="url(#colorPrice)" 
-                                        animationDuration={1500} 
-                                        animationEasing="ease-out"
-                                        activeDot={{ r: 4, strokeWidth: 0, fill: isPositive ? '#10b981' : '#f43f5e' }}
-                                    />
-                                ) : (
-                                    /* Passamos [low, high] para o Recharts calcular a escala Y, mas o shape cuida do corpo */
-                                    <Scatter 
-                                        yAxisId="price" 
-                                        data={processedData} 
-                                        shape={<CustomCandleShape />} 
-                                        isAnimationActive={false} 
-                                    />
-                                )}
+                                <Area 
+                                    yAxisId="price" 
+                                    type="monotone" 
+                                    dataKey="price" 
+                                    stroke={isPositive ? '#10b981' : '#f43f5e'} 
+                                    strokeWidth={2} 
+                                    fillOpacity={1} 
+                                    fill="url(#colorPrice)" 
+                                    animationDuration={1500} 
+                                    animationEasing="ease-out"
+                                    activeDot={{ r: 4, strokeWidth: 0, fill: isPositive ? '#10b981' : '#f43f5e' }}
+                                />
 
                                 {indicators.sma20 && <Line yAxisId="price" type="monotone" dataKey="sma20" stroke="#f59e0b" strokeWidth={1.5} dot={false} connectNulls animationDuration={1500} />}
                                 {indicators.sma50 && <Line yAxisId="price" type="monotone" dataKey="sma50" stroke="#8b5cf6" strokeWidth={1.5} dot={false} connectNulls animationDuration={1500} />}
@@ -1302,20 +1287,61 @@ const Investidor10ChartsSection: React.FC<Investidor10ChartsSectionProps> = ({ t
 
     return (
         <div className="mb-6">
-            <div className="flex justify-between items-center mb-4">
-                <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{currentChart.title}</h4>
-                <div className="flex p-0.5 bg-zinc-100 dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center text-zinc-400 border border-zinc-100 dark:border-zinc-800">
+                        <Activity className="w-4 h-4" />
+                    </div>
+                    <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{currentChart.title}</h4>
+                </div>
+                <div className="flex p-1 bg-zinc-100 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 w-full sm:w-auto overflow-x-auto no-scrollbar">
                     {isFII ? (
                         <>
-                            <button onClick={() => setChartType('equity')} className={`px-2 py-0.5 text-[8px] font-bold rounded-md transition-all ${chartType === 'equity' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}>Patrimônio</button>
-                            <button onClick={() => setChartType('payout')} className={`px-2 py-0.5 text-[8px] font-bold rounded-md transition-all ${chartType === 'payout' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}>DY</button>
+                            <button 
+                                onClick={() => setChartType('equity')} 
+                                className={`flex items-center gap-1.5 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all whitespace-nowrap ${chartType === 'equity' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}
+                            >
+                                <Building2 className="w-3 h-3" />
+                                Patrimônio
+                            </button>
+                            <button 
+                                onClick={() => setChartType('payout')} 
+                                className={`flex items-center gap-1.5 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all whitespace-nowrap ${chartType === 'payout' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}
+                            >
+                                <Percent className="w-3 h-3" />
+                                DY
+                            </button>
                         </>
                     ) : (
                         <>
-                            <button onClick={() => setChartType('revenue_profit')} className={`px-2 py-0.5 text-[8px] font-bold rounded-md transition-all ${chartType === 'revenue_profit' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}>Lucros</button>
-                            <button onClick={() => setChartType('equity')} className={`px-2 py-0.5 text-[8px] font-bold rounded-md transition-all ${chartType === 'equity' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}>Patrimônio</button>
-                            <button onClick={() => setChartType('payout')} className={`px-2 py-0.5 text-[8px] font-bold rounded-md transition-all ${chartType === 'payout' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}>Payout</button>
-                            <button onClick={() => setChartType('revenues_by_type')} className={`px-2 py-0.5 text-[8px] font-bold rounded-md transition-all ${chartType === 'revenues_by_type' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400'}`}>Receita</button>
+                            <button 
+                                onClick={() => setChartType('revenue_profit')} 
+                                className={`flex items-center gap-1.5 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all whitespace-nowrap ${chartType === 'revenue_profit' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}
+                            >
+                                <TrendingUp className="w-3 h-3" />
+                                Lucros
+                            </button>
+                            <button 
+                                onClick={() => setChartType('equity')} 
+                                className={`flex items-center gap-1.5 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all whitespace-nowrap ${chartType === 'equity' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}
+                            >
+                                <Scale className="w-3 h-3" />
+                                Patrimônio
+                            </button>
+                            <button 
+                                onClick={() => setChartType('payout')} 
+                                className={`flex items-center gap-1.5 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all whitespace-nowrap ${chartType === 'payout' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}
+                            >
+                                <Percent className="w-3 h-3" />
+                                Payout
+                            </button>
+                            <button 
+                                onClick={() => setChartType('revenues_by_type')} 
+                                className={`flex items-center gap-1.5 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all whitespace-nowrap ${chartType === 'revenues_by_type' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}
+                            >
+                                <PieChart className="w-3 h-3" />
+                                Receita
+                            </button>
                         </>
                     )}
                 </div>
@@ -1333,19 +1359,43 @@ const Investidor10ChartsSection: React.FC<Investidor10ChartsSectionProps> = ({ t
                         {chartType === 'revenues_by_type' ? renderPieChart() : (
                             <ResponsiveContainer width="100%" height="100%">
                                 <ComposedChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 5 }}>
-                                    <XAxis dataKey="label" tick={{ fontSize: 9, fontWeight: 700, fill: '#71717a' }} tickLine={false} axisLine={false} />
+                                    <defs>
+                                        <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="0%" stopColor={currentChart.barColor} stopOpacity={1} />
+                                            <stop offset="100%" stopColor={currentChart.barColor} stopOpacity={0.6} />
+                                        </linearGradient>
+                                        <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="0%" stopColor={currentChart.areaColor} stopOpacity={0.2} />
+                                            <stop offset="100%" stopColor={currentChart.areaColor} stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.05} />
+                                    <XAxis dataKey="label" tick={{ fontSize: 9, fontWeight: 700, fill: '#71717a' }} tickLine={false} axisLine={false} dy={10} />
                                     <YAxis yAxisId="left" orientation="left" tick={{ fontSize: 9, fontWeight: 700, fill: '#71717a' }} tickLine={false} axisLine={false} tickFormatter={(val) => chartType === 'payout' ? `${val}%` : formatCompactBRL(val)} />
                                     {chartType !== 'equity' && <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 9, fontWeight: 700, fill: '#71717a' }} tickLine={false} axisLine={false} tickFormatter={(val) => chartType === 'payout' ? `${val}%` : formatCompactBRL(val)} />}
                                     <Tooltip 
-                                        contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '12px', fontSize: '10px' }} 
-                                        labelStyle={{ color: '#a1a1aa' }} 
+                                        cursor={{ fill: 'rgba(255, 255, 255, 0.03)' }}
+                                        contentStyle={{ backgroundColor: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '10px', backdropFilter: 'blur(8px)' }} 
+                                        labelStyle={{ color: '#a1a1aa', fontWeight: 'bold', marginBottom: '4px' }} 
                                         formatter={(value: number, name: string) => {
                                             const isPercent = name === 'payout' || name === 'dy';
-                                            return [isPercent ? `${value.toFixed(2)}%` : formatCompactBRL(value), null];
+                                            const label = name === 'revenue' ? 'Receita' : name === 'profit' ? 'Lucro' : name === 'equity' ? 'Patrimônio' : name === 'payout' ? 'Payout' : 'DY';
+                                            return [isPercent ? `${value.toFixed(2)}%` : formatCompactBRL(value), label];
                                         }} 
                                     />
-                                    <Bar yAxisId="left" dataKey={currentChart.barKey} fill={currentChart.barColor} radius={[4, 4, 0, 0]} />
-                                    {currentChart.areaKey && <Area yAxisId={chartType === 'equity' ? 'left' : 'right'} dataKey={currentChart.areaKey} fill={currentChart.areaColor} stroke={currentChart.areaColor} fillOpacity={0.1} strokeWidth={2} />}
+                                    <Bar yAxisId="left" dataKey={currentChart.barKey} fill="url(#barGradient)" radius={[4, 4, 0, 0]} barSize={20} />
+                                    {currentChart.areaKey && (
+                                        <Area 
+                                            yAxisId={chartType === 'equity' ? 'left' : 'right'} 
+                                            type="monotone"
+                                            dataKey={currentChart.areaKey} 
+                                            fill="url(#areaGradient)" 
+                                            stroke={currentChart.areaColor} 
+                                            fillOpacity={1} 
+                                            strokeWidth={2} 
+                                            animationDuration={1500}
+                                        />
+                                    )}
                                 </ComposedChart>
                             </ResponsiveContainer>
                         )}
@@ -1670,18 +1720,20 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends = [], inco
                             </div>
                             
                             <div className="flex items-center gap-2">
-                                <button 
+                                <motion.button 
+                                    whileTap={{ scale: 0.9 }}
                                     onClick={() => onAssetRefresh && onAssetRefresh(asset.ticker)} 
-                                    className="w-11 h-11 bg-zinc-50 dark:bg-zinc-900 rounded-2xl flex items-center justify-center text-zinc-400 hover:text-indigo-500 transition-all active:scale-90 border border-zinc-100 dark:border-zinc-800 shadow-sm"
+                                    className="w-11 h-11 bg-zinc-50 dark:bg-zinc-900 rounded-2xl flex items-center justify-center text-zinc-400 hover:text-indigo-500 transition-all border border-zinc-100 dark:border-zinc-800 shadow-sm"
                                 >
                                     <RefreshCcw className="w-4 h-4" />
-                                </button>
-                                <button 
+                                </motion.button>
+                                <motion.button 
+                                    whileTap={{ scale: 0.9 }}
                                     onClick={onClose}
-                                    className="w-11 h-11 bg-zinc-50 dark:bg-zinc-900 rounded-2xl flex items-center justify-center text-zinc-400 hover:text-rose-500 transition-all active:scale-90 border border-zinc-100 dark:border-zinc-800 shadow-sm"
+                                    className="w-11 h-11 bg-zinc-50 dark:bg-zinc-900 rounded-2xl flex items-center justify-center text-zinc-400 hover:text-rose-500 transition-all border border-zinc-100 dark:border-zinc-800 shadow-sm"
                                 >
                                     <X className="w-5 h-5" />
-                                </button>
+                                </motion.button>
                             </div>
                         </div>
                     </div>
@@ -1690,18 +1742,39 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends = [], inco
                         ref={scrollContainerRef}
                         className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 pb-24 scroll-smooth bg-zinc-50 dark:bg-zinc-900"
                     >
-                        <div className="space-y-6 max-w-3xl mx-auto">
+                        <motion.div 
+                            className="space-y-6 max-w-3xl mx-auto"
+                            initial="hidden"
+                            animate="visible"
+                            variants={{
+                                visible: { transition: { staggerChildren: 0.1 } }
+                            }}
+                        >
                             
                             {/* SEÇÃO: SUA POSIÇÃO */}
                             {!isWatchlist && (
-                                <div id="section-OVERVIEW" className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32">
+                                <motion.div 
+                                    id="section-OVERVIEW" 
+                                    className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32"
+                                    variants={{
+                                        hidden: { opacity: 0, y: 20 },
+                                        visible: { opacity: 1, y: 0 }
+                                    }}
+                                >
                                     <SectionHeader title="Sua Posição" icon={Wallet} />
                                     <PositionSummaryCard asset={asset} privacyMode={privacyMode} />
-                                </div>
+                                </motion.div>
                             )}
                             
                             {/* SEÇÃO: COTAÇÃO & PERFORMANCE */}
-                            <div id={isWatchlist ? "section-OVERVIEW" : "section-CHARTS"} className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32">
+                            <motion.div 
+                                id={isWatchlist ? "section-OVERVIEW" : "section-CHARTS"} 
+                                className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32"
+                                variants={{
+                                    hidden: { opacity: 0, y: 20 },
+                                    visible: { opacity: 1, y: 0 }
+                                }}
+                            >
                                 <SectionHeader title="Performance" icon={TrendingUp} />
                                 <PriceHistoryChart 
                                     fullData={historyData} 
@@ -1712,10 +1785,17 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends = [], inco
                                     onRangeChange={setRange}
                                     averagePrice={!isWatchlist ? asset.averagePrice : undefined}
                                 />
-                            </div>
+                            </motion.div>
 
                             {/* SEÇÃO: DADOS FUNDAMENTAIS */}
-                            <div id="section-FUNDAMENTALS" className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32">
+                            <motion.div 
+                                id="section-FUNDAMENTALS" 
+                                className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32"
+                                variants={{
+                                    hidden: { opacity: 0, y: 20 },
+                                    visible: { opacity: 1, y: 0 }
+                                }}
+                            >
                                 <SectionHeader title="Análise Fundamentalista" icon={List} />
                                 <div className="space-y-8">
                                     {asset.assetType !== 'FII' && (
@@ -1726,10 +1806,17 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends = [], inco
                                         <ValuationCard asset={asset} />
                                     </div>
                                 </div>
-                            </div>
+                            </motion.div>
 
                             {/* SEÇÃO: PROVENTOS */}
-                            <div id="section-INCOME" className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32">
+                            <motion.div 
+                                id="section-INCOME" 
+                                className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32"
+                                variants={{
+                                    hidden: { opacity: 0, y: 20 },
+                                    visible: { opacity: 1, y: 0 }
+                                }}
+                            >
                                 <SectionHeader title="Dividendos & Proventos" icon={Coins} />
                                 <IncomeAnalysisSection 
                                     asset={asset} 
@@ -1737,28 +1824,48 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends = [], inco
                                     marketHistory={assetMarketHistory}
                                     isWatchlist={isWatchlist}
                                 />
-                            </div>
+                            </motion.div>
 
                             {/* SEÇÃO: RENTABILIDADE COMPARADA */}
-                            <div id="section-CHARTS-EXTRA" className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32">
+                            <motion.div 
+                                id="section-CHARTS-EXTRA" 
+                                className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32"
+                                variants={{
+                                    hidden: { opacity: 0, y: 20 },
+                                    visible: { opacity: 1, y: 0 }
+                                }}
+                            >
                                 <SectionHeader title="Comparativo de Mercado" icon={Activity} />
                                 <ComparativeChart ticker={asset.ticker} type={asset.assetType} />
-                            </div>
+                            </motion.div>
 
                             {/* SEÇÃO: EVOLUÇÃO FUNDAMENTALISTA */}
-                            <div className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32">
+                            <motion.div 
+                                className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32"
+                                variants={{
+                                    hidden: { opacity: 0, y: 20 },
+                                    visible: { opacity: 1, y: 0 }
+                                }}
+                            >
                                 <SectionHeader title="Evolução Histórica" icon={Activity} />
                                 <Investidor10ChartsSection ticker={asset.ticker} assetType={asset.assetType} />
-                            </div>
+                            </motion.div>
 
                             {/* SEÇÃO: PORTFÓLIO FÍSICO */}
                             {asset.properties && asset.properties.length > 0 && (
-                                <div id="section-PROPERTIES" className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32">
+                                <motion.div 
+                                    id="section-PROPERTIES" 
+                                    className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32"
+                                    variants={{
+                                        hidden: { opacity: 0, y: 20 },
+                                        visible: { opacity: 1, y: 0 }
+                                    }}
+                                >
                                     <SectionHeader title="Portfólio de Imóveis" icon={Building2} />
                                     <PropertiesAnalysis properties={asset.properties} />
-                                </div>
+                                </motion.div>
                             )}
-                        </div>
+                        </motion.div>
                     </div>
                 </div>
             )}

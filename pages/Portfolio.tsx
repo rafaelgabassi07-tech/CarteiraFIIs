@@ -1,5 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { AssetPosition, AssetType, DividendReceipt, Transaction } from '../types';
 import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, BarChart3, PieChart, Coins, DollarSign, Building2, FileText, MapPin, Zap, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, SquareStack, Map as MapIcon, CandlestickChart, LineChart as LineChartIcon, Award, RefreshCcw, ArrowLeft, Briefcase, MoreHorizontal, LayoutGrid, List, Activity, Scale, Percent, ChevronDown, ChevronUp, ListFilter, ChevronRight, Info } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
@@ -1333,7 +1334,11 @@ const AssetCard = ({ asset, maxVal, totalVal, privacyMode, onClick }: { asset: A
     const relativePercent = maxVal > 0 ? (currentVal / maxVal) * 100 : 0;
 
     return (
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 shadow-sm overflow-hidden transition-all duration-300 relative group">
+        <motion.div 
+            className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 shadow-sm overflow-hidden transition-all duration-300 relative group"
+            whileHover={{ y: -2, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)" }}
+            whileTap={{ scale: 0.98 }}
+        >
             {/* Progress Bar Background - More subtle */}
             <div className="absolute bottom-0 left-0 h-0.5 bg-indigo-500/10 dark:bg-indigo-400/10 transition-all duration-1000" style={{ width: `${relativePercent}%` }}></div>
 
@@ -1413,7 +1418,7 @@ const AssetCard = ({ asset, maxVal, totalVal, privacyMode, onClick }: { asset: A
                     </div>
                 </div>
             </div>
-        </div>
+        </motion.div>
     );
 }
 
@@ -1611,18 +1616,32 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
                                 <Building2 className="w-4 h-4 text-indigo-500" />
                                 <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest">Fundos Imobiliários ({groupedAssets.fiis.length})</h3>
                             </div>
-                            <div className="space-y-2">
+                            <motion.div 
+                                className="space-y-2"
+                                initial="hidden"
+                                animate="visible"
+                                variants={{
+                                    visible: { transition: { staggerChildren: 0.05 } }
+                                }}
+                            >
                                 {groupedAssets.fiis.map(asset => (
-                                    <AssetCard 
-                                        key={asset.ticker} 
-                                        asset={asset} 
-                                        maxVal={groupedAssets.maxVal} 
-                                        totalVal={groupedAssets.totalVal}
-                                        privacyMode={privacyMode} 
-                                        onClick={() => setSelectedTicker(asset.ticker)} 
-                                    />
+                                    <motion.div
+                                        key={asset.ticker}
+                                        variants={{
+                                            hidden: { opacity: 0, y: 10 },
+                                            visible: { opacity: 1, y: 0 }
+                                        }}
+                                    >
+                                        <AssetCard 
+                                            asset={asset} 
+                                            maxVal={groupedAssets.maxVal} 
+                                            totalVal={groupedAssets.totalVal}
+                                            privacyMode={privacyMode} 
+                                            onClick={() => setSelectedTicker(asset.ticker)} 
+                                        />
+                                    </motion.div>
                                 ))}
-                            </div>
+                            </motion.div>
                         </div>
                     )}
 
@@ -1633,18 +1652,32 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
                                 <TrendingUp className="w-4 h-4 text-sky-500" />
                                 <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest">Ações ({groupedAssets.stocks.length})</h3>
                             </div>
-                            <div className="space-y-2">
+                            <motion.div 
+                                className="space-y-2"
+                                initial="hidden"
+                                animate="visible"
+                                variants={{
+                                    visible: { transition: { staggerChildren: 0.05 } }
+                                }}
+                            >
                                 {groupedAssets.stocks.map(asset => (
-                                    <AssetCard 
-                                        key={asset.ticker} 
-                                        asset={asset} 
-                                        maxVal={groupedAssets.maxVal} 
-                                        totalVal={groupedAssets.totalVal}
-                                        privacyMode={privacyMode} 
-                                        onClick={() => setSelectedTicker(asset.ticker)} 
-                                    />
+                                    <motion.div
+                                        key={asset.ticker}
+                                        variants={{
+                                            hidden: { opacity: 0, y: 10 },
+                                            visible: { opacity: 1, y: 0 }
+                                        }}
+                                    >
+                                        <AssetCard 
+                                            asset={asset} 
+                                            maxVal={groupedAssets.maxVal} 
+                                            totalVal={groupedAssets.totalVal}
+                                            privacyMode={privacyMode} 
+                                            onClick={() => setSelectedTicker(asset.ticker)} 
+                                        />
+                                    </motion.div>
                                 ))}
-                            </div>
+                            </motion.div>
                         </div>
                     )}
                 </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Header, BottomNav, ChangelogModal, NotificationsModal, ConfirmationModal, InstallPromptModal, UpdateReportModal } from './components/Layout';
 import { SplashScreen } from './components/SplashScreen';
 import { Home } from './pages/Home';
@@ -816,16 +817,23 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-primary-light dark:bg-primary-dark text-zinc-900 dark:text-zinc-100 pb-safe">
       <SplashScreen finishLoading={true} realProgress={100} />
       
-      {toast && ( 
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[3000] w-full max-w-sm px-4">
-            <div className={`flex items-center gap-3 p-4 rounded-xl shadow-xl border-l-[6px] anim-fade-in-up bg-white dark:bg-slate-900 border-y border-r border-slate-100 dark:border-slate-800 ${toast.type === 'success' ? 'border-l-emerald-500' : toast.type === 'error' ? 'border-l-rose-500' : 'border-l-sky-500'}`}>
-               <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${toast.type === 'success' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : toast.type === 'error' ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-600' : 'bg-sky-100 dark:bg-sky-900/30 text-sky-600'}`}>
-                 {toast.type === 'info' ? <Info className="w-4 h-4" /> : toast.type === 'error' ? <AlertTriangle className="w-4 h-4" /> : <Check className="w-4 h-4" />}
-               </div>
-               <div className="min-w-0"><p className="text-xs font-bold text-slate-900 dark:text-white leading-tight">{toast.text}</p></div>
-            </div>
-        </div> 
-      )}
+      <AnimatePresence>
+        {toast && ( 
+          <motion.div 
+            initial={{ opacity: 0, y: -50, x: '-50%' }}
+            animate={{ opacity: 1, y: 0, x: '-50%' }}
+            exit={{ opacity: 0, y: -50, x: '-50%' }}
+            className="fixed top-6 left-1/2 z-[3000] w-full max-w-sm px-4"
+          >
+              <div className={`flex items-center gap-3 p-4 rounded-xl shadow-xl border-l-[6px] bg-white dark:bg-slate-900 border-y border-r border-slate-100 dark:border-slate-800 ${toast.type === 'success' ? 'border-l-emerald-500' : toast.type === 'error' ? 'border-l-rose-500' : 'border-l-sky-500'}`}>
+                 <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${toast.type === 'success' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : toast.type === 'error' ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-600' : 'bg-sky-100 dark:bg-sky-900/30 text-sky-600'}`}>
+                   {toast.type === 'info' ? <Info className="w-4 h-4" /> : toast.type === 'error' ? <AlertTriangle className="w-4 h-4" /> : <Check className="w-4 h-4" />}
+                 </div>
+                 <div className="min-w-0"><p className="text-xs font-bold text-slate-900 dark:text-white leading-tight">{toast.text}</p></div>
+              </div>
+          </motion.div> 
+        )}
+      </AnimatePresence>
 
         <>
             <Header 
@@ -845,53 +853,78 @@ const App: React.FC = () => {
             />
             
             <main className="max-w-xl mx-auto pt-[4.5rem] pb-32 min-h-screen px-4">
-              {showSettings ? (
-                <div className="pt-4">
-                  <MemoizedSettings 
-                      onLogout={handleLogout} user={session.user} transactions={transactions} onImportTransactions={setTransactions} 
-                      dividends={dividends} onImportDividends={setDividends} onResetApp={handleSoftReset} 
-                      theme={theme} onSetTheme={setTheme} accentColor={accentColor} onSetAccentColor={setAccentColor} 
-                      privacyMode={privacyMode} onSetPrivacyMode={setPrivacyMode} appVersion={APP_VERSION} 
-                      updateAvailable={isUpdateAvailable} onCheckUpdates={checkForUpdates} 
-                      onShowChangelog={handleShowChangelog} pushEnabled={pushEnabled} 
-                      onRequestPushPermission={handleRequestPushPermission} onSyncAll={handleSyncAll} 
-                      onForceUpdate={handleForceUpdate} currentVersionDate={currentVersionDate}
-                      services={services} onCheckConnection={checkServiceHealth} isCheckingConnection={isCheckingServices}
-                      showToast={showToast}
-                  />
-                </div>
-              ) : (
-                <div key={currentTab} className="anim-page-enter">
-                  {currentTab === 'home' && (
-                      <Home 
-                          {...memoizedPortfolioData} 
-                          transactions={transactions}
-                          marketDividends={dividends} // Passa dados brutos para a Agenda
-                          totalAppreciation={memoizedPortfolioData.balance - memoizedPortfolioData.invested} 
-                          privacyMode={privacyMode} 
-                          onViewAsset={handleViewAsset}
-                          insights={insights}
-                      />
-                  )}
-                  {currentTab === 'portfolio' && (
-                      <Portfolio 
-                          portfolio={memoizedPortfolioData.portfolio} 
-                          dividends={memoizedPortfolioData.dividendReceipts} 
-                          marketDividends={dividends} // Passa dados brutos para o gráfico de histórico
-                          privacyMode={privacyMode} 
-                          onAssetRefresh={refreshSingleAsset} 
-                          headerVisible={isHeaderVisible} 
-                          targetAsset={targetAssetTicker} 
-                          onClearTarget={() => setTargetAssetTicker(null)} 
-                          transactions={transactions}
-                          currentBalance={memoizedPortfolioData.balance}
-                      />
-                  )}
-                  {currentTab === 'transactions' && <Transactions transactions={transactions} onAddTransaction={handleAddTransaction} onUpdateTransaction={handleUpdateTransaction} onRequestDeleteConfirmation={handleDeleteTransaction} privacyMode={privacyMode} />}
-                  {currentTab === 'watchlist' && <Watchlist showToast={showToast} />}
-                  {currentTab === 'news' && <MemoizedNews transactions={transactions} />}
-                </div>
-              )}
+              <AnimatePresence mode="wait">
+                {showSettings ? (
+                  <motion.div 
+                    key="settings"
+                    initial={{ opacity: 0, x: 30, filter: 'blur(10px)' }}
+                    animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+                    exit={{ opacity: 0, x: -30, filter: 'blur(10px)' }}
+                    transition={{ 
+                      type: 'spring', 
+                      damping: 28, 
+                      stiffness: 220,
+                      mass: 0.8
+                    }}
+                    className="pt-4"
+                  >
+                    <MemoizedSettings 
+                        onLogout={handleLogout} user={session.user} transactions={transactions} onImportTransactions={setTransactions} 
+                        dividends={dividends} onImportDividends={setDividends} onResetApp={handleSoftReset} 
+                        theme={theme} onSetTheme={setTheme} accentColor={accentColor} onSetAccentColor={setAccentColor} 
+                        privacyMode={privacyMode} onSetPrivacyMode={setPrivacyMode} appVersion={APP_VERSION} 
+                        updateAvailable={isUpdateAvailable} onCheckUpdates={checkForUpdates} 
+                        onShowChangelog={handleShowChangelog} pushEnabled={pushEnabled} 
+                        onRequestPushPermission={handleRequestPushPermission} onSyncAll={handleSyncAll} 
+                        onForceUpdate={handleForceUpdate} currentVersionDate={currentVersionDate}
+                        services={services} onCheckConnection={checkServiceHealth} isCheckingConnection={isCheckingServices}
+                        showToast={showToast}
+                    />
+                  </motion.div>
+                ) : (
+                  <motion.div 
+                    key={currentTab}
+                    initial={{ opacity: 0, scale: 0.96, y: 15, filter: 'blur(8px)' }}
+                    animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }}
+                    exit={{ opacity: 0, scale: 0.96, y: -15, filter: 'blur(8px)' }}
+                    transition={{ 
+                      type: 'spring', 
+                      damping: 25, 
+                      stiffness: 200,
+                      mass: 1
+                    }}
+                  >
+                    {currentTab === 'home' && (
+                        <Home 
+                            {...memoizedPortfolioData} 
+                            transactions={transactions}
+                            marketDividends={dividends} // Passa dados brutos para a Agenda
+                            totalAppreciation={memoizedPortfolioData.balance - memoizedPortfolioData.invested} 
+                            privacyMode={privacyMode} 
+                            onViewAsset={handleViewAsset}
+                            insights={insights}
+                        />
+                    )}
+                    {currentTab === 'portfolio' && (
+                        <Portfolio 
+                            portfolio={memoizedPortfolioData.portfolio} 
+                            dividends={memoizedPortfolioData.dividendReceipts} 
+                            marketDividends={dividends} // Passa dados brutos para o gráfico de histórico
+                            privacyMode={privacyMode} 
+                            onAssetRefresh={refreshSingleAsset} 
+                            headerVisible={isHeaderVisible} 
+                            targetAsset={targetAssetTicker} 
+                            onClearTarget={() => setTargetAssetTicker(null)} 
+                            transactions={transactions}
+                            currentBalance={memoizedPortfolioData.balance}
+                        />
+                    )}
+                    {currentTab === 'transactions' && <Transactions transactions={transactions} onAddTransaction={handleAddTransaction} onUpdateTransaction={handleUpdateTransaction} onRequestDeleteConfirmation={handleDeleteTransaction} privacyMode={privacyMode} />}
+                    {currentTab === 'watchlist' && <Watchlist showToast={showToast} />}
+                    {currentTab === 'news' && <MemoizedNews transactions={transactions} />}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </main>
             
             <BottomNav currentTab={currentTab} onTabChange={setCurrentTab} isVisible={!showSettings} />

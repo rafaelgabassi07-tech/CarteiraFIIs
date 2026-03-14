@@ -3,6 +3,8 @@ import { TrendingUp, TrendingDown, Minus, Globe, DollarSign, Percent } from 'luc
 import { getQuotes } from '../services/brapiService';
 import axios from 'axios';
 
+import { motion } from 'framer-motion';
+
 interface MarketIndex {
     ticker: string;
     name: string;
@@ -14,7 +16,6 @@ interface MarketIndex {
 export const MarketTicker: React.FC = () => {
     const [indices, setIndices] = useState<MarketIndex[]>([]);
     const [loading, setLoading] = useState(true);
-    const [paused, setPaused] = useState(false);
 
     useEffect(() => {
         const fetchIndices = async () => {
@@ -96,20 +97,29 @@ export const MarketTicker: React.FC = () => {
     if (loading || indices.length === 0) return null;
 
     // Duplicate list for seamless loop
-    const displayIndices = [...indices, ...indices, ...indices, ...indices];
+    const displayIndices = [...indices, ...indices];
 
     return (
         <div 
             className="w-full overflow-hidden bg-transparent py-2 relative group z-40 mb-2"
-            onMouseEnter={() => setPaused(true)}
-            onMouseLeave={() => setPaused(false)}
         >
             <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-zinc-50 dark:from-zinc-950 to-transparent z-10 pointer-events-none"></div>
             <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-zinc-50 dark:from-zinc-950 to-transparent z-10 pointer-events-none"></div>
 
-            <div 
-                className={`flex items-center gap-6 w-max ${paused ? '' : 'animate-marquee'}`}
-                style={{ animationPlayState: paused ? 'paused' : 'running' }}
+            <motion.div 
+                className="flex items-center gap-6 w-max"
+                animate={{
+                    x: [0, -100 * indices.length],
+                }}
+                transition={{
+                    x: {
+                        repeat: Infinity,
+                        repeatType: "loop",
+                        duration: 30,
+                        ease: "linear",
+                    },
+                }}
+                whileHover={{ animationPlayState: 'paused' }}
             >
                 {displayIndices.map((index, i) => (
                     <div key={`${index.ticker}-${i}`} className="flex items-center gap-3 shrink-0 select-none group/item transition-opacity hover:opacity-80 bg-white dark:bg-zinc-900 px-3 py-1.5 rounded-full border border-zinc-200/50 dark:border-zinc-800/50 shadow-sm">
@@ -129,7 +139,7 @@ export const MarketTicker: React.FC = () => {
                         </div>
                     </div>
                 ))}
-            </div>
+            </motion.div>
         </div>
     );
 };

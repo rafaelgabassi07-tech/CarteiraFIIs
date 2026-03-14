@@ -33,8 +33,15 @@ async function getIds(ticker: string, type: string) {
         const scripts = $('script').text();
         
         const idMatch = scripts.match(/id:\s*(\d+)/);
-        const companyIdMatch = scripts.match(/companyId:\s*['"]?(\d+)['"]?/) || scripts.match(/company_id:\s*['"]?(\d+)['"]?/) || scripts.match(/window\.companyId\s*=\s*(\d+)/);
-        const tickerIdMatch = scripts.match(/tickerId:\s*['"]?(\d+)['"]?/) || scripts.match(/ticker_id:\s*['"]?(\d+)['"]?/) || scripts.match(/window\.tickerId\s*=\s*(\d+)/);
+        const companyIdMatch = scripts.match(/companyId:\s*['"]?(\d+)['"]?/) || 
+                               scripts.match(/company_id:\s*['"]?(\d+)['"]?/) || 
+                               scripts.match(/window\.companyId\s*=\s*(\d+)/) ||
+                               data.match(/data-company-id="(\d+)"/);
+        
+        const tickerIdMatch = scripts.match(/tickerId:\s*['"]?(\d+)['"]?/) || 
+                              scripts.match(/ticker_id:\s*['"]?(\d+)['"]?/) || 
+                              scripts.match(/window\.tickerId\s*=\s*(\d+)/) ||
+                              data.match(/data-ticker-id="(\d+)"/);
         
         id = idMatch ? idMatch[1] : null;
         companyId = companyIdMatch ? companyIdMatch[1] : null;
@@ -43,6 +50,12 @@ async function getIds(ticker: string, type: string) {
         // Fallback to URL patterns if script search fails
         const revenueMatch = data.match(/\/api\/balancos\/receitaliquida\/chart\/(\d+)\//);
         revenueId = revenueMatch ? revenueMatch[1] : (companyId || id);
+
+        // If companyId is still null, try to find it in the payout chart link if present
+        if (!companyId) {
+            const payoutLinkMatch = data.match(/\/api\/acoes\/payout-chart\/(\d+)\//);
+            if (payoutLinkMatch) companyId = payoutLinkMatch[1];
+        }
 
         // Extract Receitas por tipo e por região
         const bussinesRevenuesMatch = data.match(/let companyBussinesRevenuesChartPie = (\{.*?\});/);
@@ -200,10 +213,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     const payoutEntry = Object.values(payoutMap).find((v: any) => String(v.year) === String(year)) as any;
                     const dyEntry = Object.values(dyMap).find((v: any) => String(v.year) === String(year)) as any;
                     
+                    const parseVal = (val: any) => {
+                        if (typeof val === 'number') return val;
+                        if (typeof val === 'string') return parseFloat(val.replace(',', '.'));
+                        return 0;
+                    };
+
                     return {
                         label: year,
-                        payout: payoutEntry ? payoutEntry.value : 0,
-                        dy: dyEntry ? parseFloat(dyEntry.value) : 0
+                        payout: payoutEntry ? parseVal(payoutEntry.value) : 0,
+                        dy: dyEntry ? parseVal(dyEntry.value) : 0
                     };
                 });
             }

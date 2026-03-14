@@ -1,35 +1,8 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from 'motion/react';
 import { Home, PieChart, ArrowRightLeft, Settings, ChevronLeft, Bell, Download, Trash2, Cloud, CloudOff, Loader2, AlertTriangle, Gift, Star, Inbox, RefreshCw, Smartphone, X, Check, Mail, Server, WifiOff, FileText, CheckCircle, Percent, TrendingUp, DollarSign, Activity, Newspaper, CloudLightning, Wifi, CircleHelp, Calendar, Award, Clock } from 'lucide-react';
 import { UpdateReportData } from '../types';
-
-const useAnimatedVisibility = (isOpen: boolean, duration: number) => {
-  const [isVisible, setIsVisible] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
-  const timeoutRef = useRef<number | null>(null);
-  
-  useEffect(() => {
-    if (isOpen) {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      setIsMounted(true);
-      // Double requestAnimationFrame ensures the element is in the DOM before adding the visible class
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          setIsVisible(true);
-        });
-      });
-    } else {
-      setIsVisible(false);
-      timeoutRef.current = window.setTimeout(() => {
-          setIsMounted(false);
-          timeoutRef.current = null;
-      }, duration);
-    }
-    return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current); };
-  }, [isOpen, duration]);
-
-  return { isMounted, isVisible };
-};
 
 export const InfoTooltip = ({ title, text }: { title: string, text: React.ReactNode }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -45,23 +18,39 @@ export const InfoTooltip = ({ title, text }: { title: string, text: React.ReactN
                 <CircleHelp className="w-3.5 h-3.5" strokeWidth={2} />
             </button>
             
-            {isOpen && createPortal(
-                <div className="fixed inset-0 z-[10000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm anim-fade-in" onClick={() => setIsOpen(false)}>
-            <div className="bg-white dark:bg-zinc-900 w-full max-w-sm p-6 rounded-3xl shadow-2xl anim-scale-in border border-zinc-100 dark:border-zinc-800" onClick={e => e.stopPropagation()}>
-                        <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mb-4 text-indigo-600 mx-auto border-4 border-white dark:border-zinc-900 shadow-sm">
-                            <CircleHelp className="w-6 h-6" />
-                        </div>
-                        <h3 className="text-lg font-bold text-center text-zinc-900 dark:text-white mb-2">{title}</h3>
-                        <div className="text-sm text-zinc-500 dark:text-zinc-400 text-center leading-relaxed mb-6 font-medium">
-                            {text}
-                        </div>
-                        <button onClick={() => setIsOpen(false)} className="w-full py-3.5 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold text-sm press-effect shadow-lg">
-                            Entendi
-                        </button>
-                    </div>
-                </div>,
-                document.body
-            )}
+            <AnimatePresence>
+                {isOpen && createPortal(
+                    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-6 isolate">
+                        <motion.div 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setIsOpen(false)}
+                            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                        />
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                            className="relative bg-white dark:bg-zinc-900 w-full max-w-sm p-6 rounded-3xl shadow-2xl border border-zinc-100 dark:border-zinc-800" 
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mb-4 text-indigo-600 mx-auto border-4 border-white dark:border-zinc-900 shadow-sm">
+                                <CircleHelp className="w-6 h-6" />
+                            </div>
+                            <h3 className="text-lg font-bold text-center text-zinc-900 dark:text-white mb-2">{title}</h3>
+                            <div className="text-sm text-zinc-500 dark:text-zinc-400 text-center leading-relaxed mb-6 font-medium">
+                                {text}
+                            </div>
+                            <button onClick={() => setIsOpen(false)} className="w-full py-3.5 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold text-sm press-effect shadow-lg">
+                                Entendi
+                            </button>
+                        </motion.div>
+                    </div>,
+                    document.body
+                )}
+            </AnimatePresence>
         </>
     );
 };
@@ -100,8 +89,11 @@ export const Header: React.FC<HeaderProps> = ({
   title, subtitle, onSettingsClick, showBack, onBack, isRefreshing, onNotificationClick, notificationCount = 0, updateAvailable, onUpdateClick, cloudStatus = 'hidden', hideBorder = false, onRefresh, isVisible = true, headerIcon
 }) => {
   return (
-    <header 
-      className={`fixed top-0 left-0 right-0 z-40 transition-transform duration-500 cubic-bezier(0.16, 1, 0.3, 1) ${isVisible ? 'translate-y-0' : '-translate-y-full'}`}
+    <motion.header 
+      initial={false}
+      animate={{ y: isVisible ? 0 : -100 }}
+      transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+      className="fixed top-0 left-0 right-0 z-40"
     >
       <div className={`absolute inset-0 bg-primary-light/80 dark:bg-primary-dark/80 backdrop-blur-xl border-b border-zinc-200/50 dark:border-zinc-800/50 transition-opacity duration-300 ${hideBorder ? 'opacity-0' : 'opacity-100'}`}></div>
 
@@ -110,14 +102,26 @@ export const Header: React.FC<HeaderProps> = ({
           
           <div className="flex items-center gap-3.5 min-w-0">
             {showBack ? (
-              <button onClick={onBack} className="flex items-center gap-1.5 text-zinc-900 dark:text-white -ml-2 press-effect">
+              <motion.button 
+                whileTap={{ scale: 0.95 }}
+                onClick={onBack} 
+                className="flex items-center gap-1.5 text-zinc-900 dark:text-white -ml-2 press-effect"
+              >
                 <ChevronLeft className="w-7 h-7" strokeWidth={2.5} />
                 <span className="text-xl font-black tracking-tight">Voltar</span>
-              </button>
+              </motion.button>
             ) : (
               <div className="flex flex-col justify-center">
                  <div className="flex items-center gap-3">
-                    {headerIcon && <div className="w-9 h-9 flex items-center justify-center anim-scale-in shrink-0 bg-zinc-100 dark:bg-zinc-800/50 rounded-xl border border-zinc-200/50 dark:border-zinc-700/50 shadow-sm">{headerIcon}</div>}
+                    {headerIcon && (
+                      <motion.div 
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        className="w-9 h-9 flex items-center justify-center shrink-0 bg-zinc-100 dark:bg-zinc-800/50 rounded-xl border border-zinc-200/50 dark:border-zinc-700/50 shadow-sm"
+                      >
+                        {headerIcon}
+                      </motion.div>
+                    )}
                     <h1 className="text-2xl font-black tracking-tight text-zinc-900 dark:text-white truncate leading-none">
                       {title}
                     </h1>
@@ -143,15 +147,26 @@ export const Header: React.FC<HeaderProps> = ({
              )}
 
              {updateAvailable && (
-               <button onClick={onUpdateClick} className="w-9 h-9 flex items-center justify-center rounded-full bg-indigo-500 text-white press-effect shadow-lg shadow-indigo-500/30 anim-scale-in">
+               <motion.button 
+                 initial={{ scale: 0.8, opacity: 0 }}
+                 animate={{ scale: 1, opacity: 1 }}
+                 onClick={onUpdateClick} 
+                 className="w-9 h-9 flex items-center justify-center rounded-full bg-indigo-500 text-white press-effect shadow-lg shadow-indigo-500/30"
+               >
                  <Download className="w-4 h-4" />
-               </button>
+               </motion.button>
              )}
 
              {onNotificationClick && !showBack && (
                <button onClick={onNotificationClick} className="w-9 h-9 flex items-center justify-center rounded-full text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors press-effect relative">
                  <Bell className="w-5 h-5" />
-                 {notificationCount > 0 && <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-white dark:border-black anim-scale-in"></span>}
+                 {notificationCount > 0 && (
+                   <motion.span 
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-white dark:border-black"
+                   />
+                 )}
                </button>
              )}
 
@@ -163,7 +178,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
       </div>
-    </header>
+    </motion.header>
   );
 };
 
@@ -183,37 +198,45 @@ const navItems = [
 
 export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange, isVisible = true }) => {
   return (
-    <div 
-        className="fixed bottom-6 left-0 right-0 z-[90] flex justify-center pointer-events-none transition-transform duration-500 cubic-bezier(0.16, 1, 0.3, 1)"
-        style={{ transform: isVisible ? 'translateY(0)' : 'translateY(200%)' }}
+    <motion.div 
+        initial={false}
+        animate={{ y: isVisible ? 0 : 150 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+        className="fixed bottom-6 left-0 right-0 z-[90] flex justify-center pointer-events-none"
     >
       <nav className="pointer-events-auto bg-zinc-900/80 dark:bg-zinc-900/80 backdrop-blur-2xl border border-white/10 rounded-full px-2 py-2 flex items-center gap-1 shadow-2xl shadow-black/40 ring-1 ring-white/5">
           {navItems.map((item) => {
             const isActive = currentTab === item.id;
             return (
-              <button
+              <motion.button
                 key={item.id}
                 onClick={() => onTabChange(item.id)}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.92 }}
                 className={`relative flex items-center justify-center w-12 h-12 rounded-full transition-all duration-300 group ${isActive ? 'bg-white text-black shadow-lg shadow-white/20' : 'text-zinc-400 hover:text-white hover:bg-white/10'}`}
               >
+                {isActive && (
+                  <motion.div 
+                    layoutId="nav-active"
+                    className="absolute inset-0 bg-white rounded-full"
+                    transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                  />
+                )}
                 <item.icon 
-                    className={`w-5 h-5 transition-all duration-300 ${isActive ? 'scale-100' : 'scale-100 group-active:scale-90'}`} 
+                    className={`relative z-10 w-5 h-5 transition-all duration-300 ${isActive ? 'scale-100' : 'scale-100 group-active:scale-90'}`} 
                     strokeWidth={isActive ? 2.5 : 2}
                 />
-              </button>
+              </motion.button>
             );
           })}
       </nav>
-    </div>
+    </motion.div>
   );
 };
 
 interface SwipeableModalProps { isOpen: boolean; onClose: () => void; children: React.ReactNode; className?: string; }
 
 export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose, children, className = 'h-[92dvh]' }) => {
-  const { isMounted, isVisible } = useAnimatedVisibility(isOpen, 400);
-  const [dragY, setDragY] = useState(0);
-
   // Scroll Lock Effect
   useEffect(() => {
     if (isOpen) {
@@ -231,7 +254,6 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
       window.scrollTo(0, parseInt(scrollY || '0') * -1);
     }
     return () => {
-      // Cleanup only if unmounting while open (edge case)
       if (isOpen) {
           const scrollY = document.body.style.top;
           document.body.style.overflow = '';
@@ -243,82 +265,121 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
     };
   }, [isOpen]);
 
-  if (!isMounted) return null;
+  return (
+    <AnimatePresence>
+      {isOpen && createPortal(
+        <div className="fixed inset-0 z-[9999] flex flex-col justify-end isolate">
+          <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+              onClick={onClose} 
+              className="absolute inset-0 bg-zinc-900/40 backdrop-blur-md"
+          />
+          
+          <motion.div
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ 
+              type: 'spring', 
+              damping: 32, 
+              stiffness: 320,
+              mass: 1,
+              restDelta: 0.001
+            }}
+            drag="y"
+            dragConstraints={{ top: 0 }}
+            dragElastic={0.2}
+            onDragEnd={(_, info) => {
+              if (info.offset.y > 150) onClose();
+            }}
+            className={`relative bg-zinc-50 dark:bg-zinc-900 w-full ${className} rounded-t-3xl shadow-2xl shadow-black/50 overflow-hidden flex flex-col ring-1 ring-black/5 dark:ring-white/5`}
+          >
+            <div className="w-full flex justify-center pt-3 pb-3 bg-zinc-50 dark:bg-zinc-900 shrink-0 cursor-grab active:cursor-grabbing touch-none z-10">
+              <div className="w-12 h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full transition-colors hover:bg-zinc-300 dark:hover:bg-zinc-700"></div>
+            </div>
 
-  return createPortal(
-    <div className={`fixed inset-0 z-[9999] flex flex-col justify-end isolate touch-none`}>
-      <div 
-          onClick={onClose} 
-          className="absolute inset-0 bg-zinc-900/40 backdrop-blur-md transition-opacity duration-500"
-          style={{ opacity: isVisible ? 1 : 0 }} 
-      ></div>
-      
-      <div
-        style={{
-            transform: isVisible ? `translateY(${dragY}px)` : 'translateY(100%)',
-            transition: dragY === 0 ? 'transform 500ms cubic-bezier(0.32, 0.72, 0, 1)' : 'none',
-        }}
-        className={`relative bg-zinc-50 dark:bg-zinc-900 w-full ${className} rounded-t-3xl shadow-2xl shadow-black/50 overflow-hidden flex flex-col ring-1 ring-black/5 dark:ring-white/5`}
-      >
-        <div className="w-full flex justify-center pt-3 pb-3 bg-zinc-50 dark:bg-zinc-900 shrink-0 cursor-grab active:cursor-grabbing touch-none z-10"
-             onTouchMove={(e) => {
-               // Simple drag logic
-               const val = e.touches[0].clientY - (window.innerHeight - (e.currentTarget.parentElement?.clientHeight || 0));
-               if(val > 0) setDragY(val);
-             }}
-             onTouchEnd={() => {
-               if(dragY > 150) onClose();
-               setDragY(0);
-             }}
-        >
-          <div className="w-12 h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full transition-colors hover:bg-zinc-300 dark:hover:bg-zinc-700"></div>
-        </div>
-
-        <div className="flex-1 min-h-0 w-full relative flex flex-col overflow-y-auto overscroll-contain">
-            {children}
-        </div>
-      </div>
-    </div>, document.body
+            <div className="flex-1 min-h-0 w-full relative flex flex-col overflow-y-auto overscroll-contain no-scrollbar">
+                {children}
+            </div>
+          </motion.div>
+        </div>, document.body
+      )}
+    </AnimatePresence>
   );
 };
 
 export const ConfirmationModal: React.FC<any> = ({ isOpen, title, message, onConfirm, onCancel }) => {
-    if (!isOpen) return null;
     return (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm anim-fade-in">
-             <div className="bg-white dark:bg-zinc-900 w-full max-w-xs p-6 rounded-3xl text-center shadow-2xl anim-scale-in">
-                 <div className="w-14 h-14 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mx-auto mb-4 text-amber-600">
-                     <AlertTriangle className="w-7 h-7" />
-                 </div>
-                 <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-2">{title}</h3>
-                 <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6">{message}</p>
-                 <div className="grid grid-cols-2 gap-3">
-                     <button onClick={onCancel} className="py-3.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold text-sm press-effect">Cancelar</button>
-                     <button onClick={onConfirm} className="py-3.5 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold text-sm press-effect shadow-lg">Confirmar</button>
-                 </div>
-             </div>
-        </div>
+        <AnimatePresence>
+            {isOpen && (
+                <div className="fixed inset-0 z-[10000] flex items-center justify-center p-6 isolate">
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={onCancel}
+                        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                    />
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                        className="relative bg-white dark:bg-zinc-900 w-full max-w-xs p-6 rounded-3xl text-center shadow-2xl border border-zinc-100 dark:border-zinc-800"
+                    >
+                        <div className="w-14 h-14 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mx-auto mb-4 text-amber-600">
+                            <AlertTriangle className="w-7 h-7" />
+                        </div>
+                        <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-2">{title}</h3>
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6">{message}</p>
+                        <div className="grid grid-cols-2 gap-3">
+                            <button onClick={onCancel} className="py-3.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold text-sm press-effect">Cancelar</button>
+                            <button onClick={onConfirm} className="py-3.5 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold text-sm press-effect shadow-lg">Confirmar</button>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
+        </AnimatePresence>
     )
 }
 
 export const InstallPromptModal: React.FC<any> = ({ isOpen, onInstall, onDismiss }) => {
-    if(!isOpen) return null;
     return (
-        <div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm anim-fade-in">
-            <div className="bg-white dark:bg-zinc-900 w-full max-w-sm p-6 rounded-3xl shadow-2xl anim-slide-up">
-                 <div className="flex items-start gap-4 mb-6">
-                     <div className="w-14 h-14 bg-gradient-to-br from-emerald-400 to-sky-500 rounded-2xl shadow-lg flex items-center justify-center text-white shrink-0">
-                         <Smartphone className="w-7 h-7" />
-                     </div>
-                     <div>
-                         <h3 className="text-xl font-bold text-zinc-900 dark:text-white">Instalar App</h3>
-                         <p className="text-sm text-zinc-500 mt-1">Adicione à tela inicial para melhor experiência.</p>
-                     </div>
-                 </div>
-                 <button onClick={onInstall} className="w-full py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-bold text-sm mb-3 press-effect shadow-xl">Instalar Agora</button>
-                 <button onClick={onDismiss} className="w-full py-2 text-zinc-400 font-medium text-xs">Agora não</button>
-            </div>
-        </div>
+        <AnimatePresence>
+            {isOpen && (
+                <div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center p-4 isolate">
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={onDismiss}
+                        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                    />
+                    <motion.div 
+                        initial={{ opacity: 0, y: 100, scale: 0.9 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 100, scale: 0.9 }}
+                        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                        className="relative bg-white dark:bg-zinc-900 w-full max-w-sm p-6 rounded-3xl shadow-2xl border border-zinc-100 dark:border-zinc-800"
+                    >
+                        <div className="flex items-start gap-4 mb-6">
+                            <div className="w-14 h-14 bg-gradient-to-br from-emerald-400 to-sky-500 rounded-2xl shadow-lg flex items-center justify-center text-white shrink-0">
+                                <Smartphone className="w-7 h-7" />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-bold text-zinc-900 dark:text-white">Instalar App</h3>
+                                <p className="text-sm text-zinc-500 mt-1">Adicione à tela inicial para melhor experiência.</p>
+                            </div>
+                        </div>
+                        <button onClick={onInstall} className="w-full py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-bold text-sm mb-3 press-effect shadow-xl">Instalar Agora</button>
+                        <button onClick={onDismiss} className="w-full py-2 text-zinc-400 font-medium text-xs">Agora não</button>
+                    </motion.div>
+                </div>
+            )}
+        </AnimatePresence>
     );
 };
 

@@ -1,6 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from 'motion/react';
 import { TrendingUp } from 'lucide-react';
 
 interface SplashScreenProps {
@@ -9,8 +10,6 @@ interface SplashScreenProps {
 }
 
 export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realProgress }) => {
-  const [shouldRender, setShouldRender] = useState(true);
-  const [isExiting, setIsExiting] = useState(false);
   const [loadingText, setLoadingText] = useState('Iniciando...');
 
   useEffect(() => {
@@ -19,73 +18,83 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
     if (realProgress >= 100) setLoadingText('Pronto!');
   }, [realProgress]);
 
-  useEffect(() => {
-    if (finishLoading) {
-      setIsExiting(true);
-      const timer = setTimeout(() => {
-        setShouldRender(false);
-      }, 800); 
-      return () => clearTimeout(timer);
-    }
-  }, [finishLoading]);
-
-  if (!shouldRender) return null;
-
   return createPortal(
-    <div 
-        className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center transition-all duration-700 ease-in-out ${isExiting ? 'opacity-0 scale-110 pointer-events-none blur-sm' : 'opacity-100 scale-100 blur-0'} bg-zinc-50 dark:bg-zinc-950`}
-    >
-        <div className="flex flex-col items-center relative">
-            
-            {/* BRAND COMPOSITION */}
-            <div className="flex items-center justify-center gap-1 mb-8 relative select-none scale-110">
-                <div className="w-[58px] h-[68px] flex items-center justify-center relative z-10 animate-[float_4s_ease-in-out_infinite]">
-                   <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto drop-shadow-[0_12px_24px_rgba(14,165,233,0.3)]">
-                        <defs>
-                            <linearGradient id="logo_grad_splash" x1="128" y1="40" x2="384" y2="472" gradientUnits="userSpaceOnUse">
-                                <stop offset="0%" stopColor="#10b981"/>
-                                <stop offset="50%" stopColor="#0ea5e9"/>
-                                <stop offset="100%" stopColor="#4f46e5"/>
-                            </linearGradient>
-                        </defs>
-                        <path d="M256 64L464 272H384L256 144L128 272H48L256 64Z" fill="url(#logo_grad_splash)"/>
-                        <path d="M176 296L256 248L336 296V312H176V296Z" fill="url(#logo_grad_splash)"/>
-                        <rect x="184" y="328" width="32" height="104" rx="6" fill="url(#logo_grad_splash)"/>
-                        <rect x="240" y="328" width="32" height="104" rx="6" fill="url(#logo_grad_splash)"/>
-                        <rect x="296" y="328" width="32" height="104" rx="6" fill="url(#logo_grad_splash)"/>
-                        <path d="M160 448H352C356.418 448 360 451.582 360 456V472H152V456C152 451.582 155.582 448 160 448Z" fill="url(#logo_grad_splash)"/>
-                   </svg>
-                </div>
-                <span className="font-display text-[42px] font-extrabold tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-zinc-700 via-zinc-800 to-zinc-600 dark:from-white dark:via-zinc-200 dark:to-zinc-400 mt-1 -ml-1 drop-shadow-sm">
-                    NVEST
-                </span>
-            </div>
-
-            <div className="flex flex-col items-center gap-4 w-64">
-                <div className="h-1.5 w-full bg-zinc-100 dark:bg-zinc-900 rounded-full overflow-hidden border border-zinc-200 dark:border-zinc-800/50">
-                    <div 
-                        className="h-full bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 transition-all duration-500 ease-out shadow-[0_0_15px_rgba(99,102,241,0.5)] relative" 
-                        style={{ width: `${realProgress}%` }}
+    <AnimatePresence>
+      {!finishLoading && (
+        <motion.div 
+            initial={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
+            transition={{ duration: 0.8, ease: [0.25, 0.8, 0.25, 1] }}
+            className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-zinc-50 dark:bg-zinc-950"
+        >
+            <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.6 }}
+                className="flex flex-col items-center relative"
+            >
+                
+                {/* BRAND COMPOSITION */}
+                <div className="flex items-center justify-center gap-1 mb-8 relative select-none scale-110">
+                    <motion.div 
+                        animate={{ y: [0, -6, 0] }}
+                        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                        className="w-[58px] h-[68px] flex items-center justify-center relative z-10"
                     >
-                        <div className="absolute inset-0 bg-white/30 animate-[shimmer_2s_infinite]"></div>
+                       <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto drop-shadow-[0_12px_24px_rgba(14,165,233,0.3)]">
+                            <defs>
+                                <linearGradient id="logo_grad_splash" x1="128" y1="40" x2="384" y2="472" gradientUnits="userSpaceOnUse">
+                                    <stop offset="0%" stopColor="#10b981"/>
+                                    <stop offset="50%" stopColor="#0ea5e9"/>
+                                    <stop offset="100%" stopColor="#4f46e5"/>
+                                </linearGradient>
+                            </defs>
+                            <path d="M256 64L464 272H384L256 144L128 272H48L256 64Z" fill="url(#logo_grad_splash)"/>
+                            <path d="M176 296L256 248L336 296V312H176V296Z" fill="url(#logo_grad_splash)"/>
+                            <rect x="184" y="328" width="32" height="104" rx="6" fill="url(#logo_grad_splash)"/>
+                            <rect x="240" y="328" width="32" height="104" rx="6" fill="url(#logo_grad_splash)"/>
+                            <rect x="296" y="328" width="32" height="104" rx="6" fill="url(#logo_grad_splash)"/>
+                            <path d="M160 448H352C356.418 448 360 451.582 360 456V472H152V456C152 451.582 155.582 448 160 448Z" fill="url(#logo_grad_splash)"/>
+                       </svg>
+                    </motion.div>
+                    <span className="font-display text-[42px] font-extrabold tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br from-zinc-700 via-zinc-800 to-zinc-600 dark:from-white dark:via-zinc-200 dark:to-zinc-400 mt-1 -ml-1 drop-shadow-sm">
+                        NVEST
+                    </span>
+                </div>
+
+                <div className="flex flex-col items-center gap-4 w-64">
+                    <div className="h-1.5 w-full bg-zinc-100 dark:bg-zinc-900 rounded-full overflow-hidden border border-zinc-200 dark:border-zinc-800/50">
+                        <motion.div 
+                            className="h-full bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 shadow-[0_0_15px_rgba(99,102,241,0.5)] relative" 
+                            animate={{ width: `${realProgress}%` }}
+                            transition={{ duration: 0.5, ease: "easeOut" }}
+                        >
+                            <div className="absolute inset-0 bg-white/30 animate-[shimmer_2s_infinite]"></div>
+                        </motion.div>
+                    </div>
+                    
+                    <div className="flex justify-between w-full px-1">
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest transition-all duration-300">
+                            {loadingText}
+                        </span>
+                        <span className="text-[10px] font-black text-zinc-900 dark:text-white tabular-nums">
+                            {Math.round(realProgress)}%
+                        </span>
                     </div>
                 </div>
-                
-                <div className="flex justify-between w-full px-1">
-                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest transition-all duration-300">
-                        {loadingText}
-                    </span>
-                    <span className="text-[10px] font-black text-zinc-900 dark:text-white tabular-nums">
-                        {Math.round(realProgress)}%
-                    </span>
-                </div>
-            </div>
-        </div>
-        
-        <div className="absolute bottom-10 text-[10px] font-bold text-zinc-300 dark:text-zinc-700 uppercase tracking-[0.3em]">
-            Seu patrimônio em foco
-        </div>
-    </div>,
+            </motion.div>
+            
+            <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5, duration: 1 }}
+                className="absolute bottom-10 text-[10px] font-bold text-zinc-300 dark:text-zinc-700 uppercase tracking-[0.3em]"
+            >
+                Seu patrimônio em foco
+            </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>,
     document.body
   );
 };

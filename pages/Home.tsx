@@ -338,10 +338,20 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                     {/* Chart Section - Compact */}
                     <div className="mb-6 bg-white dark:bg-zinc-950 rounded-3xl border border-zinc-100 dark:border-zinc-900 p-1.5 shadow-sm">
                         <div className="flex justify-between items-center p-1.5 mb-2">
-                            <div className="flex bg-zinc-100/50 dark:bg-zinc-900/50 rounded-lg p-0.5 backdrop-blur-sm">
-                                <button onClick={() => setChartType('WEALTH')} className={`px-2 py-1 rounded-md text-[8px] font-black uppercase transition-all ${chartType === 'WEALTH' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}>Patrimônio</button>
-                                <button onClick={() => setChartType('CASHFLOW')} className={`px-2 py-1 rounded-md text-[8px] font-black uppercase transition-all ${chartType === 'CASHFLOW' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}>Fluxo</button>
-                                <button onClick={() => setChartType('RETURN')} className={`px-2 py-1 rounded-md text-[8px] font-black uppercase transition-all ${chartType === 'RETURN' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}>Retorno</button>
+                            <div className="flex bg-zinc-100/50 dark:bg-zinc-900/50 rounded-xl p-1 backdrop-blur-sm relative">
+                                <motion.div 
+                                    className="absolute bg-white dark:bg-zinc-800 rounded-lg shadow-sm z-0"
+                                    initial={false}
+                                    animate={{
+                                        x: chartType === 'WEALTH' ? 0 : chartType === 'CASHFLOW' ? 64 : 128,
+                                        width: chartType === 'WEALTH' ? 64 : chartType === 'CASHFLOW' ? 64 : 64,
+                                        height: 24
+                                    }}
+                                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                                />
+                                <button onClick={() => setChartType('WEALTH')} className={`relative z-10 w-16 py-1 rounded-md text-[8px] font-black uppercase transition-colors ${chartType === 'WEALTH' ? 'text-zinc-900 dark:text-white' : 'text-zinc-400 hover:text-zinc-600'}`}>Patrimônio</button>
+                                <button onClick={() => setChartType('CASHFLOW')} className={`relative z-10 w-16 py-1 rounded-md text-[8px] font-black uppercase transition-colors ${chartType === 'CASHFLOW' ? 'text-zinc-900 dark:text-white' : 'text-zinc-400 hover:text-zinc-600'}`}>Fluxo</button>
+                                <button onClick={() => setChartType('RETURN')} className={`relative z-10 w-16 py-1 rounded-md text-[8px] font-black uppercase transition-colors ${chartType === 'RETURN' ? 'text-zinc-900 dark:text-white' : 'text-zinc-400 hover:text-zinc-600'}`}>Retorno</button>
                             </div>
 
                             {chartType === 'CASHFLOW' && (
@@ -393,14 +403,17 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                             </div>
                         </div>
 
-                        <div className="h-48 w-full relative px-1">
+                        <div className="relative h-52 w-full overflow-hidden px-1">
                             <AnimatePresence mode="wait">
                                 <motion.div
                                     key={chartType}
-                                    initial={{ opacity: 0, x: 10 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: -10 }}
-                                    transition={{ duration: 0.2, ease: 'easeOut' }}
+                                    initial={{ opacity: 0, x: 15, filter: 'blur(4px)' }}
+                                    animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+                                    exit={{ opacity: 0, x: -15, filter: 'blur(4px)' }}
+                                    transition={{ 
+                                        duration: 0.4, 
+                                        ease: [0.23, 1, 0.32, 1] // Custom cubic-bezier for smoother feel
+                                    }}
                                     className="w-full h-full"
                                 >
                                     <ResponsiveContainer width="100%" height="100%">
@@ -638,16 +651,24 @@ const StoriesBar = ({ insights, onSelectStory, viewedIds }: { insights: Portfoli
 
     return (
         <div className="mb-3 -mt-2 -mx-4 overflow-x-auto no-scrollbar pb-1">
-            <div className="flex gap-3 px-4 pt-1">
-                {insights.map((story) => {
+            <motion.div 
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="flex gap-3 px-4 pt-1"
+            >
+                {insights.map((story, index) => {
                     const isViewed = viewedIds.has(story.id);
                     const gradient = isViewed ? 'from-zinc-300 to-zinc-400 dark:from-zinc-700 dark:to-zinc-600' : getStoryGradient(story.type);
                     
                     return (
-                        <button 
+                        <motion.button 
                             key={story.id} 
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: index * 0.05 }}
                             onClick={() => onSelectStory(story)}
-                            className="flex flex-col items-center gap-1 group shrink-0 w-[64px] press-effect"
+                            whileTap={{ scale: 0.9 }}
+                            className="flex flex-col items-center gap-1 group shrink-0 w-[64px]"
                         >
                             <div className={`w-[60px] h-[60px] p-[2px] rounded-full bg-gradient-to-tr ${gradient} relative transition-all duration-300`}>
                                 <div className="w-full h-full rounded-full border-[3px] border-primary-light dark:border-primary-dark bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center overflow-hidden relative">
@@ -667,10 +688,10 @@ const StoriesBar = ({ insights, onSelectStory, viewedIds }: { insights: Portfoli
                             <span className={`text-[8px] font-medium truncate w-full text-center leading-tight ${isViewed ? 'text-zinc-400' : 'text-zinc-600 dark:text-zinc-300'}`}>
                                 {story.relatedTicker || 'Insight'}
                             </span>
-                        </button>
+                        </motion.button>
                     );
                 })}
-            </div>
+            </motion.div>
         </div>
     );
 };
@@ -956,6 +977,10 @@ const StoryViewer = ({
 
 const BentoCard = ({ title, value, subtext, icon: Icon, colorClass, onClick, className, info }: { title: string, value: React.ReactNode, subtext?: React.ReactNode, icon: React.ElementType, colorClass: string, onClick?: () => void, className?: string, info?: string }) => (
     <motion.button 
+        variants={{
+            hidden: { opacity: 0, y: 20 },
+            show: { opacity: 1, y: 0 }
+        }}
         whileHover={{ y: -4, scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
         onClick={onClick} 
@@ -1564,7 +1589,21 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
             </div>
         </motion.div>
 
-        <div className="grid grid-cols-2 gap-3 anim-slide-up mt-2">
+        <motion.div 
+            className="grid grid-cols-2 gap-3 mt-2"
+            variants={{
+                hidden: { opacity: 0 },
+                show: {
+                    opacity: 1,
+                    transition: {
+                        staggerChildren: 0.1,
+                        delayChildren: 0.2
+                    }
+                }
+            }}
+            initial="hidden"
+            animate="show"
+        >
             <BentoCard 
                 title="Agenda" 
                 value={agendaData.nextPayment ? formatDateShort(agendaData.nextPayment.paymentDate || agendaData.nextPayment.dateCom) : '--'} 
@@ -1607,6 +1646,10 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
 
             {/* Redesigned Allocation Card */}
             <motion.div 
+                variants={{
+                    hidden: { opacity: 0, y: 20 },
+                    show: { opacity: 1, y: 0 }
+                }}
                 className="col-span-2 bg-white dark:bg-zinc-900 rounded-[2.5rem] p-6 border border-zinc-100 dark:border-zinc-800 shadow-sm relative overflow-hidden cursor-pointer group"
                 onClick={() => setShowAllocation(true)}
                 whileHover={{ scale: 1.01 }}
@@ -1663,7 +1706,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
                     ))}
                 </div>
             </motion.div>
-        </div>
+        </motion.div>
 
         <StoryViewer 
             isOpen={!!selectedStoryId}
