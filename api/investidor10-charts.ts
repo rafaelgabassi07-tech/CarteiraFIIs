@@ -33,8 +33,8 @@ async function getIds(ticker: string, type: string) {
         const scripts = $('script').text();
         
         const idMatch = scripts.match(/id:\s*(\d+)/);
-        const companyIdMatch = scripts.match(/companyId:\s*['"]?(\d+)['"]?/) || scripts.match(/company_id:\s*['"]?(\d+)['"]?/);
-        const tickerIdMatch = scripts.match(/tickerId:\s*['"]?(\d+)['"]?/) || scripts.match(/ticker_id:\s*['"]?(\d+)['"]?/);
+        const companyIdMatch = scripts.match(/companyId:\s*['"]?(\d+)['"]?/) || scripts.match(/company_id:\s*['"]?(\d+)['"]?/) || scripts.match(/window\.companyId\s*=\s*(\d+)/);
+        const tickerIdMatch = scripts.match(/tickerId:\s*['"]?(\d+)['"]?/) || scripts.match(/ticker_id:\s*['"]?(\d+)['"]?/) || scripts.match(/window\.tickerId\s*=\s*(\d+)/);
         
         id = idMatch ? idMatch[1] : null;
         companyId = companyIdMatch ? companyIdMatch[1] : null;
@@ -122,7 +122,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         url = `https://investidor10.com.br/api/fii/dividend-yield/chart/${ids.id}/3650/`;
                     } else {
                         if (!ids.companyId || !ids.tickerId) return res.status(404).json({ error: 'Payout IDs not found' });
-                        url = `https://investidor10.com.br/api/acoes/payout-chart/${ids.companyId}/${ids.tickerId}/${t}/365`;
+                        url = `https://investidor10.com.br/api/acoes/payout-chart/${ids.companyId}/${ids.tickerId}/${t}/3650`;
                     }
                     break;
                 default:
@@ -197,8 +197,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 const dyMap = response.data.dyTickerIndicators || {};
                 
                 transformedData = years.map((year: string, idx: number) => {
-                    const payoutEntry = Object.values(payoutMap).find((v: any) => v.year === year) as any;
-                    const dyEntry = Object.values(dyMap).find((v: any) => v.year === year) as any;
+                    const payoutEntry = Object.values(payoutMap).find((v: any) => String(v.year) === String(year)) as any;
+                    const dyEntry = Object.values(dyMap).find((v: any) => String(v.year) === String(year)) as any;
                     
                     return {
                         label: year,

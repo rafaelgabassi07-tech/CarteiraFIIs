@@ -3,6 +3,7 @@ import { AssetPosition, AssetType, DividendReceipt } from '../types';
 import { Search, Wallet, TrendingUp, TrendingDown, X, Calculator, BarChart3, PieChart, Coins, DollarSign, Building2, FileText, MapPin, Zap, CheckCircle, Goal, ArrowUpRight, ArrowDownLeft, SquareStack, Map as MapIcon, CandlestickChart, LineChart as LineChartIcon, Award, RefreshCcw, ArrowLeft, Briefcase, MoreHorizontal, LayoutGrid, List, Activity, Scale, Percent, ChevronDown, ChevronUp, ListFilter, BookOpen, Calendar } from 'lucide-react';
 import { SwipeableModal, InfoTooltip } from '../components/Layout';
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, ReferenceLine, ComposedChart, CartesianGrid, AreaChart, Area, YAxis, PieChart as RePieChart, Pie, Cell, LineChart, Line, Label, Legend, Scatter, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
+import { motion, AnimatePresence } from 'motion/react';
 import { formatBRL, formatCompactBRL, formatDateShort, getMonthName } from '../utils/formatters';
 
 // --- TYPES ---
@@ -1187,7 +1188,7 @@ const Investidor10ChartsSection: React.FC<Investidor10ChartsSectionProps> = ({ t
 
     const chartConfig = useMemo(() => ({
         revenue_profit: { title: 'Receitas e Lucros', barKey: 'profit', areaKey: 'revenue', barColor: '#8b5cf6', areaColor: '#ec4899' },
-        payout: { title: 'Payout x Dividend Yield', barKey: 'payout', areaKey: 'dy', barColor: isFII ? '#10b981' : '#06b6d4', areaColor: '#f59e0b' },
+        payout: { title: isFII ? 'Dividend Yield Histórico' : 'Payout x Dividend Yield', barKey: isFII ? 'dy' : 'payout', areaKey: isFII ? '' : 'dy', barColor: isFII ? '#10b981' : '#06b6d4', areaColor: '#f59e0b' },
         equity: { title: isFII ? 'Histórico de Valor Patrimonial' : 'Patrimônio Líquido', barKey: 'equity', areaKey: 'revenue', barColor: '#10b981', areaColor: '#6366f1' },
         revenues_by_type: { title: 'Composição da Receita', barKey: '', areaKey: '', barColor: '', areaColor: '' },
     }), [isFII]);
@@ -1319,26 +1320,37 @@ const Investidor10ChartsSection: React.FC<Investidor10ChartsSectionProps> = ({ t
                     )}
                 </div>
             </div>
-            <div className="h-64 w-full">
-                {chartType === 'revenues_by_type' ? renderPieChart() : (
-                    <ResponsiveContainer width="100%" height="100%">
-                        <ComposedChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 5 }}>
-                            <XAxis dataKey="label" tick={{ fontSize: 9, fontWeight: 700, fill: '#71717a' }} tickLine={false} axisLine={false} />
-                            <YAxis yAxisId="left" orientation="left" tick={{ fontSize: 9, fontWeight: 700, fill: '#71717a' }} tickLine={false} axisLine={false} tickFormatter={(val) => chartType === 'payout' ? `${val}%` : formatCompactBRL(val)} />
-                            {chartType !== 'equity' && <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 9, fontWeight: 700, fill: '#71717a' }} tickLine={false} axisLine={false} tickFormatter={(val) => chartType === 'payout' ? `${val}%` : formatCompactBRL(val)} />}
-                            <Tooltip 
-                                contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '12px', fontSize: '10px' }} 
-                                labelStyle={{ color: '#a1a1aa' }} 
-                                formatter={(value: number, name: string) => {
-                                    const isPercent = name === 'payout' || name === 'dy';
-                                    return [isPercent ? `${value.toFixed(2)}%` : formatCompactBRL(value), null];
-                                }} 
-                            />
-                            <Bar yAxisId="left" dataKey={currentChart.barKey} fill={currentChart.barColor} radius={[4, 4, 0, 0]} />
-                            {currentChart.areaKey && <Area yAxisId={chartType === 'equity' ? 'left' : 'right'} dataKey={currentChart.areaKey} fill={currentChart.areaColor} stroke={currentChart.areaColor} fillOpacity={0.1} strokeWidth={2} />}
-                        </ComposedChart>
-                    </ResponsiveContainer>
-                )}
+            <div className="h-64 w-full overflow-hidden">
+                <AnimatePresence mode="wait">
+                    <motion.div
+                        key={chartType}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.3, ease: "easeOut" }}
+                        className="h-full w-full"
+                    >
+                        {chartType === 'revenues_by_type' ? renderPieChart() : (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <ComposedChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 5 }}>
+                                    <XAxis dataKey="label" tick={{ fontSize: 9, fontWeight: 700, fill: '#71717a' }} tickLine={false} axisLine={false} />
+                                    <YAxis yAxisId="left" orientation="left" tick={{ fontSize: 9, fontWeight: 700, fill: '#71717a' }} tickLine={false} axisLine={false} tickFormatter={(val) => chartType === 'payout' ? `${val}%` : formatCompactBRL(val)} />
+                                    {chartType !== 'equity' && <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 9, fontWeight: 700, fill: '#71717a' }} tickLine={false} axisLine={false} tickFormatter={(val) => chartType === 'payout' ? `${val}%` : formatCompactBRL(val)} />}
+                                    <Tooltip 
+                                        contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '12px', fontSize: '10px' }} 
+                                        labelStyle={{ color: '#a1a1aa' }} 
+                                        formatter={(value: number, name: string) => {
+                                            const isPercent = name === 'payout' || name === 'dy';
+                                            return [isPercent ? `${value.toFixed(2)}%` : formatCompactBRL(value), null];
+                                        }} 
+                                    />
+                                    <Bar yAxisId="left" dataKey={currentChart.barKey} fill={currentChart.barColor} radius={[4, 4, 0, 0]} />
+                                    {currentChart.areaKey && <Area yAxisId={chartType === 'equity' ? 'left' : 'right'} dataKey={currentChart.areaKey} fill={currentChart.areaColor} stroke={currentChart.areaColor} fillOpacity={0.1} strokeWidth={2} />}
+                                </ComposedChart>
+                            </ResponsiveContainer>
+                        )}
+                    </motion.div>
+                </AnimatePresence>
             </div>
         </div>
     );
