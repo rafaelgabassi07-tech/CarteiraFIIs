@@ -875,11 +875,11 @@ const StoryViewer = ({
                     {/* Content Layer */}
                     <div className="relative z-20 flex flex-col h-full pointer-events-none">
                         {/* Progress Bars */}
-                        <div className="flex gap-1.5 px-3 pt-safe top-2 mt-4">
+                        <div className="flex gap-1.5 px-4 pt-safe top-2 mt-4">
                             {stories.map((s, idx) => (
-                                <div key={s.id} className="h-1 flex-1 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
+                                <div key={s.id} className="h-1 flex-1 bg-white/30 rounded-full overflow-hidden backdrop-blur-md">
                                     <motion.div 
-                                        className="h-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.5)]" 
+                                        className="h-full bg-white shadow-[0_0_12px_rgba(255,255,255,0.8)]" 
                                         initial={{ width: idx < currentIndex ? '100%' : '0%' }}
                                         animate={{ width: idx < currentIndex ? '100%' : idx === currentIndex ? `${progress}%` : '0%' }}
                                         transition={{ ease: "linear", duration: 0 }} // Direct control via state
@@ -889,55 +889,58 @@ const StoryViewer = ({
                         </div>
 
                         {/* Header */}
-                        <div className="px-4 py-6 flex justify-between items-center mt-2 pointer-events-auto">
-                            <div className="flex items-center gap-3">
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-gradient-to-br ${gradient} shadow-lg ring-2 ring-white/20 backdrop-blur-md`}>
+                        <div className="px-5 py-6 flex justify-between items-center mt-2 pointer-events-auto">
+                            <div className="flex items-center gap-4">
+                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center bg-gradient-to-br ${gradient} shadow-[0_8px_30px_rgb(0,0,0,0.3)] ring-1 ring-white/30 backdrop-blur-xl`}>
                                     {getStoryIcon(story.type)}
                                 </div>
                                 <div>
-                                    <div className="flex items-center gap-2">
-                                        <p className="text-sm font-bold text-white drop-shadow-md">{story.relatedTicker || 'Insight'}</p>
+                                    <div className="flex items-center gap-2 mb-0.5">
+                                        <p className="text-base font-black text-white drop-shadow-lg tracking-tight">{story.relatedTicker || 'Insight'}</p>
                                         {story.id.includes('ai-insight') && (
-                                            <span className="px-1.5 py-0.5 rounded-md bg-white/20 backdrop-blur-md text-[8px] font-black text-white uppercase tracking-widest border border-white/20">IA</span>
+                                            <span className="px-2 py-0.5 rounded-lg bg-white/20 backdrop-blur-xl text-[9px] font-black text-white uppercase tracking-widest border border-white/30 shadow-sm">IA</span>
                                         )}
                                     </div>
-                                    <p className="text-[10px] text-white/80 font-medium">InvestFIIs AI • {currentIndex + 1} de {stories.length}</p>
+                                    <p className="text-[11px] text-white/80 font-semibold tracking-wide uppercase">InvestFIIs AI • {currentIndex + 1} de {stories.length}</p>
                                 </div>
                             </div>
                             <button 
                                 onClick={(e) => { e.stopPropagation(); onClose(); }}
-                                className="w-10 h-10 flex items-center justify-center rounded-full bg-black/20 backdrop-blur-md border border-white/10 active:scale-95 transition-transform hover:bg-white/10"
+                                className="w-10 h-10 flex items-center justify-center rounded-full bg-black/30 backdrop-blur-xl border border-white/20 active:scale-90 transition-all hover:bg-white/20 shadow-lg"
                             >
                                 <X className="w-5 h-5 text-white" />
                             </button>
                         </div>
 
                         {/* Story Content */}
-                        <div className="flex-1 flex flex-col justify-center px-6 pb-20">
+                        <div className="flex-1 flex flex-col justify-end px-6 pb-24">
                             <AnimatePresence mode='wait'>
                                 <motion.div
                                     key={story.id}
-                                    initial={{ y: 20, opacity: 0 }}
-                                    animate={{ y: 0, opacity: 1 }}
-                                    exit={{ y: -20, opacity: 0 }}
-                                    transition={{ duration: 0.4, ease: "easeOut" }}
+                                    initial={{ y: 40, opacity: 0, scale: 0.95 }}
+                                    animate={{ y: 0, opacity: 1, scale: 1 }}
+                                    exit={{ y: -40, opacity: 0, scale: 1.05 }}
+                                    transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
                                     className="flex flex-col"
                                 >
-                                    <h1 className="text-2xl md:text-3xl font-black text-white leading-tight mb-6 drop-shadow-xl tracking-tight">
-                                        {story.title}
-                                    </h1>
-                                    
-                                    <div className="bg-white/10 backdrop-blur-xl border border-white/10 p-6 rounded-[2rem] shadow-2xl mb-8 relative overflow-hidden group">
-                                        <div className={`absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b ${gradient}`}></div>
-                                        <div className="absolute -right-10 -top-10 w-32 h-32 bg-white/5 rounded-full blur-3xl group-hover:bg-white/10 transition-colors duration-700"></div>
-                                        <p className="text-base md:text-lg font-medium text-white/95 leading-relaxed relative z-10">
+                                    <div className="bg-black/40 backdrop-blur-2xl border border-white/10 p-8 rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] mb-8 relative overflow-hidden group">
+                                        {/* Decorative elements */}
+                                        <div className={`absolute top-0 left-0 w-2 h-full bg-gradient-to-b ${gradient}`}></div>
+                                        <div className={`absolute -right-20 -top-20 w-64 h-64 bg-gradient-to-br ${gradient} rounded-full blur-[80px] opacity-30 group-hover:opacity-50 transition-opacity duration-1000`}></div>
+                                        <div className={`absolute -left-20 -bottom-20 w-48 h-48 bg-gradient-to-tr ${gradient} rounded-full blur-[60px] opacity-20 group-hover:opacity-40 transition-opacity duration-1000`}></div>
+                                        
+                                        <h1 className="text-3xl md:text-4xl font-black text-white leading-tight mb-6 drop-shadow-2xl tracking-tight relative z-10">
+                                            {story.title}
+                                        </h1>
+                                        
+                                        <p className="text-lg md:text-xl font-medium text-white/90 leading-relaxed relative z-10 drop-shadow-md">
                                             {story.message}
                                         </p>
                                     </div>
 
-                                    <div className="flex gap-3 items-center opacity-90 bg-black/40 self-start px-4 py-2.5 rounded-full backdrop-blur-md border border-white/10 shadow-lg">
-                                        <Info className="w-4 h-4 text-white" />
-                                        <p className="text-xs text-white font-bold tracking-wide">
+                                    <div className="flex gap-3 items-center opacity-95 bg-white/10 self-start px-5 py-3 rounded-2xl backdrop-blur-xl border border-white/20 shadow-xl">
+                                        <Info className="w-5 h-5 text-white drop-shadow-md" />
+                                        <p className="text-sm text-white font-bold tracking-wide drop-shadow-md">
                                             {story.type === 'opportunity' ? "Analistas indicam revisão." : 
                                              story.type === 'warning' ? "Atenção aos fundamentos." :
                                              "Mantenha foco no longo prazo."}

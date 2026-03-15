@@ -36,11 +36,13 @@ async function getIds(ticker: string, type: string) {
         const companyIdMatch = scripts.match(/companyId:\s*['"]?(\d+)['"]?/) || 
                                scripts.match(/company_id:\s*['"]?(\d+)['"]?/) || 
                                scripts.match(/window\.companyId\s*=\s*(\d+)/) ||
+                               scripts.match(/(?:const|let|var)\s+companyId\s*=\s*['"]?(\d+)['"]?/) ||
                                data.match(/data-company-id="(\d+)"/);
         
         const tickerIdMatch = scripts.match(/tickerId:\s*['"]?(\d+)['"]?/) || 
                               scripts.match(/ticker_id:\s*['"]?(\d+)['"]?/) || 
                               scripts.match(/window\.tickerId\s*=\s*(\d+)/) ||
+                              scripts.match(/(?:const|let|var)\s+tickerId\s*=\s*['"]?(\d+)['"]?/) ||
                               data.match(/data-ticker-id="(\d+)"/);
         
         id = idMatch ? idMatch[1] : null;

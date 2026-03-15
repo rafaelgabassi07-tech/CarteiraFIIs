@@ -21,8 +21,8 @@ async function getIdsAndData(ticker: string, type: string) {
         const { data } = await axios.get(url, { headers: HEADERS, httpsAgent });
         
         const idMatch = data.match(/id:\s*(\d+)/);
-        const companyIdMatch = data.match(/companyId:\s*['"]?(\d+)['"]?/) || data.match(/company_id:\s*['"]?(\d+)['"]?/);
-        const tickerIdMatch = data.match(/tickerId:\s*['"]?(\d+)['"]?/) || data.match(/ticker_id:\s*['"]?(\d+)['"]?/);
+        const companyIdMatch = data.match(/companyId:\s*['"]?(\d+)['"]?/) || data.match(/company_id:\s*['"]?(\d+)['"]?/) || data.match(/(?:const|let|var)\s+companyId\s*=\s*['"]?(\d+)['"]?/);
+        const tickerIdMatch = data.match(/tickerId:\s*['"]?(\d+)['"]?/) || data.match(/ticker_id:\s*['"]?(\d+)['"]?/) || data.match(/(?:const|let|var)\s+tickerId\s*=\s*['"]?(\d+)['"]?/);
         
         // Also look for the revenue/equity ID which is often different or same as companyId
         const revenueMatch = data.match(/\/api\/balancos\/receitaliquida\/chart\/(\d+)\//);

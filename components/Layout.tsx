@@ -265,55 +265,54 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
   }, [isOpen]);
 
   return (
-    createPortal(
-      <AnimatePresence>
-        {isOpen && (
-          <div className="fixed inset-0 z-[9999] flex flex-col justify-end isolate">
-            <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
-                onClick={onClose} 
-                className="absolute inset-0 bg-zinc-900/40 backdrop-blur-md"
-            />
-            
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ 
-                type: 'spring', 
-                damping: 32, 
-                stiffness: 320,
-                mass: 1,
-                restDelta: 0.001
-              }}
-              drag="y"
-              dragControls={dragControls}
-              dragListener={false}
-              dragConstraints={{ top: 0 }}
-              dragElastic={0.2}
-              onDragEnd={(_, info) => {
-                if (info.offset.y > 150) onClose();
-              }}
-              className={`relative bg-zinc-50 dark:bg-zinc-900 w-full ${className} rounded-t-3xl shadow-2xl shadow-black/50 flex flex-col ring-1 ring-black/5 dark:ring-white/5`}
+    <AnimatePresence>
+      {isOpen && createPortal(
+        <div className="fixed inset-0 z-[9999] flex flex-col justify-end isolate">
+          <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+              onClick={onClose} 
+              className="absolute inset-0 bg-zinc-900/40 backdrop-blur-md"
+          />
+          
+          <motion.div
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ 
+              type: 'spring', 
+              damping: 32, 
+              stiffness: 320,
+              mass: 1,
+              restDelta: 0.001
+            }}
+            drag="y"
+            dragControls={dragControls}
+            dragListener={false}
+            dragConstraints={{ top: 0 }}
+            dragElastic={0.2}
+            onDragEnd={(_, info) => {
+              if (info.offset.y > 150) onClose();
+            }}
+            className={`relative bg-zinc-50 dark:bg-zinc-900 w-full ${className} rounded-t-3xl shadow-2xl shadow-black/50 flex flex-col ring-1 ring-black/5 dark:ring-white/5`}
+          >
+            <div 
+              onPointerDown={(e) => dragControls.start(e)}
+              className="w-full flex justify-center pt-3 pb-3 bg-zinc-50 dark:bg-zinc-900 shrink-0 cursor-grab active:cursor-grabbing touch-none z-10"
             >
-              <div 
-                onPointerDown={(e) => dragControls.start(e)}
-                className="w-full flex justify-center pt-3 pb-3 bg-zinc-50 dark:bg-zinc-900 shrink-0 cursor-grab active:cursor-grabbing touch-none z-10"
-              >
-                <div className="w-12 h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full transition-colors hover:bg-zinc-300 dark:hover:bg-zinc-700"></div>
-              </div>
+              <div className="w-12 h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full transition-colors hover:bg-zinc-300 dark:hover:bg-zinc-700"></div>
+            </div>
 
-              <div className="flex-1 min-h-0 w-full relative flex flex-col overflow-y-auto overscroll-contain no-scrollbar">
-                  {children}
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>, document.body
-    )
+            <div className="flex-1 min-h-0 w-full relative flex flex-col overflow-y-auto overscroll-contain no-scrollbar">
+                {children}
+            </div>
+          </motion.div>
+        </div>,
+        document.body
+      )}
+    </AnimatePresence>
   );
 };
 

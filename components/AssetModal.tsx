@@ -1294,19 +1294,19 @@ const Investidor10ChartsSection: React.FC<Investidor10ChartsSectionProps> = ({ t
                     </div>
                     <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{currentChart.title}</h4>
                 </div>
-                <div className="flex flex-wrap p-1 bg-zinc-100 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 w-full">
+                <div className="flex flex-wrap p-1 gap-1 bg-zinc-100 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 w-full">
                     {isFII ? (
                         <>
                             <button 
                                 onClick={() => setChartType('equity')} 
-                                className={`flex items-center gap-1.5 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all whitespace-nowrap ${chartType === 'equity' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}
+                                className={`flex-1 flex justify-center items-center gap-1.5 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all whitespace-nowrap ${chartType === 'equity' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}
                             >
                                 <Building2 className="w-3 h-3" />
                                 Patrimônio
                             </button>
                             <button 
                                 onClick={() => setChartType('payout')} 
-                                className={`flex items-center gap-1.5 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all whitespace-nowrap ${chartType === 'payout' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}
+                                className={`flex-1 flex justify-center items-center gap-1.5 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all whitespace-nowrap ${chartType === 'payout' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}
                             >
                                 <Percent className="w-3 h-3" />
                                 DY
@@ -1316,28 +1316,28 @@ const Investidor10ChartsSection: React.FC<Investidor10ChartsSectionProps> = ({ t
                         <>
                             <button 
                                 onClick={() => setChartType('revenue_profit')} 
-                                className={`flex items-center gap-1.5 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all whitespace-nowrap ${chartType === 'revenue_profit' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}
+                                className={`flex-1 flex justify-center items-center gap-1.5 px-2 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all whitespace-nowrap ${chartType === 'revenue_profit' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}
                             >
                                 <TrendingUp className="w-3 h-3" />
                                 Lucros
                             </button>
                             <button 
                                 onClick={() => setChartType('equity')} 
-                                className={`flex items-center gap-1.5 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all whitespace-nowrap ${chartType === 'equity' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}
+                                className={`flex-1 flex justify-center items-center gap-1.5 px-2 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all whitespace-nowrap ${chartType === 'equity' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}
                             >
                                 <Scale className="w-3 h-3" />
                                 Patrimônio
                             </button>
                             <button 
                                 onClick={() => setChartType('payout')} 
-                                className={`flex items-center gap-1.5 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all whitespace-nowrap ${chartType === 'payout' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}
+                                className={`flex-1 flex justify-center items-center gap-1.5 px-2 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all whitespace-nowrap ${chartType === 'payout' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}
                             >
                                 <Percent className="w-3 h-3" />
                                 Payout
                             </button>
                             <button 
                                 onClick={() => setChartType('revenues_by_type')} 
-                                className={`flex items-center gap-1.5 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all whitespace-nowrap ${chartType === 'revenues_by_type' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}
+                                className={`flex-1 flex justify-center items-center gap-1.5 px-2 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all whitespace-nowrap ${chartType === 'revenues_by_type' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}
                             >
                                 <PieChart className="w-3 h-3" />
                                 Receita
