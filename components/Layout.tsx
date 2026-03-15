@@ -18,39 +18,44 @@ export const InfoTooltip = ({ title, text }: { title: string, text: React.ReactN
                 <CircleHelp className="w-3.5 h-3.5" strokeWidth={2} />
             </button>
             
-            <AnimatePresence>
-                {isOpen && createPortal(
-                    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-6 isolate">
+            {createPortal(
+                <AnimatePresence>
+                    {isOpen && (
                         <motion.div 
+                            key="tooltip-backdrop"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            onClick={() => setIsOpen(false)}
-                            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-                        />
-                        <motion.div 
-                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                            className="relative bg-white dark:bg-zinc-900 w-full max-w-sm p-6 rounded-3xl shadow-2xl border border-zinc-100 dark:border-zinc-800" 
-                            onClick={e => e.stopPropagation()}
+                            className="fixed inset-0 z-[10000] flex items-center justify-center p-6 isolate"
                         >
-                            <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mb-4 text-indigo-600 mx-auto border-4 border-white dark:border-zinc-900 shadow-sm">
-                                <CircleHelp className="w-6 h-6" />
-                            </div>
-                            <h3 className="text-lg font-bold text-center text-zinc-900 dark:text-white mb-2">{title}</h3>
-                            <div className="text-sm text-zinc-500 dark:text-zinc-400 text-center leading-relaxed mb-6 font-medium">
-                                {text}
-                            </div>
-                            <button onClick={() => setIsOpen(false)} className="w-full py-3.5 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold text-sm press-effect shadow-lg">
-                                Entendi
-                            </button>
+                            <div 
+                                onClick={() => setIsOpen(false)}
+                                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                            />
+                            <motion.div 
+                                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                                className="relative bg-white dark:bg-zinc-900 w-full max-w-sm p-6 rounded-3xl shadow-2xl border border-zinc-100 dark:border-zinc-800" 
+                                onClick={e => e.stopPropagation()}
+                            >
+                                <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mb-4 text-indigo-600 mx-auto border-4 border-white dark:border-zinc-900 shadow-sm">
+                                    <CircleHelp className="w-6 h-6" />
+                                </div>
+                                <h3 className="text-lg font-bold text-center text-zinc-900 dark:text-white mb-2">{title}</h3>
+                                <div className="text-sm text-zinc-500 dark:text-zinc-400 text-center leading-relaxed mb-6 font-medium">
+                                    {text}
+                                </div>
+                                <button onClick={() => setIsOpen(false)} className="w-full py-3.5 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold text-sm press-effect shadow-lg">
+                                    Entendi
+                                </button>
+                            </motion.div>
                         </motion.div>
-                    </div>,
-                    document.body
-                )}
-            </AnimatePresence>
+                    )}
+                </AnimatePresence>,
+                document.body
+            )}
         </>
     );
 };
@@ -246,33 +251,40 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
       document.body.style.top = `-${scrollY}px`;
     } else {
       const scrollY = document.body.style.top;
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.width = '';
-      document.body.style.top = '';
-      window.scrollTo(0, parseInt(scrollY || '0') * -1);
-    }
-    return () => {
-      if (isOpen) {
-          const scrollY = document.body.style.top;
+      if (scrollY) {
           document.body.style.overflow = '';
           document.body.style.position = '';
           document.body.style.width = '';
           document.body.style.top = '';
           window.scrollTo(0, parseInt(scrollY || '0') * -1);
       }
+    }
+    return () => {
+      if (isOpen) {
+          const scrollY = document.body.style.top;
+          if (scrollY) {
+              document.body.style.overflow = '';
+              document.body.style.position = '';
+              document.body.style.width = '';
+              document.body.style.top = '';
+              window.scrollTo(0, parseInt(scrollY || '0') * -1);
+          }
+      }
     };
   }, [isOpen]);
 
-  return (
+  return createPortal(
     <AnimatePresence>
-      {isOpen && createPortal(
-        <div className="fixed inset-0 z-[9999] flex flex-col justify-end isolate">
-          <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+      {isOpen && (
+        <motion.div 
+            key="modal-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="fixed inset-0 z-[9999] flex flex-col justify-end isolate"
+        >
+          <div 
               onClick={onClose} 
               className="absolute inset-0 bg-zinc-900/40 backdrop-blur-md"
           />
@@ -283,10 +295,9 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
             exit={{ y: '100%' }}
             transition={{ 
               type: 'spring', 
-              damping: 32, 
-              stiffness: 320,
-              mass: 1,
-              restDelta: 0.001
+              damping: 28, 
+              stiffness: 300,
+              mass: 0.8,
             }}
             drag="y"
             dragControls={dragControls}
@@ -309,22 +320,25 @@ export const SwipeableModal: React.FC<SwipeableModalProps> = ({ isOpen, onClose,
                 {children}
             </div>
           </motion.div>
-        </div>,
-        document.body
+        </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };
 
 export const ConfirmationModal: React.FC<any> = ({ isOpen, title, message, onConfirm, onCancel }) => {
-    return (
+    return createPortal(
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-[10000] flex items-center justify-center p-6 isolate">
-                    <motion.div 
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
+                <motion.div 
+                    key="confirmation-backdrop"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-[10000] flex items-center justify-center p-6 isolate"
+                >
+                    <div 
                         onClick={onCancel}
                         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
                     />
@@ -345,21 +359,25 @@ export const ConfirmationModal: React.FC<any> = ({ isOpen, title, message, onCon
                             <button onClick={onConfirm} className="py-3.5 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold text-sm press-effect shadow-lg">Confirmar</button>
                         </div>
                     </motion.div>
-                </div>
+                </motion.div>
             )}
-        </AnimatePresence>
+        </AnimatePresence>,
+        document.body
     )
 }
 
 export const InstallPromptModal: React.FC<any> = ({ isOpen, onInstall, onDismiss }) => {
-    return (
+    return createPortal(
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center p-4 isolate">
-                    <motion.div 
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
+                <motion.div 
+                    key="install-backdrop"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center p-4 isolate"
+                >
+                    <div 
                         onClick={onDismiss}
                         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
                     />
@@ -382,9 +400,10 @@ export const InstallPromptModal: React.FC<any> = ({ isOpen, onInstall, onDismiss
                         <button onClick={onInstall} className="w-full py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-bold text-sm mb-3 press-effect shadow-xl">Instalar Agora</button>
                         <button onClick={onDismiss} className="w-full py-2 text-zinc-400 font-medium text-xs">Agora não</button>
                     </motion.div>
-                </div>
+                </motion.div>
             )}
-        </AnimatePresence>
+        </AnimatePresence>,
+        document.body
     );
 };
 

@@ -1429,10 +1429,6 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
     const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'ANALYSIS' | 'INCOME' | 'FUNDAMENTALS' | 'PROPERTIES'>('OVERVIEW');
     const [showDailyVariationModal, setShowDailyVariationModal] = useState(false);
     
-    useEffect(() => {
-        console.log('selectedTicker changed:', selectedTicker);
-    }, [selectedTicker]);
-    
     // History data state for reorganized tabs
     const [historyData, setHistoryData] = useState<{ date: string, close?: number, price?: number, open?: number, high?: number, low?: number, volume?: number }[]>([]);
     const [loadingHistory, setLoadingHistory] = useState(false);
@@ -1508,7 +1504,6 @@ const PortfolioComponent: React.FC<PortfolioProps> = ({
 
     const selectedAsset = useMemo(() => {
         const asset = (portfolio || []).find(p => p.ticker === selectedTicker);
-        console.log('selectedTicker:', selectedTicker, 'found asset:', asset);
         return asset;
     }, [portfolio, selectedTicker]);
 

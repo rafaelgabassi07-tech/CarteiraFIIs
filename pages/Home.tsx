@@ -298,7 +298,24 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
         return filteredData;
     }, [filteredData, chartType]);
 
-    if (!stats) return null;
+    if (!stats) {
+        return (
+            <SwipeableModal isOpen={isOpen} onClose={onClose}>
+                <div className="h-full flex flex-col bg-white dark:bg-zinc-950 items-center justify-center p-6 text-center">
+                    <div className="w-20 h-20 bg-zinc-100 dark:bg-zinc-900 rounded-full flex items-center justify-center text-zinc-400 mb-4">
+                        <BarChart3 className="w-10 h-10" />
+                    </div>
+                    <h3 className="text-xl font-black text-zinc-900 dark:text-white mb-2">Sem Dados Suficientes</h3>
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-xs">
+                        Adicione transações à sua carteira para visualizar a evolução do seu patrimônio.
+                    </p>
+                    <button onClick={onClose} className="mt-8 px-6 py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-bold text-sm">
+                        Voltar
+                    </button>
+                </div>
+            </SwipeableModal>
+        );
+    }
 
     return (
         <SwipeableModal isOpen={isOpen} onClose={onClose}>
@@ -380,6 +397,7 @@ const EvolutionModal = ({ isOpen, onClose, transactions, dividends, currentBalan
                                 <AnimatePresence>
                                     {showTimeFilter && (
                                         <motion.div 
+                                            key="time-filter-dropdown"
                                             initial={{ opacity: 0, y: 5, scale: 0.95 }}
                                             animate={{ opacity: 1, y: 0, scale: 1 }}
                                             exit={{ opacity: 0, y: 5, scale: 0.95 }}
@@ -810,16 +828,14 @@ const StoryViewer = ({
         }
     }, [currentIndex, stories]);
 
-    if (!isOpen) return null;
     const story = stories[currentIndex];
-    if (!story) return null;
-
-    const gradient = getStoryGradient(story.type);
+    const gradient = story ? getStoryGradient(story.type) : '';
 
     return createPortal(
         <AnimatePresence mode='wait'>
-            {isOpen && (
+            {isOpen && story && (
                 <motion.div 
+                    key="story-viewer"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
@@ -2534,6 +2550,7 @@ const HomeComponent: React.FC<HomeProps> = ({ portfolio, transactions, dividendR
             <AnimatePresence>
                 {selectedAchievement && (
                     <motion.div
+                        key="achievement-backdrop"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}

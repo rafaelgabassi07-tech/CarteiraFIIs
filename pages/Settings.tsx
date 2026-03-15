@@ -5,7 +5,7 @@ import {
     Monitor, Palette, Eye, EyeOff, Download, Upload, 
     Trash2, Zap, Smartphone, FileText, Globe, Search
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Transaction, DividendReceipt, ServiceMetric, AssetType } from '../types';
 import { parseB3Excel } from '../services/excelService';
 import { triggerScraperUpdate } from '../services/dataService';

@@ -22,6 +22,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ finishLoading, realP
     <AnimatePresence>
       {!finishLoading && (
         <motion.div 
+            key="splash-screen"
             initial={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
             transition={{ duration: 0.8, ease: [0.25, 0.8, 0.25, 1] }}

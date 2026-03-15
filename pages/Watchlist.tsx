@@ -127,7 +127,6 @@ export default function Watchlist({ showToast }: WatchlistProps) {
         setError(null);
         
         try {
-            console.log(`[Watchlist] Fetching data for: ${tickersToFetch.join(', ')} (Force: ${forceRefresh})`);
             
             // 1. Fetch Real-time Quotes from Brapi
             const quotesPromise = getQuotes(tickersToFetch).catch(err => {

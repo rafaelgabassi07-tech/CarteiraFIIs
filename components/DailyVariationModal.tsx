@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Transaction, DividendReceipt } from '../types';
 import { formatBRL, formatDateShort } from '../utils/formatters';
 import { SwipeableModal } from './Layout';
-import { X, TrendingUp, TrendingDown, History, CalendarDays, BarChart3, PieChart } from 'lucide-react';
+import { X, TrendingUp, TrendingDown, History, CalendarDays, BarChart3, PieChart, Activity } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, ReferenceLine, CartesianGrid } from 'recharts';
 
 interface DailyVariationRecord {
@@ -86,7 +86,24 @@ export const DailyVariationModal: React.FC<DailyVariationModalProps> = ({
         }));
     }, [history]);
 
-    if (!stats) return null;
+    if (!stats) {
+        return (
+            <SwipeableModal isOpen={isOpen} onClose={onClose}>
+                <div className="h-full flex flex-col bg-white dark:bg-zinc-950 items-center justify-center p-6 text-center">
+                    <div className="w-20 h-20 bg-zinc-100 dark:bg-zinc-900 rounded-full flex items-center justify-center text-zinc-400 mb-4">
+                        <Activity className="w-10 h-10" />
+                    </div>
+                    <h3 className="text-xl font-black text-zinc-900 dark:text-white mb-2">Sem Dados Suficientes</h3>
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-xs">
+                        Adicione transações à sua carteira para visualizar a variação diária do seu patrimônio.
+                    </p>
+                    <button onClick={onClose} className="mt-8 px-6 py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-bold text-sm">
+                        Voltar
+                    </button>
+                </div>
+            </SwipeableModal>
+        );
+    }
 
     return (
         <SwipeableModal isOpen={isOpen} onClose={onClose}>

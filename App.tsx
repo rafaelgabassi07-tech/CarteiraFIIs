@@ -820,6 +820,7 @@ const App: React.FC = () => {
       <AnimatePresence>
         {toast && ( 
           <motion.div 
+            key="app-toast"
             initial={{ opacity: 0, y: -50, x: '-50%' }}
             animate={{ opacity: 1, y: 0, x: '-50%' }}
             exit={{ opacity: 0, y: -50, x: '-50%' }}
@@ -857,13 +858,13 @@ const App: React.FC = () => {
                 {showSettings ? (
                   <motion.div 
                     key="settings"
-                    initial={{ opacity: 0, x: 30, filter: 'blur(10px)' }}
-                    animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
-                    exit={{ opacity: 0, x: -30, filter: 'blur(10px)' }}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
                     transition={{ 
                       type: 'spring', 
                       damping: 28, 
-                      stiffness: 220,
+                      stiffness: 260,
                       mass: 0.8
                     }}
                     className="pt-4"
@@ -884,14 +885,14 @@ const App: React.FC = () => {
                 ) : (
                   <motion.div 
                     key={currentTab}
-                    initial={{ opacity: 0, scale: 0.96, y: 15, filter: 'blur(8px)' }}
-                    animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }}
-                    exit={{ opacity: 0, scale: 0.96, y: -15, filter: 'blur(8px)' }}
+                    initial={{ opacity: 0, scale: 0.98, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.98, y: -10 }}
                     transition={{ 
                       type: 'spring', 
-                      damping: 25, 
-                      stiffness: 200,
-                      mass: 1
+                      damping: 28, 
+                      stiffness: 260,
+                      mass: 0.8
                     }}
                   >
                     {currentTab === 'home' && (
