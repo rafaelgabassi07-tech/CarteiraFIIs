@@ -567,115 +567,135 @@ const ComparativeChart: React.FC<ComparativeChartProps> = ({ ticker, type }) => 
 
     return (
         <>
-        <div className="mb-6 relative overflow-hidden">
-            <div className="flex flex-col gap-3 mb-4">
+        <div className="mb-2 relative overflow-hidden">
+            <div className="flex flex-col gap-4 mb-4">
                 <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center text-zinc-400">
-                            <TrendingUp className="w-4 h-4" />
-                        </div>
-                        <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
-                            Rentabilidade
-                        </h3>
-                    </div>
                     <div className="flex items-center gap-2">
-                         <div className="flex bg-zinc-100 dark:bg-zinc-900 rounded-lg p-0.5 border border-zinc-200 dark:border-zinc-800">
+                         <div className="flex bg-zinc-100 dark:bg-zinc-900/50 rounded-xl p-1 border border-zinc-200/50 dark:border-zinc-800/50">
                             {['1Y', '2Y', '5Y', 'MAX'].map((r) => (
-                                <button key={r} onClick={() => setRange(r)} className={`px-2 py-0.5 text-[8px] font-bold rounded-md transition-all ${range === r ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>{r}</button>
+                                <button key={r} onClick={() => setRange(r)} className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all ${range === r ? 'bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'}`}>{r}</button>
                             ))}
                         </div>
+                    </div>
+                    <div>
                         <button 
                             onClick={() => setShowFilterModal(true)}
-                            className={`p-1.5 rounded-lg transition-all border ${showFilterModal ? 'bg-indigo-50 border-indigo-200 text-indigo-600 dark:bg-indigo-900/30 dark:border-indigo-800 dark:text-indigo-400' : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                            className={`p-2 rounded-xl transition-all border ${showFilterModal ? 'bg-indigo-50 border-indigo-200 text-indigo-600 dark:bg-indigo-900/30 dark:border-indigo-800 dark:text-indigo-400' : 'bg-zinc-50 dark:bg-zinc-900/50 border-zinc-200/50 dark:border-zinc-800/50 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'}`}
                         >
-                            <ListFilter className="w-3.5 h-3.5" />
+                            <ListFilter className="w-4 h-4" />
                         </button>
                     </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2 py-2 border-y border-zinc-100 dark:border-zinc-900/50">
-                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg border border-indigo-100 dark:border-indigo-900/30 bg-indigo-50 dark:bg-indigo-900/20">
-                        <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-                        <span className="text-[9px] font-bold text-indigo-700 dark:text-indigo-300">{ticker}</span>
+                <div className="flex flex-wrap gap-2">
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-indigo-200 dark:border-indigo-900/50 bg-indigo-50 dark:bg-indigo-900/20 shadow-sm">
+                        <span className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.6)]"></span>
+                        <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300">{ticker}</span>
                     </div>
-                    <button onClick={() => toggleBenchmark('CDI')} className={`flex items-center gap-1 px-2 py-0.5 rounded-lg border transition-all ${visibleBenchmarks.CDI ? 'bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700' : 'bg-transparent border-dashed border-zinc-200 dark:border-zinc-800 opacity-60'}`}>
-                        <span className="w-2 h-2 rounded-full bg-zinc-500"></span><span className="text-[9px] font-bold text-zinc-600 dark:text-zinc-400">CDI</span>
+                    <button onClick={() => toggleBenchmark('CDI')} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border transition-all shadow-sm ${visibleBenchmarks.CDI ? 'bg-zinc-100 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-600' : 'bg-transparent border-dashed border-zinc-200 dark:border-zinc-800 opacity-50 hover:opacity-80'}`}>
+                        <span className={`w-2 h-2 rounded-full ${visibleBenchmarks.CDI ? 'bg-zinc-600 dark:bg-zinc-400' : 'bg-zinc-400 dark:bg-zinc-600'}`}></span><span className={`text-[10px] font-bold ${visibleBenchmarks.CDI ? 'text-zinc-700 dark:text-zinc-300' : 'text-zinc-500 dark:text-zinc-500'}`}>CDI</span>
                     </button>
-                    <button onClick={() => toggleBenchmark('IPCA')} className={`flex items-center gap-1 px-2 py-0.5 rounded-lg border transition-all ${visibleBenchmarks.IPCA ? 'bg-orange-100 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800' : 'bg-transparent border-dashed border-zinc-200 dark:border-zinc-800 opacity-60'}`}>
-                        <span className="w-2 h-2 rounded-full bg-orange-500"></span><span className="text-[9px] font-bold text-orange-600 dark:text-orange-400">IPCA</span>
+                    <button onClick={() => toggleBenchmark('IPCA')} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border transition-all shadow-sm ${visibleBenchmarks.IPCA ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800/50' : 'bg-transparent border-dashed border-zinc-200 dark:border-zinc-800 opacity-50 hover:opacity-80'}`}>
+                        <span className={`w-2 h-2 rounded-full ${visibleBenchmarks.IPCA ? 'bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)]' : 'bg-orange-300 dark:bg-orange-800'}`}></span><span className={`text-[10px] font-bold ${visibleBenchmarks.IPCA ? 'text-orange-700 dark:text-orange-400' : 'text-zinc-500 dark:text-zinc-500'}`}>IPCA</span>
                     </button>
-                    <button onClick={() => toggleBenchmark('IBOV')} className={`flex items-center gap-1 px-2 py-0.5 rounded-lg border transition-all ${visibleBenchmarks.IBOV ? 'bg-sky-100 dark:bg-sky-900/20 border-sky-200 dark:border-sky-800' : 'bg-transparent border-dashed border-zinc-200 dark:border-zinc-800 opacity-60'}`}>
-                        <span className="w-2 h-2 rounded-full bg-sky-500"></span><span className="text-[9px] font-bold text-sky-600 dark:text-sky-400">IBOV</span>
+                    <button onClick={() => toggleBenchmark('IBOV')} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border transition-all shadow-sm ${visibleBenchmarks.IBOV ? 'bg-sky-50 dark:bg-sky-900/20 border-sky-200 dark:border-sky-800/50' : 'bg-transparent border-dashed border-zinc-200 dark:border-zinc-800 opacity-50 hover:opacity-80'}`}>
+                        <span className={`w-2 h-2 rounded-full ${visibleBenchmarks.IBOV ? 'bg-sky-500 shadow-[0_0_8px_rgba(14,165,233,0.6)]' : 'bg-sky-300 dark:bg-sky-800'}`}></span><span className={`text-[10px] font-bold ${visibleBenchmarks.IBOV ? 'text-sky-700 dark:text-sky-400' : 'text-zinc-500 dark:text-zinc-500'}`}>IBOV</span>
                     </button>
                     {type === 'FII' && (
-                        <button onClick={() => toggleBenchmark('IFIX')} className={`flex items-center gap-1 px-2 py-0.5 rounded-lg border transition-all ${visibleBenchmarks.IFIX ? 'bg-emerald-100 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800' : 'bg-transparent border-dashed border-zinc-200 dark:border-zinc-800 opacity-60'}`}>
-                            <span className="w-2 h-2 rounded-full bg-emerald-500"></span><span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400">IFIX</span>
+                        <button onClick={() => toggleBenchmark('IFIX')} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border transition-all shadow-sm ${visibleBenchmarks.IFIX ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/50' : 'bg-transparent border-dashed border-zinc-200 dark:border-zinc-800 opacity-50 hover:opacity-80'}`}>
+                            <span className={`w-2 h-2 rounded-full ${visibleBenchmarks.IFIX ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]' : 'bg-emerald-300 dark:bg-emerald-800'}`}></span><span className={`text-[10px] font-bold ${visibleBenchmarks.IFIX ? 'text-emerald-700 dark:text-emerald-400' : 'text-zinc-500 dark:text-zinc-500'}`}>IFIX</span>
                         </button>
                     )}
                 </div>
             </div>
 
-            <div className="h-64 w-full relative">
+            <div className="h-72 w-full relative mt-6">
                 {loading ? (
-                    <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm z-10">
-                        <div className="animate-pulse text-xs font-bold text-zinc-400">Carregando dados...</div>
+                    <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm z-10 rounded-2xl">
+                        <div className="animate-pulse flex flex-col items-center gap-2">
+                            <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                            <span className="text-xs font-bold text-zinc-500">Carregando comparativo...</span>
+                        </div>
                     </div>
                 ) : !filteredData || filteredData.length === 0 ? (
-                    <div className="absolute inset-0 flex items-center justify-center text-xs text-zinc-400">Dados insuficientes</div>
+                    <div className="absolute inset-0 flex items-center justify-center text-xs text-zinc-400 bg-zinc-50 dark:bg-zinc-900/50 rounded-2xl border border-zinc-100 dark:border-zinc-800 border-dashed">Dados insuficientes para o período selecionado</div>
                 ) : (
                     <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={filteredData} margin={{ top: 10, right: 5, left: -20, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.1} />
+                            <defs>
+                                <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+                                    <feDropShadow dx="0" dy="4" stdDeviation="4" floodOpacity="0.15" />
+                                </filter>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#52525b" opacity={0.15} />
                             <XAxis 
                                 dataKey="date" 
                                 hide={false} 
                                 axisLine={false} 
                                 tickLine={false} 
-                                tick={{fontSize: 9, fill: '#71717a'}} 
+                                tick={{fontSize: 10, fill: '#a1a1aa', fontWeight: 500}} 
                                 tickFormatter={formatXAxis} 
                                 minTickGap={40}
-                                height={20}
+                                height={24}
                             />
                             <YAxis 
                                 hide={false} 
                                 axisLine={false} 
                                 tickLine={false} 
-                                tick={{fontSize: 9, fill: '#71717a'}} 
-                                width={35}
+                                tick={{fontSize: 10, fill: '#a1a1aa', fontWeight: 500}} 
+                                width={40}
                                 tickFormatter={(val) => `${val.toFixed(0)}%`}
                             />
-                            <ReferenceLine y={0} stroke="#71717a" strokeOpacity={0.3} strokeWidth={1} />
+                            <ReferenceLine y={0} stroke="#71717a" strokeOpacity={0.4} strokeWidth={1} strokeDasharray="3 3" />
                             <Tooltip 
-                                contentStyle={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(24, 24, 27, 0.9)', color: '#fff', fontSize: '11px', padding: '10px', backdropFilter: 'blur(8px)' }}
-                                labelFormatter={(label) => new Date(label).toLocaleDateString('pt-BR') + ' ' + new Date(label).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}
-                                itemSorter={(item) => -(item.value as number)}
-                                formatter={(value: number, name: string) => {
-                                    const formattedVal = `${value.toFixed(2)}%`;
-                                    let color = '#fff';
-                                    let label = name;
-                                    
-                                    if (name === 'assetPct') { label = ticker; color = '#6366f1'; }
-                                    if (name === 'ibovPct') { label = 'IBOV'; color = '#f59e0b'; }
-                                    if (name === 'ifixPct') { label = 'IFIX'; color = '#10b981'; }
-                                    if (name === 'cdiPct') { label = 'CDI'; color = '#52525b'; }
-                                    if (name === 'ipcaPct') { label = 'IPCA'; color = '#06b6d4'; }
+                                cursor={{ stroke: '#71717a', strokeWidth: 1, strokeDasharray: '4 4' }} 
+                                content={({ active, payload, label }) => {
+                                    if (active && payload && payload.length) {
+                                        return (
+                                            <div className="bg-zinc-900/95 border border-white/10 p-3 rounded-xl shadow-2xl backdrop-blur-md min-w-[160px] animate-in fade-in zoom-in-95 duration-200">
+                                                <div className="mb-3 pb-2 border-b border-white/10">
+                                                    <p className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">
+                                                        {new Date(label).toLocaleDateString('pt-BR')} {new Date(label).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}
+                                                    </p>
+                                                </div>
+                                                <div className="flex flex-col gap-2">
+                                                    {payload.sort((a, b) => (b.value as number) - (a.value as number)).map((entry, index) => {
+                                                        const name = entry.name;
+                                                        const value = entry.value as number;
+                                                        const formattedVal = `${value > 0 ? '+' : ''}${value.toFixed(2)}%`;
+                                                        let color = '#fff';
+                                                        let labelName = name;
+                                                        
+                                                        if (name === 'assetPct') { labelName = ticker; color = '#6366f1'; }
+                                                        if (name === 'ibovPct') { labelName = 'IBOV'; color = '#0ea5e9'; }
+                                                        if (name === 'ifixPct') { labelName = 'IFIX'; color = '#10b981'; }
+                                                        if (name === 'cdiPct') { labelName = 'CDI'; color = '#a1a1aa'; }
+                                                        if (name === 'ipcaPct') { labelName = 'IPCA'; color = '#f97316'; }
 
-                                    return [
-                                        <span className="font-bold tabular-nums" style={{color}}>{formattedVal}</span>,
-                                        <span className="flex items-center gap-1.5 text-zinc-400">
-                                            <span className="w-1.5 h-1.5 rounded-full" style={{backgroundColor: color}}></span>
-                                            {label}
-                                        </span>
-                                    ];
+                                                        return (
+                                                            <div key={index} className="flex justify-between items-center gap-4 text-[11px]">
+                                                                <span className="flex items-center gap-1.5 text-zinc-300 font-medium">
+                                                                    <span className="w-2 h-2 rounded-full" style={{backgroundColor: color, boxShadow: `0 0 8px ${color}80`}}></span>
+                                                                    {labelName}
+                                                                </span>
+                                                                <span className="font-bold tabular-nums" style={{color}}>{formattedVal}</span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+                                    return null;
                                 }}
                             />
                             
-                            {visibleBenchmarks.CDI && <Line type="monotone" dataKey="cdiPct" stroke="#52525b" strokeWidth={1.5} dot={false} connectNulls strokeDasharray="3 3" animationDuration={1000} />}
-                            {visibleBenchmarks.IPCA && <Line type="monotone" dataKey="ipcaPct" stroke="#06b6d4" strokeWidth={1.5} dot={false} connectNulls strokeDasharray="3 3" animationDuration={1000} />}
-                            {visibleBenchmarks.IBOV && <Line type="monotone" dataKey="ibovPct" stroke="#f59e0b" strokeWidth={1.5} dot={false} connectNulls animationDuration={1000} />}
-                            {visibleBenchmarks.IFIX && <Line type="monotone" dataKey="ifixPct" stroke="#10b981" strokeWidth={1.5} dot={false} connectNulls animationDuration={1000} />}
+                            {visibleBenchmarks.CDI && <Line type="monotone" dataKey="cdiPct" stroke="#a1a1aa" strokeWidth={1.5} dot={false} connectNulls strokeDasharray="3 3" animationDuration={1000} />}
+                            {visibleBenchmarks.IPCA && <Line type="monotone" dataKey="ipcaPct" stroke="#f97316" strokeWidth={1.5} dot={false} connectNulls strokeDasharray="3 3" animationDuration={1000} />}
+                            {visibleBenchmarks.IBOV && <Line type="monotone" dataKey="ibovPct" stroke="#0ea5e9" strokeWidth={1.5} dot={false} connectNulls animationDuration={1000} />}
+                            {visibleBenchmarks.IFIX && type === 'FII' && <Line type="monotone" dataKey="ifixPct" stroke="#10b981" strokeWidth={1.5} dot={false} connectNulls animationDuration={1000} />}
                             
-                            <Line type="monotone" dataKey="assetPct" stroke="#6366f1" strokeWidth={2.5} dot={false} connectNulls animationDuration={1500} animationEasing="ease-out" activeDot={{ r: 5, strokeWidth: 0, fill: '#6366f1' }} />
+                            <Line type="monotone" dataKey="assetPct" stroke="#6366f1" strokeWidth={3} dot={false} connectNulls animationDuration={1500} animationEasing="ease-out" activeDot={{ r: 6, strokeWidth: 0, fill: '#6366f1' }} filter="url(#shadow)" />
                         </LineChart>
                     </ResponsiveContainer>
                 )}
@@ -1126,11 +1146,11 @@ interface Investidor10ChartsSectionProps {
     onlyPayout?: boolean;
 }
 
-const Investidor10ChartsSection: React.FC<Investidor10ChartsSectionProps> = ({ ticker, assetType, onlyPayout = false }) => {
+const Investidor10ChartsSection: React.FC<Investidor10ChartsSectionProps> = ({ ticker, assetType }) => {
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
-    const [chartType, setChartType] = useState(onlyPayout ? 'payout' : (assetType === 'FII' ? 'equity' : 'revenue_profit'));
+    const [chartType, setChartType] = useState('revenue_profit');
     const [revenueYear, setRevenueYear] = useState<string>('');
     const [revenueSubTab, setRevenueSubTab] = useState<'type' | 'region'>('type');
 
@@ -1169,14 +1189,13 @@ const Investidor10ChartsSection: React.FC<Investidor10ChartsSectionProps> = ({ t
     }, [ticker, chartType, assetType]);
 
     const chartData = data || [];
-    const isFII = assetType === 'FII';
 
     const chartConfig = useMemo(() => ({
         revenue_profit: { title: 'Receitas e Lucros', barKey: 'profit', areaKey: 'revenue', barColor: '#8b5cf6', areaColor: '#ec4899' },
-        payout: { title: isFII ? 'Dividend Yield Histórico' : 'Payout x Dividend Yield', barKey: isFII ? 'dy' : 'payout', areaKey: isFII ? '' : 'dy', barColor: isFII ? '#10b981' : '#06b6d4', areaColor: '#f59e0b' },
-        equity: { title: isFII ? 'Histórico de Valor Patrimonial' : 'Patrimônio Líquido', barKey: 'equity', areaKey: 'revenue', barColor: '#10b981', areaColor: '#6366f1' },
+        payout: { title: 'Payout x Dividend Yield', barKey: 'payout', areaKey: 'dy', barColor: '#06b6d4', areaColor: '#f59e0b' },
+        equity: { title: 'Patrimônio Líquido', barKey: 'equity', areaKey: 'revenue', barColor: '#10b981', areaColor: '#6366f1' },
         revenues_by_type: { title: 'Composição da Receita', barKey: '', areaKey: '', barColor: '', areaColor: '' },
-    }), [isFII]);
+    }), []);
 
     const currentChart = chartConfig[chartType as keyof typeof chartConfig] || chartConfig.revenue_profit;
 
@@ -1187,7 +1206,7 @@ const Investidor10ChartsSection: React.FC<Investidor10ChartsSectionProps> = ({ t
 
         const source = revenueSubTab === 'type' ? data.revenuesByType : data.revenuesByRegion;
         if (!source || !revenueYear || !source[revenueYear]) {
-            return <div className="h-full flex items-center justify-center text-zinc-500 text-[10px] font-bold uppercase tracking-widest">Sem dados para {revenueYear}</div>;
+            return <div className="h-full flex items-center justify-center text-zinc-500 text-[10px] font-bold uppercase tracking-widest bg-zinc-50 dark:bg-zinc-900/50 rounded-2xl border border-zinc-100 dark:border-zinc-800 border-dashed">Sem dados para {revenueYear}</div>;
         }
 
         const yearData = source[revenueYear];
@@ -1202,13 +1221,13 @@ const Investidor10ChartsSection: React.FC<Investidor10ChartsSectionProps> = ({ t
                 <div className="flex justify-center gap-4 mb-4">
                     <button 
                         onClick={() => setRevenueSubTab('type')}
-                        className={`text-[9px] font-black uppercase tracking-widest pb-1 border-b-2 transition-all ${revenueSubTab === 'type' ? 'border-indigo-500 text-zinc-900 dark:text-white' : 'border-transparent text-zinc-400'}`}
+                        className={`text-[9px] font-black uppercase tracking-widest pb-1 border-b-2 transition-all ${revenueSubTab === 'type' ? 'border-indigo-500 text-zinc-900 dark:text-white' : 'border-transparent text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                     >
                         Por Negócio
                     </button>
                     <button 
                         onClick={() => setRevenueSubTab('region')}
-                        className={`text-[9px] font-black uppercase tracking-widest pb-1 border-b-2 transition-all ${revenueSubTab === 'region' ? 'border-indigo-500 text-zinc-900 dark:text-white' : 'border-transparent text-zinc-400'}`}
+                        className={`text-[9px] font-black uppercase tracking-widest pb-1 border-b-2 transition-all ${revenueSubTab === 'region' ? 'border-indigo-500 text-zinc-900 dark:text-white' : 'border-transparent text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                     >
                         Por Região
                     </button>
@@ -1226,26 +1245,46 @@ const Investidor10ChartsSection: React.FC<Investidor10ChartsSectionProps> = ({ t
                                     paddingAngle={5}
                                     dataKey="value"
                                     animationDuration={1000}
+                                    stroke="none"
                                 >
                                     {pieData.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                     ))}
                                 </Pie>
                                 <Tooltip 
-                                    contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '12px', fontSize: '10px' }}
-                                    itemStyle={{ color: '#fff' }}
-                                    formatter={(value: number, name: string, props: any) => [`${value}% (${props.payload.revenue})`, name]}
+                                    content={({ active, payload }) => {
+                                        if (active && payload && payload.length) {
+                                            const data = payload[0].payload;
+                                            return (
+                                                <div className="bg-zinc-900/95 border border-white/10 p-3 rounded-xl shadow-2xl backdrop-blur-md min-w-[140px] animate-in fade-in zoom-in-95 duration-200">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: payload[0].color, boxShadow: `0 0 8px ${payload[0].color}80` }} />
+                                                        <span className="text-[10px] font-bold text-zinc-300">{data.name}</span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center gap-4">
+                                                        <span className="text-[10px] text-zinc-500 font-medium">Participação</span>
+                                                        <span className="text-[11px] font-bold text-white tabular-nums">{data.value}%</span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center gap-4 mt-1">
+                                                        <span className="text-[10px] text-zinc-500 font-medium">Receita</span>
+                                                        <span className="text-[11px] font-bold text-white tabular-nums">{data.revenue}</span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+                                        return null;
+                                    }}
                                 />
                             </RePieChart>
                         </ResponsiveContainer>
                     </div>
-                    <div className="w-1/2 flex flex-col justify-center gap-2 pl-4">
+                    <div className="w-1/2 flex flex-col justify-center gap-3 pl-4">
                         {pieData.map((item, idx) => (
-                            <div key={idx} className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
+                            <div key={idx} className="flex items-center gap-2.5 group">
+                                <div className="w-2 h-2 rounded-full shadow-sm transition-transform group-hover:scale-125" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
                                 <div className="flex flex-col">
-                                    <span className="text-[9px] font-bold text-zinc-900 dark:text-zinc-100 truncate max-w-[120px]">{item.name}</span>
-                                    <span className="text-[8px] font-medium text-zinc-500">{item.value}% • {item.revenue}</span>
+                                    <span className="text-[10px] font-bold text-zinc-700 dark:text-zinc-300 truncate max-w-[120px]">{item.name}</span>
+                                    <span className="text-[9px] font-medium text-zinc-500">{item.value}% • {item.revenue}</span>
                                 </div>
                             </div>
                         ))}
@@ -1256,7 +1295,7 @@ const Investidor10ChartsSection: React.FC<Investidor10ChartsSectionProps> = ({ t
                         <button
                             key={year}
                             onClick={() => setRevenueYear(year)}
-                            className={`px-2 py-0.5 text-[8px] font-bold rounded-md transition-all ${revenueYear === year ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white' : 'text-zinc-400 hover:text-zinc-600'}`}
+                            className={`px-2.5 py-1 text-[9px] font-bold rounded-lg transition-all ${revenueYear === year ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 shadow-sm' : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
                         >
                             {year}
                         </button>
@@ -1266,141 +1305,147 @@ const Investidor10ChartsSection: React.FC<Investidor10ChartsSectionProps> = ({ t
         );
     };
 
-    if (loading) return <div className="text-center text-zinc-400">Carregando...</div>;
-    if (error || !data) return <div className="text-center text-zinc-400">Dados não disponíveis.</div>;
-    if (onlyPayout) {
-        return (
-            <div className="h-64 w-full py-4 border-y border-zinc-100 dark:border-zinc-900/50">
-                <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 5 }}>
-                        <XAxis dataKey="label" tick={{ fontSize: 9, fontWeight: 700, fill: '#71717a' }} tickLine={false} axisLine={false} />
-                        <YAxis yAxisId="left" orientation="left" tick={{ fontSize: 9, fontWeight: 700, fill: '#71717a' }} tickLine={false} axisLine={false} tickFormatter={(val) => `${val}%`} />
-                        <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 9, fontWeight: 700, fill: '#71717a' }} tickLine={false} axisLine={false} tickFormatter={(val) => `${(val * 100).toFixed(0)}%`} />
-                        <Tooltip contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: '12px', fontSize: '10px' }} labelStyle={{ color: '#a1a1aa' }} formatter={(value: number, name: string) => [name === 'payout' ? `${value.toFixed(2)}%` : `${(value * 100).toFixed(2)}%`, name === 'payout' ? 'Payout' : 'Div. Yield']} />
-                        <Bar yAxisId="left" dataKey="payout" fill={isFII ? '#10b981' : '#06b6d4'} radius={[4, 4, 0, 0]} name="Payout" />
-                        <Line yAxisId="right" dataKey="dy" stroke="#f59e0b" strokeWidth={2} dot={false} name="Div. Yield" />
-                    </ComposedChart>
-                </ResponsiveContainer>
-            </div>
-        )
-    }
-
     return (
-        <div className="mb-6">
+        <div className="mb-2 relative overflow-hidden">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center text-zinc-400 border border-zinc-100 dark:border-zinc-800">
+                    <div className="w-8 h-8 rounded-xl bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center text-zinc-400">
                         <Activity className="w-4 h-4" />
                     </div>
-                    <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{currentChart.title}</h4>
+                    <div>
+                        <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest leading-none">Evolução Histórica</h4>
+                    </div>
                 </div>
-                <div className="flex flex-wrap p-1 gap-1 bg-zinc-100 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 w-full">
-                    {isFII ? (
-                        <>
-                            <button 
-                                onClick={() => setChartType('equity')} 
-                                className={`flex-1 flex justify-center items-center gap-1.5 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all whitespace-nowrap ${chartType === 'equity' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}
-                            >
-                                <Building2 className="w-3 h-3" />
-                                Patrimônio
-                            </button>
-                            <button 
-                                onClick={() => setChartType('payout')} 
-                                className={`flex-1 flex justify-center items-center gap-1.5 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all whitespace-nowrap ${chartType === 'payout' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}
-                            >
-                                <Percent className="w-3 h-3" />
-                                DY
-                            </button>
-                        </>
-                    ) : (
-                        <>
-                            <button 
-                                onClick={() => setChartType('revenue_profit')} 
-                                className={`flex-1 flex justify-center items-center gap-1.5 px-2 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all whitespace-nowrap ${chartType === 'revenue_profit' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}
-                            >
-                                <TrendingUp className="w-3 h-3" />
-                                Lucros
-                            </button>
-                            <button 
-                                onClick={() => setChartType('equity')} 
-                                className={`flex-1 flex justify-center items-center gap-1.5 px-2 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all whitespace-nowrap ${chartType === 'equity' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}
-                            >
-                                <Scale className="w-3 h-3" />
-                                Patrimônio
-                            </button>
-                            <button 
-                                onClick={() => setChartType('payout')} 
-                                className={`flex-1 flex justify-center items-center gap-1.5 px-2 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all whitespace-nowrap ${chartType === 'payout' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}
-                            >
-                                <Percent className="w-3 h-3" />
-                                Payout
-                            </button>
-                            <button 
-                                onClick={() => setChartType('revenues_by_type')} 
-                                className={`flex-1 flex justify-center items-center gap-1.5 px-2 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all whitespace-nowrap ${chartType === 'revenues_by_type' ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}
-                            >
-                                <PieChart className="w-3 h-3" />
-                                Receita
-                            </button>
-                        </>
-                    )}
+                <div className="flex flex-wrap p-1 gap-1 bg-zinc-100 dark:bg-zinc-900/50 rounded-xl border border-zinc-200/50 dark:border-zinc-800/50 w-full sm:w-auto">
+                    <button 
+                        onClick={() => setChartType('revenue_profit')} 
+                        className={`flex-1 sm:flex-none flex justify-center items-center gap-1.5 px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider rounded-lg transition-all whitespace-nowrap ${chartType === 'revenue_profit' ? 'bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'}`}
+                    >
+                        <TrendingUp className="w-3 h-3" />
+                        Lucros
+                    </button>
+                    <button 
+                        onClick={() => setChartType('equity')} 
+                        className={`flex-1 sm:flex-none flex justify-center items-center gap-1.5 px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider rounded-lg transition-all whitespace-nowrap ${chartType === 'equity' ? 'bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'}`}
+                    >
+                        <Scale className="w-3 h-3" />
+                        Patrimônio
+                    </button>
+                    <button 
+                        onClick={() => setChartType('payout')} 
+                        className={`flex-1 sm:flex-none flex justify-center items-center gap-1.5 px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider rounded-lg transition-all whitespace-nowrap ${chartType === 'payout' ? 'bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'}`}
+                    >
+                        <Percent className="w-3 h-3" />
+                        Payout
+                    </button>
+                    <button 
+                        onClick={() => setChartType('revenues_by_type')} 
+                        className={`flex-1 sm:flex-none flex justify-center items-center gap-1.5 px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider rounded-lg transition-all whitespace-nowrap ${chartType === 'revenues_by_type' ? 'bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'}`}
+                    >
+                        <PieChart className="w-3 h-3" />
+                        Receita
+                    </button>
                 </div>
             </div>
-            <div className="h-64 w-full overflow-hidden">
-                <AnimatePresence mode="wait">
-                    <motion.div
-                        key={chartType}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        transition={{ duration: 0.3, ease: "easeOut" }}
-                        className="h-full w-full"
-                    >
-                        {chartType === 'revenues_by_type' ? renderPieChart() : (
-                            <ResponsiveContainer width="100%" height="100%">
-                                <ComposedChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 5 }}>
-                                    <defs>
-                                        <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="0%" stopColor={currentChart.barColor} stopOpacity={1} />
-                                            <stop offset="100%" stopColor={currentChart.barColor} stopOpacity={0.6} />
-                                        </linearGradient>
-                                        <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="0%" stopColor={currentChart.areaColor} stopOpacity={0.2} />
-                                            <stop offset="100%" stopColor={currentChart.areaColor} stopOpacity={0} />
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.05} />
-                                    <XAxis dataKey="label" tick={{ fontSize: 9, fontWeight: 700, fill: '#71717a' }} tickLine={false} axisLine={false} dy={10} />
-                                    <YAxis yAxisId="left" orientation="left" tick={{ fontSize: 9, fontWeight: 700, fill: '#71717a' }} tickLine={false} axisLine={false} tickFormatter={(val) => chartType === 'payout' ? `${val}%` : formatCompactBRL(val)} />
-                                    {chartType !== 'equity' && <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 9, fontWeight: 700, fill: '#71717a' }} tickLine={false} axisLine={false} tickFormatter={(val) => chartType === 'payout' ? `${val}%` : formatCompactBRL(val)} />}
-                                    <Tooltip 
-                                        cursor={{ fill: 'rgba(255, 255, 255, 0.03)' }}
-                                        contentStyle={{ backgroundColor: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '10px', backdropFilter: 'blur(8px)' }} 
-                                        labelStyle={{ color: '#a1a1aa', fontWeight: 'bold', marginBottom: '4px' }} 
-                                        formatter={(value: number, name: string) => {
-                                            const isPercent = name === 'payout' || name === 'dy';
-                                            const label = name === 'revenue' ? 'Receita' : name === 'profit' ? 'Lucro' : name === 'equity' ? 'Patrimônio' : name === 'payout' ? 'Payout' : 'DY';
-                                            return [isPercent ? `${value.toFixed(2)}%` : formatCompactBRL(value), label];
-                                        }} 
-                                    />
-                                    <Bar yAxisId="left" dataKey={currentChart.barKey} fill="url(#barGradient)" radius={[4, 4, 0, 0]} barSize={20} />
-                                    {currentChart.areaKey && (
-                                        <Area 
-                                            yAxisId={chartType === 'equity' ? 'left' : 'right'} 
-                                            type="monotone"
-                                            dataKey={currentChart.areaKey} 
-                                            fill="url(#areaGradient)" 
-                                            stroke={currentChart.areaColor} 
-                                            fillOpacity={1} 
-                                            strokeWidth={2} 
-                                            animationDuration={1500}
+            <div className="h-72 w-full relative mt-4">
+                {loading ? (
+                    <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm z-10 rounded-2xl">
+                        <div className="animate-pulse flex flex-col items-center gap-2">
+                            <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                            <span className="text-xs font-bold text-zinc-500">Carregando histórico...</span>
+                        </div>
+                    </div>
+                ) : error || !data ? (
+                    <div className="absolute inset-0 flex items-center justify-center text-xs text-zinc-400 bg-zinc-50 dark:bg-zinc-900/50 rounded-2xl border border-zinc-100 dark:border-zinc-800 border-dashed">Dados indisponíveis</div>
+                ) : (
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={chartType}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.3, ease: "easeOut" }}
+                            className="h-full w-full"
+                        >
+                            {chartType === 'revenues_by_type' ? renderPieChart() : (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <ComposedChart data={chartData} margin={{ top: 10, right: 5, left: -20, bottom: 5 }}>
+                                        <defs>
+                                            <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor={currentChart.barColor} stopOpacity={1} />
+                                                <stop offset="100%" stopColor={currentChart.barColor} stopOpacity={0.6} />
+                                            </linearGradient>
+                                            <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor={currentChart.areaColor} stopOpacity={0.2} />
+                                                <stop offset="100%" stopColor={currentChart.areaColor} stopOpacity={0} />
+                                            </linearGradient>
+                                            <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+                                                <feDropShadow dx="0" dy="4" stdDeviation="4" floodOpacity="0.15" />
+                                            </filter>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#52525b" opacity={0.15} />
+                                        <XAxis dataKey="label" tick={{ fontSize: 10, fontWeight: 500, fill: '#a1a1aa' }} tickLine={false} axisLine={false} dy={10} minTickGap={20} />
+                                        <YAxis yAxisId="left" orientation="left" tick={{ fontSize: 10, fontWeight: 500, fill: '#a1a1aa' }} tickLine={false} axisLine={false} width={40} tickFormatter={(val) => chartType === 'payout' ? `${val}%` : formatCompactBRL(val)} />
+                                        {chartType !== 'equity' && <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fontWeight: 500, fill: '#a1a1aa' }} tickLine={false} axisLine={false} width={40} tickFormatter={(val) => chartType === 'payout' ? `${val}%` : formatCompactBRL(val)} />}
+                                        <Tooltip 
+                                            cursor={{ fill: 'rgba(255, 255, 255, 0.03)' }}
+                                            content={({ active, payload, label }) => {
+                                                if (active && payload && payload.length) {
+                                                    return (
+                                                        <div className="bg-zinc-900/95 border border-white/10 p-3 rounded-xl shadow-2xl backdrop-blur-md min-w-[160px] animate-in fade-in zoom-in-95 duration-200">
+                                                            <div className="mb-3 pb-2 border-b border-white/10">
+                                                                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">
+                                                                    {label}
+                                                                </p>
+                                                            </div>
+                                                            <div className="flex flex-col gap-2">
+                                                                {payload.map((entry, index) => {
+                                                                    const name = entry.name;
+                                                                    const value = entry.value as number;
+                                                                    const isPercent = name === 'payout' || name === 'dy';
+                                                                    const labelName = name === 'revenue' ? 'Receita' : name === 'profit' ? 'Lucro' : name === 'equity' ? 'Patrimônio' : name === 'payout' ? 'Payout' : 'DY';
+                                                                    const formattedVal = isPercent ? `${value.toFixed(2)}%` : formatCompactBRL(value);
+                                                                    const color = entry.color;
+
+                                                                    return (
+                                                                        <div key={index} className="flex justify-between items-center gap-4 text-[11px]">
+                                                                            <span className="flex items-center gap-1.5 text-zinc-300 font-medium">
+                                                                                <span className="w-2 h-2 rounded-full" style={{backgroundColor: color, boxShadow: `0 0 8px ${color}80`}}></span>
+                                                                                {labelName}
+                                                                            </span>
+                                                                            <span className="font-bold tabular-nums" style={{color}}>{formattedVal}</span>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+                                                return null;
+                                            }}
                                         />
-                                    )}
-                                </ComposedChart>
-                            </ResponsiveContainer>
-                        )}
-                    </motion.div>
-                </AnimatePresence>
+                                        <Bar yAxisId="left" dataKey={currentChart.barKey} fill="url(#barGradient)" radius={[4, 4, 0, 0]} barSize={24} name={currentChart.barKey} />
+                                        {currentChart.areaKey && (
+                                            <Area 
+                                                yAxisId={chartType === 'equity' ? 'left' : 'right'} 
+                                                type="monotone"
+                                                dataKey={currentChart.areaKey} 
+                                                fill="url(#areaGradient)" 
+                                                stroke={currentChart.areaColor} 
+                                                fillOpacity={1} 
+                                                strokeWidth={3} 
+                                                animationDuration={1500}
+                                                name={currentChart.areaKey}
+                                                activeDot={{ r: 6, strokeWidth: 0, fill: currentChart.areaColor }}
+                                                filter="url(#shadow)"
+                                            />
+                                        )}
+                                    </ComposedChart>
+                                </ResponsiveContainer>
+                            )}
+                        </motion.div>
+                    </AnimatePresence>
+                )}
             </div>
         </div>
     );
@@ -1805,10 +1850,12 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends = [], inco
                             </div>
 
                             {/* SEÇÃO: EVOLUÇÃO FUNDAMENTALISTA */}
-                            <div className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32">
-                                <SectionHeader title="Evolução Histórica" icon={Activity} />
-                                <Investidor10ChartsSection ticker={asset.ticker} assetType={asset.assetType} />
-                            </div>
+                            {asset.assetType !== 'FII' && (
+                                <div className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32">
+                                    <SectionHeader title="Evolução Histórica" icon={Activity} />
+                                    <Investidor10ChartsSection ticker={asset.ticker} assetType={asset.assetType} />
+                                </div>
+                            )}
 
                             {/* SEÇÃO: PORTFÓLIO FÍSICO */}
                             {asset.properties && asset.properties.length > 0 && (
