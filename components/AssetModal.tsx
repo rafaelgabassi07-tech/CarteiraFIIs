@@ -1818,6 +1818,29 @@ const AssetModal = ({ asset, onClose, onAssetRefresh, marketDividends = [], inco
                                 />
                             </div>
 
+                            {/* SEÇÃO: SOBRE A EMPRESA */}
+                            {asset.description && (
+                                <div id="section-ABOUT" className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32">
+                                    <div className="mb-6">
+                                        <h2 className="text-2xl font-bold text-zinc-900 dark:text-white mb-1">Sobre a empresa</h2>
+                                        <h3 className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-wider">{asset.company_name || asset.ticker}</h3>
+                                    </div>
+                                    <div className="text-[15px] text-zinc-700 dark:text-zinc-300 leading-relaxed space-y-4">
+                                        {asset.description.split('\n\n').map((paragraph, idx) => (
+                                            <p key={idx}>{paragraph}</p>
+                                        ))}
+                                    </div>
+                                    <div className="mt-6 bg-zinc-50 dark:bg-zinc-900/50 rounded-2xl p-4 flex items-start gap-3 border border-zinc-100 dark:border-zinc-800/50">
+                                        <div className="mt-0.5 text-zinc-400">
+                                            <FileText className="w-5 h-5" />
+                                        </div>
+                                        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                                            Isso não é uma recomendação de compra/venda.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* SEÇÃO: DADOS FUNDAMENTAIS */}
                             <div id="section-FUNDAMENTALS" className="bg-white dark:bg-zinc-800 rounded-3xl p-5 md:p-6 shadow-sm border border-zinc-200/50 dark:border-zinc-700/50 scroll-mt-32">
                                 <SectionHeader title="Análise Fundamentalista" icon={List} />

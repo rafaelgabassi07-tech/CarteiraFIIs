@@ -514,6 +514,32 @@ export async function scrapeInvestidor10(ticker: string) {
             
             if (extractedProps.length > 0) realEstateProperties = extractedProps;
 
+            // --- 6. SOBRE A EMPRESA / FUNDO ---
+            let aboutText = '';
+            const aboutHeader = $('h2').filter((i, el) => {
+                const text = $(el).text().trim().toLowerCase();
+                return text.includes('sobre a empresa') || text.includes('sobre o fundo') || text.includes('sobre o ') || text.includes('sobre a ');
+            }).first();
+
+            if (aboutHeader.length > 0) {
+                const container = aboutHeader.closest('section, .card, .container, div[id*="about"], div[class*="about"]');
+                if (container.length > 0) {
+                    const paragraphs = container.find('p').map((i, el) => $(el).text().replace(/\s+/g, ' ').trim()).get().filter(p => p.length > 0);
+                    aboutText = paragraphs.join('\n\n');
+                } else {
+                    const paragraphs = aboutHeader.nextAll('p').map((i, el) => $(el).text().replace(/\s+/g, ' ').trim()).get().filter(p => p.length > 0);
+                    aboutText = paragraphs.join('\n\n');
+                }
+            }
+
+            if (!aboutText) {
+                aboutText = $('#about-section p, .company-description p, .about-company p').map((i, el) => $(el).text().replace(/\s+/g, ' ').trim()).get().filter(p => p.length > 0).join('\n\n');
+            }
+            
+            if (aboutText) {
+                dados.description = aboutText;
+            }
+
             if ((!dados.dy || dados.dy === 'N/A') && dados.ultimo_rendimento && dados.cotacao_atual) {
                 const ultRend = parseValue(dados.ultimo_rendimento);
                 const cot = parseValue(dados.cotacao_atual);
@@ -583,6 +609,8 @@ export async function scrapeInvestidor10(ticker: string) {
                 free_float: parseValue(dados.free_float),
                 tag_along: parseValue(dados.tag_along),
                 avg_daily_volume: parseValue(dados.avg_daily_volume),
+
+                description: dados.description as string || null,
 
                 properties: realEstateProperties.length > 0 ? realEstateProperties : null
             };
